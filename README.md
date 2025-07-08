@@ -22,9 +22,6 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 
 ## Pipeline Structure
 
-
-## Pipeline Structure
-
 [1] Data Download & Catalog Parsing  
    │  
    ▼  
@@ -92,27 +89,71 @@ pip install -r requirements.txt
 ## Project Structure
 
 ```
-astro-spectro-classification/
+astro_spectro_git/
 │
-├── src/                  # Main pipeline source code (modular Python scripts)
-│   ├── preprocessor.py
-│   ├── peak_detector.py
-│   ├── feature_engineering.py
-│   ├── classifier.py
-│   └── ...
-├── notebooks/            # Jupyter Notebooks for exploration, demo, and analysis
-│   └── 00_master_pipeline.ipynb
-├── data/
-│   ├── raw/              # Raw LAMOST FITS spectra (**NOT versioned!**)
-│   ├── catalog/          # External catalogs (CSV, metadata, etc.)
-│   └── processed/        # Processed features and ML-ready datasets
-├── reports/              # Auto-generated evaluation reports, figures
-├── images/               # Figures, pipeline diagrams, README illustrations
-├── requirements.txt      # Python dependencies
-├── LICENSE               # License (MIT)
-├── README.md             # This file
-└── .gitignore            # To avoid leaking data/models/logs
+├── .gitignore              # Exclude raw data, logs, outputs, venv, etc.
+├── LICENSE
+├── README.md
+├── ROADMAP.md
+├── main.py                 # Main script (entry point)
+├── requirements.txt        # Python dependencies
+│
+├── data/                   # Data folder (ignored by git)
+│   ├── archive/            # Old/archived data or intermediate files
+│   ├── catalog/            # Catalogs (CSV, metadata, external labels)
+│   ├── models/             # (Optionnel) Saved models or intermediate model files
+│   ├── processed/          # Processed features/ML-ready datasets
+│   └── raw/                # Raw LAMOST FITS (HUGE, many subfolders)
+│       ├── B6202/
+│       ├── B6210/
+│       ├── B6212/
+│       ├── GAC_105N29_B1/
+│       ├── M31_011N40_B1/
+│       └── M31_011N40_M1/
+│
+├── images/                 # Images, visualizations, pipeline diagrams
+│   └── spectre_visualisation/
+│
+├── logs/                   # Log files, output from processing
+│
+├── notebooks/              # Jupyter Notebooks
+│   ├── 00_master_pipeline.ipynb
+│   ├── 01_download_spectra.ipynb
+│   ├── 02_tools_and_visuals.ipynb
+│   └── archive/            # Old notebooks, experimental code
+│
+├── reports/                # Generated reports, evaluation results, figures
+│
+└── src/                    # Main source code
+    ├── pipeline/           # Main pipeline logic (modular Python scripts)
+    │   ├── classifier.py
+    │   ├── feature_engineering.py
+    │   ├── peak_detector.py
+    │   ├── preprocessor.py
+    │   └── processing.py
+    │
+    └── tools/              # Utility scripts/tools
+       ├── dataset_builder.py
+       ├── dr5_downloader.py
+       └── generate_catalog_from_fits.py
 ```
+
+### Legend
+
+- **data/raw/**: All raw LAMOST FITS spectra. Subfolders are organized by field/plan_id. (Never versioned — excluded by `.gitignore`.)
+- **data/catalog/**: CSV metadata and external catalogs (e.g., labels, cross-matches).
+- **data/processed/**: Processed/cleaned datasets, ML-ready features.
+- **data/models/**: Saved model files, checkpoints, or pickled objects (optional).
+- **data/archive/**: Old or intermediate data, deprecated versions.
+- **src/pipeline/**: Main pipeline code (each file = a major pipeline stage: preprocessing, feature engineering, etc.).
+- **src/tools/**: Utility scripts for building catalogs, downloading data, or other helper tools.
+- **notebooks/**: Jupyter notebooks for prototyping, exploratory analysis, demos.
+- **notebooks/archive/**: Deprecated or experimental notebooks.
+- **reports/**: Automatically generated reports, visualizations, and evaluation results.
+- **logs/**: Log files and process outputs for debugging/tracing.
+- **images/**: All project illustrations, plots, or pipeline diagrams for documentation and reporting.
+- **venv/**: Python virtual environment — *local only*, always ignored by git.
+- **README.md, ROADMAP.md, LICENSE**: Project documentation, roadmap, and open-source license. *(Omitted from tree for clarity, but always present at the root.)*
 
 ---
 
