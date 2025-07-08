@@ -92,9 +92,6 @@ pip install -r requirements.txt
 astro_spectro_git/
 │
 ├── .gitignore              # Exclude raw data, logs, outputs, venv, etc.
-├── LICENSE
-├── README.md
-├── ROADMAP.md
 ├── main.py                 # Main script (entry point)
 ├── requirements.txt        # Python dependencies
 │
