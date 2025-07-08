@@ -7,6 +7,7 @@
 ![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
 ![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
 ![Last Commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification)
+![Repo Size](https://img.shields.io/github/repo-size/PhD-Brown/astro-spectro-classification)
 ![Build](https://img.shields.io/github/actions/workflow/status/PhD-Brown/astro-spectro-classification/python-app.yml?branch=main)
 ![Project Status](https://img.shields.io/badge/status-active-brightgreen)
 
