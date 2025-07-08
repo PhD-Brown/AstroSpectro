@@ -12,7 +12,7 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 * **Automated robust data download and management**
 * **Advanced preprocessing:** normalization, continuum fitting, denoising
 * **Physical feature extraction:** line identification (Hα, Hβ, CaII K\&H, G-band, etc.), FWHM, equivalent width
-* **Flexible ML models:** Random Forest, SVM, CNN 1D, etc.
+* **Flexible ML models:** Random Forest, SVM, CNN 1D (to do), etc.
 * **Evaluation and reporting:** confusion matrix, ROC, PDF/HTML reports
 * **Open source, modular, and designed for extension**
 
@@ -22,18 +22,25 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 
 ## Pipeline Structure
 
-```mermaid
-graph TD
-    A[Data Download & Catalog Parsing]
-    B[Preprocessing & Quality Checks]
-    C[Feature Extraction (Spectral Lines)]
-    D[Dataset Assembly (Features + Labels)]
-    E[Machine Learning: Training & Validation]
-    F[Results: Evaluation, Visualization, Reporting]
-    G[Documentation & Deployment]
-
-    A --> B --> C --> D --> E --> F --> G
-```
+[1] Data Download & Catalog Parsing  
+   │  
+   ▼  
+[2] Preprocessing & Quality Checks  
+   │  
+   ▼  
+[3] Feature Extraction (Spectral Lines)  
+   │  
+   ▼  
+[4] Dataset Assembly (Features + Labels)  
+   │  
+   ▼  
+[5] Machine Learning: Training & Validation  
+   │  
+   ▼  
+[6] Results: Evaluation, Visualization, Reporting  
+   │  
+   ▼  
+[7] Documentation & Deployment  
 
 ---
 
@@ -57,20 +64,30 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. **Prepare the Data**
+### 3. Prepare and Download the Data
+Recommended:
+Use the notebook [01_download_spectra](notebooks/01_download_spectra.ipynb)
+to automatically download raw LAMOST spectra and build local catalogs.
 
-* Raw LAMOST spectra (FITS) should be placed in `data/raw/` (this folder is **ignored by git**).
-* Example catalogs (CSV) go in `data/catalog/`.
-* See [notebooks/00\_master\_pipeline.ipynb](notebooks/00_master_pipeline.ipynb) for end-to-end examples.
+Data will be placed in ``data/raw/``
+
+Catalogs/metadata will be created in ``data/catalog/``
+
+_Alternatively_, you may manually place FITS files in ``data/raw/`` and your catalog CSV in ``data/catalog/``.
 
 ### 4. **Run the Pipeline**
 
 * Jupyter notebooks for step-by-step demonstration:
 
-  * `notebooks/00_master_pipeline.ipynb` — Full workflow (recommended starting point)
+  * [00_master_pipeline](notebooks/00_master_pipeline.ipynb) — Full workflow (recommended starting point)
+
 * Python scripts for modular/automated runs:
 
   * `src/processing.py`, `src/feature_engineering.py`, etc.
+    
+* For visualization and additional tools, see:
+  
+  * [02_tools_and_visuals](notebooks/02_tools_and_visuals.ipynb)
 
 ### 5. **Results**
 
@@ -82,27 +99,68 @@ pip install -r requirements.txt
 ## Project Structure
 
 ```
-astro-spectro-classification/
+astro_spectro_git/
 │
-├── src/                  # Main pipeline source code (modular Python scripts)
-│   ├── preprocessor.py
-│   ├── peak_detector.py
-│   ├── feature_engineering.py
-│   ├── classifier.py
-│   └── ...
-├── notebooks/            # Jupyter Notebooks for exploration, demo, and analysis
-│   └── 00_master_pipeline.ipynb
-├── data/
-│   ├── raw/              # Raw LAMOST FITS spectra (**NOT versioned!**)
-│   ├── catalog/          # External catalogs (CSV, metadata, etc.)
-│   └── processed/        # Processed features and ML-ready datasets
-├── reports/              # Auto-generated evaluation reports, figures
-├── images/               # Figures, pipeline diagrams, README illustrations
-├── requirements.txt      # Python dependencies
-├── LICENSE               # License (MIT)
-├── README.md             # This file
-└── .gitignore            # To avoid leaking data/models/logs
+├── .gitignore              # Exclude raw data, logs, outputs, venv, etc.
+├── main.py                 # Main script (entry point)
+├── requirements.txt        # Python dependencies
+│
+├── data/                   # Data folder (ignored by git)
+│   ├── archive/            # Old/archived data or intermediate files
+│   ├── catalog/            # Catalogs (CSV, metadata, external labels)
+│   ├── models/             # (Optionnel) Saved models or intermediate model files
+│   ├── processed/          # Processed features/ML-ready datasets
+│   └── raw/                # Raw LAMOST FITS (HUGE, many subfolders)
+│       ├── B6202/
+│       ├── B6210/
+│       ├── B6212/
+│       ├── GAC_105N29_B1/
+│       ├── M31_011N40_B1/
+│       └── M31_011N40_M1/
+│
+├── images/                 # Images, visualizations, pipeline diagrams
+│   └── spectre_visualisation/
+│
+├── logs/                   # Log files, output from processing
+│
+├── notebooks/              # Jupyter Notebooks
+│   ├── 00_master_pipeline.ipynb
+│   ├── 01_download_spectra.ipynb
+│   ├── 02_tools_and_visuals.ipynb
+│   └── archive/            # Old notebooks, experimental code
+│
+├── reports/                # Generated reports, evaluation results, figures
+│
+└── src/                    # Main source code
+    ├── pipeline/           # Main pipeline logic (modular Python scripts)
+    │   ├── classifier.py
+    │   ├── feature_engineering.py
+    │   ├── peak_detector.py
+    │   ├── preprocessor.py
+    │   └── processing.py
+    │
+    └── tools/              # Utility scripts/tools
+       ├── dataset_builder.py
+       ├── dr5_downloader.py
+       └── generate_catalog_from_fits.py
 ```
+
+### Legend
+
+- **data/raw/**: All raw LAMOST FITS spectra. Subfolders are organized by field/plan_id. (Never versioned — excluded by `.gitignore`.)
+- **data/catalog/**: CSV metadata and external catalogs (e.g., labels, cross-matches).
+- **data/processed/**: Processed/cleaned datasets, ML-ready features.
+- **data/models/**: Saved model files, checkpoints, or pickled objects (optional).
+- **data/archive/**: Old or intermediate data, deprecated versions.
+- **src/pipeline/**: Main pipeline code (each file = a major pipeline stage: preprocessing, feature engineering, etc.).
+- **src/tools/**: Utility scripts for building catalogs, downloading data, or other helper tools.
+- **notebooks/**: Jupyter notebooks for prototyping, exploratory analysis, demos.
+- **notebooks/archive/**: Deprecated or experimental notebooks.
+- **reports/**: Automatically generated reports, visualizations, and evaluation results.
+- **logs/**: Log files and process outputs for debugging/tracing.
+- **images/**: All project illustrations, plots, or pipeline diagrams for documentation and reporting.
+- **venv/**: Python virtual environment — *local only*, always ignored by git.
+- **README.md, ROADMAP.md, LICENSE**: Project documentation, roadmap, and open-source license. *(Omitted from tree for clarity, but always present at the root.)*
 
 ---
 
@@ -126,7 +184,6 @@ astro-spectro-classification/
 
 * **Random Forest** baseline
 * SVM, KNN, Gradient Boosting (LightGBM, XGBoost)
-* 1D CNN on raw or processed spectra (deep learning support)
 * Model ensembling (stacking/voting)
 * Cross-validation, hyperparameter tuning (GridSearchCV, Optuna)
 * Automatic class balancing (SMOTE/undersampling)
@@ -158,10 +215,8 @@ clf.plot_confusion_matrix()
 
 **Run End-to-End in Jupyter Notebook:**
 
-```python
-# See notebooks/00_master_pipeline.ipynb for full examples
-```
-
+ See notebooks/00_master_pipeline.ipynb for full examples
+ 
 ---
 
 ## Roadmap (2025+)
@@ -176,7 +231,7 @@ clf.plot_confusion_matrix()
 * [ ] **Dashboard/demo:** Streamlit/Gradio web interface for interactive exploration
 * [ ] **Open science:** Prepare mock datasets, reproducible Colab demos, detailed contribution guide
 
-*See [ROADMAP.md](ROADMAP.md) for the full list of planned and in-progress features.*
+*See [ROADMAP.md](ROADMAP.md) (in french) for the full list of planned and in-progress features.*
 
 ---
 
@@ -205,10 +260,11 @@ See [LICENSE](LICENSE) for details.
 ## Credits & Contact
 
 **Author:** [Alex Baker (PhD-Brown)](https://github.com/PhD-Brown)
+
 **Acknowledgments:** LAMOST Collaboration, Astropy, scikit-learn, community contributors
 
 **Contact:**
-Open an issue, or contact via [Mail](alex.baker.1@ulaval.ca/)
+Open an issue, or contact via alex.baker.1@ulaval.ca
 
 ---
 
