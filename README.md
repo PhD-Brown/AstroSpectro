@@ -12,7 +12,7 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 * **Automated robust data download and management**
 * **Advanced preprocessing:** normalization, continuum fitting, denoising
 * **Physical feature extraction:** line identification (Hα, Hβ, CaII K\&H, G-band, etc.), FWHM, equivalent width
-* **Flexible ML models:** Random Forest, SVM, CNN 1D, etc.
+* **Flexible ML models:** Random Forest, SVM, CNN 1D (to do), etc.
 * **Evaluation and reporting:** confusion matrix, ROC, PDF/HTML reports
 * **Open source, modular, and designed for extension**
 
