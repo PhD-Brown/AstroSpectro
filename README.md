@@ -205,10 +205,8 @@ clf.plot_confusion_matrix()
 
 **Run End-to-End in Jupyter Notebook:**
 
-```python
-# See notebooks/00_master_pipeline.ipynb for full examples
-```
-
+ See notebooks/00_master_pipeline.ipynb for full examples
+ 
 ---
 
 ## Roadmap (2025+)
