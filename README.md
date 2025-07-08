@@ -1,4 +1,4 @@
-![Python](https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue)
+![Python Version](https://img.shields.io/badge/python-3.11-blue?logo=python)
 ![Jupyter](https://img.shields.io/badge/Jupyter-F37626.svg?style=for-the-badge&logo=Jupyter&logoColor=white)
 ![Numpy](https://img.shields.io/badge/Numpy-777BB4?style=for-the-badge&logo=numpy&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)
@@ -8,8 +8,9 @@
 ![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
 ![Last Commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification)
 ![Repo Size](https://img.shields.io/github/repo-size/PhD-Brown/astro-spectro-classification)
-![Build](https://img.shields.io/github/actions/workflow/status/PhD-Brown/astro-spectro-classification/python-app.yml?branch=main)
+[![pages-build-deployment](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment)
 ![Project Status](https://img.shields.io/badge/status-active-brightgreen)
+[![Docs](https://img.shields.io/badge/docs-online-blue)](https://phd-brown.github.io/astro-spectro-classification/)
 
 
 # 🌌 Astro-Spectro Classification Pipeline — LAMOST DR5
