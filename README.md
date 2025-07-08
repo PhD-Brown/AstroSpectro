@@ -5,12 +5,14 @@
 ![Scikit Learn](https://img.shields.io/badge/scikit_learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-3776AB?style=for-the-badge&logo=matplotlib&logoColor=white)
 ![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
+[![Docusaurus](https://img.shields.io/badge/Docusaurus-3ECC5F?style=for-the-badge&logo=Docusaurus&logoColor=white)](https://docusaurus.io/)
 ![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
+[![pages-build-deployment](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment)
+[![status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/PhD-Brown/astro-spectro-classification)
+[![Docs](https://img.shields.io/badge/docs-online-blue)](https://phd-brown.github.io/astro-spectro-classification/)
 ![Last Commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification)
 ![Repo Size](https://img.shields.io/github/repo-size/PhD-Brown/astro-spectro-classification)
-[![pages-build-deployment](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment)
-![Project Status](https://img.shields.io/badge/status-active-brightgreen)
-[![Docs](https://img.shields.io/badge/docs-online-blue)](https://phd-brown.github.io/astro-spectro-classification/)
+
 
 
 # 🌌 Astro-Spectro Classification Pipeline — LAMOST DR5
