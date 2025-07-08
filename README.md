@@ -1,3 +1,16 @@
+![Python](https://img.shields.io/badge/Python-FFD43B?style=for-the-badge&logo=python&logoColor=blue)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626.svg?style=for-the-badge&logo=Jupyter&logoColor=white)
+![Numpy](https://img.shields.io/badge/Numpy-777BB4?style=for-the-badge&logo=numpy&logoColor=white)
+![Pandas](https://img.shields.io/badge/Pandas-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)
+![Scikit Learn](https://img.shields.io/badge/scikit_learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-3776AB?style=for-the-badge&logo=matplotlib&logoColor=white)
+![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
+![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
+![Last Commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification)
+![Build](https://img.shields.io/github/actions/workflow/status/PhD-Brown/astro-spectro-classification/python-app.yml?branch=main)
+![Project Status](https://img.shields.io/badge/status-active-brightgreen)
+
+
 # 🌌 Astro-Spectro Classification Pipeline — LAMOST DR5
 
 > **A modular end-to-end pipeline for automated stellar spectral classification using LAMOST DR5 data. Built for robustness, transparency, and scientific impact.**
