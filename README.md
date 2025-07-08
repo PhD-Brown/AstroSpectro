@@ -22,18 +22,28 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 
 ## Pipeline Structure
 
-```mermaid
-graph TD
-    A[Data Download & Catalog Parsing]
-    B[Preprocessing & Quality Checks]
-    C[Feature Extraction (Spectral Lines)]
-    D[Dataset Assembly (Features + Labels)]
-    E[Machine Learning: Training & Validation]
-    F[Results: Evaluation, Visualization, Reporting]
-    G[Documentation & Deployment]
 
-    A --> B --> C --> D --> E --> F --> G
-```
+## Pipeline Structure
+
+[1] Data Download & Catalog Parsing  
+   │  
+   ▼  
+[2] Preprocessing & Quality Checks  
+   │  
+   ▼  
+[3] Feature Extraction (Spectral Lines)  
+   │  
+   ▼  
+[4] Dataset Assembly (Features + Labels)  
+   │  
+   ▼  
+[5] Machine Learning: Training & Validation  
+   │  
+   ▼  
+[6] Results: Evaluation, Visualization, Reporting  
+   │  
+   ▼  
+[7] Documentation & Deployment  
 
 ---
 
@@ -126,7 +136,6 @@ astro-spectro-classification/
 
 * **Random Forest** baseline
 * SVM, KNN, Gradient Boosting (LightGBM, XGBoost)
-* 1D CNN on raw or processed spectra (deep learning support)
 * Model ensembling (stacking/voting)
 * Cross-validation, hyperparameter tuning (GridSearchCV, Optuna)
 * Automatic class balancing (SMOTE/undersampling)
@@ -176,7 +185,7 @@ clf.plot_confusion_matrix()
 * [ ] **Dashboard/demo:** Streamlit/Gradio web interface for interactive exploration
 * [ ] **Open science:** Prepare mock datasets, reproducible Colab demos, detailed contribution guide
 
-*See [ROADMAP.md](ROADMAP.md) for the full list of planned and in-progress features.*
+*See [ROADMAP.md](ROADMAP.md) (in french) for the full list of planned and in-progress features.*
 
 ---
 
@@ -208,7 +217,7 @@ See [LICENSE](LICENSE) for details.
 **Acknowledgments:** LAMOST Collaboration, Astropy, scikit-learn, community contributors
 
 **Contact:**
-Open an issue, or contact via [Mail](alex.baker.1@ulaval.ca/)
+Open an issue, or contact via alex.baker.1@ulaval.ca
 
 ---
 
