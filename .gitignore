@@ -1,0 +1,45 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.env
+.venv/
+venv/
+*.pkl
+*.db
+*.sqlite3
+
+# === Jupyter Notebooks ===
+.ipynb_checkpoints
+
+# === VS Code ===
+.vscode/
+.history/
+
+# === Mac/Windows systèmes ===
+.DS_Store
+Thumbs.db
+
+# === Data science / Astro-specific ===
+# Ignore all raw data, processed data, models, logs, etc.
+data/
+logs/
+reports/
+archive/
+models/
+*.fits
+*.fits.gz
+*.csv
+
+# === Output, figures, temporary files ===
+*.png
+*.jpg
+*.pdf
+*.svg
+*.tmp
+*.out
+
+# === Notion, idées, doc privée ===
+notes/
+*.md~
