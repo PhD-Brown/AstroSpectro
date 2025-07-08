@@ -1,11 +1,17 @@
-![Python Version](https://img.shields.io/badge/python-3.11-blue?logo=python)
-![Jupyter](https://img.shields.io/badge/Jupyter-F37626.svg?style=for-the-badge&logo=Jupyter&logoColor=white)
-![Numpy](https://img.shields.io/badge/Numpy-777BB4?style=for-the-badge&logo=numpy&logoColor=white)
-![Pandas](https://img.shields.io/badge/Pandas-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)
-![Scikit Learn](https://img.shields.io/badge/scikit_learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-3776AB?style=for-the-badge&logo=matplotlib&logoColor=white)
+<!-- TECHNO BADGES -->
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue?style=for-the-badge&logo=python&logoColor=yellow)](https://www.python.org/)
+[![Numpy 1.26.4](https://img.shields.io/badge/numpy-1.26.4-777BB4?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org/)
+[![Pandas 2.2.2](https://img.shields.io/badge/pandas-2.2.2-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
+[![Scikit-learn 1.5.0](https://img.shields.io/badge/scikit--learn-1.5.0-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
+[![Matplotlib 3.8.4](https://img.shields.io/badge/matplotlib-3.8.4-3776AB?style=for-the-badge&logo=matplotlib&logoColor=white)](https://matplotlib.org/)
+[![Astropy 6.0.0](https://img.shields.io/badge/astropy-6.0.0-6D6D6D?style=for-the-badge)](https://www.astropy.org/)
+[![LAMOST DR5](https://img.shields.io/badge/LAMOST-DR5-0099FF?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMwMDk5RkYiLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxNTAiIHI9IjgwIiBmaWxsPSJ3aGl0ZSIgLz48L3N2Zz4=)](http://www.lamost.org/public/)
+[![Seaborn 0.13.2](https://img.shields.io/badge/seaborn-0.13.2-013243?style=for-the-badge&logo=seaborn&logoColor=white)](https://seaborn.pydata.org/)
+[![TQDM 4.66.4](https://img.shields.io/badge/tqdm-4.66.4-4D4D4D?style=for-the-badge)](https://tqdm.github.io/)
 ![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
 [![Docusaurus](https://img.shields.io/badge/Docusaurus-3ECC5F?style=for-the-badge&logo=Docusaurus&logoColor=white)](https://docusaurus.io/)
+
+<!-- STATUS / META BADGES -->
 ![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
 [![pages-build-deployment](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment)
 [![status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/PhD-Brown/astro-spectro-classification)
