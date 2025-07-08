@@ -64,20 +64,29 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. **Prepare the Data**
+### 3. Prepare and Download the Data
+Recommended:
+Use the notebook [01_download_spectra](notebooks/01_download_spectra.ipynb)
+to automatically download raw LAMOST spectra and build local catalogs.
 
-* Raw LAMOST spectra (FITS) should be placed in `data/raw/` (this folder is **ignored by git**).
-* Example catalogs (CSV) go in `data/catalog/`.
-* See [notebooks/00\_master\_pipeline.ipynb](notebooks/00_master_pipeline.ipynb) for end-to-end examples.
+Data will be placed in ``data/raw/``
+
+Catalogs/metadata will be created in ``data/catalog/``
+
+_Alternatively_, you may manually place FITS files in ``data/raw/`` and your catalog CSV in ``data/catalog/``.
 
 ### 4. **Run the Pipeline**
 
 * Jupyter notebooks for step-by-step demonstration:
 
-  * `notebooks/00_master_pipeline.ipynb` — Full workflow (recommended starting point)
+  * [00_master_pipeline](notebooks/00_master_pipeline.ipynb) — Full workflow (recommended starting point)
+
 * Python scripts for modular/automated runs:
 
   * `src/processing.py`, `src/feature_engineering.py`, etc.
+    
+**For visualization and additional tools, see:**
+- [02_tools_and_visuals](notebooks/02_tools_and_visuals.ipynb)
 
 ### 5. **Results**
 
