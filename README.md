@@ -85,8 +85,9 @@ _Alternatively_, you may manually place FITS files in ``data/raw/`` and your cat
 
   * `src/processing.py`, `src/feature_engineering.py`, etc.
     
-**For visualization and additional tools, see:**
-- [02_tools_and_visuals](notebooks/02_tools_and_visuals.ipynb)
+* For visualization and additional tools, see:
+  
+  * [02_tools_and_visuals](notebooks/02_tools_and_visuals.ipynb)
 
 ### 5. **Results**
 
