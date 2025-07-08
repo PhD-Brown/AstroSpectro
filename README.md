@@ -250,6 +250,7 @@ See [LICENSE](LICENSE) for details.
 ## Credits & Contact
 
 **Author:** [Alex Baker (PhD-Brown)](https://github.com/PhD-Brown)
+
 **Acknowledgments:** LAMOST Collaboration, Astropy, scikit-learn, community contributors
 
 **Contact:**
