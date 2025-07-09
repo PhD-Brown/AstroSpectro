@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap');
+
+/**
+ * Thème CLAIR (par défaut)
+ */
+:root {
+  /* Couleurs primaires pour le mode clair (un bleu sobre) */
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+
+  /* Typographie */
+  --ifm-font-family-base: 'Inter', sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', monospace;
+  --ifm-code-font-size: 95%;
+
+  /* Variables pour nos composants personnalisés en mode CLAIR */
+  --hero-background: linear-gradient(180deg, #f0f4f8, #ffffff);
+  --ask-box-background: #ffffff;
+  --ask-box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --ask-box-text-color: #4a5568;
+  --feature-card-background: #ffffff;
+  --feature-card-shadow: 0 2px 14px rgba(0, 0, 0, 0.05);
+  --feature-card-text-color: #1a202c;
+  --feature-card-title-color: #1a202c;
+  --navbar-background: var(--ifm-color-white);
+  --navbar-border: #e2e8f0;
+}
+
+/**
+ * Thème SOMBRE
+ */
+html[data-theme='dark'] {
+  /* Couleurs primaires pour le mode sombre (votre bleu galactique) */
+  --ifm-color-primary: #3d8bff;
+  --ifm-color-primary-dark: #297eff;
+  --ifm-color-primary-darker: #1f76ff;
+  --ifm-color-primary-darkest: #0060f8;
+  --ifm-color-primary-light: #5198ff;
+  --ifm-color-primary-lighter: #5ea0ff;
+  --ifm-color-primary-lightest: #80b4ff;
+
+  /* Surlignage du code */
+  --docusaurus-highlighted-code-line-bg: rgba(255, 215, 0, 0.2);
+
+  /* Variables pour nos composants personnalisés en mode SOMBRE */
+  --hero-background: #0d1117; /* Noir profond de GitHub */
+  --ask-box-background: #161b22;
+  --ask-box-shadow: 0 4px 28px rgba(0, 0, 0, 0.2);
+  --ask-box-text-color: #c9d1d9;
+  --feature-card-background: #ffffff; /* On garde blanc pour le contraste ! */
+  --feature-card-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+  --feature-card-text-color: #161b22; /* Texte sombre dans les cartes */
+  --feature-card-title-color: #0d1117;
+  --navbar-background: linear-gradient(145deg, #1f212c, #14151a);
+  --navbar-border: #30363d;
+}
+
+
+/* === Styles globaux personnalisés === */
+.navbar {
+  background: var(--navbar-background);
+  border-bottom: 1px solid var(--navbar-border);
+  box-shadow: none; /* On enlève le box-shadow par défaut */
+}
+
+/* === Style personnalisé pour les Admonitions (boîtes d'information) === */
+.admonition {
+  border-radius: 8px; /* Bords plus arrondis */
+  border: 1px solid transparent;
+  box-shadow: none; /* On enlève l'ombre par défaut qui peut être agressive */
+}
+
+html[data-theme='dark'] .admonition {
+  /* En mode sombre, on utilise des couleurs de fond subtiles */
+  background-color: rgba(255, 255, 255, 0.05); /* Fond très légèrement blanc/transparent */
+}
+
+/* Boîte "Note" (bleue) */
+.admonition-note {
+  border-left-color: var(--ifm-color-primary);
+}
+
+html[data-theme='dark'] .admonition-note {
+  background-color: rgba(61, 139, 255, 0.1); /* Fond bleu transparent */
+  border-color: rgba(61, 139, 255, 0.2);
+}
+
+/* Boîte "Tip" (verte) - Celle que vous utilisez */
+.admonition-tip {
+  border-left-color: #38bd8c; /* Un vert menthe plus clair */
+}
+
+html[data-theme='dark'] .admonition-tip {
+  background-color: rgba(56, 189, 140, 0.1); /* Fond vert transparent */
+  border-color: rgba(56, 189, 140, 0.2);
+}

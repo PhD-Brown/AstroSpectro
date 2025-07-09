@@ -1,0 +1,100 @@
+.heroSection {
+  background: var(--hero-background);
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4rem 1rem;
+}
+
+.heroContent {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.subtitle {
+  color: var(--ifm-font-color-secondary); /* Utilise la variable Docusaurus */
+  font-size: 1.15rem;
+  max-width: 600px;
+}
+
+.ctaBtn {
+  display: inline-block;
+  background: #2dd4bf; /* Couleur menthe conservée car c'est une action spéciale */
+  color: #0d1117;
+  font-weight: bold;
+  border-radius: 50px; /* Complètement arrondi pour un look moderne */
+  padding: 0.9rem 2.2rem;
+  font-size: 1.2rem;
+  box-shadow: 0 8px 30px rgba(45, 212, 191, 0.2);
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+}
+
+.ctaBtn:hover {
+  background: #14b8a6;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 35px rgba(45, 212, 191, 0.3);
+}
+
+.askBox {
+  margin: 2rem 0 3rem 0;
+  padding: 2rem;
+  background: var(--ask-box-background);
+  color: var(--ask-box-text-color);
+  box-shadow: var(--ask-box-shadow);
+  border-radius: 1.5rem;
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+}
+
+.askInput {
+  width: 90%;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  border-radius: 0.7rem;
+  border: 1px solid #4a5568;
+  margin-top: 1rem;
+  margin-bottom: 0.6rem;
+  background-color: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+}
+
+.askInput::placeholder {
+  color: var(--ifm-font-color-secondary);
+}
+
+.soon {
+  color: var(--ifm-font-color-secondary);
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+
+.features {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem; /* Un peu moins d'espace */
+  margin-top: 2rem;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 1100px;
+}
+
+.featureCard { /* On utilise une classe spécifique */
+  background: var(--feature-card-background);
+  color: var(--feature-card-text-color);
+  box-shadow: var(--feature-card-shadow);
+  border-radius: 1.2rem;
+  padding: 1.8rem;
+  width: 100%;
+  max-width: 320px;
+  flex: 1 1 280px;
+  margin: 0.5rem;
+}
+
+.featureCard h3 {
+  color: var(--feature-card-title-color);
+  margin-bottom: 0.75rem;
+}

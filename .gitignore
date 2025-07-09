@@ -6,12 +6,11 @@ __pycache__/
 .env
 .venv/
 venv/
-*.pkl
 *.db
 *.sqlite3
 
 # === Jupyter Notebooks ===
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # === VS Code ===
 .vscode/
@@ -31,6 +30,7 @@ models/
 *.fits
 *.fits.gz
 *.csv
+*.pkl
 
 # === Output, figures, temporary files ===
 *.png
@@ -43,3 +43,8 @@ models/
 # === Notion, idées, doc privée ===
 notes/
 *.md~
+
+# Output, figures, temporary files
+outputs/
+figures/
+tmp/
