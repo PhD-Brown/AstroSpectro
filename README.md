@@ -44,30 +44,6 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 
 ---
 
-## Pipeline Structure
-
-[1] Data Download & Catalog Parsing  
-   │  
-   ▼  
-[2] Preprocessing & Quality Checks  
-   │  
-   ▼  
-[3] Feature Extraction (Spectral Lines)  
-   │  
-   ▼  
-[4] Dataset Assembly (Features + Labels)  
-   │  
-   ▼  
-[5] Machine Learning: Training & Validation  
-   │  
-   ▼  
-[6] Results: Evaluation, Visualization, Reporting  
-   │  
-   ▼  
-[7] Documentation & Deployment  
-
----
-
 ## 🌌 Pipeline Structure
 
 ```mermaid
