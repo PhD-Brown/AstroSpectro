@@ -1,0 +1,30 @@
+---
+id: acknowledgments
+title: Remerciements
+sidebar_position: 1
+---
+
+# 🙏 Remerciements (Acknowledgments)
+
+Ce projet est construit sur les épaules de géants. Nous tenons à exprimer notre profonde gratitude envers les projets, les organisations et les communautés qui rendent ce travail possible.
+
+### Données
+
+Ce travail n'aurait pas pu être réalisé sans les données publiques du relevé **LAMOST (Large Sky Area Multi-Object Fiber Spectroscopic Telescope)**.
+
+Nous remercions chaleureusement la collaboration LAMOST pour leur effort monumental dans l'acquisition, le traitement et la mise à disposition de millions de spectres, qui sont une ressource inestimable pour la communauté astrophysique mondiale.
+
+### Logiciels Open Source
+
+Le pipeline s'appuie entièrement sur l'écosystème Python scientifique open-source. Nous remercions les développeurs et les contributeurs des bibliothèques suivantes :
+
+- **[Astropy](https://www.astropy.org/)**: Le pilier de l'astronomie en Python, utilisé pour toute la manipulation des fichiers FITS et des unités astronomiques.
+- **[Scikit-learn](https://scikit-learn.org/)**: La boîte à outils de référence pour l'apprentissage automatique, utilisée pour l'entraînement, la validation et l'évaluation de nos modèles.
+- **[Numpy](https://numpy.org/)** & **[Pandas](https://pandas.pydata.org/)**: Les fondations de la manipulation de données numériques et tabulaires en Python.
+- **[Matplotlib](https://matplotlib.org/)** & **[Seaborn](https://seaborn.pydata.org/)**: Pour la création de toutes les visualisations statiques et les figures d'analyse.
+- **[Jupyter](https://jupyter.org/)**: Pour l'environnement de développement interactif qui a permis le prototypage et l'exploration de ce projet.
+- **[Docusaurus](https://docusaurus.io/)**: Pour la plateforme qui motorise cette documentation.
+
+### Inspiration
+
+Nous remercions également les auteurs des documentations de **[CrateDB](https://crate.io/docs/crate/reference/en/latest/)** et **[Sunpy](https://docs.sunpy.org/en/stable/)** pour leur excellent travail, qui a grandement inspiré la structure et l'organisation de ce site.

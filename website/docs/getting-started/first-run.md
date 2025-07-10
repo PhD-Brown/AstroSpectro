@@ -1,5 +1,50 @@
 ---
-id: first-run
-title: Premier lancement
-sidebar_label: Premier lancement
+title: Lancer le Pipeline
+sidebar_position: 2
 ---
+
+# Premier Lancement : De A à Z
+
+Maintenant que votre environnement est configuré, nous allons lancer le pipeline complet en utilisant le notebook principal `00_master_pipeline.ipynb`. Ce notebook orchestre toutes les étapes, du téléchargement des données à l'entraînement du modèle.
+
+## Étape 1 : Télécharger un premier lot de données
+
+Si c'est votre toute première exécution, le dossier `data/raw/` est probablement vide. Le pipeline a besoin de spectres pour fonctionner.
+
+1.  **Lancez Jupyter Lab ou Jupyter Notebook** depuis votre terminal (où l'environnement `venv` est toujours actif).
+2.  Ouvrez le notebook `notebooks/01_download_spectra.ipynb`.
+3.  Ce notebook utilise le module `SmartDownloader` pour récupérer les spectres depuis une source de données comme LAMOST DR5.
+4.  Exécutez les cellules pour télécharger un premier lot de spectres. Un petit lot de 100 à 500 spectres est suffisant pour un premier test.
+
+:::tip Conseil
+Le downloader est "intelligent" : il garde en mémoire les plans d'observation déjà téléchargés (`downloaded_plans.csv`) pour ne pas les reprendre deux fois.
+:::
+
+## Étape 2 : Lancer le pipeline principal
+
+Une fois que vous avez des données dans `data/raw/`, vous pouvez lancer le workflow complet.
+
+1.  Ouvrez le notebook principal : `notebooks/00_master_pipeline.ipynb`.
+2.  Ce notebook est divisé en sections qui correspondent aux grandes étapes du projet :
+    *   Sélection d'un lot de spectres non traités.
+    *   Génération d'un catalogue local à partir des en-têtes FITS.
+    *   Prétraitement et extraction de features.
+    *   Entraînement et évaluation du modèle.
+    *   Mise à jour des journaux et génération d'un rapport de session.
+
+3.  **Exécutez toutes les cellules** de ce notebook. Vous verrez des barres de progression et des messages informatifs à chaque étape.
+
+## Étape 3 : Examiner les Résultats
+
+À la fin de l'exécution, plusieurs fichiers auront été créés ou mis à jour :
+
+*   **`data/processed/`**: contiendra un fichier CSV (ex: `features_20250709T140000Z.csv`) avec les features extraites et les labels pour le lot traité.
+*   **`data/models/`**: si vous avez choisi de sauvegarder le modèle, il se trouvera ici (ex: `spectral_classifier.pkl`).
+*   **`data/catalog/trained_spectra.csv`**: ce journal a été mis à jour pour que le pipeline ne réutilise pas les mêmes spectres la prochaine fois.
+*   **`reports/`**: un rapport de session en JSON aura été généré, résumant les métriques de performance du modèle pour ce lot.
+
+Dans le notebook, vous verrez également un **rapport de classification** et une **matrice de confusion** qui vous donneront une première idée des performances du modèle.
+
+---
+
+Félicitations ! Vous avez exécuté le pipeline de bout en bout. Vous pouvez maintenant explorer les autres guides pour comprendre chaque étape en détail.

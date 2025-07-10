@@ -1,0 +1,56 @@
+---
+id: roadmap
+title: Feuille de Route (Roadmap)
+---
+
+# 🗺️ Feuille de Route du Projet
+
+Cette page présente les développements prévus et les idées d'amélioration pour le pipeline Astro-Spectro. C'est un document vivant qui évolue avec le projet. N'hésitez pas à [ouvrir une issue](https://github.com/PhD-Brown/astro-spectro-classification/issues) pour suggérer de nouvelles fonctionnalités !
+
+---
+
+## 🔭 Axe 1 : Enrichissement Scientifique
+
+- [ ] **Features spectrales avancées :**
+  - [ ] Ajouter les raies He II, Ca II IR triplet, Na I D, Mg b, TiO.
+  - [ ] Mesurer systématiquement la profondeur, le FWHM et la largeur équivalente.
+  - [ ] Calculer des ratios de raies pertinents.
+- [ ] **Exploitation du continuum :**
+  - [ ] Implémenter un ajustement de continuum par splines.
+  - [ ] Calculer des indices de pseudo-couleur (pente, courbure).
+- [ ] **Intégration des métadonnées :**
+  - [ ] Utiliser le SNR, les magnitudes, et le redshift comme features.
+  - [ ] Analyser l'importance de ces métadonnées.
+
+---
+
+## 🤖 Axe 2 : Amélioration des Modèles et Données
+
+- [ ] **Qualité des données :**
+  - [ ] Intégrer des filtres de débruitage adaptatifs (Savitzky-Golay).
+  - [ ] Détecter et exclure automatiquement les spectres avec des artéfacts.
+- [ ] **Augmentation des données :**
+  - [ ] Implémenter l'équilibrage de classes (SMOTE).
+  - [ ] Générer des spectres synthétiques pour augmenter le jeu de données.
+- [ ] **Modèles d'apprentissage :**
+  - [ ] Benchmarker des modèles de Gradient Boosting (LightGBM, XGBoost).
+  - [ ] Développer et tester un modèle CNN 1D sur les spectres bruts.
+  - [ ] Mettre en place un système d'ensembling de modèles (stacking).
+- [ ] **Explicabilité (XAI) :**
+  - [ ] Intégrer des visualisations SHAP ou LIME pour expliquer les prédictions individuelles.
+
+---
+
+## 🚀 Axe 3 : Infrastructure et Déploiement
+
+- [ ] **Automatisation du pipeline :**
+  - [ ] Orchestrer le workflow avec Snakemake ou Prefect.
+- [ ] **Accessibilité :**
+  - [ ] Créer une API (via FastAPI) pour des prédictions à la demande.
+  - [ ] Développer une démo interactive avec Streamlit ou Gradio.
+- [ ] **Science Ouverte :**
+  - [ ] Fournir un jeu de données "mock" pour des tests rapides.
+  - [ ] Créer un notebook Google Colab pour une démo sans installation.
+- [ ] **Vision long terme :**
+  - [ ] Étendre le support à d'autres relevés (SDSS, Gaia XP).
+  - [ ] Explorer des approches d'apprentissage non-supervisé pour la détection d'anomalies.

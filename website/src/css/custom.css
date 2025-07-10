@@ -99,3 +99,36 @@ html[data-theme='dark'] .admonition-tip {
   background-color: rgba(56, 189, 140, 0.1); /* Fond vert transparent */
   border-color: rgba(56, 189, 140, 0.2);
 }
+
+/*
+  ==========================================================================
+  Styles personnalisés pour la page d'accueil de la documentation ("Hub")
+  ==========================================================================
+*/
+
+/* 
+  On cible le conteneur global du document (le "wrapper")
+  UNIQUEMENT lorsque le body a notre classe personnalisée 'doc-page-hub'.
+*/
+.doc-page-hub .docWrapper_hBAB {
+  /* 
+    On force le conteneur à prendre toute la largeur disponible,
+    ce qui permet à son contenu d'être centré correctement.
+  */
+  max-width: 100% !important;
+}
+
+/* 
+  On s'assure que le contenu À L'INTÉRIEUR de ce wrapper est bien centré
+  et ne devient pas trop large.
+*/
+.doc-page-hub .docItemCol_z_up { /* Vous pouvez vérifier si ce nom de classe existe toujours, sinon le supprimer */
+  margin: 0 auto !important;
+  max-width: 1200px !important;
+}
+
+
+/* On s'assure que le titre principal est aussi centré */
+.doc-page-hub h1 {
+  text-align: center;
+}

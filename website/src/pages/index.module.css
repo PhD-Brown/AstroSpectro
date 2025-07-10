@@ -1,11 +1,23 @@
 .heroSection {
-  background: var(--hero-background);
+  /* On définit plusieurs fonds : un dégradé sombre par-dessus l'image */
+  background: 
+    /* Couche 1 : Superposition noire semi-transparente pour la lisibilité */
+    linear-gradient(rgba(13, 17, 23, 0.85), rgba(13, 17, 23, 0.85)),
+    /* Couche 2 : Votre image de fond */
+    url('/img/homepage-background.png');
+
+  /* On s'assure que l'image couvre toute la section et reste centrée */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  
+  /* Le reste de la mise en page ne change pas */
   min-height: 80vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 4rem 1rem;
+  padding-top: 4rem;
 }
 
 .heroContent {
