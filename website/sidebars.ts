@@ -1,10 +1,8 @@
-// website/sidebars.ts
-
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
 const sidebars: SidebarsConfig = {
   tutorialSidebar: [
-    'intro', // Fichier docs/intro.md
+    'intro',
     {
       type: 'category',
       label: '🚀 Démarrage Rapide',
@@ -12,6 +10,8 @@ const sidebars: SidebarsConfig = {
         type: 'generated-index',
         title: 'Démarrage Rapide',
         description: 'Installez et lancez le pipeline en moins de 10 minutes.',
+        // On définit explicitement l'URL de cette page de catégorie
+        slug: '/category/demarrage-rapide',
       },
       items: [
         'getting-started/installation',
@@ -25,6 +25,8 @@ const sidebars: SidebarsConfig = {
         type: 'generated-index',
         title: 'Guides Pratiques',
         description: 'Tutoriels détaillés pour chaque étape du pipeline.',
+        // On définit explicitement l'URL ici aussi
+        slug: '/category/guides-pratiques',
       },
       items: [
         'guides/data-download',
@@ -41,6 +43,8 @@ const sidebars: SidebarsConfig = {
         type: 'generated-index',
         title: 'Concepts Clés',
         description: 'Comprendre l\'architecture et les choix techniques du projet.',
+        // Et ici également
+        slug: '/category/concepts-cles',
       },
       items: [
         'concepts/project-structure',
