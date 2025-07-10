@@ -1,311 +1,105 @@
 <!-- TECHNO BADGES -->
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue?style=for-the-badge&logo=python&logoColor=yellow)](https://www.python.org/)
-[![Numpy 1.26.4](https://img.shields.io/badge/numpy-1.26.4-777BB4?style=for-the-badge&logo=numpy&logoColor=white)](https://numpy.org/)
-[![Pandas 2.2.2](https://img.shields.io/badge/pandas-2.2.2-2C2D72?style=for-the-badge&logo=pandas&logoColor=white)](https://pandas.pydata.org/)
 [![Scikit-learn 1.5.0](https://img.shields.io/badge/scikit--learn-1.5.0-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
-[![Matplotlib 3.8.4](https://img.shields.io/badge/matplotlib-3.8.4-3776AB?style=for-the-badge&logo=matplotlib&logoColor=white)](https://matplotlib.org/)
 [![Astropy 6.0.0](https://img.shields.io/badge/astropy-6.0.0-6D6D6D?style=for-the-badge)](https://www.astropy.org/)
-[![LAMOST DR5](https://img.shields.io/badge/LAMOST-DR5-0099FF?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDMwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMwMDk5RkYiLz48Y2lyY2xlIGN4PSIxNTAiIGN5PSIxNTAiIHI9IjgwIiBmaWxsPSJ3aGl0ZSIgLz48L3N2Zz4=)](http://www.lamost.org/public/)
-[![Seaborn 0.13.2](https://img.shields.io/badge/seaborn-0.13.2-013243?style=for-the-badge&logo=seaborn&logoColor=white)](https://seaborn.pydata.org/)
-[![TQDM 4.66.4](https://img.shields.io/badge/tqdm-4.66.4-4D4D4D?style=for-the-badge)](https://tqdm.github.io/)
-![Markdown](https://img.shields.io/badge/Markdown-000000?style=for-the-badge&logo=markdown&logoColor=white)
+[![LAMOST DR5](https://img.shields.io/badge/LAMOST-DR5-0099FF?style=for-the-badge)](http://www.lamost.org/public/)
 [![Docusaurus](https://img.shields.io/badge/Docusaurus-3ECC5F?style=for-the-badge&logo=Docusaurus&logoColor=white)](https://docusaurus.io/)
 
 <!-- STATUS / META BADGES -->
-![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
+[![status](https://img.shields.io/badge/status-active-brightgreen?style=for-the-badge)](https://github.com/PhD-Brown/astro-spectro-classification)
 [![GitHub release](https://img.shields.io/github/v/release/PhD-Brown/astro-spectro-classification?include_prereleases&style=for-the-badge)](https://github.com/PhD-Brown/astro-spectro-classification/releases)
-[![Deploy Docusaurus to GitHub Pages](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/deploy.yml/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/deploy.yml)
-[![status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/PhD-Brown/astro-spectro-classification)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+![GitHub last commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification?style=for-the-badge)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://phd-brown.github.io/astro-spectro-classification/)
-![Last Commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification)
 ![Repo Size](https://img.shields.io/github/repo-size/PhD-Brown/astro-spectro-classification)
-
-
-
-# 🌌 Astro-Spectro Classification Pipeline — LAMOST DR5
-
-> **A modular end-to-end pipeline for automated stellar spectral classification using LAMOST DR5 data. Built for robustness, transparency, and scientific impact.**
+[![Deploy Docusaurus to GitHub Pages](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/deploy.yml/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/deploy.yml)
+<br>
 
 ---
 
-## Overview
+<!-- LOGO & MAIN LINK -->
+<p align="center">
+  <a href="https://phd-brown.github.io/astro-spectro-classification/">
+    <img src="https://raw.githubusercontent.com/PhD-Brown/astro-spectro-classification/main/website/static/img/logo.png" alt="Astro-Spectro Logo" width="120">
+  </a>
+</p>
 
-This project implements a **fully reproducible workflow** for the automatic classification of stellar types from raw LAMOST DR5 spectra.
-It combines state-of-the-art data handling, feature engineering, and machine learning techniques tailored for large astronomical datasets.
+<h1 align="center">Astro-Spectro Classification Pipeline</h1>
 
-* **Automated robust data download and management**
-* **Advanced preprocessing:** normalization, continuum fitting, denoising
-* **Physical feature extraction:** line identification (Hα, Hβ, CaII K\&H, G-band, etc.), FWHM, equivalent width
-* **Flexible ML models:** Random Forest, SVM, CNN 1D (to do), etc.
-* **Evaluation and reporting:** confusion matrix, ROC, PDF/HTML reports
-* **Open source, modular, and designed for extension**
-
-> **Status:** *Active development — core pipeline functional, major improvements and features planned. See [ROADMAP.md](ROADMAP.md) for details.*
+<p align="center">
+  <strong>A modular end-to-end pipeline for automated stellar spectral classification using LAMOST DR5 data. Built for robustness, transparency, and scientific impact.</strong>
+  <br><br>
+  <a href="https://phd-brown.github.io/astro-spectro-classification/"><strong>Explore the Full Documentation »</strong></a>
+  <br><br>
+  <a href="https://github.com/PhD-Brown/astro-spectro-classification/issues">Report Bug</a>
+  ·
+  <a href="https://github.com/PhD-Brown/astro-spectro-classification/issues">Request Feature</a>
+</p>
 
 ---
 
-## 🌌 Pipeline Structure
+## About The Project
 
-```mermaid
-flowchart TD
-    A[Download Spectra] --> B[Data Selection<br><em>DatasetBuilder</em>]
-    B --> C[Preprocessing<br><em>SpectraPreprocessor</em>]
-    C --> D[Peak Detection<br><em>PeakDetector</em>]
-    D --> E[Feature Engineering<br><em>FeatureEngineer</em>]
-    E --> F[Model Training]
-    F --> G[Evaluation & Reporting]
-    G --> H[Visualization]
-    H --> I[Monitoring & Tracking]
-    I --> J[Automation & Orchestration]
-    J --> K[Storage & Collaboration]
+This project implements a **fully reproducible workflow** for the automatic classification of stellar types from raw LAMOST DR5 spectra. It combines state-of-the-art data handling, feature engineering, and machine learning techniques tailored for large astronomical datasets.
 
-    subgraph "Phase 1 & 2: Data Preparation"
-        A
-        B
-        C
-        D
-        E
-    end
+**Core features include:**
+*   🤖 **Automated Workflow:** From data download to model training and reporting.
+*   🔭 **Advanced Preprocessing:** Normalization, continuum fitting, denoising.
+*   ✨ **Physical Feature Extraction:** Line identification (Hα, Hβ, CaII K&H), FWHM, etc.
+*   🧠 **Flexible ML Models:** Random Forest, SVM, with a path to Deep Learning.
+*    modular, and designed for extension.
 
-    subgraph "Phase 3: Modeling & Results"
-        F
-        G
-        H
-    end
+> **Status:** *Active development. See the [Roadmap](https://phd-brown.github.io/astro-spectro-classification/docs/community/roadmap) in our documentation for details.*
 
-    subgraph "Phase 4: Operations (Ops)"
-        I
-        J
-        K
-    end
-```
 ---
 
-## Quickstart
+## 🚀 Getting Started
 
-### 1. **Clone the Repository**
+To get a local copy up and running, follow these simple steps. For detailed explanations, please refer to our **[full documentation](https://phd-brown.github.io/astro-spectro-classification/docs/getting-started/installation)**.
 
-```bash
-git clone https://github.com/PhD-Brown/astro-spectro-classification.git
-cd astro-spectro-classification
-```
+### Prerequisites
 
-### 2. **Set Up Your Python Environment**
+*   Python 3.9+
+*   Git
 
-```bash
-python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
-pip install -r requirements.txt
-```
+### Installation
 
-### 3. Prepare and Download the Data
-Recommended:
-Use the notebook [01_download_spectra](notebooks/01_download_spectra.ipynb)
-to automatically download raw LAMOST spectra and build local catalogs.
-
-Data will be placed in ``data/raw/``
-
-Catalogs/metadata will be created in ``data/catalog/``
-
-_Alternatively_, you may manually place FITS files in ``data/raw/`` and your catalog CSV in ``data/catalog/``.
-
-### 4. **Run the Pipeline**
-
-* Jupyter notebooks for step-by-step demonstration:
-
-  * [00_master_pipeline](notebooks/00_master_pipeline.ipynb) — Full workflow (recommended starting point)
-
-* Python scripts for modular/automated runs:
-
-  * `src/processing.py`, `src/feature_engineering.py`, etc.
+1.  **Clone the repo**
+    ```sh
+    git clone https://github.com/PhD-Brown/astro-spectro-classification.git
+    cd astro-spectro-classification
+    ```
+2.  **Set up your Python environment**
+    ```sh
+    # Create and activate a virtual environment
+    python -m venv venv
+    source venv/bin/activate  # On Windows, use `.\venv\Scripts\activate`
     
-* For visualization and additional tools, see:
-  
-  * [02_tools_and_visuals](notebooks/02_tools_and_visuals.ipynb)
-
-### 5. **Results**
-
-* Processed features, model outputs, and reports are generated in `reports/` or `data/processed/`.
-* Evaluation plots and logs are available for each run.
+    # Install dependencies
+    pip install -r requirements.txt
+    ```
+3.  **Run the pipeline**
+    *   The main entry point is the `notebooks/00_master_pipeline.ipynb` notebook.
+    *   For a detailed step-by-step guide, see the **[First Run Tutorial](https://phd-brown.github.io/astro-spectro-classification/docs/getting-started/first-run)**.
 
 ---
 
-## Project Structure
+## 🤝 Contributing
 
-```
-astro_spectro_git/
-│
-├── .gitignore              # Exclude raw data, logs, outputs, venv, etc.
-├── main.py                 # Main script (entry point)
-├── requirements.txt        # Python dependencies
-│
-├── data/                   # Data folder (ignored by git)
-│   ├── archive/            # Old/archived data or intermediate files
-│   ├── catalog/            # Catalogs (CSV, metadata, external labels)
-│   ├── models/             # (Optionnel) Saved models or intermediate model files
-│   ├── processed/          # Processed features/ML-ready datasets
-│   └── raw/                # Raw LAMOST FITS (HUGE, many subfolders)
-│       ├── B6202/
-│       ├── B6210/
-│       ├── B6212/
-│       ├── GAC_105N29_B1/
-│       ├── M31_011N40_B1/
-│       └── M31_011N40_M1/
-│
-├── images/                 # Images, visualizations, pipeline diagrams
-│   └── spectre_visualisation/
-│
-├── logs/                   # Log files, output from processing
-│
-├── notebooks/              # Jupyter Notebooks
-│   ├── 00_master_pipeline.ipynb
-│   ├── 01_download_spectra.ipynb
-│   ├── 02_tools_and_visuals.ipynb
-│   └── archive/            # Old notebooks, experimental code
-│
-├── reports/                # Generated reports, evaluation results, figures
-│
-└── src/                    # Main source code
-    ├── pipeline/           # Main pipeline logic (modular Python scripts)
-    │   ├── classifier.py
-    │   ├── feature_engineering.py
-    │   ├── peak_detector.py
-    │   ├── preprocessor.py
-    │   └── processing.py
-    │
-    └── tools/              # Utility scripts/tools
-       ├── dataset_builder.py
-       ├── dr5_downloader.py
-       └── generate_catalog_from_fits.py
-```
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-### Legend
-
-- **data/raw/**: All raw LAMOST FITS spectra. Subfolders are organized by field/plan_id. (Never versioned — excluded by `.gitignore`.)
-- **data/catalog/**: CSV metadata and external catalogs (e.g., labels, cross-matches).
-- **data/processed/**: Processed/cleaned datasets, ML-ready features.
-- **data/models/**: Saved model files, checkpoints, or pickled objects (optional).
-- **data/archive/**: Old or intermediate data, deprecated versions.
-- **src/pipeline/**: Main pipeline code (each file = a major pipeline stage: preprocessing, feature engineering, etc.).
-- **src/tools/**: Utility scripts for building catalogs, downloading data, or other helper tools.
-- **notebooks/**: Jupyter notebooks for prototyping, exploratory analysis, demos.
-- **notebooks/archive/**: Deprecated or experimental notebooks.
-- **reports/**: Automatically generated reports, visualizations, and evaluation results.
-- **logs/**: Log files and process outputs for debugging/tracing.
-- **images/**: All project illustrations, plots, or pipeline diagrams for documentation and reporting.
-- **venv/**: Python virtual environment — *local only*, always ignored by git.
-- **README.md, ROADMAP.md, LICENSE**: Project documentation, roadmap, and open-source license. *(Omitted from tree for clarity, but always present at the root.)*
+Please refer to the **[Contribution Guide](https://phd-brown.github.io/astro-spectro-classification/docs/community/contributing)** for details on our code of conduct, and the process for submitting pull requests to us.
 
 ---
 
-## Core Features
+## 📜 License
 
-### **Data Handling & Preprocessing**
-
-* Robust automated LAMOST spectrum download (FITS, multi-format parsing)
-* Deduplication, error handling, and catalog cross-matching
-* Adaptive normalization, local segment-wise continuum correction
-* Denoising (Savitzky-Golay, median filter, outlier removal)
-
-### **Feature Engineering**
-
-* Extraction of main astrophysical lines: Hα, Hβ, CaII K/H, G-band, He II, NaI D, Mg b, TiO, CaII IR triplet, etc.
-* Physical measurements: depth, FWHM, equivalent width, line ratios
-* Pseudo-color indices: continuum slope, curvature, PCA features
-* Integration of catalog metadata: SNR, magnitude, redshift, RA/Dec
-
-### **Machine Learning**
-
-* **Random Forest** baseline
-* SVM, KNN, Gradient Boosting (LightGBM, XGBoost)
-* Model ensembling (stacking/voting)
-* Cross-validation, hyperparameter tuning (GridSearchCV, Optuna)
-* Automatic class balancing (SMOTE/undersampling)
-
-### **Evaluation & Reporting**
-
-* Automated confusion matrices, ROC/PR curves, feature importance
-* PDF/HTML report generation (Jinja2, nbconvert)
-* Experiment logging (MLflow, TensorBoard, Weights & Biases supported)
-* Reproducible notebooks and output artifacts
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
 
-## Example Usage
+## 📧 Contact
 
-**Train and Evaluate a Classifier (Random Forest):**
+Alex Baker - alex.baker.1@ulaval.ca
 
-```python
-from src.classifier import SpectraClassifier
-
-clf = SpectraClassifier(
-    input_features='data/processed/features_20250701.csv',
-    labels_file='data/catalog/dr5_v3_plan_clean.csv'
-)
-clf.train()
-clf.evaluate()
-clf.plot_confusion_matrix()
-```
-
-**Run End-to-End in Jupyter Notebook:**
-
- See notebooks/00_master_pipeline.ipynb for full examples
- 
----
-
-## Roadmap (2025+)
-
-* [ ] **Feature expansion:** Add new lines (He II, CaII triplet, TiO), advanced indices
-* [ ] **Physics-driven augmentation:** Synthetic spectra, noise simulation
-* [ ] **Deep Learning:** Benchmark 1D CNN, autoencoders, self-supervised models (SimCLR, BYOL)
-* [ ] **Explainable AI:** SHAP/LIME visualization, per-spectrum explanation
-* [ ] **RAG/LLM Integration:** Mini RAG assistant for pipeline documentation and troubleshooting
-* [ ] **Real-time & batch mode:** Automated pipeline orchestration (Snakemake, Prefect)
-* [ ] **Multi-survey support:** Extend to SDSS, Gaia XP, cross-matched datasets
-* [ ] **Dashboard/demo:** Streamlit/Gradio web interface for interactive exploration
-* [ ] **Open science:** Prepare mock datasets, reproducible Colab demos, detailed contribution guide
-
-*See [ROADMAP.md](ROADMAP.md) (in french) for the full list of planned and in-progress features.*
-
----
-
-## How to Contribute
-
-* **Bug reports:** Please use the [Issues](https://github.com/PhD-Brown/astro-spectro-classification/issues) tab.
-* **Pull requests:** Welcome! Fork the repo, create a branch, and submit a PR with clear description.
-* **Feature suggestions:** Open a discussion or PR.
-* **Documentation improvements:** All improvements to docstrings, notebooks, and guides are appreciated.
-
-### **Best Practices**
-
-* Follow PEP8 (for Python), use clear variable names, comment code blocks.
-* Write modular, testable code (see `tests/` if present).
-* Document major changes in the CHANGELOG (or Issues).
-
----
-
-## License
-
-Distributed under the MIT License.
-See [LICENSE](LICENSE) for details.
-
----
-
-## Credits & Contact
-
-**Author:** [Alex Baker (PhD-Brown)](https://github.com/PhD-Brown)
-
-**Acknowledgments:** LAMOST Collaboration, Astropy, scikit-learn, community contributors
-
-**Contact:**
-Open an issue, or contact via alex.baker.1@ulaval.ca
-
----
-
-## Star the repo and watch for updates!
-
-Stay tuned for major upgrades and public releases.
-
+Project Link: [https://github.com/PhD-Brown/astro-spectro-classification](https://github.com/PhD-Brown/astro-spectro-classification)
