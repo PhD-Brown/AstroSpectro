@@ -14,7 +14,7 @@
 <!-- STATUS / META BADGES -->
 ![License: MIT](https://img.shields.io/badge/MIT-green?style=for-the-badge)
 [![GitHub release](https://img.shields.io/github/v/release/PhD-Brown/astro-spectro-classification?include_prereleases&style=for-the-badge)](https://github.com/PhD-Brown/astro-spectro-classification/releases)
-[![pages-build-deployment](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/pages/pages-build-deployment)
+[![Deploy Docusaurus to GitHub Pages](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/deploy.yml/badge.svg)](https://github.com/PhD-Brown/astro-spectro-classification/actions/workflows/deploy.yml)
 [![status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/PhD-Brown/astro-spectro-classification)
 [![Docs](https://img.shields.io/badge/docs-online-blue)](https://phd-brown.github.io/astro-spectro-classification/)
 ![Last Commit](https://img.shields.io/github/last-commit/PhD-Brown/astro-spectro-classification)
