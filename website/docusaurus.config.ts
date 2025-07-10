@@ -9,6 +9,8 @@ const config: Config = {
   tagline: 'Documentation pour la pipeline de classification spectrale LAMOST DR5',
   favicon: 'img/favicon.ico',
 
+  trailingSlash: false,
+
   // Flags futurs pour compatibilité Docusaurus v4+
   future: {
     v4: true,
@@ -47,17 +49,20 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/docusaurus-social-card.jpg', // optionnel, remplace si tu as une image
+    // Vous pouvez ajouter une image pour les réseaux sociaux ici si vous en avez une
+    // image: 'img/social-card.png', 
+
+    // L'OBJET MANQUANT EST ICI
     navbar: {
       title: 'Astro Spectro Docs',
       logo: {
-        alt: 'Astro Spectro Logo',
-        src: 'img/logo.png',
+        alt: 'Logo PhD-Brown AB',
+        src: 'img/logo.png', // Assurez-vous que ce chemin est correct
       },
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar', // ou "mainSidebar" selon ta config
+          sidebarId: 'tutorialSidebar',
           position: 'left',
           label: 'Documentation',
         },
@@ -68,6 +73,7 @@ const config: Config = {
         },
       ],
     },
+    
     footer: {
       style: 'dark',
       links: [
@@ -76,11 +82,11 @@ const config: Config = {
           items: [
             {
               label: 'Introduction',
-              to: '/docs/intro',
+              to: '/docs/',
             },
             {
-              label: 'Guide complet',
-              to: '/docs/guide',
+              label: 'Guides Pratiques',
+              to: '/docs/category/guides-pratiques',
             },
           ],
         },
@@ -105,6 +111,8 @@ const config: Config = {
       ],
       copyright: `Copyright © ${new Date().getFullYear()} Alex Baker. Built with Docusaurus.`,
     },
+
+    // Vos autres configurations sont bonnes aussi
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
@@ -113,6 +121,7 @@ const config: Config = {
       defaultMode: 'dark',
       respectPrefersColorScheme: true,
     },
+
   } satisfies Preset.ThemeConfig,
 };
 
