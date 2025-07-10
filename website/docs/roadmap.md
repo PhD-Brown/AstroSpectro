@@ -1,4 +1,8 @@
-# Roadmap d’Évolution – Projet Classification Automatisée de Spectres Stellaires (LAMOST DR5)
+---
+id: roadmap
+title: Feuille de route
+sidebar_label: Feuille de route
+---
 
 ## 1. **Enrichissement du Contenu Scientifique et des Features**
 

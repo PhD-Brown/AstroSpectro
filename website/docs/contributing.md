@@ -1,0 +1,5 @@
+---
+id: contributing
+title: Contribuer
+sidebar_label: Contribuer
+---
