@@ -68,6 +68,43 @@ It combines state-of-the-art data handling, feature engineering, and machine lea
 
 ---
 
+## 🌌 Pipeline Structure
+
+```mermaid
+flowchart TD
+    A[Download Spectra] --> B[Data Selection<br><em>DatasetBuilder</em>]
+    B --> C[Preprocessing<br><em>SpectraPreprocessor</em>]
+    C --> D[Peak Detection<br><em>PeakDetector</em>]
+    D --> E[Feature Engineering<br><em>FeatureEngineer</em>]
+    E --> F[Model Training]
+    F --> G[Evaluation & Reporting]
+    G --> H[Visualization]
+    H --> I[Monitoring & Tracking]
+    I --> J[Automation & Orchestration]
+    J --> K[Storage & Collaboration]
+
+    subgraph "Phase 1 & 2: Data Preparation"
+        A
+        B
+        C
+        D
+        E
+    end
+
+    subgraph "Phase 3: Modeling & Results"
+        F
+        G
+        H
+    end
+
+    subgraph "Phase 4: Operations (Ops)"
+        I
+        J
+        K
+    end
+```
+---
+
 ## Quickstart
 
 ### 1. **Clone the Repository**
