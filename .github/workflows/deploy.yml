@@ -1,0 +1,61 @@
+# Fichier .github/workflows/deploy.yml
+
+name: Deploy Docusaurus to GitHub Pages
+
+on:
+  # Exécuter ce workflow à chaque fois qu'un push est fait sur la branche 'main'
+  push:
+    branches:
+      - main
+  
+  # Permet de lancer ce workflow manuellement depuis l'onglet Actions
+  workflow_dispatch:
+
+# Les permissions nécessaires pour le déploiement sur GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permet qu'un seul déploiement s'exécute à la fois
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # Vous pouvez utiliser 18 ou 20
+          cache: 'npm'
+          cache-dependency-path: 'website/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./website
+
+      - name: Build website
+        run: npm run build
+        working-directory: ./website
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Le chemin vers le dossier build de Docusaurus
+          path: ./website/build
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
