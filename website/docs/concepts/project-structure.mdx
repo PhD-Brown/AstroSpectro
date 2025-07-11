@@ -1,0 +1,67 @@
+---
+id: project-structure
+title: Structure du Projet
+sidebar_label: Structure du Projet
+---
+
+<!-- En construction -->
+
+# 🗂️ Structure du Projet Astro-Spectro
+
+Le projet est organisé pour faciliter la reproductibilité, l’extension scientifique et l’utilisation pratique. Voici les principaux répertoires et leur rôle :
+
+---
+
+## 📁 Racine du projet
+
+- **README.md** : Présentation complète, instructions d’installation et liens utiles.
+- **requirements.txt** : Liste des dépendances Python.
+- **ROADMAP.md** : Feuille de route et objectifs de développement.
+- **website/** : Documentation générée par Docusaurus (pages Markdown, configuration, assets).
+- **notebooks/** : Notebooks Jupyter pour chaque étape clé (téléchargement, prétraitement, extraction de features, entraînement, visualisation).
+
+---
+
+## 📁 src/
+
+**Code source principal du pipeline**
+- **src/pipeline/** : Modules pour le traitement, le préprocessing, l’extraction de features, la classification.
+    - `processing.py` : Orchestration du pipeline de traitement des spectres.
+    - `preprocessor.py` : Normalisation, correction du continuum, filtrage.
+    - `peak_detector.py` : Détection des raies spectrales.
+    - `feature_engineering.py` : Extraction des features physiques.
+    - `classifier.py` : Entraînement et évaluation des modèles ML.
+- **src/tools/** : Scripts utilitaires, ex. :
+    - `dr5_downloader.py` : Téléchargement intelligent des spectres LAMOST DR5.
+
+---
+
+## 📁 data/
+
+- **data/raw/** : Spectres bruts téléchargés (FITS).
+- **data/catalog/** : Catalogues d’observation et logs de téléchargement.
+
+---
+
+## 📁 website/
+
+- **docs/** : Documentation structurée (pages thématiques).
+- **src/pages/**, **src/css/** : Pages personnalisées et styles.
+- **sidebars.ts**, **docusaurus.config.ts** : Configuration de la documentation.
+
+---
+
+## 🧭 Fonctionnement général
+
+1. **Téléchargement des spectres** : via le notebook ou le script `dr5_downloader.py`.
+2. **Prétraitement & extraction de features** : modules dans `src/pipeline/`.
+3. **Entraînement & évaluation ML** : notebook dédié + `classifier.py`.
+4. **Documentation** : accessible dans le répertoire `website/` et sur [la documentation en ligne](https://phd-brown.github.io/AstroSpectro/docs).
+
+---
+
+> La structure du projet est pensée pour être claire, modulaire et adaptée aux besoins des utilisateurs scientifiques et data scientists.
+
+---
+
+Pour voir plus de fichiers ou explorer l’arborescence complète, accédez au [GitHub code explorer](https://github.com/PhD-Brown/AstroSpectro).

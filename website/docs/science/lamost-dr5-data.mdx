@@ -1,0 +1,52 @@
+---
+id: lamost-dr5-data
+title: Données LAMOST DR5
+sidebar_label: LAMOST DR5
+---
+
+<!-- En construction -->
+
+# 🌌 Données LAMOST DR5
+
+Le pipeline **Astro-Spectro** est optimisé pour l’exploitation scientifique des spectres stellaires issus du relevé **LAMOST DR5** (Large Sky Area Multi-Object Fiber Spectroscopic Telescope, Data Release 5). Cette section détaille la façon dont ces données sont intégrées et traitées dans le projet.
+
+
+## Source et Structure des Données
+
+- **Format principal** : Fichiers FITS (Flexible Image Transport System), standard en astronomie.
+- **Catalogue d’observations** : Fichiers tabulaires contenant les métadonnées clés (identifiant, coordonnées RA/Dec, magnitudes, SNR, etc.).
+- **Organisation locale** : <!-- mettre un accordéon avec les différents dossiers et l'explication venant avec -->
+    - `data/raw/` : Spectres bruts téléchargés (FITS).
+    - `data/catalog/` : Catalogues associés, utilisés pour le matching et l’enrichissement des features.
+
+
+## Téléchargement et Parsing Automatisés
+
+- **Scripts dédiés** (voir notebook `01_download_spectra.ipynb`) pour :
+    - Télécharger en masse les spectres depuis les serveurs LAMOST (DR5).
+    - Gérer les plans d’observation déjà acquis (évite les doublons).
+    - Associer chaque spectre à ses métadonnées catalogues.
+- **Module SmartDownloader** : Téléchargement intelligent, suivi des acquisitions via `downloaded_plans.csv`.
+
+
+## Prétraitement et Qualité
+
+
+
+## Extraction de Features Physiques
+
+Le pipeline extrait automatiquement :
+
+- Les raies majeures : Hα, Hβ, CaII K&H
+
+
+## 🧑‍💻 Pour aller plus loin
+
+- La structure complète du pipeline et des étapes de traitement est détaillée dans la [méthodologie](./methodology).
+- Pour exploiter LAMOST DR5 dans vos propres analyses, consultez les notebooks d’exemple et le code des modules de parsing.
+
+
+**Références** :
+- [LAMOST DR5 Documentation officielle](http://dr5.lamost.org/)
+- [Méthodologie du pipeline](./methodology)
+- [Notebook de téléchargement](../../notebooks/01_download_spectra.ipynb)

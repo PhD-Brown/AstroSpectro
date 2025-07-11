@@ -1,0 +1,109 @@
+---
+title: Démarrage Rapide
+description: Préparez votre environnement local et lancez votre première classification en quelques minutes.
+slug: /getting-started
+---
+
+<!-- Modifier itinéraire suggéré -->
+
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTools, faRocket, faQuestionCircle, faGraduationCap, faDownload, faCodeBranch, faStar, faTrophy } from '@fortawesome/free-solid-svg-icons'
+
+# <FontAwesomeIcon icon={faRocket} /> Bienvenue dans le Démarrage Rapide
+
+<br />
+
+Cette série de pages vous guide étape par étape pour préparer votre environnement local et lancer une première classification spectrale complète en quelques minutes. 
+
+> L'objectif est de vous amener à faire fonctionner **le pipeline complet**, de l'installation à l'obtention de vos premières prédictions de classes stellaires, sans avoir à comprendre tous les détails internes (pour l’instant 🧑‍🚀).
+
+<FontAwesomeIcon icon="fa-solid fa-rocket" />
+
+<br />
+
+## Itinéraire Suggéré
+
+Voici l’ordre recommandé pour progresser sans accroc :
+
+:::note[ÉTAPE 1 : INSTALLATION]
+<FontAwesomeIcon icon={faDownload} size="2x" pull="left" />
+
+La première étape consiste à préparer votre environnement Python et à télécharger les dépendances nécessaires au projet. C'est le fondement de tout le reste.
+
+<br/>
+
+<a className="button button--primary" href="./installation">
+  Aller au guide d’installation →
+</a>
+:::
+
+<br />
+
+:::note[ÉTAPE 2 : PREMIER LANCEMENT]
+<FontAwesomeIcon icon={faCodeBranch} size="2x" pull="left" />
+
+Une fois l’installation terminée, ce guide vous accompagnera pour un lancement complet qui va :
+
+-   Télécharger automatiquement des spectres LAMOST DR5,
+-   Extraire les features principales,
+-   Entraîner un modèle de classification simple, et
+-   Afficher les résultats.
+
+<br/>
+
+<a className="button button--primary" href="./first-run">
+  Lancer le pipeline →
+</a>
+:::
+
+<br />
+
+## Et ensuite ?
+
+<div className="congrats-box">
+  <div className="congrats-icon">
+    <FontAwesomeIcon icon={faTrophy} size="4x" />
+  </div>
+  <div className="congrats-content">
+    <h3>Félicitations !</h3>
+    <p>
+      Vous avez maintenant un pipeline fonctionnel et une compréhension globale de son fonctionnement. Vous êtes prêt à explorer plus en profondeur :
+    </p>
+    <div className="row">
+      <div className="col">
+        <a href="/AstroSpectro/docs/user-guides" className="button button--secondary button--outline">
+          📚 Guides Pratiques
+        </a>
+      </div>
+      <div className="col">
+        <a href="/AstroSpectro/docs/concepts" className="button button--secondary button--outline">
+          💡 Concepts & Architecture
+        </a>
+      </div>
+      <div className="col">
+        <a href="/AstroSpectro/docs/api" className="button button--secondary button--outline">
+          💻 Référence API
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<br />
+
+:::warning[ UN SOUCI ?]
+Si vous rencontrez un problème, la section **[FAQ](/docs/community/faq)** a peut-être la solution. Sinon, n'hésitez pas à ouvrir une **[Issue sur GitHub](https://github.com/phd-brown/AstroSpectro/issues)**.
+:::
+
+
+<div style={{
+  marginTop: '2rem',
+  padding: '1.5rem',
+  textAlign: 'center',
+  borderTop: '1px solid var(--ifm-color-emphasis-300)'
+}}>
+  <img src="../img/logo.png" alt="Astro-Spectro Logo" width="80" style={{marginBottom: '1rem'}} />
+  <h4>Vous êtes prêt à explorer.</h4>
+  <p>Le voyage dans les données spectrales ne fait que commencer.</p>
+</div>
