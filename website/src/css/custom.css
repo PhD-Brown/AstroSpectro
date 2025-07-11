@@ -106,29 +106,59 @@ html[data-theme='dark'] .admonition-tip {
   ==========================================================================
 */
 
-/* 
-  On cible le conteneur global du document (le "wrapper")
-  UNIQUEMENT lorsque le body a notre classe personnalisée 'doc-page-hub'.
-*/
-.doc-page-hub .docWrapper_hBAB {
-  /* 
-    On force le conteneur à prendre toute la largeur disponible,
-    ce qui permet à son contenu d'être centré correctement.
-  */
+/* 1. Appliquer l'image de fond uniquement à la page d’accueil */
+body[data-docs-slug='/'] {
+  background-image: url('/img/homepage-background.png');
+  background-size: cover;
+  background-position: center top;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* 2. Centrage du conteneur principal */
+body[data-docs-slug='/'] .docWrapper_hBAB {
   max-width: 100% !important;
 }
 
-/* 
-  On s'assure que le contenu À L'INTÉRIEUR de ce wrapper est bien centré
-  et ne devient pas trop large.
-*/
-.doc-page-hub .docItemCol_z_up { /* Vous pouvez vérifier si ce nom de classe existe toujours, sinon le supprimer */
+body[data-docs-slug='/'] .docItemCol_z_up {
   margin: 0 auto !important;
   max-width: 1200px !important;
 }
 
-
-/* On s'assure que le titre principal est aussi centré */
-.doc-page-hub h1 {
+/* 3. Centrer le titre principal */
+body[data-docs-slug='/'] h1 {
   text-align: center;
+}
+
+/* 4. Lisibilité des boîtes (cartes) */
+body[data-docs-slug='/'] .card {
+  background-color: rgba(0, 0, 0, 0.72);
+  color: white;
+}
+
+/* 5. Forcer les couleurs de texte en blanc */
+body[data-docs-slug='/'] h1,
+body[data-docs-slug='/'] h2,
+body[data-docs-slug='/'] h3,
+body[data-docs-slug='/'] p,
+body[data-docs-slug='/'] li {
+  color: white !important;
+}
+
+/* Boîtes d'étapes (Installation, Pipeline) */
+.getting-started-step {
+  background-color: rgba(60, 60, 60, 0.7);
+  border-left: 4px solid #999;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Boîte de félicitations */
+.success-box {
+  background-color: rgba(25, 80, 180, 0.25);
+  border-left: 4px solid #4d8cff;
+  padding: 1rem;
+  border-radius: 8px;
+  color: white;
 }

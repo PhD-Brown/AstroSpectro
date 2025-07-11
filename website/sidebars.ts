@@ -43,10 +43,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '🔬 Scientific Context',
       link: {
-        type: 'generated-index',
-        title: 'Scientific Context',
-        description: "Informations sur les données utilisées, la méthodologie scientifique et comment interpréter les résultats du pipeline.",
-        slug: '/category/scientific-context' // Slug explicite pour la stabilité
+        type: 'doc',
+        id: 'science/index',
       },
       items: [
         'science/lamost-dr5-data',
@@ -62,10 +60,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '📚 User Guides',
       link: {
-        type: 'generated-index',
-        title: 'User Guides',
-        description: "Apprenez à utiliser chaque composant du pipeline pour accomplir des tâches spécifiques. C'est la section 'How-To'.",
-        slug: '/category/user-guides' // Slug explicite
+        type: 'doc',
+        id: 'user-guides/index', 
       },
       items: [
         'user-guides/downloading-data',
@@ -83,10 +79,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '💡 Concepts & Architecture',
       link: {
-        type: 'generated-index',
-        title: 'Concepts & Architecture',
-        description: 'Plongez dans les détails techniques et les choix de conception du pipeline.',
-        slug: '/category/concepts-architecture' // Slug explicite
+        type: 'doc',
+        id: 'concepts/index', 
       },
       items: [
         'concepts/project-structure',
@@ -102,10 +96,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '💻 API Reference',
       link: {
-        type: 'generated-index',
-        title: 'API Reference',
-        description: 'Description détaillée des modules, classes et fonctions du projet.',
-        slug: '/category/api-reference' // Slug explicite
+        type: 'doc',
+        id: 'api/index', 
       },
       items: [
         'api/preprocessor',
@@ -121,10 +113,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '🌐 Community',
       link: {
-        type: 'generated-index',
-        title: 'Community Resources',
-        description: 'Comment contribuer, citer le projet, et autres informations utiles pour la communauté.',
-        slug: '/category/community' // Slug explicite
+        type: 'doc',
+        id: 'community/index',
       },
       items: [
         'community/acknowledgments',
