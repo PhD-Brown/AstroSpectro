@@ -86,7 +86,7 @@ const config: Config = {
             },
             {
               label: 'Guides Pratiques',
-              to: '/docs/category/guides-pratiques',
+              to: '/docs/category/user-guides',
             },
           ],
         },
