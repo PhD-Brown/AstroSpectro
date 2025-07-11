@@ -49,9 +49,9 @@ Une fois l’installation terminée, ce guide vous accompagnera pour un lancemen
 :::info 🎉 FÉLICITATIONS !
 Une fois cette section terminée, vous aurez un pipeline fonctionnel et une compréhension globale de son fonctionnement. Vous serez prêt à :
 
-- Explorer les **[Guides Pratiques](../user-guides/)** pour des tâches plus spécifiques.
-- Plonger dans les **[Concepts & Architecture](../concepts/)** pour comprendre les rouages internes.
-- Consulter la **[Référence de l’API](../api/)** pour les détails du code.
+- Explorer les **[Guides Pratiques](../docs/user-guides/)** pour des tâches plus spécifiques.
+- Plonger dans les **[Concepts & Architecture](../docs/concepts/)** pour comprendre les rouages internes.
+- Consulter la **[Référence de l’API](../docs/api/)** pour les détails du code.
 :::
 
 :::info 💡 UN SOUCI ?
