@@ -17,10 +17,10 @@ const config: Config = {
   },
 
   url: 'https://phd-brown.github.io',
-  baseUrl: '/astro-spectro-classification/',
+  baseUrl: '/AstroSpectro/',
 
   organizationName: 'PhD-Brown', // Nom GitHub
-  projectName: 'astro-spectro-classification', // Repo GitHub
+  projectName: 'AstroSpectro', // Repo GitHub
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
@@ -67,7 +67,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          href: 'https://github.com/PhD-Brown/AstroSpectro',
+          href: 'https://github.com/PhD-Brown/AstroSpectro/',
           label: 'GitHub',
           position: 'right',
         },
@@ -104,7 +104,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/PhD-Brown/astro-spectro-classification',
+              href: 'https://github.com/PhD-Brown/AstroSpectro',
             },
           ],
         },
