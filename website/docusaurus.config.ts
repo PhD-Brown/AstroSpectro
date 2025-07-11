@@ -67,7 +67,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          href: 'https://github.com/PhD-Brown/astro-spectro-classification',
+          href: 'https://github.com/PhD-Brown/AstroSpectro',
           label: 'GitHub',
           position: 'right',
         },
