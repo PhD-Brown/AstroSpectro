@@ -215,3 +215,33 @@ body[data-docs-slug='/'] li {
   display: flex; /* Nécessaire pour que justify-content fonctionne sur un lien */
   align-items: center;
 }
+
+/*
+  ==========================================================================
+  Style pour les cartes d'étapes ("Step Cards") dans les tutoriels
+  ==========================================================================
+*/
+.card-demo .card__header {
+  display: flex; /* Active Flexbox */
+  align-items: center; /* Aligne le numéro et le titre verticalement */
+  gap: 0.75rem; /* Ajoute un espace entre le numéro et le titre */
+}
+
+.card-demo .card__header h3 {
+  margin: 0; /* Annule la marge par défaut du h3 pour un meilleur alignement */
+  font-size: 1.25rem;
+}
+
+.step-number {
+  background-color: var(--ifm-color-primary);
+  color: white;
+  border-radius: 50%; /* Crée un cercle parfait */
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 1rem;
+  flex-shrink: 0; /* Empêche le cercle de rétrécir */
+}

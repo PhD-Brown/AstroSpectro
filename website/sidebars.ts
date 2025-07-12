@@ -25,7 +25,7 @@ const sidebars: SidebarsConfig = {
     // =====================================================================
     {
       type: 'category',
-      label: '🚀 Getting Started',
+      label: '🚀 Démarrage Rapide',
       link: {
         type: 'doc',
         id: 'getting-started/index', // Pointe vers une page d'accueil de section dédiée
@@ -41,7 +41,7 @@ const sidebars: SidebarsConfig = {
     // =====================================================================
     {
       type: 'category',
-      label: '🔬 Scientific Context',
+      label: '🔬 Contexte Scientifique',
       link: {
         type: 'doc',
         id: 'science/index',
@@ -58,7 +58,7 @@ const sidebars: SidebarsConfig = {
     // =====================================================================
     {
       type: 'category',
-      label: '📚 User Guides',
+      label: '📚 Guides d\'Utilisation',
       link: {
         type: 'doc',
         id: 'user-guides/index', 
@@ -111,7 +111,7 @@ const sidebars: SidebarsConfig = {
     // =====================================================================
     {
       type: 'category',
-      label: '🌐 Community',
+      label: '🌐 Communauté',
       link: {
         type: 'doc',
         id: 'community/index',

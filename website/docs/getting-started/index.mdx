@@ -4,9 +4,6 @@ description: Préparez votre environnement local et lancez votre première class
 slug: /getting-started
 ---
 
-<!-- Modifier itinéraire suggéré -->
-
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faTools, faRocket, faQuestionCircle, faGraduationCap, faDownload, faCodeBranch, faStar, faTrophy } from '@fortawesome/free-solid-svg-icons'
 
@@ -24,38 +21,50 @@ Cette série de pages vous guide étape par étape pour préparer votre environn
 
 ## Itinéraire Suggéré
 
-Voici l’ordre recommandé pour progresser sans accroc :
+Voici l’ordre recommandé pour progresser sans accroc.
 
-:::note[ÉTAPE 1 : INSTALLATION]
-<FontAwesomeIcon icon={faDownload} size="2x" pull="left" />
-
-La première étape consiste à préparer votre environnement Python et à télécharger les dépendances nécessaires au projet. C'est le fondement de tout le reste.
-
-<br/>
-
-<a className="button button--primary" href="./installation">
-  Aller au guide d’installation →
-</a>
-:::
-
-<br />
-
-:::note[ÉTAPE 2 : PREMIER LANCEMENT]
-<FontAwesomeIcon icon={faCodeBranch} size="2x" pull="left" />
-
-Une fois l’installation terminée, ce guide vous accompagnera pour un lancement complet qui va :
-
--   Télécharger automatiquement des spectres LAMOST DR5,
--   Extraire les features principales,
--   Entraîner un modèle de classification simple, et
--   Afficher les résultats.
-
-<br/>
-
-<a className="button button--primary" href="./first-run">
-  Lancer le pipeline →
-</a>
-:::
+<div className="container" style={{padding: '0', marginTop: '1.5rem'}}>
+  <div className="row">
+    {/* Étape 1 : Installation */}
+    <div className="col col--6">
+      <div className="card-demo">
+        <div className="card">
+          <div className="card__header">
+            <span className="step-number">1</span>
+            <h3>Installation</h3>
+          </div>
+          <div className="card__body">
+            <p>Préparez votre environnement Python et téléchargez les dépendances nécessaires. C'est le fondement de tout le reste.</p>
+          </div>
+          <div className="card__footer">
+            <a href="./getting-started/installation" className="button button--primary button--block">
+              Aller au guide d’installation →
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {/* Étape 2 : Premier Lancement */}
+    <div className="col col--6">
+      <div className="card-demo">
+        <div className="card">
+          <div className="card__header">
+            <span className="step-number">2</span>
+            <h3>Premier Lancement</h3>
+          </div>
+          <div className="card__body">
+            <p>Lancez le pipeline de A à Z : téléchargement des données, extraction des features, entraînement du modèle et affichage des résultats.</p>
+          </div>
+          <div className="card__footer">
+            <a href="./getting-started/first-run" className="button button--primary button--block">
+              Lancer le pipeline →
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <br />
 
@@ -92,7 +101,7 @@ Une fois l’installation terminée, ce guide vous accompagnera pour un lancemen
 
 <br />
 
-:::warning[ UN SOUCI ?]
+:::info[ UN SOUCI ?]
 Si vous rencontrez un problème, la section **[FAQ](/docs/community/faq)** a peut-être la solution. Sinon, n'hésitez pas à ouvrir une **[Issue sur GitHub](https://github.com/phd-brown/AstroSpectro/issues)**.
 :::
 
