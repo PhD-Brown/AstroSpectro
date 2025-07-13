@@ -110,6 +110,12 @@ hr {
   border-radius: 50%;
 }
 
+/* Centrer les lignes de cartes sur la page d'accueil */
+.row {
+  justify-content: center;
+}
+
+
 /*
   ==========================================================================
   Styles personnalisés pour la page d'accueil de la documentation ("Hub")
