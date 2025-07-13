@@ -4,8 +4,10 @@ description: Préparez votre environnement local et lancez votre première class
 slug: /getting-started
 ---
 
+<!-- Complet for v0.1.0-alpha release -->
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTools, faRocket, faQuestionCircle, faGraduationCap, faDownload, faCodeBranch, faStar, faTrophy } from '@fortawesome/free-solid-svg-icons'
+import { faTools, faFileCode, faLayerGroup, faFolderTree, faRocket, faQuestionCircle, faGraduationCap, faDownload, faCodeBranch, faStar, faTrophy, faUserAstronaut } from '@fortawesome/free-solid-svg-icons'
 
 # <FontAwesomeIcon icon={faRocket} /> Bienvenue dans le Démarrage Rapide
 
@@ -13,11 +15,9 @@ import { faTools, faRocket, faQuestionCircle, faGraduationCap, faDownload, faCod
 
 Cette série de pages vous guide étape par étape pour préparer votre environnement local et lancer une première classification spectrale complète en quelques minutes. 
 
-> L'objectif est de vous amener à faire fonctionner **le pipeline complet**, de l'installation à l'obtention de vos premières prédictions de classes stellaires, sans avoir à comprendre tous les détails internes (pour l’instant 🧑‍🚀).
+> L'objectif est de vous amener à faire fonctionner **le pipeline complet**, de l'installation à l'obtention de vos premières prédictions de classes stellaires, sans avoir à comprendre tous les détails internes (<FontAwesomeIcon icon={faUserAstronaut} /> pour l’instant).
 
 <FontAwesomeIcon icon="fa-solid fa-rocket" />
-
-<br />
 
 ## Itinéraire Suggéré
 
@@ -82,17 +82,17 @@ Voici l’ordre recommandé pour progresser sans accroc.
     <div className="row">
       <div className="col">
         <a href="/AstroSpectro/docs/user-guides" className="button button--secondary button--outline">
-          📚 Guides Pratiques
+          <FontAwesomeIcon icon={faFolderTree} /> Guides Pratiques 
         </a>
       </div>
       <div className="col">
         <a href="/AstroSpectro/docs/concepts" className="button button--secondary button--outline">
-          💡 Concepts & Architecture
+          <FontAwesomeIcon icon={faLayerGroup} /> Concepts & Architecture
         </a>
       </div>
       <div className="col">
         <a href="/AstroSpectro/docs/api" className="button button--secondary button--outline">
-          💻 Référence API
+          <FontAwesomeIcon icon={faFileCode} /> API Reference
         </a>
       </div>
     </div>

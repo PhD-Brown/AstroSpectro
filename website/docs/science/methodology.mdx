@@ -4,44 +4,83 @@ title: Méthodologie & Vision d'Ensemble
 sidebar_position: 2
 ---
 
-# 🔬 Méthodologie & Vision d'Ensemble du Pipeline
+<!-- Complet for v0.1.0-alpha release -->
 
-Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque étape du pipeline de classification spectrale. Pour une représentation visuelle, référez-vous au [schéma sur le README du projet](https://github.com/PhD-Brown/AstroSpectro#pipeline-structure).
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faVial, faDownload, faWandMagicSparkles, faCubes, faBrain, faChartPie } from '@fortawesome/free-solid-svg-icons'
 
-### 1. Téléchargement et Gestion des Données
+# <FontAwesomeIcon icon={faVial} /> Méthodologie du Pipeline
 
-Le pipeline commence par une acquisition robuste des données brutes depuis les serveurs officiels de LAMOST.
-- **Téléchargement Automatisé :** Utilise des scripts pour récupérer les fichiers FITS en masse.
-- **Parsing de Catalogue :** Lit les catalogues d'observation pour associer les métadonnées à chaque spectre.
-- **Gestion Locale :** Organise les données dans une structure de dossiers prévisible (`data/raw/`, `data/catalog/`).
+Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque étape du pipeline, de l'acquisition des données brutes à l'évaluation finale du modèle.
 
-### 2. Prétraitement et Contrôle Qualité
+<br/>
 
-Les spectres bruts ne sont pas directement utilisables. Une étape de nettoyage rigoureuse est appliquée pour préparer les données à l'analyse.
-- **Normalisation :** Le flux de chaque spectre est normalisé pour rendre les comparaisons possibles.
-- **Ajustement du Continuum :** Un pseudo-continuum est ajusté et soustrait pour isoler les raies spectrales.
-- **Déni de Bruit (Denoising) :** Des filtres (ex: Savitzky-Golay) sont appliqués pour réduire le bruit, en particulier sur les spectres à faible rapport signal/bruit (SNR).
-
-### 3. Extraction de Features Physiques
-
-C'est le cœur de l'approche "hybride" (physique + ML). Au lieu de donner le spectre brut au modèle, nous extrayons des informations physiquement pertinentes.
-- **Identification des Raies :** Le pipeline identifie les raies astrophysiques majeures (Hα, Hβ, CaII K&H, etc.).
-- **Mesures Physiques :** Pour chaque raie identifiée, des mesures quantitatives sont calculées :
-  - Largeur à mi-hauteur (FWHM)
-  - Profondeur ou hauteur de la raie
-  - Largeur équivalente (Equivalent Width)
-  - Ratios entre différentes raies
-
-### 4. Entraînement et Validation des Modèles
-
-Avec un jeu de données "propre" contenant les features extraites, nous pouvons entraîner des modèles de Machine Learning.
-- **Modèles Flexibles :** Le pipeline supporte nativement des modèles robustes comme `Random Forest` et `SVM`, et est conçu pour intégrer facilement de nouveaux algorithmes (ex: Gradient Boosting, réseaux de neurones).
-- **Validation Croisée :** La performance est évaluée rigoureusement en utilisant la validation croisée (k-fold) pour assurer que le modèle généralise bien à de nouvelles données.
-- **Optimisation :** Des techniques comme le `GridSearchCV` peuvent être utilisées pour trouver les meilleurs hyperparamètres pour un modèle donné.
-
-### 5. Évaluation et Reporting
-
-Un modèle n'est utile que si l'on peut comprendre et faire confiance à ses prédictions.
-- **Métriques Standards :** Matrices de confusion, scores de précision, rappel, F1-score.
-- **Visualisations Clés :** Courbes ROC, diagrammes d'importance des features (pour comprendre quelles raies sont les plus décisives).
-- **Rapports Automatisés :** Génération de rapports PDF ou HTML pour chaque exécution, archivant les résultats et les graphiques.
+<div className="card-demo">
+  <div className="card margin-bottom--lg">
+    <div className="card__header">
+      <span className="step-number">1</span>
+      <h4>Téléchargement et Gestion des Données</h4>
+    </div>
+    <div className="card__body">
+      Le pipeline commence par une acquisition robuste des données brutes. L'objectif est de constituer une base de données locale, propre et organisée.
+      <ul>
+        <li><strong>Téléchargement Automatisé :</strong> Des scripts récupèrent les fichiers FITS en masse depuis les serveurs officiels (LAMOST).</li>
+        <li><strong>Parsing de Catalogue :</strong> Les métadonnées des catalogues d'observation sont lues et associées à chaque spectre.</li>
+        <li><strong>Gestion Locale :</strong> Les données sont organisées dans une structure de dossiers prévisible (<code>data/raw/</code>, <code>data/catalog/</code>).</li>
+      </ul>
+    </div>
+  </div>
+  <div className="card margin-bottom--lg">
+    <div className="card__header">
+      <span className="step-number">2</span>
+      <h4>Prétraitement et Contrôle Qualité</h4>
+    </div>
+    <div className="card__body">
+      Les spectres bruts ne sont pas directement utilisables. Une étape de nettoyage rigoureuse est appliquée pour préparer les données à l'analyse.
+      <ul>
+        <li><strong>Normalisation :</strong> Le flux est normalisé pour rendre les spectres comparables entre eux.</li>
+        <li><strong>Ajustement du Continuum :</strong> Un pseudo-continuum est soustrait pour isoler les raies spectrales de la forme globale du spectre.</li>
+        <li><strong>Déni de Bruit (Denoising) :</strong> Des filtres (ex: Savitzky-Golay) sont appliqués pour réduire le bruit, en particulier sur les spectres à faible SNR.</li>
+      </ul>
+    </div>
+  </div>
+  <div className="card margin-bottom--lg">
+    <div className="card__header">
+      <span className="step-number">3</span>
+      <h4>Extraction de Features Physiques</h4>
+    </div>
+    <div className="card__body">
+      C'est le cœur de notre approche "hybride". Au lieu de donner le spectre brut au modèle, nous extrayons des informations physiquement pertinentes.
+      <ul>
+        <li><strong>Identification des Raies :</strong> Le pipeline identifie les raies astrophysiques majeures (Hα, Hβ, CaII K&H...).</li>
+        <li><strong>Mesures Physiques :</strong> Pour chaque raie, des mesures quantitatives sont calculées (FWHM, profondeur, largeur équivalente...).</li>
+      </ul>
+    </div>
+  </div>
+  <div className="card margin-bottom--lg">
+    <div className="card__header">
+      <span className="step-number">4</span>
+      <h4>Entraînement et Validation des Modèles</h4>
+    </div>
+    <div className="card__body">
+      Avec un jeu de données de features "propres", nous entraînons des modèles de Machine Learning pour la classification.
+      <ul>
+        <li><strong>Modèles Flexibles :</strong> Le pipeline supporte des modèles comme <code>Random Forest</code> et <code>SVM</code>, et est conçu pour être extensible.</li>
+        <li><strong>Validation Robuste :</strong> La performance est évaluée rigoureusement via validation croisée (k-fold) pour éviter le sur-apprentissage.</li>
+      </ul>
+    </div>
+  </div>
+  <div className="card">
+    <div className="card__header">
+      <span className="step-number">5</span>
+      <h4>Évaluation et Reporting</h4>
+    </div>
+    <div className="card__body">
+      Un modèle n'est utile que si l'on peut comprendre et faire confiance à ses prédictions.
+      <ul>
+        <li><strong>Métriques Standards :</strong> Matrices de confusion, scores de précision, rappel, et F1-score sont calculés.</li>
+        <li><strong>Visualisations Clés :</strong> Courbes ROC et diagrammes d'importance des features aident à interpréter le comportement du modèle.</li>
+      </ul>
+    </div>
+  </div>
+</div>

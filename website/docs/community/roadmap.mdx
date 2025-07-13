@@ -1,56 +1,78 @@
 ---
 id: roadmap
-title: Feuille de Route (Roadmap)
+title: Feuille de Route
 ---
 
-# Feuille de Route du Projet
+<!-- Complet for v0.1.0-alpha release -->
 
-Cette page présente les développements prévus et les idées d'amélioration pour le pipeline Astro-Spectro. C'est un document vivant qui évolue avec le projet. N'hésitez pas à [ouvrir une issue](https://github.com/PhD-Brown/AstroSpectro/issues) pour suggérer de nouvelles fonctionnalités !
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faFlask, faMapSigns, faLaptopCode, faHexagonNodes, faRobot, faRocket } from '@fortawesome/free-solid-svg-icons'
 
----
+# <FontAwesomeIcon icon={faMapSigns} /> Feuille de Route du Projet
 
-## 🔭 Axe 1 : Enrichissement Scientifique
+Cette page présente les développements prévus et les idées d'amélioration pour le pipeline **AstroSpectro**. C'est un document vivant qui évolue avec le projet. N'hésitez pas à regarder la [Roadmap](https://github.com/PhD-Brown/AstroSpectro/blob/main/ROADMAP.md) complète ici!
 
-- [ ] **Features spectrales avancées :**
-  - [ ] Ajouter les raies He II, Ca II IR triplet, Na I D, Mg b, TiO.
-  - [ ] Mesurer systématiquement la profondeur, le FWHM et la largeur équivalente.
-  - [ ] Calculer des ratios de raies pertinents.
-- [ ] **Exploitation du continuum :**
-  - [ ] Implémenter un ajustement de continuum par splines.
-  - [ ] Calculer des indices de pseudo-couleur (pente, courbure).
-- [ ] **Intégration des métadonnées :**
-  - [ ] Utiliser le SNR, les magnitudes, et le redshift comme features.
-  - [ ] Analyser l'importance de ces métadonnées.
+> N'hésitez pas à **[ouvrir une issue](https://github.com/PhD-Brown/AstroSpectro/issues/new/choose)** pour suggérer de nouvelles fonctionnalités ou discuter des priorités !
 
----
+<br/>
 
-## 🤖 Axe 2 : Amélioration des Modèles et Données
+<div className="container" style={{padding: '0'}}>
+  <div className="row">
 
-- [ ] **Qualité des données :**
-  - [ ] Intégrer des filtres de débruitage adaptatifs (Savitzky-Golay).
-  - [ ] Détecter et exclure automatiquement les spectres avec des artéfacts.
-- [ ] **Augmentation des données :**
-  - [ ] Implémenter l'équilibrage de classes (SMOTE).
-  - [ ] Générer des spectres synthétiques pour augmenter le jeu de données.
-- [ ] **Modèles d'apprentissage :**
-  - [ ] Benchmarker des modèles de Gradient Boosting (LightGBM, XGBoost).
-  - [ ] Développer et tester un modèle CNN 1D sur les spectres bruts.
-  - [ ] Mettre en place un système d'ensembling de modèles (stacking).
-- [ ] **Explicabilité (XAI) :**
-  - [ ] Intégrer des visualisations SHAP ou LIME pour expliquer les prédictions individuelles.
+    {/* AXE 1 : SCIENTIFIQUE */}
+    <div className="col col--10 margin-bottom--lg">
+      <div className="card">
+        <div className="card__header">
+          <h3><FontAwesomeIcon icon={faFlask} /> Axe 1 : Enrichissement Scientifique</h3>
+        </div>
+        <div className="card__body">
+          <p>Améliorer la profondeur et la précision des informations extraites des spectres.</p>
+          <ul>
+            <li>[ ] Extraction de features avancées (FWHM, EW, nouvelles raies...)</li>
+            <li>[ ] Meilleure exploitation du continuum (fit, indices)</li>
+            <li>[ ] Intégration des métadonnées (SNR, magnitude)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    {/* AXE 2 : MACHINE LEARNING */}
+    <div className="col col--10 margin-bottom--lg">
+      <div className="card">
+        <div className="card__header">
+          <h3><FontAwesomeIcon icon={faHexagonNodes} /> Axe 2 : Modèles & Données</h3>
+        </div>
+        <div className="card__body">
+          <p>Explorer des modèles plus performants et des techniques de traitement de données avancées.</p>
+          <ul>
+            <li>[ ] Amélioration de la qualité des données (débruitage, outliers)</li>
+            <li>[ ] Data augmentation et équilibrage (SMOTE)</li>
+            <li>[ ] Benchmarking de nouveaux modèles (SVM, XGBoost, CNN 1D)</li>
+            <li>[ ] Explicabilité des modèles (XAI avec SHAP/LIME)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    {/* AXE 3 : INFRASTRUCTURE */}
+    <div className="col col--10 margin-bottom--lg">
+      <div className="card">
+        <div className="card__header">
+          <h3><FontAwesomeIcon icon={faLaptopCode} /> Axe 3 : Infrastructure & Déploiement</h3>
+        </div>
+        <div className="card__body">
+          <p>Rendre le pipeline plus robuste, plus accessible et plus facile à utiliser pour la communauté.</p>
+          <ul>
+            <li>[ ] Automatisation complète (Snakemake/Prefect)</li>
+            <li>[ ] Création d'une API pour les prédictions</li>
+            <li>[ ] Développement d'une démo interactive (Streamlit/Gradio)</li>
+            <li>[ ] Démos "Zéro-installation" (Google Colab)</li>
+            <li>[ ] Support multi-survey (SDSS, Gaia)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
----
-
-## 🚀 Axe 3 : Infrastructure et Déploiement
-
-- [ ] **Automatisation du pipeline :**
-  - [ ] Orchestrer le workflow avec Snakemake ou Prefect.
-- [ ] **Accessibilité :**
-  - [ ] Créer une API (via FastAPI) pour des prédictions à la demande.
-  - [ ] Développer une démo interactive avec Streamlit ou Gradio.
-- [ ] **Science Ouverte :**
-  - [ ] Fournir un jeu de données "mock" pour des tests rapides.
-  - [ ] Créer un notebook Google Colab pour une démo sans installation.
-- [ ] **Vision long terme :**
-  - [ ] Étendre le support à d'autres relevés (SDSS, Gaia XP).
-  - [ ] Explorer des approches d'apprentissage non-supervisé pour la détection d'anomalies.
+:::info
+Cette feuille de route représente une vision à long terme. La priorité des tâches peut évoluer en fonction des retours de la communauté et des découvertes scientifiques.
+:::

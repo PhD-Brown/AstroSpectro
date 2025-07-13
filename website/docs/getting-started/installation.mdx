@@ -4,26 +4,26 @@ title: Installation
 sidebar_label: Installation
 ---
 
-<!-- En construction -->
+<!-- Complet for v0.1.0-alpha release -->
 
-# 🛠️ Installation
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTools, faBoxOpen, faVial, faPlayCircle, faRocket } from '@fortawesome/free-solid-svg-icons'
 
-Bienvenue sur la page d'installation du pipeline **Astro-Spectro** !
+# <FontAwesomeIcon icon={faTools} /> Installation
 
-Suivez ces étapes pour préparer votre environnement et démarrer rapidement.  
-Pour toute explication détaillée, consultez la [Guide utilisateur](https://phd-brown.github.io/AstroSpectro/docs/user-guides).
+Bienvenue sur la page d'installation du pipeline **Astro-Spectro** !  
+Suivez ces étapes pour préparer votre environnement et démarrer rapidement.
 
----
+> Pour toute explication détaillée, consultez la [Guide utilisateur](https://phd-brown.github.io/AstroSpectro/docs/user-guides).
 
-## Prérequis
+
+### Prérequis
 
 - **Python 3.9+**
 - **Git**
 - (Optionnel) **JupyterLab** ou **Jupyter Notebook** pour exécuter les notebooks interactifs
 
----
-
-## 1️⃣ Cloner le dépôt
+### Étape 1 : Cloner le dépôt
 
 Ouvrez votre terminal et lancez :
 
@@ -32,18 +32,14 @@ git clone https://github.com/PhD-Brown/AstroSpectro.git
 cd AstroSpectro
 ```
 
----
-
-## 2️⃣ Créer et activer un environnement virtuel Python
+### Étape 2 : Créer et activer un environnement virtuel Python
 
 ```bash
 python -m venv venv
 source venv/bin/activate    # Sur Windows : .\venv\Scripts\activate
 ```
 
----
-
-## 3️⃣ Installer les dépendances
+### Étape 3 : Installer les dépendances
 
 ```bash
 pip install -r requirements.txt
@@ -53,9 +49,8 @@ Les dépendances principales incluent :
 `astropy`, `numpy`, `scikit-learn`, `matplotlib`, `pandas`, `seaborn`, `tqdm`, `joblib`, `requests`  
 Pour des fonctionnalités avancées : dé-commentez dans `requirements.txt` les lignes pour `lightgbm`, `xgboost`, `pywavelets`, ou les notebooks (`jupyterlab`, `notebook`).
 
----
 
-## 4️⃣ Lancer Jupyter (optionnel mais recommandé)
+### Étape 4 : Lancer Jupyter (optionnel mais recommandé)
 
 Pour démarrer l'interface interactive :
 
@@ -65,9 +60,7 @@ jupyter lab
 jupyter notebook
 ```
 
----
-
-## 5️⃣ Premier lancement du pipeline
+### Étape 5 : Premier lancement du pipeline
 
 Le notebook principal est :  
 `notebooks/00_master_pipeline.ipynb`
@@ -75,13 +68,10 @@ Le notebook principal est :
 Pour télécharger vos premiers spectres :  
 Ouvrez `notebooks/01_download_spectra.ipynb` et exécutez les cellules pour récupérer un lot d’exemple depuis LAMOST DR5.
 
----
+:::info 💡 En cas de problème
 
-## 💡 En cas de problème
-
-- Consultez la section **FAQ** dans la documentation.
+- Consultez la section [FAQ](https://phd-brown.github.io/AstroSpectro/docs/community/faq) dans la documentation.
 - Ouvrez une [issue GitHub](https://github.com/PhD-Brown/AstroSpectro/issues) pour obtenir de l’aide.
+:::
 
----
-
-**Félicitations, vous êtes prêt à explorer Astro-Spectro !**
+> **Félicitations, vous êtes prêt à explorer Astro-Spectro !**

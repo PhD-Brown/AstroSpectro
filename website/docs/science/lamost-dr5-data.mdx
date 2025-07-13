@@ -4,49 +4,63 @@ title: Données LAMOST DR5
 sidebar_label: LAMOST DR5
 ---
 
-<!-- En construction -->
+<!-- Complet for v0.1.0-alpha release -->
 
-# 🌌 Données LAMOST DR5
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faDatabase, faFolderTree, faCloudDownloadAlt, faLink } from '@fortawesome/free-solid-svg-icons'
 
-Le pipeline **Astro-Spectro** est optimisé pour l’exploitation scientifique des spectres stellaires issus du relevé **LAMOST DR5** (Large Sky Area Multi-Object Fiber Spectroscopic Telescope, Data Release 5). Cette section détaille la façon dont ces données sont intégrées et traitées dans le projet.
+# <FontAwesomeIcon icon={faDatabase} /> Les Données : LAMOST DR5
 
+Le pipeline **AstroSpectro** est optimisé pour l'exploitation scientifique des spectres stellaires issus du **LAMOST Data Release 5 (DR5)**. Ce relevé spectroscopique à grand champ a permis de collecter des millions de spectres stellaires, ce qui en fait une ressource inestimable pour l'astrophysique.
 
-## Source et Structure des Données
+> Cette page détaille la nature de ces données et la façon dont elles sont intégrées et traitées dans le projet.
 
-- **Format principal** : Fichiers FITS (Flexible Image Transport System), standard en astronomie.
-- **Catalogue d’observations** : Fichiers tabulaires contenant les métadonnées clés (identifiant, coordonnées RA/Dec, magnitudes, SNR, etc.).
-- **Organisation locale** : <!-- mettre un accordéon avec les différents dossiers et l'explication venant avec -->
-    - `data/raw/` : Spectres bruts téléchargés (FITS).
-    - `data/catalog/` : Catalogues associés, utilisés pour le matching et l’enrichissement des features.
+<br/>
 
+## <FontAwesomeIcon icon={faFolderTree} /> Source et Structure des Données
 
-## Téléchargement et Parsing Automatisés
+Les données du projet sont organisées de manière logique pour séparer les données brutes des données traitées et des métadonnées.
 
-- **Scripts dédiés** (voir notebook `01_download_spectra.ipynb`) pour :
-    - Télécharger en masse les spectres depuis les serveurs LAMOST (DR5).
-    - Gérer les plans d’observation déjà acquis (évite les doublons).
-    - Associer chaque spectre à ses métadonnées catalogues.
-- **Module SmartDownloader** : Téléchargement intelligent, suivi des acquisitions via `downloaded_plans.csv`.
+<div className="card">
+  <div className="card__header">
+    <h4>Organisation Locale des Données</h4>
+  </div>
+  <div className="card__body">
+    <ul>
+      <li>
+        <strong>Format Principal :</strong> Les spectres sont stockés au format <code>.fits.gz</code> (FITS compressé), un standard en astronomie.
+      </li>
+      <li>
+        <strong>Organisation :</strong>
+        <details>
+          <summary>Cliquez pour voir l'arborescence du dossier <code>data/</code></summary>
+          <div>
+            <ul>
+              <li><code>data/raw/</code>: Contient les spectres bruts téléchargés, organisés par plan d'observation.</li>
+              <li><code>data/catalog/</code>: Stocke les catalogues et les journaux (logs) au format CSV, qui lient les spectres à leurs métadonnées (coordonnées, magnitudes, SNR, etc.).</li>
+              <li><code>data/processed/</code>: Contient les features extraites, prêtes pour l'entraînement des modèles.</li>
+              <li><code>data/models/</code>: Emplacement pour les modèles de classification sauvegardés.</li>
+            </ul>
+          </div>
+        </details>
+      </li>
+    </ul>
+  </div>
+</div>
 
+<br/>
 
-## Prétraitement et Qualité
+## <FontAwesomeIcon icon={faCloudDownloadAlt} /> Téléchargement et Parsing Automatisés
 
+Le pipeline inclut des outils dédiés pour automatiser l'acquisition et la gestion des données, afin d'assurer la reproductibilité.
 
+-   **Interface de Téléchargement :** Le notebook <code>notebooks/01_download_spectra.ipynb</code> fournit une interface simple pour lancer le téléchargement de nouveaux lots de spectres.
+-   **Logique Intelligente :** Sous le capot, le module <code>SmartDownloader</code> (dans <code>src/tools/dr5_downloader.py</code>) gère le processus. Il consulte le journal <code>downloaded_plans.csv</code> pour éviter de retélécharger des plans d'observation déjà complets.
 
-## Extraction de Features Physiques
+## <FontAwesomeIcon icon={faLink} /> Pour aller plus loin
 
-Le pipeline extrait automatiquement :
-
-- Les raies majeures : Hα, Hβ, CaII K&H
-
-
-## 🧑‍💻 Pour aller plus loin
-
-- La structure complète du pipeline et des étapes de traitement est détaillée dans la [méthodologie](./methodology).
-- Pour exploiter LAMOST DR5 dans vos propres analyses, consultez les notebooks d’exemple et le code des modules de parsing.
-
-
-**Références** :
-- [LAMOST DR5 Documentation officielle](http://dr5.lamost.org/)
-- [Méthodologie du pipeline](./methodology)
-<!-- Mettre lien vers notebook de téléchargement -->
+:::tip[Ressources Utiles]
+-   **[Site officiel de LAMOST DR5](http://dr5.lamost.org/)** : Pour consulter la documentation originale du relevé.
+-   **[Guide du Téléchargement](../user-guides/downloading-data)** : Pour un tutoriel détaillé sur l'utilisation de nos scripts de téléchargement.
+-   **[Structure du Projet](../concepts/project-structure)** : Pour une vue d'ensemble de tous les dossiers du projet.
+:::

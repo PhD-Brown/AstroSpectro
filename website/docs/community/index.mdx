@@ -2,20 +2,21 @@
 # Page d'accueil de la section Communauté
 id: index
 title: Communauté & Contributions
-sidebar_position: 1
 ---
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTools, faMapSigns, faQuoteRight, faQuestionCircle, faHeart, faEnvelope } from '@fortawesome/free-solid-svg-icons'
+<!-- Complet for v0.1.0-alpha release -->
 
-# <FontAwesomeIcon icon={faHeart} /> Communauté & Contributions
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faTools, faMapSigns, faQuoteRight, faQuestionCircle, faHeart, faEnvelope, faUsers } from '@fortawesome/free-solid-svg-icons'
+
+# <FontAwesomeIcon icon={faUsers} /> Communauté & Contributions
 
 Bienvenue dans l'espace communautaire du projet **AstroSpectro**. Ce projet est en constante évolution, et votre participation, qu'elle soit petite ou grande, peut faire toute la différence !
 
 Cette section est le point central pour poser des questions, proposer des idées, partager vos expériences, et guider ceux qui souhaitent contribuer au développement du pipeline.
 
 
-### Comment participer ?
+## Comment participer ?
 
 Que vous soyez un utilisateur, un développeur ou un chercheur, il y a plusieurs façons de vous impliquer :
 
@@ -69,17 +70,45 @@ Que vous soyez un utilisateur, un développeur ou un chercheur, il y a plusieurs
 </div>
 
 
-### Remerciements & Contact
+## Remerciements & Contact
 
-<div className="container" style={{padding: '0'}}>
+<div className="container" style={{padding: '0', marginTop: '1rem'}}>
   <div className="row">
-    <div className="col" style={{marginBottom: "1rem"}}>
-      Ce projet repose sur le travail de nombreuses personnes et sur des outils open-source exceptionnels.<br/>
-      ➡️ **[Consultez la page des remerciements](./community/acknowledgments)** pour en savoir plus.
+    {/* Carte pour les Remerciements */}
+    <div className="col col--6 margin-bottom--lg">
+      <div className="card card--secondary">
+        <div className="card__header">
+          <h4><FontAwesomeIcon icon={faHeart} /> Remerciements</h4>
+        </div>
+        <div className="card__body">
+          <p>
+            Ce projet repose sur le travail de la communauté et sur des outils open-source exceptionnels.
+          </p>
+        </div>
+        <div className="card__footer">
+          <a href="./community/acknowledgments" className="button button--secondary button--block">
+            Découvrir les contributeurs
+          </a>
+        </div>
+      </div>
     </div>
-    <div className="col">
-      <FontAwesomeIcon icon={faEnvelope} /> Vous souhaitez discuter en privé ou proposer une collaboration ?<br/>
-      Contactez-moi directement à : **[alex.baker.1@ulaval.ca](mailto:alex.baker.1@ulaval.ca)**
+    {/* Carte pour le Contact */}
+    <div className="col col--6 margin-bottom--lg">
+      <div className="card card--secondary">
+        <div className="card__header">
+          <h4><FontAwesomeIcon icon={faEnvelope} /> Me Contacter</h4>
+        </div>
+        <div className="card__body">
+          <p>
+            Vous souhaitez discuter en privé, proposer une collaboration, ou poser une question spécifique ?
+          </p>
+        </div>
+        <div className="card__footer">
+          <a href="mailto:alex.baker.1@ulaval.ca" className="button button--secondary button--block">
+            Envoyer un e-mail
+          </a>
+        </div>
+      </div>
     </div>
   </div>
 </div>
