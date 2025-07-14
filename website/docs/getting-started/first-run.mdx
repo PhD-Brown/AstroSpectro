@@ -6,7 +6,7 @@ sidebar_position: 2
 <!-- Complet for v0.1.0-alpha release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faRocket, faDownload, faCogs, faPoll, faSpinner } from '@fortawesome/free-solid-svg-icons'
+import { faRocket, faDownload, faCogs, faPoll, faSpinner, faTrophy } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
 # <FontAwesomeIcon icon={faSpinner} /> Premier Lancement : De A à Z
@@ -29,7 +29,7 @@ Maintenant que votre environnement est configuré, nous allons lancer le pipelin
         <li>Ce notebook utilise le module <code>SmartDownloader</code> pour récupérer les spectres.</li>
         <li>Exécutez les cellules pour télécharger un premier lot. Un petit lot de <strong>100 à 500 spectres</strong> est suffisant pour un premier test.</li>
       </ol>
-      <Admonition type="tip" title="Conseil">
+      <Admonition type="note" title="Conseil">
         <p>
           Le downloader est "intelligent" : il garde en mémoire les plans d'observation déjà téléchargés (<code>downloaded_plans.csv</code>) pour ne pas les reprendre deux fois.
         </p>
@@ -69,5 +69,19 @@ Maintenant que votre environnement est configuré, nous allons lancer le pipelin
       </ul>
       <p>Directement dans le notebook, vous verrez également apparaître un <strong>rapport de classification</strong> et une <strong>matrice de confusion</strong> pour une première analyse des performances.</p>
     </div>
+  </div>
+</div>
+
+### 🎉 Vous avez terminé le Démarrage Rapide !
+
+<div className="congrats-box">
+  <div className="congrats-icon">
+    <FontAwesomeIcon icon={faTrophy} size="4x" />
+  </div>
+  <div className="congrats-content">
+    <h3>Félicitations !</h3>
+    <p>
+      Vous avez exécuté le pipeline de bout en bout et obtenu vos premières classifications. Vous êtes maintenant prêt à explorer le projet plus en profondeur !
+    </p>
   </div>
 </div>

@@ -4,22 +4,76 @@ title: Extraction des features
 sidebar_label: Extraction des features
 ---
 
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faWandSparkles, faSearchLocation, faMagic, faFileExport } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-<Admonition type="info" title="🚧 Page en construction">
-  <div style={{
-    fontSize: '1.05rem',
-    padding: '0.6em 0',
-    textAlign: 'center',
-    lineHeight: '1.7'
-  }}>
-    <br />Cette page est en cours de rédaction et sera complétée prochainement.<br/>
-    Du contenu détaillé, des exemples concrets et des résultats récents y seront ajoutés.<br/><br/>
-    <span style={{
-      fontStyle: 'italic',
-      color: '#777'
-    }}>
-      Merci de votre patience — revenez bientôt ou <a href="/AstroSpectro/docs/community/contributing">contribuez</a> si vous le souhaitez !
-    </span>
-  </div>
+# <FontAwesomeIcon icon={faFileExport} /> Guide : Extraction des Features
+
+Cette étape est le cœur de l'approche "hybride" (physique + ML) du pipeline. Au lieu de donner le spectre brut à un modèle, nous extrayons des informations physiquement pertinentes : la présence et la position des principales raies spectrales.
+
+Ce processus est géré par les classes `PeakDetector` et `FeatureEngineer`.
+
+
+## <FontAwesomeIcon icon={faSearchLocation} /> Étape 1 : Détection des Pics (Raies)
+
+Le module `PeakDetector` est chargé d'identifier les minima locaux significatifs dans le spectre normalisé, qui correspondent à des raies d'absorption.
+
+1.  **Inversion du Flux :** Les raies d'absorption sont des "creux". Pour les trouver avec un algorithme de détection de pics, on inverse le flux (`-flux`). Les creux deviennent des pics.
+2.  **Détection avec SciPy :** La fonction `scipy.signal.find_peaks` est utilisée pour localiser tous les pics qui dépassent un certain seuil de **proéminence**. Ce paramètre est crucial pour ne garder que les raies significatives et ignorer le bruit.
+3.  **Matching avec les Raies Connues :** La liste des pics détectés est ensuite comparée à un dictionnaire de raies astrophysiques cibles (Hα, Hβ, CaII K&H). Pour chaque raie cible, le script cherche s'il existe un pic détecté à proximité (dans une fenêtre de tolérance, par ex. ±30 Å).
+
+Le résultat est un dictionnaire qui, pour chaque raie cible, indique la longueur d'onde exacte du pic trouvé, ou `None` si aucun pic correspondant n'a été trouvé.
+
+```python title="Exemple de sortie du PeakDetector"
+matched_lines = {
+    "Hα": 6565.2,
+    "Hβ": None,
+    "CaII K": 3932.8,
+    "CaII H": 3969.1
+}
+```
+
+<Admonition type="info" title="Interprétation">
+Dans cet exemple, le spectre présente bien des raies Hα et Calcium, mais pas de raie Hβ détectable (peut-être une étoile de type tardif ou un spectre bruité dans le bleu).
 </Admonition>
+
+## <FontAwesomeIcon icon={faMagic} /> Étape 2 : Construction du Vecteur de Features
+
+Le dictionnaire de raies est informatif, mais pas directement utilisable par un modèle de Machine Learning. Le module FeatureEngineer le transforme en un vecteur numérique simple.
+Logique Actuelle (v0.1.0) : Présence/Absence
+
+<details>
+  <summary>💡 Détails sur les Features Binaires</summary> 
+  <div>
+    <p>Pour chaque raie cible (Hα, Hβ, CaII K, CaII H), on crée une feature binaire :</p>
+    <ul>
+      <li><strong>1</strong> si un pic a été trouvé (la valeur dans le dictionnaire n'est pas <code>None</code>).</li>
+      <li><strong>0</strong> si la raie est absente.</li>
+    </ul>
+  </div>
+</details>
+
+Pour l'exemple ci-dessus, le vecteur de features final serait : [1, 0, 1, 1].
+Ce vecteur simple capture la "signature" de base du spectre, qui est déjà très discriminante pour séparer les types spectraux.
+
+``` python title="src/pipeline/feature_engineering.py - Simplifié"
+def extract_features(self, matched_lines):
+    # self.lines = ["Hα", "Hβ", "CaII K", "CaII H"]
+    features = []
+    for line_name in self.lines:
+        if matched_lines.get(line_name) is not None:
+            features.append(1)
+        else:
+            features.append(0)
+    return features
+```
+<br/>
+
+:::note Pistes d'Amélioration Futures
+Ceci est la version la plus simple de l'extraction de features. La Roadmap prévoit des améliorations majeures :
+Extraire plus de raies (He II, G-band, TiO...).
+Mesurer les propriétés physiques de chaque raie (FWHM, profondeur, largeur équivalente) pour créer des features beaucoup plus riches.
+Calculer des ratios entre l'intensité de différentes raies.
+:::

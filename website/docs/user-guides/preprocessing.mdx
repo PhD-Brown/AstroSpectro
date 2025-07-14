@@ -4,22 +4,72 @@ title: Prétraitement
 sidebar_label: Prétraitement
 ---
 
+<!-- Compléter avec la photo nécessaire -->
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faMagicWandSparkles, faCogs, faEye, faMagic } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-<Admonition type="info" title="🚧 Page en construction">
-  <div style={{
-    fontSize: '1.05rem',
-    padding: '0.6em 0',
-    textAlign: 'center',
-    lineHeight: '1.7'
-  }}>
-    <br />Cette page est en cours de rédaction et sera complétée prochainement.<br/>
-    Du contenu détaillé, des exemples concrets et des résultats récents y seront ajoutés.<br/><br/>
-    <span style={{
-      fontStyle: 'italic',
-      color: '#777'
-    }}>
-      Merci de votre patience — revenez bientôt ou <a href="/AstroSpectro/docs/community/contributing">contribuez</a> si vous le souhaitez !
-    </span>
-  </div>
+# <FontAwesomeIcon icon={faMagic} /> Guide : Prétraitement des Spectres
+
+> Un spectre brut issu d'un télescope n'est pas directement utilisable pour le Machine Learning. Ce guide explique comment le pipeline **AstroSpectro** nettoie et normalise chaque spectre pour le préparer à l'extraction de features.
+
+## <FontAwesomeIcon icon={faCogs} /> Le Module `SpectraPreprocessor`
+
+Toute la logique de prétraitement est encapsulée dans la classe `SpectraPreprocessor` du fichier `src/pipeline/preprocessor.py`. Le pipeline principal, orchestré par le notebook, fait appel aux méthodes de cette classe pour chaque spectre du lot.
+
+Le processus se déroule en deux étapes principales.
+
+### Étape 1 : Chargement du Spectre
+
+La première étape consiste à lire le fichier `.fits.gz` et à en extraire les deux informations essentielles : le flux et la longueur d'onde.
+
+-   **Extraction du Flux :** Le flux (l'intensité lumineuse) est extrait de la première ligne de la matrice de données du fichier FITS.
+-   **Reconstruction de la Longueur d'Onde :** L'axe des longueurs d'onde n'est pas stocké directement. Il est reconstruit à partir des mots-clés `COEFF0` et `COEFF1` présents dans l'en-tête (header) FITS, qui définissent une échelle log-linéaire.
+
+```python title="src/pipeline/preprocessor.py - Exemple simplifié de chargement"
+def load_spectrum(self, hdul):
+    flux = hdul[0].data[0]
+    
+    # Reconstitution de l'axe lambda en Angströms
+    header = hdul[0].header
+    loglam = header['COEFF0'] + np.arange(len(flux)) * header['COEFF1']
+    wavelength = 10**loglam
+    
+    return wavelength, flux
+```
+
+### Étape 2 : Normalisation du Flux
+
+Les étoiles ont des brillances intrinsèques très différentes. Pour les comparer sur une base équitable, il est essentiel de normaliser leurs spectres.
+
+- **Méthode** : Le pipeline applique une normalisation simple mais robuste en divisant l'ensemble du flux par sa valeur médiane.
+- **Objectif** : Cette opération ramène la majorité des spectres à une échelle de flux autour de 1.0, ce qui atténue les différences de magnitude absolue et met en valeur les variations relatives des raies spectrales par rapport au continuum.
+
+```Python title="src/pipeline/preprocessor.py - Normalisation"
+def normalize_spectrum(self, flux):
+    median_flux = np.median(flux)
+    if median_flux > 0:
+        return flux / median_flux
+    return flux
+```
+
+<FontAwesomeIcon icon={faEye} /> Visualisation de l'Impact
+
+<Admonition type="info" title="Avant / Après Normalisation">
+
+<p>L'image ci-dessous illustre l'effet de la normalisation. À gauche, deux spectres bruts d'étoiles de magnitudes différentes. À droite, les mêmes deux spectres après normalisation. On peut maintenant comparer directement la forme de leurs raies.</p>
+
+{/* Remplacez par une vraie image de votre projet quand vous en aurez une */}
+
+<img src="/img/placeholder-avant-apres.png" alt="Exemple de normalisation d'un spectre" />
 </Admonition>
+
+<br/>
+
+:::note Pistes d'Amélioration Futures
+Le prétraitement actuel est volontairement simple. La Roadmap du projet prévoit des améliorations futures comme :
+Un ajustement plus fin du continuum.
+Des filtres de débruitage (denoising) comme Savitzky-Golay.
+La correction de l'extinction interstellaire.
+:::
