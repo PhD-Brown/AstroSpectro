@@ -4,22 +4,45 @@ title: Visualisation
 sidebar_label: Visualisation
 ---
 
+<!-- Compléter avec la photo nécessaire -->
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faChartPie, faEye, faChartLine } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-<Admonition type="info" title="🚧 Page en construction">
-  <div style={{
-    fontSize: '1.05rem',
-    padding: '0.6em 0',
-    textAlign: 'center',
-    lineHeight: '1.7'
-  }}>
-    <br />Cette page est en cours de rédaction et sera complétée prochainement.<br/>
-    Du contenu détaillé, des exemples concrets et des résultats récents y seront ajoutés.<br/><br/>
-    <span style={{
-      fontStyle: 'italic',
-      color: '#777'
-    }}>
-      Merci de votre patience — revenez bientôt ou <a href="/AstroSpectro/docs/community/contributing">contribuez</a> si vous le souhaitez !
-    </span>
-  </div>
+# <FontAwesomeIcon icon={faChartPie} /> Guide : Visualisation
+
+La visualisation est essentielle pour comprendre les données, déboguer le pipeline et interpréter les résultats du modèle. Ce guide vous présente les outils de visualisation disponibles dans le projet.
+
+## <FontAwesomeIcon icon={faEye} /> Analyse Exploratoire avec `02_tools_and_visuals.ipynb`
+
+Le notebook **`notebooks/02_tools_and_visuals.ipynb`** est votre boîte à outils principale pour l'exploration visuelle. Il vous permet de :
+
+-   **Visualiser un spectre individuel :** Chargez n'importe quel fichier FITS et affichez son spectre pour inspecter son allure générale, la présence de bruit ou des raies particulières.
+-   **Superposer les raies détectées :** Après avoir lancé le `PeakDetector` sur un spectre, vous pouvez superposer les positions des raies détectées (Hα, Hβ, etc.) directement sur le graphique du spectre pour valider visuellement la détection.
+-   **Analyser les distributions :** Créez des histogrammes pour visualiser la distribution de certaines métadonnées, comme le rapport signal/bruit (SNR) de vos spectres, afin d'évaluer la qualité générale de votre jeu de données.
+
+<Admonition type="info" title="Exemple de Visualisation">
+  <p>L'image ci-dessous montre un exemple de spectre avec les raies d'absorption Hα, CaII H et CaII K identifiées par le pipeline et superposées sur le graphique.</p>
+  {/* Remplacez par une vraie image générée par votre notebook */}
+  <img src="/img/placeholder-spectrum-plot.png" alt="Exemple de visualisation d'un spectre avec raies détectées" />
+</Admonition>
+
+## <FontAwesomeIcon icon={faChartLine} /> Évaluation des Performances du Modèle
+
+Après l'entraînement, il est crucial de visualiser les performances du modèle pour comprendre ses forces et ses faiblesses.
+
+### Matrice de Confusion
+
+Générée automatiquement lors de l'appel à la méthode `train_and_evaluate` de la classe `SpectralClassifier`, la matrice de confusion est l'outil le plus important pour l'analyse des erreurs.
+
+-   **Lecture :** La diagonale principale montre les classifications correctes. Les cases hors de la diagonale montrent les erreurs (par exemple, combien de spectres de type 'G' ont été incorrectement classifiés comme 'K').
+-   **Bibliothèque :** Elle est générée en utilisant `Seaborn` et `Matplotlib` pour un rendu clair et lisible.
+
+### Importance des Features (à venir)
+
+<Admonition type="caution" title="En Développement">
+  <p>
+    La <strong>[Roadmap](../../docs/community/roadmap)</strong> prévoit l'ajout de graphiques montrant l'importance de chaque feature (quelle raie est la plus utile pour la classification ?). Pour les modèles de type "forêt d'arbres", comme Random Forest, cette information est facilement accessible et très instructive.
+  </p>
 </Admonition>
