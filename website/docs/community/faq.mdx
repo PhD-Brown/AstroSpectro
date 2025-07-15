@@ -1,27 +1,88 @@
 ---
-id: faq
+id: Foire Aux Questions (FAQ)
 title: Foire aux questions
 sidebar_position: 5
 ---
 
-<!-- To be completed -->
+<!-- Complet for v0.1.0-alpha release -->
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faQuestionCircle, faDatabase, faCode, faBrain } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-<Admonition type="info" title="🚧 Page en construction">
-  <div style={{
-    fontSize: '1.05rem',
-    padding: '0.6em 0',
-    textAlign: 'center',
-    lineHeight: '1.7'
-  }}>
-    <br />Cette page est en cours de rédaction et sera complétée prochainement.<br/>
-    Du contenu détaillé, des exemples concrets et des résultats récents y seront ajoutés.<br/><br/>
-    <span style={{
-      fontStyle: 'italic',
-      color: '#777'
-    }}>
-      Merci de votre patience — revenez bientôt ou <a href="/AstroSpectro/docs/community/contributing">contribuez</a> si vous le souhaitez !
-    </span>
-  </div>
+# <FontAwesomeIcon icon={faQuestionCircle} /> Foire Aux Questions (FAQ)
+
+Bienvenue dans la FAQ ! Vous trouverez ici les réponses aux questions les plus fréquemment posées sur le projet **AstroSpectro**.
+
+<Admonition type="info" title="Vous ne trouvez pas votre réponse ?">
+  <p>
+    Si votre question n'est pas listée ici, n'hésitez pas à <strong><a href="https://github.com/PhD-Brown/AstroSpectro/issues/new/choose">ouvrir une Issue sur GitHub</a></strong> pour la poser à la communauté. Votre question pourrait aider d'autres personnes !
+  </p>
 </Admonition>
+
+---
+
+### <FontAwesomeIcon icon={faDatabase} /> Questions sur les Données
+
+<details>
+  <summary>Puis-je utiliser ce pipeline avec d'autres données que LAMOST DR5 ?</summary>
+  <div>
+    <p>
+      <strong>Pour l'instant, le pipeline est fortement optimisé pour le format spécifique des fichiers FITS de LAMOST DR5</strong> (notamment la façon dont le flux et la longueur d'onde sont stockés dans les en-têtes).
+    </p>
+    <p>
+      Cependant, l'architecture est modulaire. Pour adapter le pipeline à d'autres relevés (comme SDSS), il suffirait principalement de modifier la méthode de chargement dans le module <code>SpectraPreprocessor</code>. Le support multi-survey est une des grandes ambitions listées dans notre <a href="./roadmap">Roadmap</a>.
+    </p>
+  </div>
+</details>
+
+<details>
+  <summary>Quelle est la taille approximative des données à télécharger ?</summary>
+  <div>
+    <p>
+      Le relevé complet de LAMOST DR5 est immense (plusieurs Téraoctets). Heureusement, vous n'avez pas besoin de tout télécharger !
+    </p>
+    <p>
+      Le pipeline est conçu pour fonctionner par lots. Pour un premier test ou un entraînement de base, un lot de <strong>quelques milliers de spectres (soit quelques Gigaoctets)</strong> est amplement suffisant pour obtenir des résultats significatifs. Le script de téléchargement vous permet de fixer des limites pour contrôler la quantité de données récupérées.
+    </p>
+  </div>
+</details>
+
+---
+
+### <FontAwesomeIcon icon={faCode} /> Questions Techniques
+
+<details>
+  <summary>Pourquoi le projet est-il structuré avec des notebooks ET des scripts Python dans <code>src/</code> ?</summary>
+  <div>
+    <p>
+      C'est un choix d'architecture délibéré pour combiner le meilleur des deux mondes :
+    </p>
+    <ul>
+      <li>Les <strong>scripts Python dans <code>src/</code></strong> contiennent la logique métier pure, organisée en classes modulaires et testables. C'est le "moteur" du pipeline.</li>
+      <li>Les <strong>notebooks Jupyter</strong> servent d'interface utilisateur et de "chef d'orchestre". Ils permettent d'appeler la logique des modules de manière interactive, de visualiser les étapes intermédiaires, et de documenter un workflow expérimental.</li>
+    </ul>
+    <p>Cette séparation rend le code plus robuste, plus facile à maintenir et à réutiliser.</p>
+  </div>
+</details>
+
+---
+
+### <FontAwesomeIcon icon={faBrain} /> Questions sur le Machine Learning
+
+<details>
+  <summary>Pourquoi utiliser Random Forest et pas un modèle plus complexe comme un CNN ?</summary>
+  <div>
+    <p>
+      Le choix de <strong>Random Forest</strong> comme modèle de base est intentionnel pour cette première version :
+    </p>
+    <ul>
+      <li><strong>Interprétabilité :</strong> Il est facile de mesurer l'importance des features (quelles raies sont les plus utiles ?), ce qui est crucial dans un contexte scientifique.</li>
+      <li><strong>Robustesse :</strong> Il fonctionne très bien avec un nombre limité de features et est moins sujet au sur-apprentissage que des modèles plus complexes.</li>
+      <li><strong>Rapidité :</strong> Il est très rapide à entraîner, ce qui permet des cycles d'itération rapides.</li>
+    </ul>
+    <p>
+      Cela dit, le benchmarking de modèles plus complexes comme des <strong>CNN 1D</strong> est une étape clé de notre <a href="./roadmap">Roadmap</a> pour potentiellement capturer des motifs que l'extraction de features manuelle aurait manqués.
+    </p>
+  </div>
+</details>

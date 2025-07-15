@@ -1,28 +1,48 @@
 ---
 id: citing
-title: Citation
-sidebar_label: Citation
+title: Citer AstroSpectro
+sidebar_label: Citer AstroSpectro
 sidebar_position: 2
 ---
 
-<!-- To be completed -->
+<!-- Complet for v0.1.0-alpha release -->
 
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faQuoteRight, faBook } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-<Admonition type="info" title="🚧 Page en construction">
-  <div style={{
-    fontSize: '1.05rem',
-    padding: '0.6em 0',
-    textAlign: 'center',
-    lineHeight: '1.7'
-  }}>
-    <br />Cette page est en cours de rédaction et sera complétée prochainement.<br/>
-    Du contenu détaillé, des exemples concrets et des résultats récents y seront ajoutés.<br/><br/>
-    <span style={{
-      fontStyle: 'italic',
-      color: '#777'
-    }}>
-      Merci de votre patience — revenez bientôt ou <a href="/AstroSpectro/docs/community/contributing">contribuez</a> si vous le souhaitez !
-    </span>
-  </div>
+# <FontAwesomeIcon icon={faQuoteRight} /> Citer AstroSpectro
+
+Merci de considérer l'utilisation de ce projet dans vos travaux de recherche. Si vous utilisez **AstroSpectro**, nous vous serions reconnaissants de bien vouloir le citer. La citation académique est essentielle pour la reconnaissance et la pérennité des logiciels open-source en science.
+
+## <FontAwesomeIcon icon={faBook} /> Format Préféré (BibTeX)
+
+Pour toute publication scientifique, le format BibTeX est le plus approprié. Vous pouvez copier-coller l'entrée suivante dans votre fichier `.bib`.
+
+<Admonition type="info" title="Entrée BibTeX">
+
+```bibtex
+@misc{baker2025astrospectro,
+  author       = {Baker, Alex},
+  title        = {{AstroSpectro: A Pipeline for Automated Stellar Spectral Classification}},
+  year         = {2025},
+  publisher    = {GitHub},
+  journal      = {GitHub repository},
+  howpublished = {\url{https://github.com/PhD-Brown/AstroSpectro}}
+}
+```
+
 </Admonition>
+
+:::note Bientôt : un DOI via Zenodo !
+Nous prévoyons de créer une archive officielle de ce projet sur Zenodo pour la sortie de la version 1.0. Cela fournira un DOI (Digital Object Identifier), qui est une référence permanente et encore plus stable pour la citation de logiciels.
+:::
+
+### Citation simple
+Pour une référence rapide dans un rapport, un article de blog ou autre, vous pouvez utiliser le format texte suivant :
+
+```Baker, A. (2025). AstroSpectro: A Pipeline for Automated Stellar Spectral Classification. [Software]. Disponible sur : https://github.com/PhD-Brown/AstroSpectro```
+
+### Article Associé (à venir)
+
+> Si ce travail est associé à une publication dans une revue scientifique, la référence sera ajoutée ici.

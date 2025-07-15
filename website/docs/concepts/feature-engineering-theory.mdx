@@ -1,25 +1,61 @@
 ---
 id: feature-engineering-theory
-title: Module de features
-sidebar_label: Features (module)
+title: Théorie de l'Extraction de Features
+sidebar_label: Extraction de Features
 ---
 
+<!-- ajouter des exemples, graphique et un peu plus d'explication sur le code, mais bon pour le moment -->
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faCubes, faAtom, faLightbulb } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-<Admonition type="info" title="🚧 Page en construction">
-  <div style={{
-    fontSize: '1.05rem',
-    padding: '0.6em 0',
-    textAlign: 'center',
-    lineHeight: '1.7'
-  }}>
-    <br />Cette page est en cours de rédaction et sera complétée prochainement.<br/>
-    Du contenu détaillé, des exemples concrets et des résultats récents y seront ajoutés.<br/><br/>
-    <span style={{
-      fontStyle: 'italic',
-      color: '#777'
-    }}>
-      Merci de votre patience — revenez bientôt ou <a href="/AstroSpectro/docs/community/contributing">contribuez</a> si vous le souhaitez !
-    </span>
-  </div>
+# <FontAwesomeIcon icon={faCubes} /> Théorie de l'Extraction de Features
+
+L'extraction de features (ou "feature engineering") est sans doute l'étape la plus cruciale de ce pipeline. Elle consiste à transformer un signal complexe et de haute dimension (un spectre de milliers de points) en un petit nombre de valeurs numériques pertinentes (un "vecteur de features") que le modèle de Machine Learning peut utiliser.
+
+## <FontAwesomeIcon icon={faLightbulb} /> Notre Approche : Physique d'Abord (Physics-Informed)
+
+Plutôt que d'adopter une approche "boîte noire" (comme donner directement le spectre brut à un réseau de neurones profond), notre pipeline utilise une approche **hybride et interprétable** :
+
+1.  **Informer par la Physique :** Nous utilisons notre connaissance de l'astrophysique pour identifier les régions les plus importantes d'un spectre : les **raies spectrales**.
+2.  **Quantifier l'Information :** Nous ne nous contentons pas de savoir qu'une raie existe, nous la transformons en une ou plusieurs **features numériques**.
+3.  **Apprentissage Supervisé :** Nous donnons ce vecteur de features, qui est beaucoup plus petit et plus riche en information que le spectre brut, à un modèle de ML classique (comme Random Forest) pour qu'il apprenne les relations entre ces features et le type spectral.
+
+<Admonition type="info" title="Avantages de cette approche">
+  <ul>
+    <li><strong>Interprétabilité :</strong> Il est beaucoup plus facile de comprendre pourquoi un modèle a pris une décision en regardant l'importance de la feature "Présence de Hα" plutôt qu'en analysant des milliers de poids dans un réseau de neurones.</li>
+    <li><strong>Robustesse :</strong> En se concentrant sur des features physiques, le modèle est moins sensible au bruit et aux variations instrumentales du spectre brut.</li>
+    <li><strong>Efficacité :</strong> Les modèles classiques sont beaucoup plus rapides à entraîner sur de petits vecteurs de features que des modèles profonds sur des spectres complets.</li>
+  </ul>
 </Admonition>
+
+## <FontAwesomeIcon icon={faAtom} /> Types de Features
+
+Le pipeline est conçu pour extraire plusieurs niveaux de features, des plus simples aux plus complexes.
+
+#### Version Actuelle (v0.1.0-alpha) : Features Binaires
+
+Dans la version actuelle, l'approche est volontairement simple pour valider le concept :
+
+-   **Feature :** Présence ou absence de raies spectrales clés (Hα, Hβ, CaII K&H).
+-   **Implémentation :** Le vecteur de features est un ensemble de 0 et de 1.
+-   **Objectif :** Valider que cette information de base est déjà suffisante pour obtenir une classification meilleure que le hasard.
+
+#### Roadmap : Features Physiques et Avancées
+
+Les prochaines versions du pipeline enrichiront considérablement ce vecteur de features en extrayant des informations plus quantitatives :
+
+-   **Mesures de Raies :**
+    -   Largeur à mi-hauteur (FWHM)
+    -   Profondeur ou hauteur de la raie
+    -   Largeur équivalente (Equivalent Width)
+-   **Features du Continuum :**
+    -   Pente du pseudo-continuum (liée à la température)
+    -   Indices de couleur spectraux
+-   **Intégration des Métadonnées :**
+    -   Utilisation directe du rapport signal/bruit (SNR) et des magnitudes comme features.
+
+:::tip
+L'objectif final est de construire un vecteur de features qui capture à la fois les informations des **raies discrètes** et celles du **continuum global** pour une classification plus précise et robuste.
+:::
