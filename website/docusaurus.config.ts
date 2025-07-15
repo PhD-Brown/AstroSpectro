@@ -25,6 +25,14 @@ const config: Config = {
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
 
+  // NOUVELLE SECTION POUR ACTIVER MERMAID
+  markdown: {
+    mermaid: true,
+  },
+
+  // NOUVEAU THÈME AJOUTÉ À LA LISTE
+  themes: ['@docusaurus/theme-mermaid'],
+
   i18n: {
     defaultLocale: 'fr',
     locales: ['fr', 'en'],
