@@ -57,15 +57,11 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Vous pouvez ajouter une image pour les réseaux sociaux ici si vous en avez une
-    // image: 'img/social-card.png', 
-
-    // L'OBJET MANQUANT EST ICI
     navbar: {
       title: 'Astro Spectro Docs',
       logo: {
         alt: 'Logo PhD-Brown AB',
-        src: 'img/logo.png', // Assurez-vous que ce chemin est correct
+        src: 'img/logo.png',
       },
       items: [
         {
@@ -86,41 +82,68 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Navigation Rapide',
           items: [
             {
-              label: 'Introduction',
-              to: '/docs/',
+              label: 'Démarrage Rapide',
+              to: '/docs/getting-started',
             },
             {
-              label: 'Guides Pratiques',
+              label: "Guides d'Utilisation",
               to: '/docs/user-guides',
             },
-          ],
-        },
-        {
-          title: 'Contact',
-          items: [
             {
-              label: 'alex.baker.1@ulaval.ca',
-              href: 'mailto:alex.baker.1@ulaval.ca',
+              label: 'Référence API',
+              to: '/docs/api',
             },
           ],
         },
         {
-          title: 'Liens',
+          title: 'Communauté',
+          items: [
+            {
+              label: 'Comment Contribuer',
+              to: '/docs/community/contributing',
+            },
+            {
+              label: 'Feuille de Route (Roadmap)',
+              to: '/docs/community/roadmap',
+            },
+            {
+              label: 'Foire Aux Questions (FAQ)',
+              to: '/docs/community/faq',
+            },
+          ],
+        },
+        {
+          title: 'Plus',
           items: [
             {
               label: 'GitHub',
               href: 'https://github.com/PhD-Brown/AstroSpectro',
             },
+            {
+              label: 'Signaler un problème',
+              href: 'https://github.com/PhD-Brown/AstroSpectro/issues/new/choose',
+            },
+            {
+              label: 'Me Contacter',
+              href: 'mailto:alex.baker.1@ulaval.ca',
+            },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Alex Baker. Built with Docusaurus.`,
+      // Logo et copyright en dessous des colonnes
+      logo: {
+        alt: 'Logo PhD-Brown AB',
+        src: 'img/logo.png',
+        href: 'https://github.com/PhD-Brown',
+        width: 50,
+        height: 50,
+      },
+      copyright: `Version 0.1.0-alpha | Copyright © ${new Date().getFullYear()} Alex Baker. Built with Docusaurus. <br/> Licence MIT.`,
     },
-
-    // Vos autres configurations sont bonnes aussi
+    
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
