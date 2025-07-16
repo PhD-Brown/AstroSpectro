@@ -24,7 +24,7 @@
   </a>
 </p>
 
-<h1 align="center">Astro-Spectro Classification Pipeline</h1>
+<h1 align="center">AstroSpectro Classification Pipeline</h1>
 
 <p align="center">
   <strong>A modular end-to-end pipeline for automated stellar spectral classification using LAMOST DR5 data. Built for robustness, transparency, and scientific impact.</strong>
