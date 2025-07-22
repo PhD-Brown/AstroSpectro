@@ -24,6 +24,8 @@ Cette page présente le flux de travail complet du projet **AstroSpectro**, de l
 ---
 config:
   layout: fixed
+  theme: dark
+  look: neo
 ---
 flowchart TD
  subgraph subGraph0["**Phase 1 : Acquisition**"]
@@ -81,12 +83,16 @@ flowchart TD
     classDef blue fill:#A4B8C4, stroke:#506070, color:#223040
     classDef gray fill:#6E8387, stroke:#49575a, color:#ffffff
     click DL "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/dr5_downloader.py"
+    click LOGS "https://github.com/PhD-Brown/AstroSpectro/blob/main/data/catalog/downloaded_plans.csv"
     click SEL "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/dataset_builder.py"
+    click SELLOG "https://github.com/PhD-Brown/AstroSpectro/blob/main/data/catalog/trained_spectra.csv"
     click CATALOG "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/generate_catalog_from_fits.py"
     click PREPROC "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/preprocessor.py"
     click FEAT "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/peak_detector.py"
     click TRAIN "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/classifier.py"
-    linkStyle 1 stroke:#000000,fill:none
+    click UPDLOG "https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/dataset_builder.py"
+    click REPORTS "https://github.com/PhD-Brown/AstroSpectro/tree/main/data/models"
+    linkStyle 1 stroke:#FFFFFF,fill:none
     L_DL_LOGS_0@{ animation: slow } 
     L_DL_SEL_0@{ animation: slow } 
     L_SEL_SELLOG_0@{ animation: slow } 
@@ -97,6 +103,7 @@ flowchart TD
     L_TRAIN_REPORTS_0@{ animation: slow } 
     L_UPDLOG_SELLOG_0@{ animation: slow } 
     L_PREPROC_subGraph3_0@{ animation: slow }
+
 ```
 
 </div>

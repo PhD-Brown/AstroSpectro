@@ -21,17 +21,17 @@ Maintenant que votre environnement est configuré, nous allons lancer le pipelin
     </div>
     <div className="card__body">
       <p>
-        Si c'est votre toute première exécution, le dossier <code>data/raw/</code> est probablement vide. Le pipeline a besoin de spectres pour fonctionner.
+        Si c'est votre toute première exécution, le dossier <code>[data/raw/](https://github.com/PhD-Brown/AstroSpectro/tree/main/data/raw)</code> est probablement vide. Le pipeline a besoin de spectres pour fonctionner.
       </p>
       <ol>
         <li><strong>Lancez Jupyter Lab ou Jupyter Notebook</strong> depuis votre terminal (où l'environnement <code>venv</code> est toujours actif).</li>
-        <li>Ouvrez le notebook <code>notebooks/01_download_spectra.ipynb</code>.</li>
+        <li>Ouvrez le notebook <code>[notebooks/01_download_spectra.ipynb](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/01_download_spectra.ipynb)</code>.</li>
         <li>Ce notebook utilise le module <code>SmartDownloader</code> pour récupérer les spectres.</li>
         <li>Exécutez les cellules pour télécharger un premier lot. Un petit lot de <strong>100 à 500 spectres</strong> est suffisant pour un premier test.</li>
       </ol>
       <Admonition type="note" title="Conseil">
         <p>
-          Le downloader est "intelligent" : il garde en mémoire les plans d'observation déjà téléchargés (<code>downloaded_plans.csv</code>) pour ne pas les reprendre deux fois.
+          Le downloader est "intelligent" : il garde en mémoire les plans d'observation déjà téléchargés (<code>[downloaded_plans.csv](https://github.com/PhD-Brown/AstroSpectro/blob/main/data/catalog/downloaded_plans.csv)</code>) pour ne pas les reprendre deux fois.
         </p>
       </Admonition>
     </div>
@@ -44,7 +44,7 @@ Maintenant que votre environnement est configuré, nous allons lancer le pipelin
     <div className="card__body">
       Une fois que vous avez des données dans <code>data/raw/</code>, vous pouvez lancer le workflow complet.
       <ol>
-        <li>Ouvrez le notebook principal : <code>notebooks/00_master_pipeline.ipynb</code>.</li>
+        <li>Ouvrez le notebook principal : <code>[notebooks/00_master_pipeline.ipynb](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/00_master_pipeline.ipynb)</code>.</li>
         <li>Exécutez toutes les cellules. Vous verrez des barres de progression et des messages informatifs à chaque étape.</li>
       </ol>
       <p>Ce notebook orchestre les étapes suivantes :</p>

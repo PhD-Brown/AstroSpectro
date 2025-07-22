@@ -4,6 +4,7 @@ import os
 import requests
 import pandas as pd
 import argparse
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from time import sleep
@@ -90,35 +91,64 @@ class SmartDownloader:
 
     def run_download(self):
         """
-        Étape 2 : Télécharge les fichiers en round-robin.
+        Étape 2 : Télécharge les fichiers en round-robin avec une barre de progression globale.
         """
         if not self.download_queue:
             print("\nFile de téléchargement vide. Rien à faire.")
             return
 
+        print("\n--- [Phase 2/3] Calcul des spectres à télécharger ---")
+        
+        # On calcule d'abord le nombre total de fichiers qui manquent VRAIMENT.
+        # Cela nous permettra d'initialiser tqdm avec le bon total.
+        files_to_download_queue = []
+        for plan_fits_urls in self.download_queue:
+            for file_url in plan_fits_urls:
+                plan_name = file_url.split('/')[-2]
+                filename = file_url.split('/')[-1]
+                dest_dir = os.path.join(self.raw_data_dir, plan_name)
+                dest_path = os.path.join(dest_dir, filename)
+                if not os.path.exists(dest_path):
+                    files_to_download_queue.append(file_url)
+        
+        total_to_download = len(files_to_download_queue)
+        
+        # Appliquer la limite --max-spectres au total calculé
+        if self.max_spectra is not None:
+            total_to_download = min(total_to_download, self.max_spectra)
+
+        if total_to_download == 0:
+            print("  > Tous les spectres cibles sont déjà présents localement.")
+            return
+            
+        print(f"  > {total_to_download} nouveaux spectres à télécharger.")
         print("\n--- [Phase 2/3] Démarrage du téléchargement en Round-Robin ---")
-        # zip_longest est parfait pour le round-robin !
+
+        # Initialisation de la barre de progression avec le total calculé
+        pbar = tqdm(total=total_to_download, desc="Téléchargement", unit="spectre")
+
+        # On garde la logique de round-robin
         for file_urls_in_round in zip_longest(*self.download_queue):
             for file_url in file_urls_in_round:
                 if file_url is None:
-                    continue # Ce plan n'a plus de fichiers à télécharger
+                    continue
 
-                # Vérifier si la limite globale de spectres est atteinte
+                # On arrête si la limite de la session est atteinte
                 if self.max_spectra and self.total_downloaded_this_session >= self.max_spectra:
+                    pbar.close()
                     print(f"\nLimite de {self.max_spectra} spectres atteinte. Arrêt du téléchargement.")
-                    return # Sortir de toute la fonction
+                    return
 
                 plan_name = file_url.split('/')[-2]
                 filename = file_url.split('/')[-1]
                 dest_dir = os.path.join(self.raw_data_dir, plan_name)
-                os.makedirs(dest_dir, exist_ok=True)
                 dest_path = os.path.join(dest_dir, filename)
 
                 if os.path.exists(dest_path):
-                    # print(f"  > Déjà présent : {filename}")
-                    continue
+                    continue # On ne fait rien, on passe au suivant
 
-                print(f"  > Téléchargement [{self.total_downloaded_this_session + 1}/{self.max_spectra or '∞'}] : {filename} (du plan {plan_name})")
+                # Si on arrive ici, c'est un fichier à télécharger
+                # pbar.set_description(f"Téléchargement de {filename}") # Optionnel: met à jour le texte de la barre
                 try:
                     with requests.get(file_url, stream=True, timeout=60) as r:
                         r.raise_for_status()
@@ -126,9 +156,14 @@ class SmartDownloader:
                             for chunk in r.iter_content(chunk_size=8192):
                                 f.write(chunk)
                     self.total_downloaded_this_session += 1
+                    pbar.update(1) # On fait avancer la barre de 1
                 except requests.RequestException as e:
-                    print(f"    -> ERREUR lors du téléchargement de {filename}: {e}")
+                    # On peut logger l'erreur sans arrêter la barre de progression
+                    pbar.write(f"    -> ERREUR lors du téléchargement de {filename}: {e}")
+                
                 sleep(0.3)
+        
+        pbar.close() # On ferme proprement la barre de progression à la fin
 
     def _update_state(self):
         """

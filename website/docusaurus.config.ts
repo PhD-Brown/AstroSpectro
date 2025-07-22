@@ -45,10 +45,15 @@ const config: Config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.ts'),
-          editUrl: undefined, // désactive le bouton “Edit this page”
+          editUrl: undefined,
         },
-        // Blog supprimé
-        blog: false,
+        blog: {
+          path: './blog',
+          routeBasePath: 'journal',
+          showReadingTime: true,
+          blogSidebarTitle: 'Dernières entrées',
+          blogSidebarCount: 'ALL',
+        },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
@@ -58,7 +63,7 @@ const config: Config = {
 
   themeConfig: {
     navbar: {
-      title: 'Astro Spectro Docs',
+      title: 'AstroSpectro Docs',
       logo: {
         alt: 'Logo PhD-Brown AB',
         src: 'img/logo.png',
@@ -69,6 +74,12 @@ const config: Config = {
           sidebarId: 'docsSidebar',
           position: 'left',
           label: 'Documentation',
+        },
+        {
+          to: '/journal',
+          activeBasePath: 'journal',
+          position: 'left',
+          label: 'Journal de Bord',
         },
         {
           href: 'https://github.com/PhD-Brown/AstroSpectro/',
