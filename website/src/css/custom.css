@@ -251,3 +251,9 @@ body[data-docs-slug='/'] li {
   font-size: 1rem;
   flex-shrink: 0; /* Empêche le cercle de rétrécir */
 }
+
+/* Réduit la taille du titre principal des articles de blog */
+.title_f1Hy {
+  font-size: 1.8rem !important;
+  /* Ajuste selon ce que tu préfères, ex : 2.2rem, 1.8rem, etc. */
+}
