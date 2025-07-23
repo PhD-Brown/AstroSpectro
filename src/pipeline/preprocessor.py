@@ -7,35 +7,27 @@ class SpectraPreprocessor:
 
     def load_spectrum(self, hdul):
         """
-        Extrait le spectre (wavelength, flux) depuis un objet HDUList déjà ouvert.
-        Cette version est spécifiquement conçue pour le format de données DR5.
+        Extrait le spectre (wavelength, flux) et l'incertitude depuis un objet HDUList.
         """
         header = hdul[0].header
         data = hdul[0].data
 
-        # --- Logique de lecture validée pour le format FITS que tu as ---
-        
-        # 1. Extraire le flux
-        # Le flux est la première ligne de la matrice de données.
-        if data.ndim < 1:
-             raise ValueError("Le tableau de données est invalide (pas de dimensions).")
+        # 1. Extraire le flux (ligne 0) et l'inverse de la variance (ligne 1)
+        if data.ndim < 2 or data.shape[0] < 2:
+             raise ValueError("Le tableau de données FITS est invalide (moins de 2 lignes).")
         flux = data[0]
+        invvar = data[1]
 
-        # 2. Calculer la longueur d'onde à partir du header
-        # Le header utilise COEFF0 et COEFF1 pour une échelle log-linéaire.
+        # 2. Calculer la longueur d'onde à partir du header (COEFF0, COEFF1)
         if 'COEFF0' in header and 'COEFF1' in header:
             loglam_start = header['COEFF0']
             loglam_step = header['COEFF1']
-            
-            # On crée un tableau de log(lambda)
             loglam = loglam_start + np.arange(len(flux)) * loglam_step
-            
-            # On le convertit en Angströms
             wavelength = 10**loglam
         else:
-            raise ValueError("Header FITS invalide : mots-clés COEFF0 ou COEFF1 manquants.")
+            raise ValueError("Header FITS invalide : COEFF0 ou COEFF1 manquants.")
             
-        return wavelength, flux
+        return wavelength, flux, invvar
 
     def normalize_spectrum(self, flux):
         """Normalisation simple du flux par la médiane."""

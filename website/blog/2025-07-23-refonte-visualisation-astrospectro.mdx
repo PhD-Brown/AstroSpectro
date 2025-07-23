@@ -1,0 +1,83 @@
+---
+title: "Refactorisation des notebooks"
+slug: refonte-visualisation-astrospectro
+authors: abaker
+tags: ["refactoring", "visualisation", "ipywidgets", "architecture", "milestone"]
+date: 2025-07-23
+---
+
+> <span style={{fontSize: "1.3rem", fontWeight: "400", color: "#AAA"}}>Vers une Suite Scientifique Modulaire pour AstroSpectro</span>
+
+
+Depuis le début du projet **AstroSpectro**, le notebook `02_tools_and_visuals.ipynb` servait de bloc-notes exploratoire. On y testait des visualisations de spectres, des détections de raies, des diagnostics. Mais avec l’accumulation des outils, le code devenait monolithique et difficile à maintenir.
+
+<!--truncate-->
+
+## Objectifs du refactoring
+
+J’ai entrepris une refonte complète avec trois objectifs en tête :
+- **Clarté** : chaque outil doit être lisible, autonome, bien nommé
+- **Réutilisabilité** : les fonctions doivent être modulaires et utilisables ailleurs
+- **Explorabilité** : l’interactivité doit rendre l’exploration plus intuitive et scientifique
+
+## Architecture finale
+
+Toute la logique est maintenant dans `src/tools/visualizer.py`, sous forme d’une classe :
+
+```python
+visualizer = AstroVisualizer(paths)
+```
+
+Chaque outil interactif (explorateur de headers, spectre augmenté, tuning des pics, carte du ciel, inspecteur de modèles) devient un simple appel :
+
+```python
+visualizer.interactive_spectrum_analyzer()
+visualizer.plot_sky_coverage()
+```
+
+## Nouveaux outils intégrés
+
+- Explorateur de Header FITS dynamique
+- Analyseur de Spectre Augmenté (flux + raies + SNR + sliders)
+- Tuning interactif des paramètres de détection (`prominence`, `fenêtre`)
+- Analyse des zéros dans les features extraites
+- Carte de couverture céleste (projection Mollweide)
+- Inspecteur de modèles `.pkl` : hyperparamètres + importance des features
+
+## Avant / Après
+
+**Par exemple le code pour l'affichage des features nul**
+
+**Avant** :
+- 500 lignes de notebook exploratoire
+- Code spaghetti difficile à relire
+
+![image info](/img/avant.png)
+
+**Après** :
+- Un notebook tableau de bord 
+- Chaque outil dans sa cellule, un appel par outil
+- Une classe modulaire importable ailleurs
+
+![image info](/img/apres.png)
+
+
+## Impact sur le projet
+
+Cette refonte me permet de :
+- Gagner du temps pour itérer sur les features et les modèles
+- Travailler comme dans un vrai labo
+- Préparer l’extension du pipeline à des spectres cubes (SITELLE, etc.)
+
+> Et surtout… continuer à m’amuser. J’ai déjà passé plus de **200h** sur AstroSpectro cet été — et je ne vois toujours pas le temps passer !
+
+## Prochaine étape
+
+- Ajouter des comparateurs de spectres
+- Exporter les analyses (PNG + PDF)
+- Générer automatiquement un mini rapport exploratoire
+- Tout ce qui se trouve dans la [Roadmap](https://phd-brown.github.io/AstroSpectro/docs/community/roadmap)
+
+> *"Je réalise aujourd’hui à quel point explorer devient plaisant quand le code disparaît derrière l’outil."*
+
+Merci à ceux qui suivent l’aventure AstroSpectro 🚀

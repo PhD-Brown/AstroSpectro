@@ -9,14 +9,20 @@ class FeatureEngineer:
         """
         Transforme les raies détectées en un vecteur de features utilisable en ML.
         Les longueurs d'onde des raies détectées deviennent des features, None devient 0.
+        La feature est maintenant la PROMINENCE (force) de la raie.
         """
         features = []
         for line in self.lines:
-            wl = matched_lines.get(line)
-            if wl is None:
-                features.append(0.0)
+            # matched_lines contient maintenant un tuple (wavelength, prominence) ou None
+            match_data = matched_lines.get(line)
+            
+            if match_data is None:
+                features.append(0.0) # La raie est absente
             else:
-                features.append(wl)
+                # On extrait la prominence (le deuxième élément du tuple)
+                wavelength, prominence = match_data
+                features.append(prominence)
+                
         return features
 
     def batch_features(self, matched_lines_list):

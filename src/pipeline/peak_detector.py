@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import find_peaks
 
 class PeakDetector:
-    def __init__(self, prominence=1.4, window=30):
+    def __init__(self, prominence=0.85, window=28):
         self.prominence = prominence
         self.window = window
         self.target_lines = {
@@ -18,28 +18,50 @@ class PeakDetector:
         Retourne les INDICES des pics, et leurs propriétés.
         """
         inverted_flux = -flux
-        # On retourne `peaks` (les indices) et non `peak_wavelengths`.
-        peaks, properties = find_peaks(inverted_flux, prominence=self.prominence)
-        return peaks, properties
-
-    def match_known_lines(self, peak_wavelengths):
+        # find_peaks retourne les indices et un dictionnaire de propriétés
+        peak_indices, properties = find_peaks(inverted_flux, prominence=self.prominence)
+        return peak_indices, properties
+    
+    def match_known_lines(self, peak_indices, peak_wavelengths, properties):
+        """
+        Associe les pics détectés aux raies connues et retourne un dictionnaire
+        contenant la longueur d'onde et la prominence du meilleur match.
+        """
         matched_lines = {}
+        # 'prominences' est une clé dans le dictionnaire des propriétés
+        peak_prominences = properties["prominences"]
+
         for name, target_wl in self.target_lines.items():
-            found = [pw for pw in peak_wavelengths if abs(pw - target_wl) <= self.window]
-            if found:
-                # On prend le pic le plus proche de la raie cible
-                closest_peak = min(found, key=lambda x: abs(x - target_wl))
-                matched_lines[name] = closest_peak
+            # Cherche les pics dans la fenêtre de tolérance
+            candidate_indices = [
+                i for i, wl in enumerate(peak_wavelengths) 
+                if abs(wl - target_wl) <= self.window
+            ]
+            
+            if candidate_indices:
+                # S'il y a plusieurs candidats, on prend le plus proéminent (le plus fort)
+                best_candidate_idx = -1
+                max_prominence = -1
+                for idx in candidate_indices:
+                    if peak_prominences[idx] > max_prominence:
+                        max_prominence = peak_prominences[idx]
+                        best_candidate_idx = idx
+                
+                # On stocke la longueur d'onde et la prominence du meilleur pic trouvé
+                best_peak_wl = peak_wavelengths[best_candidate_idx]
+                best_peak_prominence = peak_prominences[best_candidate_idx]
+                matched_lines[name] = (best_peak_wl, best_peak_prominence)
             else:
                 matched_lines[name] = None
+                
         return matched_lines
-
+    
     def analyze_spectrum(self, wavelength, flux):
-        """
-        Pipeline complet : détection puis association aux raies connues.
-        """
-        # On passe le flux normal, l'inversion est gérée à l'intérieur de detect_peaks
-        peak_indices, _ = self.detect_peaks(wavelength, flux) 
+        """Pipeline complet de détection et d'association."""
+        peak_indices, properties = self.detect_peaks(wavelength, flux)
+        if len(peak_indices) == 0:
+            return {name: None for name in self.target_lines} # Retourne un dict vide si aucun pic
+            
         peak_wavelengths = wavelength[peak_indices]
-        matched_lines = self.match_known_lines(peak_wavelengths)
+        matched_lines = self.match_known_lines(peak_indices, peak_wavelengths, properties)
         return matched_lines
