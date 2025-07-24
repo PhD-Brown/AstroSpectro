@@ -13,7 +13,7 @@ class ProcessingPipeline:
     def __init__(self, raw_data_dir, master_catalog_df):
         self.raw_data_dir = raw_data_dir
         self.preprocessor = SpectraPreprocessor()
-        self.peak_detector = PeakDetector(prominence=0.4, window=15)
+        self.peak_detector = PeakDetector(prominence=0.15, window=8)
         self.feature_engineer = FeatureEngineer()
         
         self.master_catalog = master_catalog_df
@@ -26,6 +26,8 @@ class ProcessingPipeline:
 
     def run(self, batch_paths):
         all_features_list = []
+        
+        print(f"\n--- Démarrage du pipeline de traitement pour {len(batch_paths)} spectres ---")
         for file_path in tqdm(batch_paths, desc="Traitement des spectres"):
             full_fits_path = os.path.join(self.raw_data_dir, file_path)
             try:
@@ -45,8 +47,11 @@ class ProcessingPipeline:
                 
                 # On stocke les résultats
                 record = {"file_path": file_path}
-                for line_name, feature_val in zip(self.feature_engineer.lines, features_vector):
-                    record[f"feature_{line_name.replace(' ', '')}"] = feature_val
+                
+                # Au lieu de boucler sur self.feature_engineer.lines, on boucle sur self.feature_engineer.feature_names
+                for feature_name, feature_val in zip(self.feature_engineer.feature_names, features_vector):
+                    record[feature_name] = feature_val
+                
                 all_features_list.append(record)
 
             except Exception as e:

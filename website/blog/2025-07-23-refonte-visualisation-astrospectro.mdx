@@ -9,7 +9,7 @@ date: 2025-07-23
 > <span style={{fontSize: "1.3rem", fontWeight: "400", color: "#AAA"}}>Vers une Suite Scientifique Modulaire pour AstroSpectro</span>
 
 
-Depuis le début du projet **AstroSpectro**, le notebook `02_tools_and_visuals.ipynb` servait de bloc-notes exploratoire. On y testait des visualisations de spectres, des détections de raies, des diagnostics. Mais avec l’accumulation des outils, le code devenait monolithique et difficile à maintenir.
+Depuis le début du projet **AstroSpectro**, le notebook `[02_tools_and_visuals.ipynb](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/02_tools_and_visuals.ipynb)` servait de bloc-notes exploratoire. On y testait des visualisations de spectres, des détections de raies, des diagnostics. Mais avec l’accumulation des outils, le code devenait monolithique et difficile à maintenir.
 
 <!--truncate-->
 
@@ -22,7 +22,7 @@ J’ai entrepris une refonte complète avec trois objectifs en tête :
 
 ## Architecture finale
 
-Toute la logique est maintenant dans `src/tools/visualizer.py`, sous forme d’une classe :
+Toute la logique est maintenant dans `src/tools/[visualizer.py](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/visualizer.py)`, sous forme d’une classe :
 
 ```python
 visualizer = AstroVisualizer(paths)
@@ -49,7 +49,7 @@ visualizer.plot_sky_coverage()
 **Par exemple le code pour l'affichage des features nul**
 
 **Avant** :
-- 500 lignes de notebook exploratoire
+- 500 lignes de notebook exploratoire (exmple de la cellule d'exploration des features nul ci dessous)
 - Code spaghetti difficile à relire
 
 ![image info](/img/avant.png)

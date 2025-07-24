@@ -70,7 +70,7 @@ class AstroVisualizer:
                 if content: md_output += f"\n#### {title}\n{content}"
             display(Markdown(md_output))
         except Exception as e:
-            display(Markdown(f"### ❌ Erreur\n**Fichier :** `{full_path}`\n\n**Détail :** {e}"))
+            display(Markdown(f"### Erreur\n**Fichier :** `{full_path}`\n\n**Détail :** {e}"))
             
     def interactive_header_explorer(self):
         """Crée et affiche un widget interactif pour explorer les headers FITS."""
@@ -79,122 +79,184 @@ class AstroVisualizer:
             return
         interact(self._display_formatted_header, fits_relative_path=self.available_spectra)
 
-    # --- Outil 2: Analyseur de Spectre (Specutils) ---
-    def _plot_spectrum_analysis(self, file_path, prominence=0.1, window=15):
+    # --- Outil 2: Analyseur de Spectre Augmenté (speculite) ---
+    def _plot_spectrum_analysis(self, file_path, prominence, window, xlim, ylim):
         """
-        Charge, analyse et affiche un spectre avec specutils, en y superposant
-        les résultats de la détection de pics.
+        Charge, analyse et affiche un spectre, en appliquant les limites de zoom.
         """
         preprocessor = SpectraPreprocessor()
-        # On utilise les paramètres passés pour la détection
         peak_detector = PeakDetector(prominence=prominence, window=window)
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
         
         try:
-            # --- Chargement et Préparation ---
             with gzip.open(full_path, 'rb') as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
                     header = hdul[0].header
             
             wavelength, flux, invvar = (np.asarray(d, dtype=np.float64) for d in [wavelength, flux, invvar])
-            invvar[invvar <= 0] = 1e-12
-            uncertainty = StdDevUncertainty(1 / np.sqrt(invvar))
-            spectrum = Spectrum(spectral_axis=wavelength*u.AA, flux=flux*u.Unit("adu"), uncertainty=uncertainty)
-            
-            # --- Analyse ---
-            spectrum_smoothed = median_smooth(spectrum, width=5)
             flux_norm = preprocessor.normalize_spectrum(flux)
-            peak_indices, _ = peak_detector.detect_peaks(wavelength, flux_norm)
+            
+            # --- Étape 1: Détection de TOUS les pics ---
+            peak_indices, properties = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wavelengths = wavelength[peak_indices]
             
-            try:
-                snr_value = snr(spectrum, region=(6000*u.AA, 6200*u.AA))
-                snr_str = f"{snr_value:.2f}"
-            except Exception:
-                snr_str = "N/A"
-
-            # --- Affichage ---
+            # --- Étape 2: Association des pics ---
+            matched_lines = peak_detector.match_known_lines(peak_indices, peak_wavelengths, properties)
+            
+            # --- Récupération des coordonnées des pics associés ---
+            matched_wavelengths = [data[0] for data in matched_lines.values() if data is not None]
+            
+            # --- Affichage Augmenté ---
             plt.style.use('dark_background')
-            fig, ax = plt.subplots(figsize=(18, 8))
+            plt.figure(figsize=(18, 7))
             
-            # Spectre normalisé pour la détection
-            ax.plot(wavelength, flux_norm, color='gray', alpha=0.7, label='Spectre Normalisé')
+            plt.plot(wavelength, flux_norm, color='gray', alpha=0.7, label='Spectre Normalisé')
             if len(peak_indices) > 0:
-                ax.scatter(peak_wavelengths, flux_norm[peak_indices], color='red', marker='v', s=50, label='Pics Détectés')
+                plt.scatter(peak_wavelengths, flux_norm[peak_indices], color='red', marker='v', s=40, label='Tous les Pics Détectés')
             
-            # Raies cibles
+            if matched_wavelengths:
+                # On doit retrouver le flux pour les pics associés
+                matched_indices = [np.abs(wavelength - wl).argmin() for wl in matched_wavelengths]
+                plt.scatter(wavelength[matched_indices], flux_norm[matched_indices], 
+                            s=200, facecolors='none', edgecolors='lime', linewidth=2, label='Pics Associés')
+
             for name, wl in peak_detector.target_lines.items():
-                ax.axvline(x=wl, color='dodgerblue', linestyle='--', alpha=0.8, label=f'Raie {name}')
+                plt.axvline(x=wl, color='dodgerblue', linestyle='--', alpha=0.8, label=f'Raie {name}')
             
-            # Informations dans le titre
             subclass = header.get('SUBCLASS', 'N/A')
-            title = f"Analyse du Spectre : {header.get('DESIG', 'Inconnu')} (Type: {subclass})"
-            ax.set_title(title, fontsize=16)
+            plt.title(f"Analyse du Spectre : {header.get('DESIG', 'Inconnu')} (Type: {subclass})", fontsize=16)
+            plt.xlabel("Longueur d'onde (Å)"); plt.ylabel("Flux Normalisé"); plt.xlim(3800, 7000); plt.grid(True, linestyle=':')
             
-            ax.set_xlabel("Longueur d'onde (Å)")
-            ax.set_ylabel("Flux Normalisé")
-            ax.set_xlim(3800, 7000)
-            ax.grid(True, linestyle=':', alpha=0.5)
+            # On applique les limites des sliders aux axes du graphique
+            plt.xlim(xlim)
+            plt.ylim(ylim)
             
-            handles, labels = ax.get_legend_handles_labels()
+            handles, labels = plt.gca().get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
-            ax.legend(by_label.values(), by_label.keys())
-            
+            plt.legend(by_label.values(), by_label.keys())
             plt.show()
-            
-            # Texte d'analyse en dessous
-            md_output = f"**SNR @ 6000-6200Å :** `{snr_str}` | **Pics détectés :** `{len(peak_indices)}`"
-            display(Markdown(md_output))
-            
+
         except Exception as e:
-            display(Markdown(f"### ❌ Erreur\n**Fichier :** `{full_path}`\n\n**Détail :** {e}"))
+            print(f"Erreur : {e}")
 
     def interactive_spectrum_analyzer(self):
         """
-        Crée un widget interactif pour l'analyse de spectre augmentée.
-        Remplace l'ancien analyseur et le tuner de pics.
+        Crée un widget interactif pour l'analyse de spectre augmentée,
+        incluant des contrôles de zoom.
         """
         if not self.available_spectra:
             print("Aucun spectre trouvé à analyser.")
             return
-            
-        interactive_plot = widgets.interactive(
-            self._plot_spectrum_analysis,
-            file_path=widgets.Dropdown(options=self.available_spectra, description="Spectre :", layout={'width': 'max-content'}),
-            prominence=widgets.FloatSlider(min=0.01, max=2.0, step=0.01, value=0.2, description='Prominence:'),
-            window=widgets.IntSlider(min=1, max=50, step=1, value=15, description='Fenêtre (Å):')
+        
+        # --- Définition des widgets pour l'interface ---
+        
+        # Dropdown pour le spectre
+        file_path_widget = widgets.Dropdown(
+            options=self.available_spectra, 
+            description="Spectre :", 
+            layout={'width': 'max-content'}
         )
+        
+        # Sliders pour les paramètres de détection
+        prominence_widget = widgets.FloatSlider(
+            min=0.01, max=2.0, step=0.01, value=0.2, 
+            description='Prominence:'
+        )
+        window_widget = widgets.IntSlider(
+            min=1, max=50, step=1, value=15, 
+            description='Fenêtre (Å):'
+        )
+        
+        # --- NOUVEAUX WIDGETS POUR LE ZOOM ---
+        # Slider de plage pour l'axe X (longueur d'onde)
+        xlim_widget = widgets.FloatRangeSlider(
+            value=[3800, 7000], min=3500, max=9500, step=1,
+            description='Zoom X (Å):',
+            continuous_update=False, # Met à jour seulement quand on relâche le slider
+            layout={'width': '500px'}
+        )
+        
+        # Slider de plage pour l'axe Y (flux)
+        ylim_widget = widgets.FloatRangeSlider(
+            value=[-1, 2.5], min=-2, max=5, step=0.1,
+            description='Zoom Y (Flux):',
+            continuous_update=False,
+            layout={'width': '500px'}
+        )
+            
+        # --- Liaison des widgets à la fonction de plot ---
+        interactive_plot = widgets.interactive(
+            self._plot_spectrum_analysis, # La fonction de plot est maintenant appelée par 'interactive'
+            file_path=file_path_widget,
+            prominence=prominence_widget,
+            window=window_widget,
+            xlim=xlim_widget, # On passe la valeur du slider de zoom X
+            ylim=ylim_widget  # On passe la valeur du slider de zoom Y
+        )
+        
+        # Afficher l'interface
         display(interactive_plot)
 
     # --- Outil 3: Tuning Interactif des Pics ---
     def _plot_peak_detection(self, file_path, prominence, window):
         preprocessor = SpectraPreprocessor()
+        # On initialise le détecteur avec les paramètres des sliders
         peak_detector = PeakDetector(prominence=prominence, window=window)
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
+        
         try:
             with gzip.open(full_path, 'rb') as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
+            
             flux_norm = preprocessor.normalize_spectrum(flux)
-            peak_indices, _ = peak_detector.detect_peaks(wavelength, flux_norm)
+            
+            # --- Étape 1: Détection de TOUS les pics ---
+            peak_indices, properties = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wavelengths = wavelength[peak_indices]
             
+            # --- Étape 2: Association des pics (c'est ici que 'window' est utilisé) ---
+            matched_lines = peak_detector.match_known_lines(peak_indices, peak_wavelengths, properties)
+            
+            # On récupère les coordonnées des pics qui ont été matchés
+            matched_wavelengths = []
+            matched_flux = []
+            for line_name, match_data in matched_lines.items():
+                if match_data is not None:
+                    wl, prom = match_data
+                    matched_wavelengths.append(wl)
+                    # On doit retrouver l'indice pour avoir la bonne valeur de flux
+                    idx = np.abs(wavelength - wl).argmin()
+                    matched_flux.append(flux_norm[idx])
+
+            # --- Affichage Augmenté ---
             plt.style.use('dark_background')
             plt.figure(figsize=(18, 7))
+            
+            # Spectre et toutes les détections
             plt.plot(wavelength, flux_norm, color='gray', alpha=0.7, label='Spectre Normalisé')
             if len(peak_indices) > 0:
-                plt.scatter(peak_wavelengths, flux_norm[peak_indices], color='red', marker='v', s=50, label='Pics Détectés')
+                plt.scatter(peak_wavelengths, flux_norm[peak_indices], color='red', marker='v', s=40, label='Tous les Pics Détectés')
+            
+            # On superpose les pics qui ont été associés
+            if matched_wavelengths:
+                plt.scatter(matched_wavelengths, matched_flux, color='lime', s=150, facecolors='none', edgecolors='lime', linewidth=2, label='Pics Associés')
+
+            # Raies cibles
             for name, wl in peak_detector.target_lines.items():
                 plt.axvline(x=wl, color='dodgerblue', linestyle='--', alpha=0.8, label=f'Raie {name}')
+            
             plt.title(f"Analyse des Pics pour {os.path.basename(file_path)}", fontsize=16)
             plt.xlabel("Longueur d'onde (Å)"); plt.ylabel("Flux Normalisé"); plt.xlim(3800, 7000); plt.grid(True, linestyle=':')
+            
             handles, labels = plt.gca().get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
             plt.legend(by_label.values(), by_label.keys())
             plt.show()
+
         except Exception as e:
-            print(f"Erreur : {e}")
+            print(f"Erreur lors du traitement du spectre : {e}")
 
     def interactive_peak_tuner(self):
         """Crée un widget interactif pour le tuning des paramètres de détection."""
