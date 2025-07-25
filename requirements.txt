@@ -15,8 +15,8 @@ scipy==1.13.1
 
 # --- Librairies d'Astrophysique ---
 # Outils spécialisés pour la manipulation de données astronomiques.
-astropy==6.1.0
-specutils==1.13.1 # Librairie spécialisée pour les spectres
+astropy>=6.0
+specutils # Librairie spécialisée pour les spectres
 
 # --- Machine Learning ---
 # Les modèles et outils pour l'entraînement et l'évaluation.
