@@ -16,9 +16,15 @@ class SmartDownloader:
     de téléchargement en round-robin, avec des limites et une gestion d'état.
     """
     def __init__(self, limit_plans, max_spectra):
-        # --- Configuration des chemins ---
-        self.catalog_dir = "../data/catalog/"
-        self.raw_data_dir = "../data/raw/"
+        # --- Détermination dynamique des chemins ---
+        # __file__ est le chemin du script actuel (dr5_downloader.py)
+        script_path = os.path.dirname(os.path.abspath(__file__))
+        # On remonte de deux niveaux (de 'src/tools' à la racine du projet)
+        project_root = os.path.dirname(os.path.dirname(script_path))
+        
+        # --- Configuration des chemins (maintenant absolus) ---
+        self.catalog_dir = os.path.join(project_root, "data", "catalog")
+        self.raw_data_dir = os.path.join(project_root, "data", "raw")
         self.valid_urls_file = os.path.join(self.catalog_dir, "valid_plan_urls.csv")
         self.downloaded_log_file = os.path.join(self.catalog_dir, "downloaded_plans.csv")
         
@@ -146,7 +152,10 @@ class SmartDownloader:
 
                 if os.path.exists(dest_path):
                     continue # On ne fait rien, on passe au suivant
-
+                
+                # On s'assure que le dossier de destination existe avant d'écrire dedans
+                os.makedirs(dest_dir, exist_ok=True)
+                
                 # Si on arrive ici, c'est un fichier à télécharger
                 # pbar.set_description(f"Téléchargement de {filename}") # Optionnel: met à jour le texte de la barre
                 try:
@@ -161,7 +170,7 @@ class SmartDownloader:
                     # On peut logger l'erreur sans arrêter la barre de progression
                     pbar.write(f"    -> ERREUR lors du téléchargement de {filename}: {e}")
                 
-                sleep(0.3)
+                sleep(0.2)
         
         pbar.close() # On ferme proprement la barre de progression à la fin
 
