@@ -2,7 +2,11 @@
   "name": "AstroSpectro Dev Environment",
   // On utilise une image de base fournie par Microsoft, très complète pour Python.
   "image": "mcr.microsoft.com/devcontainers/python:3.11",
-
+  "features": {
+  // Cette ligne dit à Codespaces d'installer et de configurer
+  // un serveur JupyterLab complet et fonctionnel.
+  "ghcr.io/devcontainers/features/jupyterlab:1": {}
+  },
   // --- Personnalisation de VS Code à l'intérieur du Codespace ---
   "customizations": {
     "vscode": {
