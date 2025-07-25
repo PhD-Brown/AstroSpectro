@@ -1,31 +1,28 @@
 {
   "name": "AstroSpectro Dev Environment",
-  // On utilise une image de base fournie par Microsoft, très complète pour Python.
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "features": {
-  // Cette ligne dit à Codespaces d'installer et de configurer
-  // un serveur JupyterLab complet et fonctionnel.
-  "ghcr.io/devcontainers/features/jupyterlab:1": {}
+
+  // --- On utilise notre propre Dockerfile ---
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".." // Le contexte est le dossier parent, donc la racine du projet
   },
-  // --- Personnalisation de VS Code à l'intérieur du Codespace ---
+
+  // --- Personnalisation de VS Code ---
   "customizations": {
     "vscode": {
-      // Extensions à installer automatiquement
       "extensions": [
-        "ms-python.python",         // L'extension Python essentielle
-        "ms-toolsai.jupyter",       // Pour une expérience notebook parfaite
-        "esbenp.prettier-vscode",   // Pour formater le code de ton site Docusaurus
-        "ms-python.vscode-pylance"  // Analyse de code intelligente
+        "ms-python.python",
+        "ms-toolsai.jupyter"
       ],
-      // Paramètres par défaut pour l'environnement
       "settings": {
-        // On dit à VS Code d'utiliser le Python de notre venv par défaut
+        // On pointe vers le Python de notre venv
         "python.defaultInterpreterPath": "/workspaces/AstroSpectro/venv/bin/python"
       }
     }
   },
 
-  // --- Commandes à exécuter APRÈS la création du conteneur ---
-  // C'est ici que la magie opère : installation des dépendances et téléchargement des données.
+  // --- Commande post-création ---
+  // On peut garder une commande pour télécharger un petit jeu de données
+  // ou la laisser vide si on préfère le faire manuellement.
   "postCreateCommand": "bash ./.devcontainer/post-create.sh"
 }

@@ -75,7 +75,7 @@ class SmartDownloader:
             plan_name = plan_url.rstrip('/').split('/')[-1]
             print(f"  > [{i+1}/{len(self.plans_to_process)}] Scraping du plan : {plan_name}")
             try:
-                resp = requests.get(plan_url, timeout=20)
+                resp = requests.get(plan_url, timeout=60)
                 resp.raise_for_status()
                 soup = BeautifulSoup(resp.text, "html.parser")
                 
@@ -159,7 +159,7 @@ class SmartDownloader:
                 # Si on arrive ici, c'est un fichier à télécharger
                 # pbar.set_description(f"Téléchargement de {filename}") # Optionnel: met à jour le texte de la barre
                 try:
-                    with requests.get(file_url, stream=True, timeout=60) as r:
+                    with requests.get(file_url, stream=True, timeout=120) as r:
                         r.raise_for_status()
                         with open(dest_path, "wb") as f:
                             for chunk in r.iter_content(chunk_size=8192):
