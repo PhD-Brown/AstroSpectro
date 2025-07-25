@@ -1,0 +1,27 @@
+{
+  "name": "AstroSpectro Dev Environment",
+  // On utilise une image de base fournie par Microsoft, très complète pour Python.
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+  // --- Personnalisation de VS Code à l'intérieur du Codespace ---
+  "customizations": {
+    "vscode": {
+      // Extensions à installer automatiquement
+      "extensions": [
+        "ms-python.python",         // L'extension Python essentielle
+        "ms-toolsai.jupyter",       // Pour une expérience notebook parfaite
+        "esbenp.prettier-vscode",   // Pour formater le code de ton site Docusaurus
+        "ms-python.vscode-pylance"  // Analyse de code intelligente
+      ],
+      // Paramètres par défaut pour l'environnement
+      "settings": {
+        // On dit à VS Code d'utiliser le Python de notre venv par défaut
+        "python.defaultInterpreterPath": "/workspaces/AstroSpectro/venv/bin/python"
+      }
+    }
+  },
+
+  // --- Commandes à exécuter APRÈS la création du conteneur ---
+  // C'est ici que la magie opère : installation des dépendances et téléchargement des données.
+  "postCreateCommand": "bash ./.devcontainer/post-create.sh"
+}
