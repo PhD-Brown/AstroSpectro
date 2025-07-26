@@ -7,12 +7,40 @@ sidebar_label: Visualisation
 <!-- Compléter avec la photo nécessaire -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faChartPie, faEye, faChartLine } from '@fortawesome/free-solid-svg-icons'
+import { faChartPie, faEye, faChartLine, faTachometerAlt } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
 # <FontAwesomeIcon icon={faChartPie} /> Guide : Visualisation
 
 La visualisation est essentielle pour comprendre les données, déboguer le pipeline et interpréter les résultats du modèle. Ce guide vous présente les outils de visualisation disponibles dans le projet.
+
+
+## <FontAwesomeIcon icon={faTachometerAlt} /> Tableau de Bord Interactif (Live Demo)
+
+Pour une exploration interactive et complète, un **tableau de bord en ligne** a été déployé avec Streamlit. Il vous permet de :
+
+-   **Visualiser n'importe quel spectre** du jeu de données de démonstration.
+-   **Téléverser vos propres fichiers FITS** pour les analyser.
+-   **Ajuster en temps réel** les paramètres de détection de pics (`prominence`, `window`) et voir l'impact sur le graphique.
+-   **Explorer l'en-tête FITS** complet du spectre sélectionné.
+
+<Admonition type="tip" title="Essayez-le !">
+  <p>L'application est hébergée sur Streamlit Community Cloud et est accessible directement ci-dessous.</p>
+</Admonition>
+
+<iframe
+  src="https://astrospectro-visualizer.streamlit.app/?embed=true&theme=dark"
+  height="800"
+  style={{width: '100%', border: '1px solid #333', borderRadius: '10px'}}
+></iframe>
+
+<br/>
+
+<Admonition type="note" title="Comment ça marche ?">
+  <p>
+    Cette application est construite avec <strong>Streamlit</strong> et utilise le module <code>visualizer.py</code> de notre projet. Elle est déployée automatiquement depuis la branche <code>deploy-streamlit</code> de notre dépôt GitHub.
+  </p>
+</Admonition>
 
 ## <FontAwesomeIcon icon={faEye} /> Analyse Exploratoire avec `02_tools_and_visuals.ipynb`
 
@@ -39,10 +67,6 @@ Générée automatiquement lors de l'appel à la méthode `train_and_evaluate` d
 -   **Lecture :** La diagonale principale montre les classifications correctes. Les cases hors de la diagonale montrent les erreurs (par exemple, combien de spectres de type 'G' ont été incorrectement classifiés comme 'K').
 -   **Bibliothèque :** Elle est générée en utilisant `Seaborn` et `Matplotlib` pour un rendu clair et lisible.
 
-### Importance des Features (à venir)
+### Importance des Features
 
-<Admonition type="caution" title="En Développement">
-  <p>
-    La <strong>[Roadmap](../../docs/community/roadmap)</strong> prévoit l'ajout de graphiques montrant l'importance de chaque feature (quelle raie est la plus utile pour la classification ?). Pour les modèles de type "forêt d'arbres", comme Random Forest, cette information est facilement accessible et très instructive.
-  </p>
-</Admonition>
+Le notebook `02_tools_and_visuals.ipynb` contient un outil pour charger un modèle `.pkl` et générer un graphique à barres montrant l'importance de chaque feature. C'est essentiel pour comprendre quelles raies spectrales sont les plus discriminantes pour le modèle.
