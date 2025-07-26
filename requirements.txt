@@ -1,22 +1,22 @@
 # Dépendances spécifiques pour le déploiement de l'application Streamlit.
 
 # --- Noyau de l'Application ---
-streamlit==1.36.0
+streamlit
 pandas==2.2.2
 numpy==1.26.4
 matplotlib==3.8.4
 
 # --- Librairies d'Astrophysique ---
-astropy==6.1.0
+astropy
 specutils
 
 # --- Visualisation Backend ---
-plotly==5.22.0
-ipywidgets==8.1.3
-seaborn==0.13.2
+plotly
+ipywidgets
+seaborn
 
 # --- Utilitaires ---
-requests==2.32.3
-beautifulsoup4==4.12.3
-tqdm==4.66.4
-scikit-learn==1.5.0
+requests
+beautifulsoup4
+tqdm
+scikit-learn
