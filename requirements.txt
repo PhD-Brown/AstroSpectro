@@ -8,7 +8,7 @@ matplotlib==3.8.4
 
 # --- Librairies d'Astrophysique ---
 astropy==6.1.0
-specutils==1.13.0
+specutils
 
 # --- Visualisation Backend ---
 plotly==5.22.0
