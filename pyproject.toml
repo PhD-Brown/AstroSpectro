@@ -33,6 +33,8 @@ dependencies = [
     "jupyterlab",
     "notebook",
     "ipykernel"
+    "plotly"
+    "streamlit"
 ]
 
 [project.urls]

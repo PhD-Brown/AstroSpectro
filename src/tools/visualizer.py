@@ -7,6 +7,7 @@ from astropy.io import fits
 from tqdm.notebook import tqdm
 from IPython.display import display, Markdown
 from ipywidgets import interact, widgets
+import plotly.graph_objects as go
 from specutils import Spectrum
 from astropy import units as u
 from astropy.nddata import StdDevUncertainty
@@ -465,3 +466,189 @@ class AstroVisualizer:
             return
         
         interact(self._analyze_saved_model, model_path=saved_models)
+        
+    
+    # --- NOUVEL OUTIL 7: Comparaison de Spectres ---
+    def _plot_spectra_comparison(self, file_paths, normalize=True, offset=0.0):
+        """Affiche plusieurs spectres superposés sur un même graphique."""
+        preprocessor = SpectraPreprocessor()
+        plt.style.use('dark_background')
+        fig, ax = plt.subplots(figsize=(18, 9))
+        
+        current_offset = 0
+        for i, file_path in enumerate(file_paths):
+            full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
+            try:
+                with gzip.open(full_path, 'rb') as f_gz:
+                    with fits.open(f_gz, memmap=False) as hdul:
+                        wavelength, flux, _ = preprocessor.load_spectrum(hdul)
+                
+                if normalize:
+                    flux = preprocessor.normalize_spectrum(flux)
+                
+                ax.plot(wavelength, flux + current_offset, label=os.path.basename(file_path))
+                current_offset += offset
+            except Exception as e:
+                print(f"Impossible de charger {file_path}: {e}")
+        
+        ax.set_title("Comparaison de Spectres", fontsize=16)
+        ax.set_xlabel("Longueur d'onde (Å)")
+        ax.set_ylabel("Flux (normalisé + décalage)")
+        ax.grid(True, linestyle=':')
+        ax.legend()
+        plt.show()
+
+    def interactive_spectra_comparator(self):
+        """Crée un widget interactif pour comparer plusieurs spectres."""
+        if not self.available_spectra:
+            print("Aucun spectre trouvé.")
+            return
+
+        interact(
+            self._plot_spectra_comparison,
+            file_paths=widgets.SelectMultiple(
+                options=self.available_spectra,
+                description='Spectres:',
+                rows=10 # Hauteur de la liste
+            ),
+            normalize=widgets.Checkbox(value=True, description="Normaliser les spectres"),
+            offset=widgets.FloatSlider(min=0.0, max=5.0, step=0.1, value=0.5, description="Décalage Y:")
+        )
+    
+    # --- Outil 8 : Analyseur de Spectre Augmenté (Version Plotly) ---
+    def _display_formatted_header_for_streamlit(self, st, fits_relative_path):
+        """Affiche les informations de l'en-tête FITS dans Streamlit."""
+        full_path = os.path.join(self.paths["RAW_DATA_DIR"], fits_relative_path)
+        try:
+            with gzip.open(full_path, 'rb') as f_gz:
+                with fits.open(f_gz, memmap=False) as hdul:
+                    header = hdul[0].header
+            
+            md_output = f"### En-tête du fichier : `{os.path.basename(full_path)}`\n---\n"
+            sections = {}
+            current_section = "Informations Générales"
+            sections[current_section] = ""
+            for key, value in header.items():
+                if key == 'COMMENT' and '--------' in str(value):
+                    current_section = str(value).replace('COMMENT', '', 1).replace('-', '').strip()
+                    if current_section not in sections: sections[current_section] = ""
+                elif key and key not in ['COMMENT', 'HISTORY', '']:
+                    sections[current_section] += self._format_header_line(header, key, key)
+            for title, content in sections.items():
+                if content: md_output += f"\n#### {title}\n{content}"
+            st.markdown(md_output, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"Erreur lors de l'ouverture du header : {e}")
+    
+    def _plot_spectrum_analysis_plotly(self, st, file_path, prominence, window):
+        preprocessor = SpectraPreprocessor()
+        peak_detector = PeakDetector(prominence=prominence, window=window)
+        full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
+        
+        try:
+            with gzip.open(full_path, 'rb') as f_gz:
+                with fits.open(f_gz, memmap=False) as hdul:
+                    wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
+                    header = hdul[0].header
+            
+            wavelength, flux, invvar = (np.asarray(d, dtype=np.float64) for d in [wavelength, flux, invvar])
+            flux_norm = preprocessor.normalize_spectrum(flux)
+            
+            peak_indices, properties = peak_detector.detect_peaks(wavelength, flux_norm)
+            peak_wavelengths = wavelength[peak_indices]
+            matched_lines = peak_detector.match_known_lines(peak_indices, peak_wavelengths, properties)
+
+            # --- Création du Graphique Interactif avec Plotly ---
+            fig = go.Figure()
+
+            # 1. Ajouter le spectre
+            fig.add_trace(go.Scatter(
+                x=wavelength, y=flux_norm, mode='lines', name='Spectre Normalisé',
+                line=dict(color='rgba(200, 200, 200, 0.7)', width=1)
+            ))
+
+            # 2. Ajouter les pics détectés
+            if len(peak_indices) > 0:
+                fig.add_trace(go.Scatter(
+                    x=peak_wavelengths, y=flux_norm[peak_indices], mode='markers', name='Pics Détectés',
+                    marker=dict(color='red', symbol='triangle-down', size=8)
+                ))
+            
+            # 3. Préparer les formes pour les raies cibles (lignes verticales)
+            shapes = []
+            # On sépare les raies de Balmer des autres pour les boutons
+            balmer_lines = {k: v for k, v in peak_detector.target_lines.items() if 'H' in k}
+            other_lines = {k: v for k, v in peak_detector.target_lines.items() if 'H' not in k}
+
+            for name, wl in peak_detector.target_lines.items():
+                shapes.append(dict(
+                    type="line", xref="x", yref="paper",
+                    x0=wl, y0=0, x1=wl, y1=1,
+                    line=dict(color="rgba(0, 150, 255, 0.5)", width=1, dash="dash"),
+                    name=name # On stocke le nom pour le filtrage
+                ))
+
+            # --- Mise en forme du graphique ---
+            subclass = header.get('SUBCLASS', 'N/A')
+            title = f"Analyse du Spectre : {header.get('DESIG', 'Inconnu')} (Type: {subclass})"
+            fig.update_layout(
+                title=title,
+                xaxis_title="Longueur d'onde (Å)",
+                yaxis_title="Flux Normalisé",
+                template="plotly_dark", # Thème sombre
+                legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+                shapes=shapes # On ajoute les lignes verticales
+            )
+
+            # --- Ajout des boutons interactifs ---
+            fig.update_layout(
+                updatemenus=[
+                    dict(
+                        type="buttons",
+                        direction="right",
+                        x=0.5, y=1.15, xanchor="center", yanchor="top",
+                        buttons=list([
+                            dict(label="Toutes les Raies",
+                                 method="relayout",
+                                 args=["shapes", shapes]),
+                            dict(label="Raies de Balmer",
+                                 method="relayout",
+                                 args=["shapes", [s for s in shapes if 'H' in s['name']]]),
+                            dict(label="Raies de Calcium",
+                                 method="relayout",
+                                 args=["shapes", [s for s in shapes if 'Ca' in s['name']]]),
+                            dict(label="Aucune Raie",
+                                 method="relayout",
+                                 args=["shapes", []]),
+                        ])
+                    )
+                ]
+            )
+            
+            st.plotly_chart(fig, use_container_width=True) # Afficher le graphique dans Streamlit
+
+        except Exception as e:
+            st.error(f"Erreur lors de l'analyse du spectre : {e}")
+
+    def app(self):
+        """La méthode principale pour lancer l'application Streamlit."""
+        import streamlit as st
+        
+        st.set_page_config(page_title="AstroSpectro Visualizer", layout="wide")
+        st.title("AstroSpectro - Tableau de Bord d'Analyse")
+
+        st.sidebar.header("Contrôles de l'Analyse")
+        selected_file = st.sidebar.selectbox("Sélectionner un Spectre", self.available_spectra)
+        
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Paramètres de Détection de Pics")
+        prominence = st.sidebar.slider("Prominence", 0.01, 2.0, 0.2, 0.01)
+        window = st.sidebar.slider("Fenêtre (Å)", 1, 50, 15, 1)
+
+        if selected_file:
+            # On passe bien les 4 arguments
+            self._plot_spectrum_analysis_plotly(st, selected_file, prominence, window)
+            
+            st.markdown("---")
+            with st.expander("Afficher l'En-tête FITS Complet"):
+                self._display_formatted_header_for_streamlit(st, selected_file)
