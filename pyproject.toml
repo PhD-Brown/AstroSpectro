@@ -1,0 +1,45 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astrospectro"
+version = "0.1.0"
+description = "A modular pipeline for stellar spectral classification."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT License" }
+authors = [
+  { name = "Alex Baker", email = "alex.baker.1@ulaval.ca" },
+]
+dependencies = [
+    "pandas",
+    "numpy",
+    "scipy",
+    "astropy",
+    "specutils",
+    "scikit-learn",
+    "joblib",
+    "xgboost",
+    "lightgbm",
+    "matplotlib",
+    "seaborn",
+    "ipywidgets",
+    "requests",
+    "beautifulsoup4",
+    "tqdm",
+    "pywavelets",
+    "jupyterlab",
+    "notebook",
+    "ipykernel"
+]
+
+[project.urls]
+Homepage = "https://github.com/PhD-Brown/AstroSpectro"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-dir]
+"" = "src"

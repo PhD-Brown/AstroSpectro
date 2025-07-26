@@ -1,19 +1,25 @@
 #!/bin/bash
+# .devcontainer/post-create.sh
 
 echo "--- Lancement du script post-création pour AstroSpectro ---"
 
-# --- 1. Installation des dépendances (déjà fait, mais on s'assure que tout est là) ---
-echo "[1/3] Installation des dépendances depuis requirements.txt..."
-# On utilise le pip du venv
-/workspaces/AstroSpectro/venv/bin/pip install -r requirements.txt
+# Créer le venv (déjà fait par le Dockerfile, mais on s'assure)
+python3 -m venv venv
 
-# --- 2. Enregistrement du venv comme noyau Jupyter ---
-echo "[2/3] Enregistrement de l'environnement virtuel comme noyau Jupyter..."
-/workspaces/AstroSpectro/venv/bin/python -m ipykernel install --user --name=AstroSpectro-venv --display-name "Python (AstroSpectro venv)"
+# Installer le projet LUI-MÊME en mode éditable
+# Le '.' signifie 'le projet dans le dossier courant'
+# Le '-e' signifie 'éditable'
+echo "[1/3] Installation du projet AstroSpectro en mode éditable..."
+venv/bin/pip install -e .
 
-# --- 3. Téléchargement d'un jeu de données initial ---
-echo "[3/3] Téléchargement d'un petit jeu de données de démarrage..."
-/workspaces/AstroSpectro/venv/bin/python src/tools/dr5_downloader.py --limit 2 --max-spectres 20
+# Installer les dépendances (pip le fait déjà avec la commande ci-dessus,
+# mais on peut le garder pour être sûr)
+echo "[2/3] Vérification des dépendances..."
+venv/bin/pip install -r requirements.txt
 
-# --- Message final ---
-echo "Environnement AstroSpectro prêt à l'emploi !"
+# Enregistrer le noyau
+echo "[3/3] Enregistrement du noyau Jupyter..."
+venv/bin/pip install ipykernel
+venv/bin/python -m ipykernel install --user --name=AstroSpectro-venv --display-name "Python (AstroSpectro venv)"
+
+echo "Environnement AstroSpectro prêt."

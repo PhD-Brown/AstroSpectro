@@ -7,17 +7,36 @@ sidebar_label: Installation
 <!-- Complet for v0.1.0-alpha release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTools, faBoxOpen, faVial, faPlayCircle, faRocket } from '@fortawesome/free-solid-svg-icons'
+import { faTools, faBoxOpen, faVial, faPlayCircle, faRocket, faCloud, faDesktop } from '@fortawesome/free-solid-svg-icons'
 
 # <FontAwesomeIcon icon={faTools} /> Installation
 
 Bienvenue sur la page d'installation du pipeline **Astro-Spectro** !  
-Suivez ces étapes pour préparer votre environnement et démarrer rapidement.
+Vous avez deux options pour démarrer : via le cloud avec GitHub Codespaces (simple et rapide) ou manuellement sur votre machine locale.
 
 > Pour toute explication détaillée, consultez la [Guide utilisateur](https://phd-brown.github.io/AstroSpectro/docs/user-guides).
 
+### <FontAwesomeIcon icon={faCloud} /> Option 1 : Via GitHub Codespaces (Recommandé)
 
-### Prérequis
+C'est la méthode la plus simple. Elle ne requiert **aucune installation** sur votre ordinateur.
+
+1.  **Rendez-vous sur le [dépôt GitHub du projet](https://github.com/PhD-Brown/AstroSpectro)**.
+2.  Cliquez sur le bouton vert **`< > Code`**, puis allez dans l'onglet **`Codespaces`**.
+3.  Cliquez sur **`Create codespace on main`**.
+
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <a href="https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=588658495" className="button button--success button--lg">
+    Lancer un Codespace Maintenant →
+  </a>
+</div>
+
+L'environnement se préparera automatiquement en quelques minutes, incluant l'installation des dépendances et le téléchargement d'un jeu de données de démarrage.
+
+---
+
+### <FontAwesomeIcon icon={faDesktop} /> Option 2 : Installation Locale Manuelle
+
+#### Prérequis
 
 - **Python 3.9+**
 - **Git**
