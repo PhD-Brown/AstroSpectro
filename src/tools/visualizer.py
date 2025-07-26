@@ -540,13 +540,12 @@ class AstroVisualizer:
         except Exception as e:
             st.error(f"Erreur lors de l'ouverture du header : {e}")
     
-    def _plot_spectrum_analysis_plotly(self, st, file_path, prominence, window):
+    def _plot_spectrum_analysis_plotly(self, st, file_path_or_buffer, prominence, window):
         preprocessor = SpectraPreprocessor()
         peak_detector = PeakDetector(prominence=prominence, window=window)
-        full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
         
         try:
-            with gzip.open(full_path, 'rb') as f_gz:
+            with gzip.open(file_path_or_buffer, 'rb') as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
                     header = hdul[0].header
@@ -557,7 +556,10 @@ class AstroVisualizer:
             peak_indices, properties = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wavelengths = wavelength[peak_indices]
             matched_lines = peak_detector.match_known_lines(peak_indices, peak_wavelengths, properties)
-
+            
+            # --- Récupération des pics associés pour les cercles verts ---
+            matched_wavelengths = [data[0] for data in matched_lines.values() if data is not None]
+            
             # --- Création du Graphique Interactif avec Plotly ---
             fig = go.Figure()
 
@@ -573,6 +575,12 @@ class AstroVisualizer:
                     x=peak_wavelengths, y=flux_norm[peak_indices], mode='markers', name='Pics Détectés',
                     marker=dict(color='red', symbol='triangle-down', size=8)
                 ))
+            
+            # <<< AJOUT DES CERCLES VERTS >>>
+            if matched_wavelengths:
+                matched_indices = [np.abs(wavelength - wl).argmin() for wl in matched_wavelengths]
+                fig.add_trace(go.Scatter(x=wavelength[matched_indices], y=flux_norm[matched_indices], mode='markers', name='Pics Associés', 
+                                         marker=dict(symbol='circle-open', color='lime', size=15, line=dict(width=2))))
             
             # 3. Préparer les formes pour les raies cibles (lignes verticales)
             shapes = []
@@ -625,11 +633,13 @@ class AstroVisualizer:
                 ]
             )
             
-            st.plotly_chart(fig, use_container_width=True) # Afficher le graphique dans Streamlit
+            st.plotly_chart(fig, use_container_width=True)
+            return header # On retourne le header pour l'afficher
 
         except Exception as e:
             st.error(f"Erreur lors de l'analyse du spectre : {e}")
-
+            return None
+    
     def app(self):
         """La méthode principale pour lancer l'application Streamlit."""
         import streamlit as st
@@ -637,18 +647,51 @@ class AstroVisualizer:
         st.set_page_config(page_title="AstroSpectro Visualizer", layout="wide")
         st.title("AstroSpectro - Tableau de Bord d'Analyse")
 
-        st.sidebar.header("Contrôles de l'Analyse")
-        selected_file = st.sidebar.selectbox("Sélectionner un Spectre", self.available_spectra)
+        # --- Barre Latérale de Contrôle ---
+        st.sidebar.header("Source des Données")
         
+        # --- NOUVELLE SECTION : CHOIX DE LA SOURCE ---
+        source_option = st.sidebar.radio(
+            "Choisir une source de spectre",
+            ('Sélectionner un spectre du projet', 'Téléverser un fichier FITS')
+        )
+
+        file_to_process = None
+        
+        if source_option == 'Sélectionner un spectre du projet':
+            selected_file_path = st.sidebar.selectbox("Sélectionner un Spectre", self.available_spectra)
+            if selected_file_path:
+                file_to_process = os.path.join(self.paths["RAW_DATA_DIR"], selected_file_path)
+        else:
+            uploaded_file = st.sidebar.file_uploader("Charger un spectre (.fits.gz)", type=["gz"])
+            if uploaded_file is not None:
+                file_to_process = uploaded_file
+        # --- FIN DE LA NOUVELLE SECTION ---
+
         st.sidebar.markdown("---")
-        st.sidebar.subheader("Paramètres de Détection de Pics")
+        st.sidebar.header("Paramètres de Détection")
         prominence = st.sidebar.slider("Prominence", 0.01, 2.0, 0.2, 0.01)
         window = st.sidebar.slider("Fenêtre (Å)", 1, 50, 15, 1)
 
-        if selected_file:
-            # On passe bien les 4 arguments
-            self._plot_spectrum_analysis_plotly(st, selected_file, prominence, window)
+        # --- Affichage Principal ---
+        if file_to_process:
+            header = self._plot_spectrum_analysis_plotly(st, file_to_process, prominence, window)
             
-            st.markdown("---")
-            with st.expander("Afficher l'En-tête FITS Complet"):
-                self._display_formatted_header_for_streamlit(st, selected_file)
+            if header:
+                st.markdown("---")
+                with st.expander("Afficher l'En-tête FITS Complet"):
+                    # On va créer une petite fonction pour afficher le header dans Streamlit
+                    self._display_header_for_streamlit(st, header)
+    
+    # On a besoin d'une fonction qui prend un header, pas un chemin de fichier
+    def _display_header_for_streamlit(self, st, header):
+        """Affiche un objet header FITS dans Streamlit."""
+        md_output = "#### Métadonnées Principales\n"
+        # Affiche quelques clés importantes
+        md_output += f"- **Objet :** `{header.get('OBJECT', header.get('DESIG', 'N/A'))}`\n"
+        md_output += f"- **Type :** `{header.get('SUBCLASS', 'N/A')}`\n"
+        md_output += f"- **Date Obs :** `{header.get('DATE-OBS', 'N/A')}`\n"
+        md_output += f"- **RA / Dec :** `{header.get('RA', 'N/A')}` / `{header.get('DEC', 'N/A')}`\n"
+        st.markdown(md_output)
+        # Affiche le header complet sous forme de dictionnaire
+        st.json(dict(header))
