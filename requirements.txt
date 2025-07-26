@@ -12,6 +12,7 @@ specutils==1.13.0
 
 # --- Visualisation Backend ---
 plotly==5.22.0
+ipywidgets==8.1.3
 
 # --- Utilitaires ---
 requests==2.32.3
