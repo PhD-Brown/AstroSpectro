@@ -1,60 +1,18 @@
-# ==============================================================================
-# Dépendances du Projet AstroSpectro
-# ==============================================================================
-# Ce fichier liste toutes les dépendances Python nécessaires pour exécuter
-# le projet. Pour installer toutes ces librairies dans votre environnement
-# virtuel, utilisez la commande :
-# pip install -r requirements.txt
-# ------------------------------------------------------------------------------
+# Dépendances spécifiques pour le déploiement de l'application Streamlit.
 
-# --- Noyau Scientifique & Data Science ---
-# Le cœur du projet pour la manipulation de données et le calcul.
-numpy==1.26.4
+# --- Noyau de l'Application ---
+streamlit==1.36.0
 pandas==2.2.2
-scipy==1.13.1
+numpy==1.26.4
 
 # --- Librairies d'Astrophysique ---
-# Outils spécialisés pour la manipulation de données astronomiques.
-astropy
-specutils # Librairie spécialisée pour les spectres
+astropy==6.1.0
+specutils==1.13.0
 
-# --- Machine Learning ---
-# Les modèles et outils pour l'entraînement et l'évaluation.
-scikit-learn==1.5.0
-joblib==1.4.2       # Pour la sauvegarde/chargement de modèles
+# --- Visualisation Backend ---
+plotly==5.22.0
 
-# --- Machine Learning (Modèles Avancés) ---
-# Modèles de type Gradient Boosting, souvent plus performants.
-xgboost==2.0.3
-lightgbm==4.3.0
-
-# --- Visualisation ---
-# Pour la création de graphiques et d'interfaces interactives.
-matplotlib==3.8.4
-seaborn==0.13.2
-ipywidgets==8.1.3 # Pour les sliders et boutons dans les notebooks
-
-# --- Outils & Utilitaires ---
-# Dépendances pour les scripts d'acquisition et de traitement.
+# --- Utilitaires ---
 requests==2.32.3
-beautifulsoup4==4.12.3 # Pour le scraping des pages de plans
-tqdm==4.66.4           # Pour les barres de progression
-pywavelets==1.6.0     # Utile pour le débruitage de signaux (comme les spectres)
-
-# --- Environnement Jupyter ---
-# Nécessaire pour faire tourner les notebooks.
-jupyterlab==4.2.1
-notebook==7.2.0
-ipykernel==6.29.4
-
-# --- Qualité du Code & Formatage (Optionnel, mais recommandé) ---
-# Outils pour maintenir un code propre et cohérent.
-# flake8==7.1.0
-# black==24.4.2
-# isort==5.13.2
-
-# --- Publication & Documentation (Optionnel) ---
-# Pour transformer le projet en une librairie installable.
-# setuptools==69.5.1
-# wheel==0.43.0
-# twine==5.1.1
+beautifulsoup4==4.12.3
+tqdm==4.66.4
