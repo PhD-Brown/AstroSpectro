@@ -55,18 +55,39 @@ This project implements a **fully reproducible workflow** for the automatic clas
 
 ## 🚀 Getting Started
 
-To get a local copy up and running, follow these simple steps. For detailed explanations, please refer to our **[full documentation](https://phd-brown.github.io/AstroSpectro/docs/getting-started/installation)**.
+There are two ways to get started with AstroSpectro: the one-click cloud setup using GitHub Codespaces (recommended), or the traditional local installation.
 
-### Prerequisites
+### Option 1: 1-Click Launch with GitHub Codespaces (Recommended)
+
+This is the easiest and fastest way to run the project. No local installation is required.
+
+1.  Click the **`< > Code`** button at the top of this page.
+2.  Navigate to the **`Codespaces`** tab.
+3.  Click **`Create codespace on main`**.
+    [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=588658495)
+
+GitHub will automatically set up a complete development environment in your browser. Once it loads, you can choose your preferred interface:
+
+*   **For the full IDE experience (recommended):** Stay in the default **VS Code** view.
+*   **For a classic notebook interface:** Change the end of the URL in your browser from `.../` to `.../editor=jupyter`.
+
+Either way, open the `notebooks/` directory and start exploring!
+
+
+### Option 2: Local Installation
+
+For users who prefer to work on their own machine.
+
+#### Prerequisites
 
 *   Python 3.9+
 *   Git
 
-### Installation
+#### Installation Steps
 
-1.  **Clone the repo**
+1.  **Clone the repository**
     ```sh
-    git clone https://github.com/PhD-Brown/AtroSpectro.git
+    git clone https://github.com/PhD-Brown/AstroSpectro.git
     cd AstroSpectro
     ```
 2.  **Set up your Python environment**
@@ -80,8 +101,7 @@ To get a local copy up and running, follow these simple steps. For detailed expl
     ```
 3.  **Run the pipeline**
     *   The main entry point is the `notebooks/00_master_pipeline.ipynb` notebook.
-    *   For a detailed step-by-step guide, see the **[First Run Tutorial](https://phd-brown.github.io/AstroSpectro/docs/getting-started/first-run)**.
-
+    *   For a detailed step-by-step guide, see the **[First Run Tutorial](https://phd-brown.github.io/AstroSpectro/docs/getting-started/first-run)** in our documentation.
 ---
 
 ## 🤝 Contributing
@@ -90,13 +110,9 @@ Contributions are what make the open-source community such an amazing place to l
 
 Please refer to the **[Contribution Guide](https://phd-brown.github.io/AstroSpectro/docs/community/contributing)** for details on our code of conduct, and the process for submitting pull requests to us.
 
----
-
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
-
----
 
 ## Contact
 
