@@ -15,7 +15,7 @@ scipy==1.13.1
 
 # --- Librairies d'Astrophysique ---
 # Outils spécialisés pour la manipulation de données astronomiques.
-astropy>=6.0
+astropy
 specutils # Librairie spécialisée pour les spectres
 
 # --- Machine Learning ---
@@ -45,6 +45,7 @@ pywavelets==1.6.0     # Utile pour le débruitage de signaux (comme les spectres
 # Nécessaire pour faire tourner les notebooks.
 jupyterlab==4.2.1
 notebook==7.2.0
+ipykernel==6.29.4
 
 # --- Qualité du Code & Formatage (Optionnel, mais recommandé) ---
 # Outils pour maintenir un code propre et cohérent.
