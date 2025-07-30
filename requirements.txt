@@ -33,6 +33,7 @@ lightgbm==4.3.0
 matplotlib==3.8.4
 seaborn==0.13.2
 ipywidgets==8.1.3 # Pour les sliders et boutons dans les notebooks
+Pillow>=10.0.0 
 
 # --- Outils & Utilitaires ---
 # Dépendances pour les scripts d'acquisition et de traitement.

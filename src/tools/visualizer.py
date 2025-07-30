@@ -1,17 +1,19 @@
 import os
 import gzip
+import base64
 import pandas as pd
 import numpy as np
+from datetime import datetime
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from tqdm.notebook import tqdm
-from IPython.display import display, Markdown
+from IPython.display import display, Markdown, HTML
 from ipywidgets import interact, widgets
 import plotly.graph_objects as go
-from specutils import Spectrum
+from specutils import Spectrum, SpectralRegion
 from astropy import units as u
 from astropy.nddata import StdDevUncertainty
-from specutils.analysis import snr
+from specutils.analysis import snr, centroid, fwhm, line_flux
 from specutils.manipulation import median_smooth
 import glob
 
@@ -42,12 +44,15 @@ class AstroVisualizer:
                         spectra_list.append(rel_path.replace('\\', '/'))
         return sorted(spectra_list)
 
-    # --- Outil 1: Explorateur de Header ---
+    # ==============================================================================
+    # Outil 1 : Affichage des Headers FITS
+    # ==============================================================================
+    
     def _format_header_line(self, header, label, key, unit=""):
         """Formate une ligne de manière robuste pour l'affichage en Markdown."""
-        value = header.get(key, 'N/A')
-        unit_str = f" {unit}" if unit else ""
-        return f"- **{label} :** `{value}`{unit_str}\n"
+        value = header.get(key, 'N/A')  # Valeur par défaut si la clé n'existe pas
+        unit_str = f" {unit}" if unit else "" # Ajoute l'unité si spécifiée
+        return f"- **{label} :** `{value}`{unit_str}\n" # Ajoute un retour à la ligne pour Markdown
 
     def _display_formatted_header(self, fits_relative_path):
         """Affiche les informations de l'en-tête FITS de manière organisée."""
@@ -80,7 +85,10 @@ class AstroVisualizer:
             return
         interact(self._display_formatted_header, fits_relative_path=self.available_spectra)
 
-    # --- Outil 2: Analyseur de Spectre Augmenté (speculite) ---
+    # ==============================================================================
+    # Outil Notebook 2: Analyseur de Spectre Interactif (Matplotlib)
+    # ==============================================================================
+    
     def _plot_spectrum_analysis(self, file_path, prominence, window, xlim, ylim):
         """
         Charge, analyse et affiche un spectre, en appliquant les limites de zoom.
@@ -199,80 +207,232 @@ class AstroVisualizer:
         # Afficher l'interface
         display(interactive_plot)
 
-    # --- Outil 3: Tuning Interactif des Pics ---
-    def _plot_peak_detection(self, file_path, prominence, window):
+    # ==============================================================================
+    # Outil 3 : Analyseur & Tuner de Spectre Interactif (pour Notebook)
+    # ==============================================================================
+    
+    def _plot_peak_detection_notebook(self, file_path, prominence, window, xlim, ylim):
+        """
+        Analyse interactive de spectre dans le notebook :
+        - Affiche le graphique Matplotlib (avec annotation des raies et export PNG)
+        - Calcule et affiche le tableau d’analyse Pandas stylé (avec export CSV/LaTeX)
+        - Prédit la classe spectrale via le modèle IA chargé (.pkl)
+        - Log toutes les analyses dans la session (historique)
+        - Permet d’exporter toutes les analyses de la session dans un rapport HTML
+        """
+
+        import io, base64
+        from datetime import datetime
+        # === 1. Paramètres d'affichage/couleurs pour chaque raie ===
+        line_colors = {
+            "Hα": "#00FF00",      # Vert fluo (lime)
+            "Hβ": "#FFDD00",      # Jaune-orangé
+            "CaII K": "#00A2FF",  # Bleu clair
+            "CaII H": "#AA00FF",  # Violet
+        }
+
+        # === 2. Extraction du spectre et détection des raies ===
         preprocessor = SpectraPreprocessor()
-        # On initialise le détecteur avec les paramètres des sliders
+        # On initialise le détecteur de pics avec les paramètres
         peak_detector = PeakDetector(prominence=prominence, window=window)
+        # Chemin complet du fichier FITS
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
-        
-        try:
+
+        try: # On ouvre le fichier FITS compressé
             with gzip.open(full_path, 'rb') as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
-            
+                    header = hdul[0].header
+            # On convertit les données en tableaux NumPy pour traitement 
+            wavelength, flux, invvar = (np.asarray(d, dtype=np.float64) for d in [wavelength, flux, invvar])
             flux_norm = preprocessor.normalize_spectrum(flux)
-            
-            # --- Étape 1: Détection de TOUS les pics ---
+            # On affiche les informations de l'en-tête FITS
             peak_indices, properties = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wavelengths = wavelength[peak_indices]
-            
-            # --- Étape 2: Association des pics (c'est ici que 'window' est utilisé) ---
             matched_lines = peak_detector.match_known_lines(peak_indices, peak_wavelengths, properties)
+
+            # === 3. Extraction des features pour IA ===
+            # (Indépendant de la visualisation, utilisé pour prédiction IA)
+            from pipeline.feature_engineering import FeatureEngineer
+            feature_engineer = FeatureEngineer()
+            features_vector = feature_engineer.extract_features(matched_lines)
+
+            # === 4. Prédiction automatique de la classe spectrale ===
+            # Le modèle doit être chargé UNE SEULE FOIS dans le notebook (ex: spectral_classifier)
+            predicted_label = None
+            if 'spectral_classifier' in globals() and spectral_classifier is not None:
+                try:
+                    print("Features vector:", features_vector)
+                    predicted_label = spectral_classifier.model.predict([features_vector])[0]
+                except Exception as e:
+                    print("Erreur de prédiction IA :", e)
+                    predicted_label = f"Erreur prédiction: {e}"
             
-            # On récupère les coordonnées des pics qui ont été matchés
-            matched_wavelengths = []
-            matched_flux = []
-            for line_name, match_data in matched_lines.items():
+            # === 5. Affichage graphique Matplotlib interactif ===
+            matched_wavelengths, matched_flux = [], []
+            plt.style.use('dark_background')
+            plt.figure(figsize=(18, 7))
+            plt.plot(wavelength, flux_norm, color='gray', alpha=0.7, label='Spectre Normalisé')
+
+            # -- Ajout des pics détectés (petits triangles rouges) --
+            if len(peak_indices) > 0:
+                plt.scatter(peak_wavelengths, flux_norm[peak_indices], color='red', marker='v', s=40, label='Tous les Pics Détectés')
+            # -- Ajout des pics associés aux raies connues, et annotations --
+            for name, match_data in matched_lines.items():
                 if match_data is not None:
                     wl, prom = match_data
                     matched_wavelengths.append(wl)
-                    # On doit retrouver l'indice pour avoir la bonne valeur de flux
                     idx = np.abs(wavelength - wl).argmin()
                     matched_flux.append(flux_norm[idx])
-
-            # --- Affichage Augmenté ---
-            plt.style.use('dark_background')
-            plt.figure(figsize=(18, 7))
-            
-            # Spectre et toutes les détections
-            plt.plot(wavelength, flux_norm, color='gray', alpha=0.7, label='Spectre Normalisé')
-            if len(peak_indices) > 0:
-                plt.scatter(peak_wavelengths, flux_norm[peak_indices], color='red', marker='v', s=40, label='Tous les Pics Détectés')
-            
-            # On superpose les pics qui ont été associés
+                    y_val = flux_norm[idx]
+                    # Affiche le nom de la raie au-dessus du pic
+                    plt.text(wl, y_val + 0.05, name, color=line_colors.get(name, 'white'), fontsize=13, ha='center', weight='bold')
             if matched_wavelengths:
-                plt.scatter(matched_wavelengths, matched_flux, color='lime', s=150, facecolors='none', edgecolors='lime', linewidth=2, label='Pics Associés')
-
-            # Raies cibles
+                plt.scatter(matched_wavelengths, matched_flux, s=150, facecolors='none', edgecolors='lime', linewidth=2, label='Pics Associés')
+            # -- Lignes verticales pour toutes les raies cibles --
             for name, wl in peak_detector.target_lines.items():
-                plt.axvline(x=wl, color='dodgerblue', linestyle='--', alpha=0.8, label=f'Raie {name}')
-            
+                plt.axvline(x=wl, color=line_colors.get(name, 'dodgerblue'), linestyle='--', alpha=0.8, label=f'Raie {name}')
             plt.title(f"Analyse des Pics pour {os.path.basename(file_path)}", fontsize=16)
-            plt.xlabel("Longueur d'onde (Å)"); plt.ylabel("Flux Normalisé"); plt.xlim(3800, 7000); plt.grid(True, linestyle=':')
-            
+            plt.xlabel("Longueur d'onde (Å)")
+            plt.ylabel("Flux Normalisé")
+            plt.xlim(xlim); plt.ylim(ylim)
+            plt.grid(True, linestyle=':')
             handles, labels = plt.gca().get_legend_handles_labels()
             by_label = dict(zip(labels, handles))
             plt.legend(by_label.values(), by_label.keys())
+            # -- Export PNG du plot --
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', bbox_inches='tight', dpi=150)
+            buf.seek(0)
+            b64 = base64.b64encode(buf.read()).decode()
+            display(HTML(f'<a download="spectre.png" href="data:image/png;base64,{b64}">⬇️ Exporter le graphique (PNG)</a>'))
             plt.show()
+
+            # === 6. Analyse quantitative des raies associées (tableau Pandas stylé) ===
+            invvar[invvar <= 0] = 1e-12
+            uncertainty = StdDevUncertainty(1 / np.sqrt(invvar))
+            spectrum_obj = Spectrum(spectral_axis=wavelength*u.AA, flux=flux_norm*u.Unit("adu"), uncertainty=uncertainty)
+            analysis_results = {}
+            for name, match_data in matched_lines.items():
+                if match_data is not None:
+                    wl_detected, prom = match_data
+                    analysis_region = SpectralRegion((wl_detected - window) * u.AA, (wl_detected + window) * u.AA)
+                    try:
+                        center = centroid(spectrum_obj, regions=analysis_region)
+                        width = fwhm(spectrum_obj, regions=analysis_region)
+                        analysis_results[name] = {
+                            "Centroïde (Å)": f"{center.to_value(u.AA):.2f}",
+                            "Largeur FWHM (Å)": f"{width.to_value(u.AA):.2f}",
+                            "Prominence (Force)": f"{prom:.3f}"
+                        }
+                    except Exception:
+                        analysis_results[name] = {"Erreur": "Analyse impossible"}
+
+            # === 7. Affichage dynamique du tableau d'analyse & exports ===
+            if analysis_results:
+                display(Markdown("#### Analyse Quantitative des Raies Associées"))
+                df_analysis = pd.DataFrame.from_dict(analysis_results, orient='index')
+                # Style couleur par raie
+                def highlight_row(row):
+                    color = line_colors.get(row.name, None)
+                    return ['background-color: %s; color: black' % color if color else '' for _ in row]
+                display(df_analysis.style.apply(highlight_row, axis=1))
+                # Export CSV & LaTeX
+                csv_buffer = io.StringIO()
+                df_analysis.to_csv(csv_buffer)
+                b64_csv = base64.b64encode(csv_buffer.getvalue().encode()).decode()
+                href_csv = f'<a download="analyse_raies.csv" href="data:text/csv;base64,{b64_csv}">⬇️ Exporter en CSV</a>'
+                latex_str = df_analysis.to_latex(index=True, caption="Analyse Quantitative des Raies Associées")
+                b64_latex = base64.b64encode(latex_str.encode()).decode()
+                href_latex = f'<a download="analyse_raies.tex" href="data:text/plain;base64,{b64_latex}">⬇️ Exporter en LaTeX</a>'
+                display(HTML(f"<div style='margin:8px 0'>{href_csv} &nbsp;|&nbsp; {href_latex}</div>"))
+
+            # === 8. Affichage de la classe spectrale prédite (IA) ===
+            if predicted_label is not None:
+                display(Markdown(f"**Classe spectrale prédite par le modèle IA :** `{predicted_label}`"))
+
+            # === 9. Log/Historique complet de la session (toutes analyses sauvegardées) ===
+            # (Initialise si pas déjà présent)
+            if 'log_analyses' not in globals():
+                log_analyses = pd.DataFrame(columns=['Fichier', 'Paramètres', 'Tableau', 'Timestamp', 'Classe prédite'])
+            # On log tous les paramètres et résultats
+            params = {
+                "spectre": file_path,
+                "prominence": prominence,
+                "window": window,
+                "xlim": xlim,
+                "ylim": ylim
+            }
+            new_log = {
+                'Fichier': file_path,
+                'Paramètres': params,
+                'Tableau': df_analysis.to_dict() if analysis_results else {},
+                'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'Classe prédite': predicted_label
+            }
+            try:
+                log_analyses = pd.concat([log_analyses, pd.DataFrame([new_log])], ignore_index=True)
+            except:
+                # Si pb de scope dans certains kernels Jupyter
+                import builtins
+                if not hasattr(builtins, "log_analyses"):
+                    builtins.log_analyses = pd.DataFrame(columns=['Fichier', 'Paramètres', 'Tableau', 'Timestamp', 'Classe prédite'])
+                builtins.log_analyses = pd.concat([builtins.log_analyses, pd.DataFrame([new_log])], ignore_index=True)
+                log_analyses = builtins.log_analyses
+
+            if len(log_analyses) > 0:
+                display(Markdown("#### Historique des Analyses de la Session"))
+                display(log_analyses[['Fichier', 'Classe prédite', 'Paramètres', 'Timestamp']])
+
+            # === 10. Génération du rapport HTML de la session (plots non inclus, mais facile à ajouter) ===
+            from ipywidgets import Button
+            def generate_report():
+                html = "<h1>Rapport d'Analyse Spectroscopique</h1>"
+                for i, row in log_analyses.iterrows():
+                    html += f"<h2>Analyse #{i+1} — {row['Fichier']}</h2>"
+                    if 'Classe prédite' in row and row['Classe prédite'] is not None:
+                        html += f"<p><b>Classe spectrale prédite :</b> {row['Classe prédite']}</p>"
+                    html += f"<pre>{row['Paramètres']}</pre>"
+                    try:
+                        df_html = pd.DataFrame.from_dict(row['Tableau']).to_html()
+                        html += df_html
+                    except Exception:
+                        html += "<p><i>Erreur lors de la conversion du tableau.</i></p>"
+                    html += f"<p><i>Timestamp : {row['Timestamp']}</i></p>"
+                    html += "<hr>"
+                with io.BytesIO() as f:
+                    f.write(html.encode())
+                    f.seek(0)
+                    b64_report = base64.b64encode(f.read()).decode()
+                download_link = f'<a download="rapport_astro.html" href="data:text/html;base64,{b64_report}">⬇️ Télécharger le rapport HTML (toutes analyses)</a>'
+                display(HTML(download_link))
+            btn = Button(description="Générer le rapport HTML de la session", button_style="success")
+            btn.on_click(lambda b: generate_report())
+            display(btn)
 
         except Exception as e:
             print(f"Erreur lors du traitement du spectre : {e}")
 
     def interactive_peak_tuner(self):
-        """Crée un widget interactif pour le tuning des paramètres de détection."""
+        """Widget interactif complet pour le tuning des paramètres dans le notebook."""
         if not self.available_spectra:
-            print("Aucun spectre trouvé pour le tuning.")
+            print("Aucun spectre trouvé.")
             return
+
         interactive_plot = widgets.interactive(
-            self._plot_peak_detection,
+            self._plot_peak_detection_notebook,
             file_path=widgets.Dropdown(options=self.available_spectra, description="Spectre :", layout={'width': 'max-content'}),
-            prominence=widgets.FloatSlider(min=0.01, max=2.0, step=0.01, value=0.1, description='Prominence:'),
-            window=widgets.IntSlider(min=1, max=50, step=1, value=15, description='Fenêtre (Å):')
+            prominence=widgets.FloatSlider(min=0.01, max=1.0, step=0.01, value=0.2, description='Prominence:'),
+            window=widgets.IntSlider(min=1, max=50, step=1, value=15, description='Fenêtre (Å):'),
+            xlim=widgets.FloatRangeSlider(value=[3800, 7000], min=3500, max=9500, step=1, description='Zoom X (Å):', continuous_update=False, layout={'width': '500px'}),
+            ylim=widgets.FloatRangeSlider(value=[-1, 2.5], min=-2, max=5, step=0.1, description='Zoom Y (Flux):', continuous_update=False, layout={'width': '500px'})
         )
         display(interactive_plot)
- 
-    # --- NOUVEL OUTIL 4: Analyse des Zéros dans les Features ---
+
+    # ==============================================================================
+    # Outil 4 : Analyse des Zéros dans les Features ---
+    # ==============================================================================
+    
     def analyze_feature_zeros(self, threshold=90):
         """
         Charge le dernier dataset de features, analyse le pourcentage de zéros
@@ -314,7 +474,10 @@ class AstroVisualizer:
             for f in to_remove:
                 print(f"    - {f} ({zero_df.loc[f, 'zero_percentage']:.1f}%)")
 
-    # --- NOUVEL OUTIL 5: Carte de Couverture Céleste ---
+    # ==============================================================================
+    # Outil 5 : Carte de Couverture Céleste ---
+    # ==============================================================================
+    
     def _generate_position_catalog(self, force_regenerate=False):
         """
         Scanne les FITS, extrait les coordonnées et crée un catalogue de position des plans.
@@ -358,40 +521,76 @@ class AstroVisualizer:
 
     def plot_sky_coverage(self):
         """
-        Génère le catalogue de position si nécessaire, puis affiche la carte de couverture céleste.
+        Génère une carte de couverture céleste avec Matplotlib, en contrôlant
+        l'ordre des couches pour un affichage correct.
+  # NOTE : L'affichage d'une image de fond avec `imshow` ou `figimage` sur une projection
+        # Mollweide s'est avéré instable et dépendant du backend de rendu.
+        # Pour garantir la robustesse, nous affichons la carte sans image de fond.
+        # Une future amélioration pourrait utiliser une librairie de plotting astronomique
+        # spécialisée comme `aplpy` si cette fonctionnalité est requise.
         """
-        print("--- Carte de Couverture Céleste ---")
+        print("--- Carte de Couverture Céleste (Matplotlib) ---")
         df_plan_positions = self._generate_position_catalog()
-        
-        if df_plan_positions.empty:
-            return
+        if df_plan_positions.empty: return
 
+        from PIL import Image
+
+        image_path = os.path.join(self.paths["PROJECT_ROOT"], "static", "images", "milky_way_mollweide.jpeg")
+        try:
+            bg_image = Image.open(image_path)
+        except FileNotFoundError:
+            bg_image = None
+            
         spectra_counts = [len([f for f in os.listdir(os.path.join(self.paths["RAW_DATA_DIR"], pid)) if f.endswith('.fits.gz')]) 
                           for pid in df_plan_positions['plan_id']]
         df_plan_positions['spectra_count'] = spectra_counts
 
+        # --- Création du graphique Matplotlib ---
         plt.style.use('dark_background')
-        fig = plt.figure(figsize=(18, 9))
+        fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(111, projection="mollweide")
+        
+        # --- ORDRE DE DESSIN CONTRÔLÉ AVEC ZORDER ---
+        
+        # 1. Image de fond (couche 0, la plus basse)
+        if bg_image is not None:
+            ax.imshow(bg_image, extent=[-np.pi, np.pi, -np.pi/2, np.pi/2], aspect='auto', zorder=0)
 
+        # 2. Grille (couche 5, par-dessus l'image)
+        ax.grid(True, linestyle=':', alpha=0.5, color='white', zorder=5)
+
+        # 3. Points de données (couche 10, la plus haute)
         ra_rad = np.deg2rad(df_plan_positions.ra)
         ra_rad[ra_rad > np.pi] -= 2 * np.pi
         dec_rad = np.deg2rad(df_plan_positions.dec)
-        sizes = df_plan_positions['spectra_count'] / 10 + 10 # +10 pour que les points soient visibles
+        sizes = df_plan_positions['spectra_count'] / 5 + 30
+        
+        edge_color = (1.0, 1.0, 1.0, 0.7)
+        scatter = ax.scatter(ra_rad, dec_rad, s=sizes, c=df_plan_positions['spectra_count'], 
+                             cmap='autumn', alpha=1.0, edgecolors=edge_color, linewidth=1, zorder=10)
+        
+        # --- MISE EN FORME ---
+        cbar = fig.colorbar(scatter, shrink=0.6, aspect=12, pad=0.08)
+        cbar.set_label('Nombre de Spectres par Plan', fontsize=12)
+        ax.set_xticklabels(['14h', '16h', '18h', '20h', '22h', '0h', '2h', '4h', '6h', '8h', '10h'], color='white')
+        ax.set_title("Couverture du Ciel - Densité des Données Acquises", pad=20, fontsize=18)
+        
+        # On s'assure que le fond des axes est transparent
+        ax.set_facecolor('none')
+        fig.patch.set_facecolor('#0E1117')
 
-        scatter = ax.scatter(ra_rad, dec_rad, s=sizes, c=df_plan_positions['spectra_count'], cmap='viridis', alpha=0.8)
-        
-        cbar = fig.colorbar(scatter, shrink=0.5, aspect=10)
-        cbar.set_label('Nombre de Spectres par Plan')
-        
-        ax.set_xticklabels(['14h', '16h', '18h', '20h', '22h', '0h', '2h', '4h', '6h', '8h', '10h'])
-        ax.set_title("Couverture du Ciel - Densité des Données Acquises", pad=20, fontsize=16)
-        ax.grid(True, linestyle=':', alpha=0.5)
-        
-        plt.show()
-        
+        # On sauvegarde et on affiche l'image pour un rendu fiable
+        temp_image_path = os.path.join(self.paths["PROJECT_ROOT"], "temp_sky_map.png")
+        plt.savefig(temp_image_path, dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
+        plt.close(fig)
 
-    # --- NOUVEL OUTIL 6: Inspecteur de Modèles Entraînés ---
+        from IPython.display import Image
+        display(Image(filename=temp_image_path))
+        
+    # ==============================================================================
+    # Outil 6 : Inspecteur de Modèles Entraînés ---
+    # ==============================================================================
+    
     def _analyze_saved_model(self, model_path):
         """
         Charge un modèle .pkl, affiche ses paramètres et l'importance des features.
@@ -414,7 +613,6 @@ class AstroVisualizer:
             display(Markdown(md_output))
 
             if hasattr(model, 'feature_importances_'):
-                # <<< LA CORRECTION EST ICI >>>
                 # On utilise le chemin PROCESSED_DIR défini dans notre dictionnaire 'paths'
                 processed_dir = self.paths.get("PROCESSED_DIR")
                 if not processed_dir:
@@ -467,8 +665,10 @@ class AstroVisualizer:
         
         interact(self._analyze_saved_model, model_path=saved_models)
         
+    # ==============================================================================
+    # Outil 7: Comparaison de Spectres ---
+    # ==============================================================================
     
-    # --- NOUVEL OUTIL 7: Comparaison de Spectres ---
     def _plot_spectra_comparison(self, file_paths, normalize=True, offset=0.0):
         """Affiche plusieurs spectres superposés sur un même graphique."""
         preprocessor = SpectraPreprocessor()
@@ -514,8 +714,11 @@ class AstroVisualizer:
             normalize=widgets.Checkbox(value=True, description="Normaliser les spectres"),
             offset=widgets.FloatSlider(min=0.0, max=5.0, step=0.1, value=0.5, description="Décalage Y:")
         )
+
+    # ==============================================================================
+    # Outil 8 : Analyseur de Spectre Augmenté (Version Plotly) ---
+    # ==============================================================================
     
-    # --- Outil 8 : Analyseur de Spectre Augmenté (Version Plotly) ---
     def _display_formatted_header_for_streamlit(self, st, fits_relative_path):
         """Affiche les informations de l'en-tête FITS dans Streamlit."""
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], fits_relative_path)
@@ -670,7 +873,7 @@ class AstroVisualizer:
 
         st.sidebar.markdown("---")
         st.sidebar.header("Paramètres de Détection")
-        prominence = st.sidebar.slider("Prominence", 0.01, 2.0, 0.2, 0.01)
+        prominence = st.sidebar.slider("Prominence", 0.01, 1.0, 0.2, 0.01)
         window = st.sidebar.slider("Fenêtre (Å)", 1, 50, 15, 1)
 
         # --- Affichage Principal ---
@@ -695,3 +898,5 @@ class AstroVisualizer:
         st.markdown(md_output)
         # Affiche le header complet sous forme de dictionnaire
         st.json(dict(header))
+        
+        
