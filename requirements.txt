@@ -41,6 +41,7 @@ requests==2.32.3
 beautifulsoup4==4.12.3 # Pour le scraping des pages de plans
 tqdm==4.66.4           # Pour les barres de progression
 pywavelets==1.6.0     # Utile pour le débruitage de signaux (comme les spectres)
+imbalanced-learn
 
 # --- Environnement Jupyter ---
 # Nécessaire pour faire tourner les notebooks.

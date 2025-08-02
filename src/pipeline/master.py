@@ -2,6 +2,9 @@ import os
 import pandas as pd
 import json
 import hashlib
+import numpy as np
+import ipywidgets as widgets
+from IPython.display import display, clear_output
 from datetime import datetime, timezone
 
 # Importation des composants du pipeline AstroSpectro
@@ -13,6 +16,7 @@ from tools.generate_catalog_from_fits import generate_catalog_from_fits
 # Importation d'outils de scikit-learn pour la validation et le rapport
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import LabelEncoder
 
 class MasterPipeline:
     """
@@ -126,68 +130,48 @@ class MasterPipeline:
         self.features_df = features_df
         return features_df
 
-    def _train_and_evaluate(self, n_estimators=200):
+    def _train_and_evaluate(self, model_type='RandomForest', n_estimators=100):
         """
-        Étape 5 : Entraîne un modèle de classification sur les features extraites et évalue sa performance.
-        Effectue le nettoyage des données (étiquettes invalides, classes rares) puis entraîne un RandomForest.
-        :return: Un tuple (clf, feature_cols, X, y, processed_files) si entraînement réalisé, None si pas de données.
+        Étape 5 : Orchestre l'entraînement et l'évaluation du modèle spécifié.
         """
-        print("\n--- ÉTAPE 5 : Entraînement et Évaluation du modèle ---")
-        # Charger le dernier fichier de features généré si le DataFrame n'est pas déjà disponible
-        df_features = pd.DataFrame()
+        print(f"\n=== ÉTAPE 5 : ENTRAÎNEMENT DU CLASSIFICATEUR (Modèle: {model_type}, n_estimators: {n_estimators}) ===")
+
+        
+        # --- 1. Chargement des données ---
+        # La logique de chargement que tu avais est très robuste, on la garde.
         if not self.features_df.empty:
             df_features = self.features_df.copy()
-        elif self.last_features_path:
-            # Si un chemin de fichier de features est disponible, charger depuis ce fichier
-            try:
-                df_features = pd.read_csv(self.last_features_path)
-            except Exception as e:
-                df_features = pd.DataFrame()
+        elif self.last_features_path and os.path.exists(self.last_features_path):
+            print(f"--- Chargement du dernier dataset de features : {os.path.basename(self.last_features_path)} ---")
+            df_features = pd.read_csv(self.last_features_path)
         else:
-            # Sinon, chercher le plus récent fichier de features dans le répertoire processed
-            feature_files = [os.path.join(self.processed_dir, f) for f in os.listdir(self.processed_dir) if f.startswith("features_") and f.endswith(".csv")]
-            if feature_files:
-                latest_feature_file = max(feature_files, key=os.path.getctime)
-                print(f"--- Chargement du dataset : {os.path.basename(latest_feature_file)} ---")
-                df_features = pd.read_csv(latest_feature_file)
-            else:
-                print("ERREUR : Aucun fichier de features trouvé pour l'entraînement.")
-                return None
-        # Création de la colonne 'label' à partir de la sous-classe si disponible
-        if 'subclass' in df_features.columns:
-            df_features['label'] = df_features['subclass'].astype(str).str[0]
-        else:
-            df_features['label'] = 'UNKNOWN'
-        # Filtrer les données invalides pour l'entraînement
-        initial_count = len(df_features)
-        df_trainable = df_features[df_features["label"].notnull() & ~df_features["label"].isin(['U', 'N', 'n'])].copy()
-        print(f"  > {initial_count - len(df_trainable)} lignes avec des labels invalides ou nuls supprimées.")
-        
-        # Supprimer les classes trop peu représentées (moins de 10 occurrences)
-        label_counts = df_trainable["label"].value_counts()
-        rare_labels = label_counts[label_counts < 10].index.tolist()
-        if rare_labels:
-            print(f"  > Suppression des classes trop rares : {rare_labels}")
-            df_trainable = df_trainable[~df_trainable["label"].isin(rare_labels)]
-        if df_trainable.empty:
-            print("\n  > Pas assez de données valides pour lancer l'entraînement.")
+            print("ERREUR : Aucun DataFrame de features disponible pour l'entraînement.")
             return None
-        
-        # Préparer les matrices de features (X) et les labels (y)
-        feature_cols = [col for col in df_trainable.columns if col.startswith('feature_')]
-        X = df_trainable[feature_cols].values
-        y = df_trainable["label"].values
-        print(f"\nFeatures utilisées : {feature_cols}")
-        print(f"Nombre d'échantillons final : {X.shape[0]}, Nombre de features : {X.shape[1]}")
-        
-        # Entraîner le classifieur
-        clf = SpectralClassifier(n_estimators=n_estimators)
-        clf.train_and_evaluate(X, y, test_size=0.25)
-        
-        # Retourner le modèle entraîné et les données pour l'étape suivante
-        return clf, feature_cols, X, y, df_trainable["file_path"].tolist()
+            
+        # --- 2. Entraînement via le SpectralClassifier ---
+        # On instancie le classifieur.
+        clf = SpectralClassifier(model_type=model_type)
 
-    def _log_and_report(self, clf, feature_cols, X, y, processed_files, n_estimators=200):
+        # On appelle la nouvelle méthode train_and_evaluate en lui passant le DataFrame COMPLET.
+        # Elle n'attend plus X, y, ou test_size.
+        # Elle nous retournera tout ce dont on a besoin pour la suite.
+        result_tuple = clf.train_and_evaluate(df_features, n_estimators=n_estimators)
+        
+        # --- 3. Gestion des résultats ---
+        # On vérifie si l'entraînement a réussi et a retourné des résultats.
+        if result_tuple is None:
+            print("\n  > L'entraînement a été annulé (probablement pas assez de données valides).")
+            return None
+            
+        # On déballe les résultats retournés par le classifieur.
+        feature_cols_used, X_used, y_used, processed_files = result_tuple
+        
+        print("\n  > Entraînement et tuning terminés avec succès.")
+        
+        # On retourne toutes les informations nécessaires pour la dernière étape (_log_and_report).
+        return clf, feature_cols_used, X_used, y_used, processed_files
+
+    def _log_and_report(self, clf, feature_cols, X, y, processed_files):
         """
         Étapes 6 et 7 : Met à jour le journal des spectres traités et génère un rapport de session.
         Sauvegarde le modèle entraîné, calcule un hash pour vérification, et exporte un rapport JSON contenant les paramètres et métriques.
@@ -198,96 +182,136 @@ class MasterPipeline:
         :param processed_files: Liste des chemins de spectres ayant été traités (pour mise à jour du log).
         :return: Chemin du rapport de session généré.
         """
-        if clf is None or processed_files is None:
-            print("Aucun modèle entraîné ou fichiers traités à consigner. Rapport non généré.")
+        # On vérifie si l'objet classifieur existe ET si la liste des fichiers n'est pas vide.
+        if clf is None or not processed_files:
+            print("\n> Aucun modèle entraîné ou fichiers traités à consigner. Rapport non généré.")
             return None
-        
-        # Sauvegarde du modèle entraîné sur le disque
-        model_path = os.path.join(self.models_dir, "spectral_classifier.pkl")
-        clf.save_model(model_path)
         
         # Mise à jour du journal des spectres utilisés
         print("\n--- ÉTAPE 6 : Mise à jour du Journal des Spectres Utilisés ---")
         self.builder.update_trained_log(processed_files)
         
-        # Génération du rapport de session
+        # --- ÉTAPE 7: Génération du Rapport de Session ---
         print("\n--- ÉTAPE 7 : Génération du Rapport de Session ---")
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         
-        # Calcul du hash MD5 du modèle sauvegardé (pour suivi d'intégrité)
+        # On définit UN SEUL timestamp pour toute la session
+        session_timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        model_filename = f"spectral_classifier_{clf.model_type.lower()}_{session_timestamp}.pkl"
+        model_path = os.path.join(self.models_dir, model_filename)
+        clf.save_model(model_path)
+        
+        # 2. Calcul du hash du modèle
         model_hash = "N/A"
         if os.path.exists(model_path):
             with open(model_path, "rb") as f:
-                model_bytes = f.read()
-                model_hash = hashlib.md5(model_bytes).hexdigest()
+                model_hash = hashlib.md5(f.read()).hexdigest()
             print(f"  > Hash MD5 du modèle : {model_hash}")
             
-        # Calcul des métriques de performance sur la base de test (en refaisant un split pour extraction métriques)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
-        predictions = clf.model.predict(X_test)
-        report_dict = classification_report(y_test, predictions, labels=clf.class_labels, zero_division=0, output_dict=True)
-        metrics_summary = report_dict.get("weighted avg", {})
-        print(f"  > Métriques extraites : Accuracy = {report_dict.get('accuracy', 0):.2f}")
+        # 3. Récupération des métriques de performance
+        # On refait un split pour être sûr d'avoir les mêmes données que lors de l'évaluation
+        # Gestion des labels encodés pour XGBoost
+        if clf.model_type == 'XGBoost':
+            le = LabelEncoder()
+            y_encoded = le.fit_transform(y)
+            X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.25, random_state=42, stratify=y_encoded)
+            predictions = clf.model_pipeline.predict(X_test)
+            report_dict = classification_report(y_test, predictions, target_names=clf.class_labels, zero_division=0, output_dict=True)
+            cm = confusion_matrix(y_test, predictions)
+        else: # Pour RandomForest
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+            predictions = clf.model_pipeline.predict(X_test)
+            report_dict = classification_report(y_test, predictions, labels=clf.class_labels, zero_division=0, output_dict=True)
+            cm = confusion_matrix(y_test, predictions, labels=clf.class_labels)
+
+        accuracy = report_dict.get('accuracy', 0)
+        print(f"  > Métriques extraites : Accuracy = {accuracy:.4f}")
         
-        # Calcul de la matrice de confusion
-        cm = confusion_matrix(y_test, predictions, labels=clf.class_labels)
-        cm_list = cm.tolist()
-        
-        # Construction du contenu du rapport
+        # 4. Construction du rapport
         session_report = {
-            "session_id": timestamp,
-            "date_utc": datetime.now(timezone.utc).isoformat(),
+            "session_id": session_timestamp,
+            "model_type": clf.model_type,
             "model_path": model_path,
             "model_hash_md5": model_hash,
+            "total_spectra_processed": len(processed_files),
             "training_set_size": int(len(X_train)),
             "test_set_size": int(len(X_test)),
-            "total_spectra_processed": len(processed_files),
             "feature_columns": feature_cols,
-            "class_labels": clf.class_labels,
-            "n_estimators": n_estimators,
+            "class_labels": clf.class_labels.tolist() if isinstance(clf.class_labels, np.ndarray) else clf.class_labels,
+            "best_model_params": clf.best_params_,
+            "accuracy": accuracy,
             "classification_report": report_dict,
-            "accuracy": metrics_summary.get("precision", 0),
-            "recall": metrics_summary.get("recall", 0),
-            "f1_score": metrics_summary.get("f1-score", 0),
-            "support": metrics_summary.get("support", 0),
-            "model_params": clf.model.get_params(),
-            "model_type": clf.model.__class__.__name__,
-            "metrics": metrics_summary,
-            "confusion_matrix": cm_list,
-            "confusion_matrix_labels": clf.class_labels,
-            "processed_files_list": processed_files
+            "confusion_matrix": cm.tolist(),
         }
         
-        # Sauvegarde du rapport sur le disque en JSON
-        report_filename = f"session_report_{timestamp}.json"
+        # 5. Sauvegarde du rapport JSON
+        report_filename = f"session_report_{clf.model_type.lower()}_{session_timestamp}.json"
         report_path = os.path.join(self.reports_dir, report_filename)
         with open(report_path, "w", encoding="utf-8") as f:
             json.dump(session_report, f, indent=4)
         print(f"\nRapport de session sauvegardé dans : {report_path}")
         print("\n\nSESSION DE RECHERCHE TERMINÉE")
         return report_path
-
-    def run_full_pipeline(self, batch_size=500, strategy="random", n_estimators=200):
+    
+    def run_full_pipeline(self, batch_size=500, strategy="random", model_type='RandomForest'):
         """
-        Exécute l'ensemble du pipeline de manière séquentielle (Étapes 2 à 7).
-        Permet en un appel de lancer le batch, la génération du catalogue, le traitement, l'entraînement et le reporting.
-        :param batch_size: Taille du lot de spectres à sélectionner.
-        :param strategy: Stratégie de sélection des spectres ('random' ou 'first').
+        Exécute l'ensemble du pipeline de manière séquentielle.
         """
         # Étape 2 : Sélection du lot
         batch = self._select_batch(batch_size=batch_size, strategy=strategy)
-        if not batch:
-            return  # Aucune donnée à traiter, fin du pipeline
+        if not batch: return
+
         # Étape 3 : Génération du catalogue
         self._generate_local_catalog()
-        # Étape 4 : Traitement du lot et extraction des features
+
+        # Étape 4 : Traitement du lot
         features_df = self._process_batch()
-        if features_df.empty:
-            return  # Pas de features extraites, fin du pipeline
+        if features_df.empty: return
+
         # Étape 5 : Entraînement du modèle
-        result = self._train_and_evaluate(n_estimators=n_estimators)
-        if not result:
-            return  # Entraînement non réalisé
+        # On passe le model_type à la méthode d'entraînement
+        result = self._train_and_evaluate(model_type=model_type)
+        if not result: return
+
         clf, feature_cols, X, y, processed_files = result
+
         # Étapes 6-7 : Journalisation et rapport
-        self._log_and_report(clf, feature_cols, X, y, processed_files, n_estimators=n_estimators)
+        self._log_and_report(clf, feature_cols, X, y, processed_files)
+        
+    def interactive_training_runner(self):
+        """
+        Crée et affiche une interface interactive dans un notebook Jupyter
+        pour lancer le pipeline d'entraînement avec des paramètres choisis.
+        """
+        # --- 1. Widgets de contrôle ---
+        model_choice = widgets.Dropdown(options=['RandomForest', 'XGBoost'], value='XGBoost', description='Modèle:')
+        n_estimators_widget = widgets.IntText(value=200, description='N Estimators:', style={'description_width': 'initial'})
+        run_button = widgets.Button(description="Lancer l'entraînement", button_style='success', icon='play')
+        output_area = widgets.Output()
+
+        # --- 2. Fonction de callback ---
+        def on_run_button_clicked(b):
+            with output_area:
+                clear_output(wait=True)
+                selected_model = model_choice.value
+                n_estimators = n_estimators_widget.value
+                
+                # On appelle la méthode d'entraînement de CETTE instance de MasterPipeline
+                training_results = self._train_and_evaluate(model_type=selected_model, n_estimators=n_estimators)
+
+                if training_results is not None:
+                    clf, feature_cols, X, y, processed_files = training_results
+                    self._log_and_report(clf, feature_cols, X, y, processed_files)
+                else:
+                    print("\n--- SESSION TERMINÉE SANS ENTRAÎNEMENT ---")
+
+        # --- 3. Lier et afficher ---
+        run_button.on_click(on_run_button_clicked)
+        
+        controls = widgets.HBox([model_choice, n_estimators_widget, run_button])
+        app_layout = widgets.VBox([controls, output_area], layout={
+            'border': '1px solid #444',
+            'padding': '10px',
+            'width': '100%'
+        })
+        
+        display(app_layout)

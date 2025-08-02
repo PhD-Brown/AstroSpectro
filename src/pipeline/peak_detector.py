@@ -6,10 +6,15 @@ class PeakDetector:
         self.prominence = prominence
         self.window = window
         self.target_lines = {
+            # Raies de Balmer (pour étoiles chaudes)
             "Hα": 6563,
             "Hβ": 4861,
+            # Raies du Calcium (généralistes)
             "CaII K": 3933,
             "CaII H": 3968,
+            # NOUVELLES RAIES (pour étoiles plus froides)
+            "Mg_b": 5175,   # Triplet du Magnésium, fort dans les G/K
+            "Na_D": 5893,   # Doublet du Sodium, très fort dans les K
         }
 
     def detect_peaks(self, wavelength, flux):

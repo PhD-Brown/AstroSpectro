@@ -35,6 +35,7 @@ dependencies = [
     "ipykernel"
     "plotly"
     "streamlit"
+    "imbalanced-learn"
 ]
 
 [project.urls]

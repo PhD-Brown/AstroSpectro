@@ -31,7 +31,6 @@ class ProcessingPipeline:
         for file_path in tqdm(batch_paths, desc="Traitement des spectres"):
             full_fits_path = os.path.join(self.raw_data_dir, file_path)
             try:
-                # --- LOGIQUE DE TRAITEMENT COMPLÈTE ---
                 # 1. Chargement et Pré-traitement
                 with gzip.open(full_fits_path, 'rb') as f_gz:
                     with fits.open(f_gz, memmap=False) as hdul:
@@ -41,19 +40,25 @@ class ProcessingPipeline:
                 # 2. Détection de Raies
                 matched_lines = self.peak_detector.analyze_spectrum(wavelength, flux_norm)
                 
-                # 3. Feature Engineering (C'est la ligne qui manquait !)
-                features_vector = self.feature_engineer.extract_features(matched_lines)
-                # --- FIN DE LA LOGIQUE DE TRAITEMENT ---
+                # 3. Feature Engineering
+                features_vector = self.feature_engineer.extract_features(matched_lines, wavelength, flux_norm)
                 
-                # On stocke les résultats
+                # On calcule le flux moyen dans une bande "bleue" et une bande "rouge"
+                flux_blue = np.mean(flux_norm[(wavelength > 4000) & (wavelength < 4500)])
+                flux_red = np.mean(flux_norm[(wavelength > 6500) & (wavelength < 7000)])
+                # On calcule le ratio. Epsilon évite la division par zéro.
+                color_index = flux_blue / (flux_red + 1e-6)
+                
+                # 4. Stockage des résultats
                 record = {"file_path": file_path}
-                
-                # Au lieu de boucler sur self.feature_engineer.lines, on boucle sur self.feature_engineer.feature_names
                 for feature_name, feature_val in zip(self.feature_engineer.feature_names, features_vector):
                     record[feature_name] = feature_val
                 
+                # On ajoute notre nouvelle feature au dictionnaire
+                record['feature_color_index_BlueRed'] = color_index
+                
                 all_features_list.append(record)
-
+            
             except Exception as e:
                 print(f"\n    -> ERREUR lors du traitement de {file_path}: {e}")
 

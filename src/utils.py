@@ -32,6 +32,7 @@ def setup_project_env():
             "MODELS_DIR": os.path.join(project_root, 'data', 'models'),
             "REPORTS_DIR": os.path.join(project_root, 'data', 'reports'),
             "NOTEBOOKS_DIR": os.path.join(project_root, 'notebooks'),
+            "LOGS_DIR": os.path.join(project_root, 'logs'),
         }
 
         # Ajouter les chemins au sys.path pour les imports

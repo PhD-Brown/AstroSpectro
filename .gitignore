@@ -31,10 +31,9 @@ models/
 *.fits.gz
 *.csv
 *.pkl
+static/images/
 
 # === Output, figures, temporary files ===
-*.png
-*.jpg
 *.pdf
 *.svg
 *.tmp

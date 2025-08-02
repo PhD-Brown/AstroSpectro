@@ -1,0 +1,104 @@
+---
+title: "De 32% à 84% : Récit d'une Percée en Classification Stellaire par l'IA"
+slug: 2025-08-01-de-32-a-84-pourcent-classifieur-stellaire
+authors: abaker
+tags: ["machine-learning", "results", "feature-engineering", "optimization", "milestone", "xgboost"]
+date: 2025-08-01
+---
+
+> <span style={{fontSize: "1.3rem", fontWeight: "400", color: "#AAA"}}>Leçon d'astrophysique : quand le feature engineering bat la force brute.</span>
+
+Le voyage du projet AstroSpectro a atteint aujourd'hui un jalon majeur. Ce qui a commencé comme une baseline modeste à **32%** de précision s'est transformé, après une série d'itérations scientifiques rigoureuses, en un classifieur stellaire haute performance atteignant **84%** de précision. Ce billet retrace les étapes clés, les découvertes et les leçons apprises au cours de cette aventure.
+
+<!--truncate-->
+
+### Acte I : La Baseline à 32% - Une Preuve de Concept
+
+Notre point de départ était un modèle simple, entraîné sur 5000 spectres avec seulement quatre features : la présence ou l'absence des raies Hα, Hβ, CaII H & K. Le résultat, 32%, était plus de trois fois supérieur au hasard et validait notre pipeline. Cependant, l'analyse des résultats a révélé deux faiblesses majeures : 
+    1. un fort déséquilibre des classes, 
+    2. des features trop souvent absentes, en particulier Hα.
+
+(Pour plus de détails, voir mon [premier billet sur les résultats](https://phd-brown.github.io/AstroSpectro/journal/Premier%20partage%20de%20r%C3%A9sultat)).
+
+### Acte II : L'Ère du Feature Engineering - Vers 75%
+
+La feuille de route était claire : il fallait enrichir nos features. Chaque nouvelle idée a été testée méthodiquement :
+
+1. **De la Présence à la Force (Prominence) :** Mesurer la profondeur des raies a fait passer la précision à **40%**.
+2. **La Puissance des Ratios :** L'ajout de ratios de force entre les raies (ex: CaII K / Hβ) a propulsé le score à **50%**.
+3. **Le Contexte par les Métadonnées :** L'inclusion des métadonnées du header FITS (redshift, SNR, seeing) a provoqué une percée spectaculaire, atteignant **71%**.
+4.  **La Forme des Raies (FWHM & Skewness) :** L'ajout de la **largeur à mi-hauteur (FWHM)** a encore affiné le modèle. Nous avons également testé l'**asymétrie (skewness)** des raies. Si le FWHM s'est avéré être un indicateur très pertinent, le skewness, lui, n'a apporté aucune amélioration. L'analyse a montré que cette mesure était trop sensible au bruit résiduel, même après un lissage, et le modèle a donc appris à l'ignorer. C'est une leçon importante : toutes les features physiques ne sont pas forcément utiles pour un modèle d'IA.
+5. **Robustesse par la Validation Croisée :** L'intégration de ``GridSearchCV`` a permis de trouver les meilleurs hyperparamètres et de stabiliser la performance autour d'un très solide **75%**.
+
+Chaque étape était une confirmation : plus nous donnions d'informations physiques et contextuelles au modèle, meilleures étaient ses performances.
+
+### L'Outil Clé : Le Débogage Interactif
+
+Cette progression n'aurait pas été possible sans les outils de visualisation développés en parallèle. Notre [Analyseur de Spectre Augmenté](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/02_tools_and_visuals.ipynb) est devenu le cœur de notre processus de recherche, nous permettant de :
+
+- **Visualiser** n'importe quel spectre de notre collection.
+- **Tuner** les paramètres de détection de pics en temps réel.
+- **Comparer** la "vraie" classe d'une étoile avec la prédiction du modèle en direct.  
+
+C'est cet outil qui nous a permis d'identifier que nos paramètres de détection initiaux étaient trop stricts, nous faisant manquer des informations cruciales.
+
+![Capture d'écran de l'Analyseur de Spectre Augmenté](/img/analyseur_spectre_final.png)
+
+### Acte III : Le Challenger XGBoost - La Percée à 84%
+
+Avec un jeu de features riche et robuste, il était temps de tester un modèle plus puissant. Nous avons remplacé le ``RandomForest`` par un ``XGBoost``, un algorithme de gradient boosting réputé pour ses performances.
+
+Le résultat a été immédiat et spectaculaire.
+
+- **Score de Validation Croisée : 82.3%**
+- **Précision finale sur le jeu de test : 84%**
+
+<details>
+<summary>Voir les résultats finaux en détail</summary>
+```
+--- Rapport d'Évaluation (XGBoost) ---
+             precision  recall   f1-score   support
+A              0.85      0.79      0.82        29
+F              0.79      0.79      0.79        98
+G              0.82      0.80      0.81       143
+K              0.77      0.85      0.81       101
+M              0.94      0.82      0.88        57
+N              0.97      1.00      0.99        69
+
+accuracy                           0.84       497
+macro avg      0.86      0.84      0.85       497
+weighted avg   0.84      0.84      0.84       497
+```
+
+![Matrice de Confusion Finale](/img/matrice_finale_xgboost.png)
+</details>
+
+La matrice de confusion finale montre une diagonale écrasante, signe d'un modèle extrêmement confiant et précis. La confusion entre les classes adjacentes a été minimisée, et la performance est excellente sur l'ensemble des types stellaires principaux.
+
+### L'Anatomie de la Décision : Quelles Features Comptent le Plus ?
+
+Le graphique d'importance des features pour notre modèle XGBoost final révèle une hiérarchie fascinante. Les métadonnées contextuelles comme `redshift_error` et l'indice de couleur dominent, mais elles sont immédiatement suivies par les mesures physiques que nous avons extraites, comme la largeur (FWHM) et la force (prominence) des raies Hα et Hβ. C'est la confirmation que la meilleure performance est atteinte en combinant le **contexte de l'observation** avec les **propriétés physiques du spectre**.
+
+![Graphique d'Importance des Features Fina](/img/importance_features_final_xgboost.png)
+
+### Conclusion : La Convergence de la Physique et de l'IA
+
+Ce voyage de 32% à 84% n'est pas seulement l'histoire d'un score qui augmente. C'est la démonstration qu'une approche rigoureuse, combinant :
+-   Une **architecture logicielle modulaire** et robuste.
+-   Un **feature engineering** guidé par la connaissance du domaine astrophysique.
+-   Des **outils de visualisation interactifs** pour le débogage et l'analyse.
+-   Une **validation statistique rigoureuse** des modèles.
+
+...permet d'obtenir des résultats de très haute qualité.
+
+Le projet AstroSpectro a atteint son objectif principal. Le laboratoire est construit, les outils sont affûtés, et les résultats sont là. L'aventure, bien sûr, ne fait que commencer. La [Roadmap](https://phd-brown.github.io/AstroSpectro/docs/community/roadmap) est encore pleine de défis passionnants.
+
+### Perspectives
+
+- **Nouveaux modèles à tester** : CNN, transformers spectraux.
+- **Plus grande diversité de jeux de données** : extension au DR6, SDSS...
+- **Automatisation complète du pipeline (CI/CD)**.
+- **App Streamlit** : vers une interface de classification interactive en ligne.
+
+#### 🚀 *Envie de contribuer ?*  
+Forkez le projet, proposez vos idées, ou [contactez-moi](https://phd-brown.github.io/AstroSpectro/docs/community/contributing) !

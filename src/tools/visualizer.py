@@ -3,6 +3,7 @@ import gzip
 import base64
 import pandas as pd
 import numpy as np
+import textwrap
 from datetime import datetime
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -13,7 +14,7 @@ import plotly.graph_objects as go
 from specutils import Spectrum, SpectralRegion
 from astropy import units as u
 from astropy.nddata import StdDevUncertainty
-from specutils.analysis import snr, centroid, fwhm, line_flux
+from specutils.analysis import snr, centroid, gaussian_fwhm, line_flux
 from specutils.manipulation import median_smooth
 import glob
 
@@ -21,6 +22,7 @@ import glob
 from pipeline.preprocessor import SpectraPreprocessor
 from pipeline.classifier import SpectralClassifier
 from pipeline.peak_detector import PeakDetector
+from tools.dataset_builder import DatasetBuilder
 
 class AstroVisualizer:
     """
@@ -31,7 +33,34 @@ class AstroVisualizer:
         """Initialise le visualiseur avec les chemins du projet."""
         self.paths = paths
         self.available_spectra = self._scan_for_spectra()
+        self.classifier = None
+        print("AstroVisualizer initialisé. Les modèles seront chargés à la demande.")
+        # --- NOUVELLE SECTION : Pré-chargement du catalogue de labels ---
+        self.labels_catalog = self._load_labels_catalog()
+        if self.labels_catalog is not None:
+            print(f"  > Catalogue de {len(self.labels_catalog)} labels chargé pour l'affichage.")
 
+    def _load_labels_catalog(self):
+        """Charge un catalogue complet pour retrouver les vrais labels."""
+        try:
+            # On utilise le DatasetBuilder pour lister tous les spectres
+            builder = DatasetBuilder(catalog_dir=self.paths["CATALOG_DIR"], raw_data_dir=self.paths["RAW_DATA_DIR"])
+            # On utilise le catalogue généré par le master pipeline, s'il existe
+            catalog_path = os.path.join(self.paths["CATALOG_DIR"], "master_catalog_temp.csv")
+            if not os.path.exists(catalog_path):
+                # Si le catalogue temporaire n'existe pas, on pourrait le générer ici
+                # Pour l'instant, on retourne un dictionnaire vide.
+                return {}
+
+            df_cat = pd.read_csv(catalog_path, sep='|')
+            # On crée un dictionnaire : {nom_fichier: subclass} pour un accès rapide
+            df_cat['fits_name_only'] = df_cat['fits_name'].str.replace(".gz", "", regex=False)
+            labels_dict = pd.Series(df_cat.subclass.values, index=df_cat.fits_name_only).to_dict()
+            return labels_dict
+        except Exception as e:
+            print(f"  > Avertissement : Impossible de charger le catalogue de labels ({e}).")
+            return {}
+        
     def _scan_for_spectra(self):
         """Scanne le dossier raw/ pour trouver tous les spectres disponibles."""
         spectra_list = []
@@ -211,7 +240,7 @@ class AstroVisualizer:
     # Outil 3 : Analyseur & Tuner de Spectre Interactif (pour Notebook)
     # ==============================================================================
     
-    def _plot_peak_detection_notebook(self, file_path, prominence, window, xlim, ylim):
+    def _plot_peak_detection_notebook(self, file_path, prominence, window, xlim, ylim, model_path):
         """
         Analyse interactive de spectre dans le notebook :
         - Affiche le graphique Matplotlib (avec annotation des raies et export PNG)
@@ -223,18 +252,23 @@ class AstroVisualizer:
 
         import io, base64
         from datetime import datetime
+        
         # === 1. Paramètres d'affichage/couleurs pour chaque raie ===
         line_colors = {
-            "Hα": "#00FF00",      # Vert fluo (lime)
-            "Hβ": "#FFDD00",      # Jaune-orangé
-            "CaII K": "#00A2FF",  # Bleu clair
-            "CaII H": "#AA00FF",  # Violet
+            "Hα": "#FF6B6B",      # Rouge corail
+            "Hβ": "#4ECDC4",      # Turquoise
+            "CaII K": "#45B7D1",  # Bleu ciel
+            "CaII H": "#5A67D8",  # Indigo
+            "Mg_b": "#F7B801",    # Jaune ambre
+            "Na_D": "#F18701"     # Orange vif
         }
 
         # === 2. Extraction du spectre et détection des raies ===
         preprocessor = SpectraPreprocessor()
+        
         # On initialise le détecteur de pics avec les paramètres
         peak_detector = PeakDetector(prominence=prominence, window=window)
+        
         # Chemin complet du fichier FITS
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
 
@@ -243,10 +277,15 @@ class AstroVisualizer:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
                     header = hdul[0].header
-            # On convertit les données en tableaux NumPy pour traitement 
+            
+            # --- Récupération de la VRAIE CLASSE directement depuis le header ---
+            true_subclass = header.get('SUBCLASS', 'Inconnu')
+            
+            # --- Préparation des données numériques ---
             wavelength, flux, invvar = (np.asarray(d, dtype=np.float64) for d in [wavelength, flux, invvar])
             flux_norm = preprocessor.normalize_spectrum(flux)
-            # On affiche les informations de l'en-tête FITS
+            
+            # --- Analyse spectrale ---
             peak_indices, properties = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wavelengths = wavelength[peak_indices]
             matched_lines = peak_detector.match_known_lines(peak_indices, peak_wavelengths, properties)
@@ -255,18 +294,59 @@ class AstroVisualizer:
             # (Indépendant de la visualisation, utilisé pour prédiction IA)
             from pipeline.feature_engineering import FeatureEngineer
             feature_engineer = FeatureEngineer()
-            features_vector = feature_engineer.extract_features(matched_lines)
+            features_vector = feature_engineer.extract_features(matched_lines, wavelength, flux_norm)
 
             # === 4. Prédiction automatique de la classe spectrale ===
-            # Le modèle doit être chargé UNE SEULE FOIS dans le notebook (ex: spectral_classifier)
-            predicted_label = None
-            if 'spectral_classifier' in globals() and spectral_classifier is not None:
+            predicted_label = "Aucun modèle sélectionné"
+            
+            if model_path != 'Aucun':
                 try:
-                    print("Features vector:", features_vector)
-                    predicted_label = spectral_classifier.model.predict([features_vector])[0]
+                    local_classifier = SpectralClassifier.load_model(model_path)
+                    
+                    if hasattr(local_classifier, 'model_pipeline'):
+                        # 1. On récupère les noms de features que le modèle attend
+                        feature_names_expected = local_classifier.feature_names_used
+                        
+                        # 2. On génère les features spectrales
+                        feature_engineer = FeatureEngineer()
+                        spectral_features_vector = feature_engineer.extract_features(matched_lines, wavelength, flux_norm)
+                        
+                        # 3. On crée un dictionnaire avec toutes les features disponibles
+                        current_features = {}
+                        for name, val in zip(feature_engineer.feature_names, spectral_features_vector):
+                            current_features[name] = val
+                        
+                        metadata_features_needed = ['redshift', 'snr_g', 'snr_r', 'snr_i', 'seeing']
+                        for meta_feat in metadata_features_needed:
+                            if meta_feat in feature_names_expected:
+                                 try:
+                                     current_features[meta_feat] = float(header.get(meta_feat.upper(), 0.0))
+                                 except (ValueError, TypeError):
+                                     current_features[meta_feat] = 0.0
+                        
+                        # --- CORRECTION FINALE : Création robuste du DataFrame ---
+                        # On crée le DataFrame avec les données qu'on a
+                        single_sample_df = pd.DataFrame([current_features])
+                        
+                        # On s'assure que toutes les colonnes attendues sont présentes, en ajoutant celles qui manquent avec la valeur 0.0
+                        for col in feature_names_expected:
+                            if col not in single_sample_df.columns:
+                                single_sample_df[col] = 0.0
+                        
+                        # On ré-ordonne les colonnes pour qu'elles correspondent exactement à l'entraînement
+                        single_sample_df = single_sample_df[feature_names_expected]
+                        # --- FIN DE LA CORRECTION ---
+
+                        # 5. On fait la prédiction
+                        prediction_encoded = local_classifier.model_pipeline.predict(single_sample_df)[0]
+                        
+                        # 6. On décode le label
+                        if local_classifier.model_type == 'XGBoost':
+                            predicted_label = local_classifier.class_labels[prediction_encoded]
+                        else: # RandomForest
+                            predicted_label = prediction_encoded
                 except Exception as e:
-                    print("Erreur de prédiction IA :", e)
-                    predicted_label = f"Erreur prédiction: {e}"
+                    predicted_label = f"Erreur prédiction" # On peut même ajouter : {e} pour plus de détails
             
             # === 5. Affichage graphique Matplotlib interactif ===
             matched_wavelengths, matched_flux = [], []
@@ -292,7 +372,7 @@ class AstroVisualizer:
             # -- Lignes verticales pour toutes les raies cibles --
             for name, wl in peak_detector.target_lines.items():
                 plt.axvline(x=wl, color=line_colors.get(name, 'dodgerblue'), linestyle='--', alpha=0.8, label=f'Raie {name}')
-            plt.title(f"Analyse des Pics pour {os.path.basename(file_path)}", fontsize=16)
+            plt.title(f"Analyse du Spectre : {header.get('DESIG', os.path.basename(file_path))} (Vraie Classe: {true_subclass})", fontsize=16)
             plt.xlabel("Longueur d'onde (Å)")
             plt.ylabel("Flux Normalisé")
             plt.xlim(xlim); plt.ylim(ylim)
@@ -309,24 +389,31 @@ class AstroVisualizer:
             plt.show()
 
             # === 6. Analyse quantitative des raies associées (tableau Pandas stylé) ===
-            invvar[invvar <= 0] = 1e-12
+            invvar[invvar <= 0] = 1e-12 
             uncertainty = StdDevUncertainty(1 / np.sqrt(invvar))
             spectrum_obj = Spectrum(spectral_axis=wavelength*u.AA, flux=flux_norm*u.Unit("adu"), uncertainty=uncertainty)
+            
             analysis_results = {}
             for name, match_data in matched_lines.items():
                 if match_data is not None:
                     wl_detected, prom = match_data
+                    # On définit une région d'analyse autour du pic détecté
                     analysis_region = SpectralRegion((wl_detected - window) * u.AA, (wl_detected + window) * u.AA)
                     try:
+                        # On calcule les métriques physiques
                         center = centroid(spectrum_obj, regions=analysis_region)
-                        width = fwhm(spectrum_obj, regions=analysis_region)
+                        
+                        # <<< LA CORRECTION CLÉ EST ICI >>>
+                        width = gaussian_fwhm(spectrum_obj, regions=analysis_region) # On utilise le bon nom de fonction
+                        
                         analysis_results[name] = {
                             "Centroïde (Å)": f"{center.to_value(u.AA):.2f}",
                             "Largeur FWHM (Å)": f"{width.to_value(u.AA):.2f}",
                             "Prominence (Force)": f"{prom:.3f}"
                         }
-                    except Exception:
-                        analysis_results[name] = {"Erreur": "Analyse impossible"}
+                    except Exception as e:
+                        # Si l'analyse échoue pour une raie, on le note et on continue
+                        analysis_results[name] = {"Erreur": "Analyse impossible", "Détail": str(e)}
 
             # === 7. Affichage dynamique du tableau d'analyse & exports ===
             if analysis_results:
@@ -348,7 +435,7 @@ class AstroVisualizer:
                 display(HTML(f"<div style='margin:8px 0'>{href_csv} &nbsp;|&nbsp; {href_latex}</div>"))
 
             # === 8. Affichage de la classe spectrale prédite (IA) ===
-            if predicted_label is not None:
+            if predicted_label:
                 display(Markdown(f"**Classe spectrale prédite par le modèle IA :** `{predicted_label}`"))
 
             # === 9. Log/Historique complet de la session (toutes analyses sauvegardées) ===
@@ -419,13 +506,31 @@ class AstroVisualizer:
             print("Aucun spectre trouvé.")
             return
 
+        # --- On liste les modèles disponibles ---
+        models_dir = self.paths.get("MODELS_DIR", "../data/models/")
+        saved_models = ['Aucun'] # Option pour ne pas faire de prédiction
+        if os.path.exists(models_dir):
+            # On trie pour avoir le plus récent en premier
+            model_files = sorted(
+                [os.path.join(models_dir, f) for f in os.listdir(models_dir) if f.endswith(".pkl")],
+                key=os.path.getctime,
+                reverse=True
+            )
+            saved_models += model_files
+
+        # --- On crée l'interface interactive ---
         interactive_plot = widgets.interactive(
             self._plot_peak_detection_notebook,
+            
+            # --- Widgets existants ---
             file_path=widgets.Dropdown(options=self.available_spectra, description="Spectre :", layout={'width': 'max-content'}),
             prominence=widgets.FloatSlider(min=0.01, max=1.0, step=0.01, value=0.2, description='Prominence:'),
             window=widgets.IntSlider(min=1, max=50, step=1, value=15, description='Fenêtre (Å):'),
             xlim=widgets.FloatRangeSlider(value=[3800, 7000], min=3500, max=9500, step=1, description='Zoom X (Å):', continuous_update=False, layout={'width': '500px'}),
-            ylim=widgets.FloatRangeSlider(value=[-1, 2.5], min=-2, max=5, step=0.1, description='Zoom Y (Flux):', continuous_update=False, layout={'width': '500px'})
+            ylim=widgets.FloatRangeSlider(value=[-1, 2.5], min=-2, max=5, step=0.1, description='Zoom Y (Flux):', continuous_update=False, layout={'width': '500px'}),
+            
+            # <<< LE WIDGET MANQUANT EST AJOUTÉ ICI >>>
+            model_path=widgets.Dropdown(options=saved_models, description="Modèle IA :", layout={'width': 'max-content'})
         )
         display(interactive_plot)
 
@@ -593,60 +698,54 @@ class AstroVisualizer:
     
     def _analyze_saved_model(self, model_path):
         """
-        Charge un modèle .pkl, affiche ses paramètres et l'importance des features.
+        Charge un classifieur .pkl, affiche ses paramètres et l'importance des features.
         """
-        if not os.path.exists(model_path):
-            display(Markdown(f"### Fichier modèle non trouvé\n`{model_path}`"))
-            return
-
+        # ... (le code de chargement ne change pas) ...
         try:
-            from pipeline.classifier import SpectralClassifier
             spectral_classifier = SpectralClassifier.load_model(model_path)
-            model = spectral_classifier.model
             
-            md_output = f"### Analyse du Modèle : `{os.path.basename(model_path)}`\n---\n"
-            md_output += "#### Hyperparamètres du Modèle\n"
-            params = model.get_params()
-            for key, value in params.items():
-                md_output += f"- **{key} :** `{value}`\n"
+            # On vérifie que le modèle et le pipeline existent
+            if not hasattr(spectral_classifier, 'model_pipeline'):
+                display(Markdown("### Erreur\nLe classifieur chargé ne contient pas de `model_pipeline`."))
+                return
+            
+            # On accède au modèle (ex: RandomForest) à l'intérieur du pipeline
+            model = spectral_classifier.model_pipeline.named_steps['clf']
+            
+            md_output = f"### Analyse du Modèle : `{os.path.basename(model_path)}`\n"
+            md_output += f"#### Type de Modèle : `{spectral_classifier.model_type}`\n---\n"
+            md_output += "#### Meilleurs Hyperparamètres (trouvés par GridSearchCV)\n"
+            
+            # On affiche les best_params_ qui sont stockés sur l'objet principal
+            params = spectral_classifier.best_params_
+            if params:
+                for key, value in params.items():
+                    md_output += f"- **{key.replace('clf__', '')} :** `{value}`\n"
+            else:
+                md_output += "*Aucun paramètre de tuning enregistré.*\n"
             
             display(Markdown(md_output))
 
             if hasattr(model, 'feature_importances_'):
-                # On utilise le chemin PROCESSED_DIR défini dans notre dictionnaire 'paths'
-                processed_dir = self.paths.get("PROCESSED_DIR")
-                if not processed_dir:
-                    raise FileNotFoundError("Chemin 'PROCESSED_DIR' non trouvé dans la configuration.")
-                
-                list_of_feature_files = glob.glob(os.path.join(processed_dir, 'features_*.csv'))
-                
-                if not list_of_feature_files:
-                    # On affiche une erreur claire si aucun fichier n'est trouvé
-                    display(Markdown("#### Importance des Features\n*Avertissement : Aucun fichier de features trouvé pour récupérer les noms de colonnes.*"))
-                    return # On arrête ici, on ne peut pas faire le graphique
-
-                latest_features_file = max(list_of_feature_files, key=os.path.getctime)
-                df_features = pd.read_csv(latest_features_file)
-                feature_names = [col for col in df_features.columns if col.startswith('feature_')]
-
-                # S'assurer que le nombre de features correspond
-                if len(feature_names) == len(model.feature_importances_):
+                # On utilise les noms de features stockés dans le classifieur !
+                feature_names = spectral_classifier.feature_names_used
+                if feature_names:
                     importances = model.feature_importances_
-                    indices = np.argsort(importances)[::-1]
+                    indices = np.argsort(importances) # On trie du moins au plus important pour un barh
 
                     plt.style.use('dark_background')
-                    plt.figure(figsize=(12, 6))
+                    plt.figure(figsize=(10, 8))
                     plt.title("Importance des Features pour le Modèle", fontsize=16)
-                    plt.bar(range(len(importances)), importances[indices], color="c", align="center")
-                    plt.xticks(range(len(importances)), np.array(feature_names)[indices], rotation=45, ha="right")
-                    plt.ylabel("Importance (Gini)")
+                    plt.barh(range(len(importances)), importances[indices], color="c", align="center")
+                    plt.yticks(range(len(importances)), np.array(feature_names)[indices])
+                    plt.xlabel("Importance (Gini)")
                     plt.tight_layout()
                     plt.show()
                 else:
-                    display(Markdown(f"#### Importance des Features\n*Avertissement : Le nombre de features du modèle ({len(model.feature_importances_)}) ne correspond pas à celui du fichier de features ({len(feature_names)}).*"))
-
+                    display(Markdown("#### Importance des Features\n*Avertissement : La liste des noms de features n'a pas été trouvée dans le classifieur sauvegardé.*"))
+        
         except Exception as e:
-            display(Markdown(f"### Erreur lors du chargement ou de l'analyse du modèle\n`{os.path.basename(model_path)}`\n\n**Détail :** {e}"))
+            display(Markdown(f"### Erreur lors de l'analyse du modèle\n**Détail :** {e}"))
 
     def interactive_model_inspector(self):
         """
@@ -899,4 +998,33 @@ class AstroVisualizer:
         # Affiche le header complet sous forme de dictionnaire
         st.json(dict(header))
         
-        
+    # ==============================================================================
+    # Outil 9 : Tableau de Bord du Dataset Spectral ---
+    # ==============================================================================
+    def display_dataset_dashboard(self):
+        """
+        Affiche un tableau de bord de l'état actuel du dataset
+        en utilisant le DatasetBuilder pour les statistiques.
+        """
+        display(Markdown("### Tableau de Bord du Dataset Spectral"))
+        display(Markdown("Cet outil analyse l'état actuel de votre collection de données."))
+
+        try:
+            builder = DatasetBuilder(
+                catalog_dir=self.paths["CATALOG_DIR"], 
+                raw_data_dir=self.paths["RAW_DATA_DIR"]
+            )
+
+            total_available = len(builder._list_available_fits())
+            total_trained = len(builder._load_trained_log())
+            total_new = total_available - total_trained
+            md_output = f"""
+            - **Spectres Totalement Téléchargés :** `{total_available}`
+            - **Spectres Déjà Utilisés pour l'Entraînement :** `{total_trained}`
+            ---
+            - **Spectres Nouveaux et Disponibles :** **`{total_new}`**
+            """
+            # On utilise textwrap.dedent pour supprimer les espaces en début de ligne
+            display(Markdown(textwrap.dedent(md_output)))
+        except Exception as e:
+            print(f"Une erreur est survenue lors de la génération du tableau de bord : {e}")
