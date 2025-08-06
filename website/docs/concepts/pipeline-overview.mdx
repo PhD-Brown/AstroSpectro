@@ -4,7 +4,7 @@ title: pipeline overview
 sidebar_label: Pipeline overview
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release once graph is completed -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faProjectDiagram } from '@fortawesome/free-solid-svg-icons'
@@ -112,27 +112,27 @@ flowchart TD
 
 <div className="card-demo">
 <div className="card margin-bottom--md">
-<div className="card__header"><h4>1. Acquisition</h4></div>
+<div className="card__header"><h4>1. Acquisition (Optionnelle)</h4></div>
 <div className="card__body">
-Le point de départ. Le pipeline récupère automatiquement les spectres bruts depuis une source externe (LAMOST DR5) et les stocke localement. Il journalise les plans d'observation complétés pour éviter les téléchargements redondants.
+Le point de départ. Le ``SmartDownloader`` récupère les spectres bruts depuis les serveurs **LAMOST** et les stocke localement. Il journalise les plans d'observation complétés dans ``downloaded_plans.csv`` pour éviter les téléchargements redondants.
 </div>
 </div>
 <div className="card margin-bottom--md">
-<div className="card__header"><h4>2. Sélection & Préparation</h4></div>
+<div className="card__header"><h4>2. Préparation de la Session</h4></div>
 <div className="card__body">
-À chaque exécution, un nouveau lot de travail est sélectionné parmi les spectres disponibles qui n'ont jamais été traités. Ses métadonnées sont extraites des en-têtes FITS et les spectres sont nettoyés (normalisation...). C'est une étape cruciale pour garantir la qualité des données.
+À chaque exécution, le ``DatasetBuilder`` sélectionne un nouveau lot de spectres "frais" en consultant le journal ``trained_spectra.csv``. Ensuite, un **catalogue local** est généré à partir des headers **FITS** de ce lot pour garantir que l'analyse se base sur des métadonnées précises et à jour.
 </div>
 </div>
 <div className="card margin-bottom--md">
-<div className="card__header"><h4>3. Modélisation</h4></div>
+<div className="card__header"><h4>3. Traitement et Modélisation</h4></div>
 <div className="card__body">
-Le cœur de l'analyse. Les spectres sont analysés pour en extraire des features physiquement pertinentes (présence de raies...). Ces features sont ensuite utilisées pour entraîner un modèle de Machine Learning supervisé.
+C'est le cœur de l'analyse. Le ``ProcessingPipeline`` prend le lot de spectres et son catalogue local, et exécute la chaîne de traitement : prétraitement, détection de raies, et **extraction d'un vecteur de features riche**. Ce dataset de features est ensuite passé au ``SpectralClassifier``, qui s'occupe du **tuning des hyperparamètres** et de l'**entraînement** du meilleur modèle (``RandomForest`` ou ``XGBoost``).
 </div>
 </div>
 <div className="card margin-bottom--md">
 <div className="card__header"><h4>4. Finalisation</h4></div>
 <div className="card__body">
-Une fois le modèle entraîné, le pipeline conclut la session : il met à jour le journal des spectres traités, et génère un rapport de session ainsi que d'autres artefacts (modèle sauvegardé...) pour assurer la traçabilité.
+Une fois le modèle entraîné, le pipeline conclut la session : le ``DatasetBuilder`` met à jour le journal ``trained_spectra.csv`` avec les spectres qui viennent d'être utilisés. Simultanément, les **artefacts** de la session (le modèle ``.pkl`` et un rapport *JSON* détaillé) sont sauvegardés dans les dossiers ``data/models/`` et ``data/reports/`` pour une traçabilité et une reproductibilité parfaites.
 </div>
 </div>
 </div>

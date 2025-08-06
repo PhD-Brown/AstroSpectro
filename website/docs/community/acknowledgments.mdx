@@ -5,7 +5,7 @@ sidebar_label: Remerciements
 sidebar_position: 1
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faPrayingHands, faDatabase, faCode } from '@fortawesome/free-solid-svg-icons'
@@ -22,11 +22,11 @@ Nous remercions chaleureusement la **[collaboration LAMOST](http://www.lamost.or
 
 ## <FontAwesomeIcon icon={faCode} /> Logiciels & Bibliothèques Open Source
 
-Le pipeline s'appuie entièrement sur l'écosystème Python scientifique. Nous remercions chaleureusement les développeurs et contributeurs des projets suivants :
+Le pipeline s'appuie entièrement sur l'écosystème Python scientifique. Nous remercions chaleureusement les développeurs et contributeurs des projets suivants, dont la philosophie open source est le moteur de l'innovation en recherche.
 
 <div className="container" style={{padding: '0', marginTop: '1rem'}}>
   <div className="row">
-    <div className="col col--6 margin-bottom--lg">
+    <div className="col col--4 margin-bottom--lg">
       <div className="card">
         <div className="card__header">
           <h4><a href="https://numpy.org/" target="_blank">Numpy</a> & <a href="https://pandas.pydata.org/" target="_blank">Pandas</a></h4>
@@ -36,53 +36,83 @@ Le pipeline s'appuie entièrement sur l'écosystème Python scientifique. Nous r
         </div>
       </div>
     </div>
-    <div className="col col--6 margin-bottom--lg">
+    <div className="col col--4 margin-bottom--lg">
       <div className="card">
         <div className="card__header">
-          <h4><a href="https://www.astropy.org/" target="_blank">Astropy</a></h4>
+          <h4><a href="https://www.scipy.org/" target="_blank">SciPy</a></h4>
         </div>
         <div className="card__body">
-          <p>Le pilier de l'astronomie en Python, utilisé pour la lecture des fichiers FITS et la gestion des unités.</p>
+          <p>Pour les algorithmes scientifiques fondamentaux, notamment la détection de pics (<code>find_peaks</code>) et le lissage (<code>savgol_filter</code>).</p>
         </div>
       </div>
     </div>
-    <div className="col col--6 margin-bottom--lg">
+    <div className="col col--4 margin-bottom--lg">
+      <div className="card">
+        <div className="card__header">
+          <h4><a href="https://www.astropy.org/" target="_blank">Astropy</a> & <a href="https://specutils.readthedocs.io/" target="_blank">Specutils</a></h4>
+        </div>
+        <div className="card__body">
+          <p>Le pilier de l'astronomie en Python. Utilisé pour la lecture des fichiers FITS, la gestion des unités et les analyses spectrales avancées (FWHM).</p>
+        </div>
+      </div>
+    </div>
+    <div className="col col--4 margin-bottom--lg">
       <div className="card">
         <div className="card__header">
           <h4><a href="https://scikit-learn.org/" target="_blank">Scikit-learn</a></h4>
         </div>
         <div className="card__body">
-          <p>La boîte à outils de référence pour l'apprentissage automatique, de l'entraînement à l'évaluation.</p>
+          <p>La boîte à outils de référence pour l'apprentissage automatique, du <code>Pipeline</code> à <code>GridSearchCV</code>.</p>
         </div>
       </div>
     </div>
-    <div className="col col--6 margin-bottom--lg">
+    <div className="col col--4 margin-bottom--lg">
+      <div className="card">
+        <div className="card__header">
+          <h4><a href="https://xgboost.readthedocs.io/" target="_blank">XGBoost</a></h4>
+        </div>
+        <div className="card__body">
+          <p>Pour le modèle de Gradient Boosting haute performance qui a permis d'atteindre nos meilleurs scores.</p>
+        </div>
+      </div>
+    </div>
+        <div className="col col--4 margin-bottom--lg">
+      <div className="card">
+        <div className="card__header">
+          <h4><a href="https://imbalanced-learn.org/" target="_blank">Imbalanced-learn</a></h4>
+        </div>
+        <div className="card__body">
+          <p>Pour la technique de sur-échantillonnage SMOTE, essentielle pour gérer le déséquilibre des classes.</p>
+        </div>
+      </div>
+    </div>
+    <div className="col col--4 margin-bottom--lg">
       <div className="card">
         <div className="card__header">
           <h4><a href="https://matplotlib.org/" target="_blank">Matplotlib</a> & <a href="https://seaborn.pydata.org/" target="_blank">Seaborn</a></h4>
         </div>
         <div className="card__body">
-          <p>Pour la création de toutes les visualisations statiques et les figures d'analyse.</p>
+          <p>Pour la création de toutes les visualisations statiques, des spectres aux matrices de confusion.</p>
         </div>
       </div>
     </div>
-    <div className="col col--6 margin-bottom--lg">
+    <div className="col col--4 margin-bottom--lg">
       <div className="card">
         <div className="card__header">
-          <h4><a href="https://jupyter.org/" target="_blank">Jupyter</a></h4>
+          <h4><a href="https://jupyter.org/" target="_blank">Jupyter</a> & <a href="https://ipywidgets.readthedocs.io/" target="_blank">IPyWidgets</a></h4>
         </div>
         <div className="card__body">
-          <p>Pour l'environnement de développement interactif qui a permis le prototypage et l'exploration.</p>
+          <p>Pour l'environnement de développement interactif et la création de nos tableaux de bord d'analyse.</p>
         </div>
       </div>
     </div>
-    <div className="col col--6 margin-bottom--lg">
+    <div className="col col--4 margin-bottom--lg">
       <div className="card">
         <div className="card__header">
           <h4><a href="https://docusaurus.io/" target="_blank">Docusaurus</a> & <a href="https://fontawesome.com/" target="_blank">FontAwesome</a></h4>
         </div>
         <div className="card__body">
-          <p>Pour la plateforme qui motorise cette magnifique documentation, ainsi que les magnifiqus icones</p>
+          <p>Pour la plateforme qui motorise cette magnifique documentation, ainsi que ses icônes.</p>
         </div>
       </div>
     </div>

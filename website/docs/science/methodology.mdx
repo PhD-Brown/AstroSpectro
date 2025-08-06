@@ -4,14 +4,14 @@ title: Méthodologie & Vision d'Ensemble
 sidebar_position: 2
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faVial, faDownload, faWandMagicSparkles, faCubes, faBrain, faChartPie } from '@fortawesome/free-solid-svg-icons'
+import { faVial } from '@fortawesome/free-solid-svg-icons'
 
 # <FontAwesomeIcon icon={faVial} /> Méthodologie du Pipeline
 
-Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque étape du pipeline, de l'acquisition des données brutes à l'évaluation finale du modèle.
+Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque étape du pipeline **AstroSpectro**, de l'acquisition des données brutes à l'évaluation finale du modèle. Notre approche est **itérative** et guidée par les données.
 
 <br/>
 
@@ -22,11 +22,11 @@ Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque
       <h4>Téléchargement et Gestion des Données</h4>
     </div>
     <div className="card__body">
-      Le pipeline commence par une acquisition robuste des données brutes. L'objectif est de constituer une base de données locale, propre et organisée.
+      Le pipeline commence par une acquisition robuste et <strong>reproductible</strong> des données. L'objectif est de constituer une base de données locale, propre et dont l'état est suivi.
       <ul>
-        <li><strong>Téléchargement Automatisé :</strong> Des scripts récupèrent les fichiers FITS en masse depuis les serveurs officiels (LAMOST).</li>
-        <li><strong>Parsing de Catalogue :</strong> Les métadonnées des catalogues d'observation sont lues et associées à chaque spectre.</li>
-        <li><strong>Gestion Locale :</strong> Les données sont organisées dans une structure de dossiers prévisible (<code>data/raw/</code>, <code>data/catalog/</code>).</li>
+        <li><strong>Téléchargement Intelligent :</strong> Un script <code>SmartDownloader</code> récupère les fichiers FITS en masse, en utilisant une stratégie <strong>round-robin</strong> pour garantir la diversité des plans d'observation.</li>
+        <li><strong>Gestion d'État :</strong> Le système utilise des fichiers journaux (<code>downloaded_plans.csv</code>, <code>trained_spectra.csv</code>) pour suivre les données déjà traitées et s'assurer qu'aucune opération n'est redondante, même entre plusieurs sessions.</li>
+        <li><strong>Organisation Locale :</strong> Les données sont organisées dans une structure de dossiers prévisible (<code>data/raw/</code>, <code>data/catalog/</code>).</li>
       </ul>
     </div>
   </div>
@@ -38,22 +38,24 @@ Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque
     <div className="card__body">
       Les spectres bruts ne sont pas directement utilisables. Une étape de nettoyage rigoureuse est appliquée pour préparer les données à l'analyse.
       <ul>
-        <li><strong>Normalisation :</strong> Le flux est normalisé pour rendre les spectres comparables entre eux.</li>
-        <li><strong>Ajustement du Continuum :</strong> Un pseudo-continuum est soustrait pour isoler les raies spectrales de la forme globale du spectre.</li>
-        <li><strong>Déni de Bruit (Denoising) :</strong> Des filtres (ex: Savitzky-Golay) sont appliqués pour réduire le bruit, en particulier sur les spectres à faible SNR.</li>
+        <li><strong>Normalisation par la Médiane :</strong> Le flux est normalisé pour rendre les spectres comparables, en utilisant la médiane comme référence robuste aux outliers.</li>
+        <li><strong>Lissage Ciblé (Savitzky-Golay) :</strong> Pour les analyses fines (FWHM, skewness), un filtre Savitzky-Golay est appliqué localement sur les fenêtres des raies pour réduire le bruit tout en préservant la forme du signal.</li>
+        <li><strong>Gestion des Données Manquantes :</strong> Les <em>features</em> qui ne peuvent être calculées (ex: FWHM sur un spectre trop bruité) sont traitées via une imputation par constante (zéro) pour préserver l'information de "non-détection".</li>
       </ul>
     </div>
   </div>
   <div className="card margin-bottom--lg">
     <div className="card__header">
       <span className="step-number">3</span>
-      <h4>Extraction de Features Physiques</h4>
+      <h4>Extraction de Features (Feature Engineering)</h4>
     </div>
     <div className="card__body">
-      C'est le cœur de notre approche "hybride". Au lieu de donner le spectre brut au modèle, nous extrayons des informations physiquement pertinentes.
+      C'est le cœur de notre approche. Nous extrayons des informations physiquement pertinentes, combinant des mesures spectrales et des métadonnées contextuelles.
       <ul>
-        <li><strong>Identification des Raies :</strong> Le pipeline identifie les raies astrophysiques majeures (Hα, Hβ, CaII K&H...).</li>
-        <li><strong>Mesures Physiques :</strong> Pour chaque raie, des mesures quantitatives sont calculées (FWHM, profondeur, largeur équivalente...).</li>
+        <li><strong>Identification des Raies Clés :</strong> Le pipeline identifie les raies astrophysiques majeures (Hα, Hβ, CaII K&H, Mg_b, Na_D).</li>
+        <li><strong>Mesures Physiques :</strong> Pour chaque raie, nous mesurons sa <strong>force (prominence)</strong> et sa <strong>largeur (FWHM)</strong>.</li>
+        <li><strong>Features de Contexte :</strong> Nous avons démontré que les métadonnées de l'observation (<code>redshift</code>, <code>SNR</code>, <code>seeing</code>) et les <strong>indices de couleur</strong> sont des prédicteurs extrêmement puissants.</li>
+        <li><strong>Ratios de Raies :</strong> Des ratios de force (ex: <code>CaII K / Hβ</code>) sont calculés pour fournir des indicateurs de température robustes.</li>
       </ul>
     </div>
   </div>
@@ -63,10 +65,12 @@ Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque
       <h4>Entraînement et Validation des Modèles</h4>
     </div>
     <div className="card__body">
-      Avec un jeu de données de features "propres", nous entraînons des modèles de Machine Learning pour la classification.
+      Avec un jeu de <em>features</em> riche, nous entraînons et optimisons systématiquement nos modèles de Machine Learning.
       <ul>
-        <li><strong>Modèles Flexibles :</strong> Le pipeline supporte des modèles comme <code>Random Forest</code> et <code>SVM</code>, et est conçu pour être extensible.</li>
-        <li><strong>Validation Robuste :</strong> La performance est évaluée rigoureusement via validation croisée (k-fold) pour éviter le sur-apprentissage.</li>
+        <li><strong>Benchmark de Modèles :</strong> Le pipeline est multi-modèle et permet de comparer facilement les performances de <code>RandomForest</code> et <code>XGBoost</code>.</li>
+        <li><strong>Validation Croisée Stratifiée :</strong> La performance est évaluée rigoureusement via validation croisée (k-fold) pour garantir la fiabilité des scores et éviter le sur-apprentissage.</li>
+        <li><strong>Tuning d'Hyperparamètres (<code>GridSearchCV</code>) :</strong> Nous recherchons systématiquement la meilleure configuration de paramètres pour chaque modèle, assurant une performance optimale.</li>
+        <li><strong>Gestion du Déséquilibre (<code>SMOTE</code>) :</strong> La technique de sur-échantillonnage SMOTE est intégrée pour compenser le déséquilibre des classes dans le jeu de données.</li>
       </ul>
     </div>
   </div>
@@ -78,8 +82,8 @@ Cette page décrit les choix scientifiques et techniques qui sous-tendent chaque
     <div className="card__body">
       Un modèle n'est utile que si l'on peut comprendre et faire confiance à ses prédictions.
       <ul>
-        <li><strong>Métriques Standards :</strong> Matrices de confusion, scores de précision, rappel, et F1-score sont calculés.</li>
-        <li><strong>Visualisations Clés :</strong> Courbes ROC et diagrammes d'importance des features aident à interpréter le comportement du modèle.</li>
+        <li><strong>Rapports Complets :</strong> Des rapports de session JSON sont générés automatiquement, contenant les métriques, les paramètres du modèle, et la liste des fichiers utilisés pour une traçabilité parfaite.</li>
+        <li><strong>Visualisations Clés :</strong> Les <strong>matrices de confusion</strong> et les <strong>graphiques d'importance des features</strong> sont générés pour chaque entraînement, permettant une analyse fine des erreurs et de la logique du modèle.</li>
       </ul>
     </div>
   </div>

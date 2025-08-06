@@ -152,7 +152,7 @@ const config: Config = {
         width: 50,
         height: 50,
       },
-      copyright: `Version 0.1.0-alpha | Copyright © ${new Date().getFullYear()} Alex Baker. Built with Docusaurus. <br/> Licence MIT.`,
+      copyright: `Version 1.0.0 | Copyright © ${new Date().getFullYear()} Alex Baker. Built with Docusaurus. <br/> Licence MIT.`,
     },
     
     prism: {

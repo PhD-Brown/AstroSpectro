@@ -4,27 +4,28 @@ title: Téléchargement des données
 sidebar_label: Téléchargement
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faDownload, faCogs, faTasks, faClipboardList } from '@fortawesome/free-solid-svg-icons'
+import { faDownload, faCogs, faTasks } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
 # <FontAwesomeIcon icon={faDownload} /> Guide : Téléchargement des Données
 
-> Ce guide pratique vous montre comment utiliser le système de téléchargement intelligent du pipeline pour récupérer des spectres LAMOST DR5. Le code complet pour cette section se trouve : [ici](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/dr5_downloader.py)
+> Ce guide pratique vous montre comment utiliser l'interface interactive du pipeline pour récupérer des spectres LAMOST DR5. La logique sous-jacente est encapsulée dans les modules [**`SpectraManager`**](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/spectra_manager.py) et [**`SmartDownloader`**](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/dr5_downloader.py).
 
 ## <FontAwesomeIcon icon={faCogs} /> Principe de Fonctionnement
 
-Le téléchargement est orchestré par le notebook **`notebooks/01_download_spectra.ipynb`**. Sous le capot, il utilise la classe `SmartDownloader` qui implémente une logique robuste :
+Le téléchargement est orchestré par le notebook **`notebooks/01_download_spectra.ipynb`**. Sous le capot, il utilise la classe `SmartDownloader` qui implémente une logique robuste et "reproductible" :
 
 <details>
   <summary>Cliquez pour voir les détails de la logique du <code>SmartDownloader</code></summary>
   <div>
     <ol>
-      <li><strong>Gestion d'État :</strong> Il consulte <code>data/catalog/downloaded_plans.csv</code> pour ne pas retélécharger les plans d'observation déjà complétés.</li>
-      <li><strong>Scraping des Fichiers :</strong> Pour chaque nouveau plan, il liste tous les fichiers <code>.fits.gz</code> disponibles sur la page web de LAMOST.</li>
-      <li><strong>Téléchargement "Round-Robin" :</strong> Il alterne entre les différents plans pour un téléchargement équitable, utile si vous fixez une limite sur le nombre total de spectres.</li>
+      <li><strong>Gestion d'État :</strong> Il consulte <code>data/catalog/downloaded_plans.csv</code> pour ignorer les plans d'observation déjà entièrement téléchargés lors des sessions précédentes.</li>
+      <li><strong>Scraping des Fichiers :</strong> Pour chaque nouveau plan à traiter, il scrape la page web officielle de LAMOST pour lister tous les fichiers <code>.fits.gz</code> disponibles.</li>
+      <li><strong>Téléchargement "Round-Robin" :</strong> Pour garantir la diversité du dataset, il n' télécharge pas les plans les uns après les autres, mais alterne entre eux (un spectre du plan A, puis un du plan B, etc.).</li>
+      <li><strong>Barre de Progression en Temps Réel :</strong> Une barre de progression interactive s'affiche pour suivre l'avancement du téléchargement.</li>
       <li><strong>Mise à jour de l'État :</strong> Une fois la session terminée, il met à jour le journal avec les plans qui sont maintenant complets.</li>
     </ol>
   </div>
@@ -32,70 +33,54 @@ Le téléchargement est orchestré par le notebook **`notebooks/01_download_spec
 
 ## <FontAwesomeIcon icon={faTasks} /> Utilisation Pratique : Pas-à-Pas
 
+Grâce à la refactorisation, le processus est maintenant entièrement piloté par une interface interactive.
+
 <div className="card-demo">
   {/* ETAPE 1 */}
   <div className="card margin-bottom--lg">
     <div className="card__header">
       <span className="step-number">1</span>
-      <h4>Ouvrir le Notebook</h4>
+      <h4>Ouvrir le Notebook de Gestion</h4>
     </div>
     <div className="card__body">
-      Assurez-vous que votre environnement virtuel (<code>venv</code>) est activé, puis lancez Jupyter et ouvrez le fichier : <code>notebooks/01_download_spectra.ipynb</code>.
+      Assurez-vous que votre environnement virtuel (<code>venv</code>) est activé, puis ouvrez le fichier : <code>notebooks/01_download_spectra.ipynb</code>.
     </div>
   </div>
   {/* ETAPE 2 */}
   <div className="card margin-bottom--lg">
     <div className="card__header">
       <span className="step-number">2</span>
-      <h4>Configurer les Paramètres</h4>
+      <h4>Configurer et Lancer</h4>
     </div>
     <div className="card__body">
-      <p>Au début du notebook, configurez les deux paramètres principaux :</p>
+      <p>Exécutez la première cellule de code. Une interface interactive apparaîtra :</p>
       <ul>
-        <li><strong><code>limit_plans</code></strong>: Nombre max de nouveaux plans à traiter (ex: <code>5</code> pour un test).</li>
-        <li><strong><code>max_spectra</code></strong>: Nombre total max de spectres à télécharger (ex: <code>500</code> pour un test).</li>
+        <li><strong>Plans :</strong> Indiquez le nombre de nouveaux plans d'observation que vous souhaitez traiter.</li>
+        <li><strong>Spectres :</strong> Indiquez le nombre total maximum de spectres à télécharger durant cette session.</li>
       </ul>
-      <pre><code class="language-python">
-        limit_plans = 5<br/>
-        max_spectra = 500
-      </code></pre>
+      <p>Cliquez ensuite sur le bouton <strong>"Lancer le téléchargement"</strong>.</p>
     </div>
   </div>
   {/* ETAPE 3 */}
-  <div className="card margin-bottom--lg">
-    <div className="card__header">
-      <span className="step-number">3</span>
-      <h4>Lancer le Téléchargement</h4>
-    </div>
-    <div className="card__body">
-      <p>Exécutez la cellule qui lance le processus. Vous verrez la progression s'afficher.</p>
-      <pre><code class="language-python">
-        downloader = SmartDownloader(limit_plans=limit_plans, max_spectra=max_spectra)<br/>
-        downloader._build_download_queue()<br/>
-        downloader.run_download()<br/>
-        downloader._update_state()
-      </code></pre>
-    </div>
-  </div>
-  {/* ETAPE 4 */}
   <div className="card">
     <div className="card__header">
-      <span className="step-number">4</span>
-      <h4>Vérifier les Résultats</h4>
+      <span className="step-number">3</span>
+      <h4>Suivre et Vérifier</h4>
     </div>
     <div className="card__body">
-      <p>Une fois terminé, vérifiez que :</p>
+      <p>Suivez l'avancement grâce à la barre de progression en temps réel. Une fois terminé, vérifiez que :</p>
       <ul>
-        <li>Le dossier <strong><code>data/raw/</code></strong> contient de nouveaux fichiers <code>.fits.gz</code>.</li>
-        <li>Le fichier <strong><code>data/catalog/downloaded_plans.csv</code></strong> a été mis à jour.</li>
+        <li>De nouveaux sous-dossiers et fichiers <code>.fits.gz</code> sont apparus dans <strong><code>data/raw/</code></strong>.</li>
+        <li>Le fichier journal <strong><code>data/catalog/downloaded_plans.csv</code></strong> a été mis à jour si des plans ont été entièrement complétés.</li>
+        <li>Un fichier de log détaillé de la session a été créé dans <strong><code>logs/</code></strong>.</li>
       </ul>
     </div>
   </div>
 </div>
 <br/>
 
-<Admonition type="info" title="Option de Nettoyage">
+<Admonition type="info" title="Option de Nettoyage Sécurisée">
   <p>
-  Le notebook propose également une option pour nettoyer le dossier <code>data/raw/</code>. Cette cellule est protégée par une confirmation pour éviter les suppressions accidentelles. Elle effectue d'abord une sauvegarde dans <code>data/raw_backup/</code> avant de vider le dossier.
+  Le notebook propose également une cellule interactive pour nettoyer le répertoire <code>data/raw/</code>. Pour éviter les suppressions accidentelles, cette opération requiert une confirmation textuelle et effectue d'abord une sauvegarde complète dans <code>data/raw_backup/</code>.
   </p>
 </Admonition>

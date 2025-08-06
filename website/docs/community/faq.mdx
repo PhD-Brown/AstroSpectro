@@ -4,7 +4,7 @@ title: Foire aux questions
 sidebar_position: 5
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faQuestionCircle, faDatabase, faCode, faBrain } from '@fortawesome/free-solid-svg-icons'
@@ -28,10 +28,10 @@ Bienvenue dans la FAQ ! Vous trouverez ici les réponses aux questions les plus 
   <summary>Puis-je utiliser ce pipeline avec d'autres données que LAMOST DR5 ?</summary>
   <div>
     <p>
-      <strong>Pour l'instant, le pipeline est fortement optimisé pour le format spécifique des fichiers FITS de LAMOST DR5</strong> (notamment la façon dont le flux et la longueur d'onde sont stockés dans les en-têtes).
+      <strong>Pour l'instant, le pipeline est fortement optimisé pour le format spécifique des fichiers FITS de LAMOST DR5.</strong> L'adaptation à d'autres relevés (comme SDSS ou Gaia) nécessiterait de modifier la classe <code>SpectraPreprocessor</code> pour qu'elle puisse interpréter leurs structures de header et de données.
     </p>
     <p>
-      Cependant, l'architecture est modulaire. Pour adapter le pipeline à d'autres relevés (comme SDSS), il suffirait principalement de modifier la méthode de chargement dans le module <code>SpectraPreprocessor</code>. Le support multi-survey est une des grandes ambitions listées dans notre <a href="./roadmap">Roadmap</a>.
+      Cependant, l'architecture modulaire est conçue pour faciliter ce genre d'extension. Le support multi-survey est une des ambitions majeures listées dans notre <a href="../community/roadmap">Roadmap</a>.
     </p>
   </div>
 </details>
@@ -43,7 +43,7 @@ Bienvenue dans la FAQ ! Vous trouverez ici les réponses aux questions les plus 
       Le relevé complet de LAMOST DR5 est immense (plusieurs Téraoctets). Heureusement, vous n'avez pas besoin de tout télécharger !
     </p>
     <p>
-      Le pipeline est conçu pour fonctionner par lots. Pour un premier test ou un entraînement de base, un lot de <strong>quelques milliers de spectres (soit quelques Gigaoctets)</strong> est amplement suffisant pour obtenir des résultats significatifs. Le script de téléchargement vous permet de fixer des limites pour contrôler la quantité de données récupérées.
+      Le pipeline est conçu pour fonctionner par lots. Un lot de <strong>quelques milliers de spectres (quelques Gigaoctets)</strong> est suffisant pour obtenir des résultats très performants (>80% de précision). L'interface de téléchargement interactive vous permet de fixer des limites précises pour contrôler la quantité de données récupérées.
     </p>
   </div>
 </details>
@@ -59,10 +59,10 @@ Bienvenue dans la FAQ ! Vous trouverez ici les réponses aux questions les plus 
       C'est un choix d'architecture délibéré pour combiner le meilleur des deux mondes :
     </p>
     <ul>
-      <li>Les <strong>scripts Python dans <code>src/</code></strong> contiennent la logique métier pure, organisée en classes modulaires et testables. C'est le "moteur" du pipeline.</li>
-      <li>Les <strong>notebooks Jupyter</strong> servent d'interface utilisateur et de "chef d'orchestre". Ils permettent d'appeler la logique des modules de manière interactive, de visualiser les étapes intermédiaires, et de documenter un workflow expérimental.</li>
+      <li>Les <strong>scripts Python dans <code>src/</code></strong> contiennent la logique métier "pure", organisée en classes modulaires et réutilisables. C'est le "moteur" robuste du projet.</li>
+      <li>Les <strong>notebooks Jupyter</strong> servent d'interface utilisateur et de "tableau de bord". Ils permettent d'orchestrer la logique des modules de manière interactive, de visualiser les résultats et de documenter les expériences.</li>
     </ul>
-    <p>Cette séparation rend le code plus robuste, plus facile à maintenir et à réutiliser.</p>
+    <p>Cette séparation est une pratique standard dans les projets de science des données professionnels car elle garantit la clarté, la maintenabilité et la testabilité du code.</p>
   </div>
 </details>
 
@@ -71,18 +71,31 @@ Bienvenue dans la FAQ ! Vous trouverez ici les réponses aux questions les plus 
 ### <FontAwesomeIcon icon={faBrain} /> Questions sur le Machine Learning
 
 <details>
-  <summary>Pourquoi utiliser Random Forest et pas un modèle plus complexe comme un CNN ?</summary>
+  <summary>Pourquoi utiliser RandomForest et XGBoost plutôt qu'un modèle de Deep Learning ?</summary>
   <div>
     <p>
-      Le choix de <strong>Random Forest</strong> comme modèle de base est intentionnel pour cette première version :
+      Le choix de modèles basés sur les arbres de décision comme <strong>RandomForest</strong> et <strong>XGBoost</strong> est intentionnel et stratégique pour cette phase du projet :
     </p>
     <ul>
-      <li><strong>Interprétabilité :</strong> Il est facile de mesurer l'importance des features (quelles raies sont les plus utiles ?), ce qui est crucial dans un contexte scientifique.</li>
-      <li><strong>Robustesse :</strong> Il fonctionne très bien avec un nombre limité de features et est moins sujet au sur-apprentissage que des modèles plus complexes.</li>
-      <li><strong>Rapidité :</strong> Il est très rapide à entraîner, ce qui permet des cycles d'itération rapides.</li>
+      <li><strong>Interprétabilité :</strong> Ces modèles permettent de mesurer facilement l'importance des <em>features</em>. Cela nous a permis de valider notre approche de feature engineering et de comprendre que des mesures comme la largeur des raies (FWHM) ou le redshift étaient cruciales. C'est essentiel dans un contexte de recherche.</li>
+      <li><strong>Efficacité :</strong> Ils sont extrêmement rapides à entraîner sur des données tabulaires (nos vecteurs de <em>features</em>), ce qui permet des cycles d'expérimentation très courts.</li>
+      <li><strong>Performance :</strong> Comme nos résultats le montrent (>80% de précision), ils sont déjà très performants lorsque nourris avec des <em>features</em> de haute qualité.</li>
     </ul>
     <p>
-      Cela dit, le benchmarking de modèles plus complexes comme des <strong>CNN 1D</strong> est une étape clé de notre <a href="./roadmap">Roadmap</a> pour potentiellement capturer des motifs que l'extraction de features manuelle aurait manqués.
+      Cela dit, l'exploration de modèles de Deep Learning (comme des <strong>CNN 1D</strong>) est une étape clé de notre <a href="../community/roadmap">Roadmap</a>. Ils pourraient potentiellement capturer des motifs subtils dans le spectre brut que notre extraction de <em>features</em> manuelle aurait manqués.
     </p>
+  </div>
+</details>
+
+<details>
+  <summary>Comment gérez-vous le déséquilibre des classes dans le jeu de données ?</summary>
+  <div>
+    <p>
+      C'est un problème fondamental dans les datasets astrophysiques. Notre pipeline intègre une approche à deux niveaux :
+    </p>
+    <ol>
+      <li><strong>Filtrage :</strong> Nous retirons les classes qui sont extrêmement rares (moins de 10 exemples), car il est statistiquement impossible d'entraîner un modèle fiable sur aussi peu de données.</li>
+      <li><strong>Sur-échantillonnage (SMOTE) :</strong> Pour les classes minoritaires restantes, nous utilisons la technique <strong>SMOTE</strong> (via la librairie <code>imbalanced-learn</code>) directement dans notre pipeline d'entraînement. SMOTE crée des échantillons synthétiques plausibles pour ces classes, ce qui donne au modèle une vision plus équilibrée des données et améliore significativement sa performance sur les classes sous-représentées.</li>
+    </ol>
   </div>
 </details>

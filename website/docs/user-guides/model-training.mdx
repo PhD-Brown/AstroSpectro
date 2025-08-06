@@ -4,7 +4,7 @@ title: Entraînement du modèle
 sidebar_label: Entraînement
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faBrain, faCogs, faSave } from '@fortawesome/free-solid-svg-icons'
@@ -12,59 +12,46 @@ import Admonition from '@theme/Admonition';
 
 # <FontAwesomeIcon icon={faBrain} /> Guide : Entraînement du Modèle
 
-Une fois que vous disposez d'un jeu de données avec des features extraites (généré à l'étape précédente), vous pouvez entraîner un modèle de Machine Learning pour la classification spectrale.
+Une fois que vous disposez d'un jeu de données avec des *features* extraites (généré à l'étape précédente), vous pouvez entraîner un modèle de Machine Learning pour la classification spectrale.
 
-> Toute la logique d'entraînement et d'évaluation est encapsulée dans la classe `SpectralClassifier` du fichier `src/pipeline/classifier.py`.
+> Toute la logique d'entraînement, d'optimisation et d'évaluation est encapsulée dans la classe [`SpectralClassifier`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/classifier.py).
 
 ## <FontAwesomeIcon icon={faCogs} /> Le Processus d'Entraînement
 
-Le processus, orchestré dans le notebook `00_master_pipeline.ipynb`, se déroule en plusieurs sous-étapes :
+Le processus, orchestré dans le notebook `00_master_pipeline.ipynb`, est un pipeline `scikit-learn` complet et robuste.
 
 ### 1. Préparation des Données
 
-Avant l'entraînement, les données sont préparées :
--   **Chargement :** Le fichier CSV contenant les features (ex: `features_..._csv`) est chargé dans un DataFrame Pandas.
--   **Nettoyage :** Les entrées mal étiquetées (`UNKNOWN`, `NOT_FOUND`) et les classes spectrales trop rares (ex: moins de 5 exemples) sont retirées pour garantir un apprentissage stable.
--   **Séparation Features/Labels :** Le DataFrame est divisé en :
-    -   Une matrice `X` contenant uniquement les features numériques (ex: nos 4 colonnes binaires).
-    -   Un vecteur `y` contenant les labels (les classes spectrales comme 'A', 'F', 'G'...).
+Avant l'entraînement, la classe `SpectralClassifier` prépare automatiquement les données :
+-   **Chargement :** Le DataFrame `pandas` contenant les *features* est pris en entrée.
+-   **Nettoyage :** Les entrées sans label (`subclass`) valide et les classes spectrales trop rares (moins de 10 exemples) sont retirées pour garantir un apprentissage stable.
+-   **Sélection des Features :** Les colonnes pertinentes (celles commençant par `feature_` et les métadonnées clés comme `redshift`, `snr_*`) sont automatiquement sélectionnées.
+-   **Séparation :** Les données sont divisées en une matrice de *features* `X` et un vecteur de labels `y`.
 
-### 2. Entraînement et Validation
+### 2. Entraînement, Validation et Tuning
 
-La classe `SpectralClassifier` est ensuite utilisée pour entraîner le modèle.
+C'est ici que la magie opère. Au lieu d'un simple entraînement, le `SpectralClassifier` exécute un processus rigoureux :
 
--   **Instanciation :** On crée une instance du classifieur. Pour la v0.1.0, il s'agit d'un `RandomForestClassifier` de scikit-learn.
-    ```python
-    from src.pipeline.classifier import SpectralClassifier
+-   **Pipeline Intégré :** Un `Pipeline` `scikit-learn` est utilisé pour enchaîner plusieurs étapes de manière sécurisée :
+    1.  **Imputation :** Remplacement des valeurs manquantes (`NaN`) par zéro.
+    2.  **Mise à l'échelle (Scaling) :** Standardisation des *features* pour qu'elles aient une moyenne de 0 et un écart-type de 1.
+    3.  **Sur-échantillonnage (SMOTE) :** Création d'échantillons synthétiques pour les classes minoritaires afin de rééquilibrer le jeu de données.
+    4.  **Classification :** Entraînement du modèle final (`RandomForest` ou `XGBoost`).
 
-    # Création du classifieur
-    clf = SpectralClassifier(n_estimators=100)
-    ```
+-   **Tuning d'Hyperparamètres (`GridSearchCV`) :** Le pipeline ne se contente pas d'entraîner un seul modèle. Il teste systématiquement de multiples combinaisons d'hyperparamètres (ex: `max_depth`, `n_estimators`) en utilisant une **validation croisée stratifiée** pour trouver la configuration la plus performante.
 
--   **Entraînement & Évaluation :** La méthode `train_and_evaluate` s'occupe de tout :
-    1.  Elle sépare les données en un ensemble d'entraînement et un ensemble de test (par ex. 75% / 25%).
-    2.  Elle entraîne le modèle Random Forest sur les données d'entraînement.
-    3.  Elle évalue les performances du modèle sur les données de test (jamais vues pendant l'entraînement).
-    4.  Elle affiche un **rapport de classification** (précision, rappel, F1-score) et une **matrice de confusion**.
+-   **Évaluation Finale :** Le meilleur modèle trouvé est ensuite évalué sur un jeu de test mis de côté au préalable, garantissant une mesure honnête de sa capacité à généraliser sur de nouvelles données.
 
-    ```python
-    # X et y sont votre matrice de features et votre vecteur de labels
-    clf.train_and_evaluate(X, y, test_size=0.25)
-    ```
-
-<Admonition type="info" title="Choix du Modèle : Random Forest">
+<Admonition type="info" title="Benchmark de Modèles : RandomForest vs. XGBoost">
   <p>
-    Le <strong>Random Forest</strong> a été choisi comme modèle de base pour sa robustesse, sa capacité à gérer des features simples sans sur-apprentissage excessif, et sa facilité de mise en œuvre. La classe <code>SpectralClassifier</code> est conçue pour pouvoir intégrer facilement d'autres algorithmes (SVM, XGBoost...) à l'avenir.
+    Depuis la version <strong>v1.0.0</strong>, le pipeline <strong>AstroSpectro</strong> supporte deux modèles de pointe : <code>RandomForest</code> et <code>XGBoost</code>. L'interface interactive du notebook de production permet de choisir quel modèle entraîner, facilitant ainsi la comparaison et l'expérimentation. Nos <a href="/AstroSpectro/docs/science/results-analysis">résultats</a> montrent que <strong>XGBoost</strong> offre actuellement les meilleures performances sur notre jeu de <em>features</em>.
   </p>
 </Admonition>
 
-## <FontAwesomeIcon icon={faSave} /> Sauvegarde du Modèle (Optionnel)
+## <FontAwesomeIcon icon={faSave} /> Sauvegarde du Modèle et Reporting
 
-Si les performances du modèle sont satisfaisantes, vous pouvez le sauvegarder sur le disque pour une utilisation future (par exemple, pour faire des prédictions sur de nouveaux spectres sans avoir à tout ré-entraîner).
+Une fois l'entraînement terminé, le pipeline automatise les dernières étapes cruciales pour la reproductibilité :
 
-La sauvegarde se fait simplement en appelant la méthode `save_model` :
-
-```python
-# Sauvegarde le modèle entraîné
-clf.save_model("data/models/my_first_classifier.pkl")
-```
+-   **Sauvegarde du Modèle :** Le `SpectralClassifier` entraîné (qui contient le pipeline complet avec le scaler et le meilleur modèle) est sauvegardé dans un fichier `.pkl` dans `data/models/`. Le nom du fichier inclut le type de modèle et la date pour une traçabilité facile.
+-   **Mise à jour du Journal :** Les spectres utilisés pour cet entraînement sont ajoutés au log `data/catalog/trained_spectra.csv`.
+-   **Rapport de Session :** Un fichier JSON détaillé est créé dans `data/reports/`, contenant toutes les informations de la session : les hyperparamètres finaux, le rapport de classification complet, la matrice de confusion, et le hash du modèle.

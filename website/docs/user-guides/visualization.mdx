@@ -4,7 +4,7 @@ title: Visualisation
 sidebar_label: Visualisation
 ---
 
-<!-- Compléter avec la photo nécessaire -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faChartPie, faEye, faChartLine, faTachometerAlt } from '@fortawesome/free-solid-svg-icons'
@@ -12,61 +12,60 @@ import Admonition from '@theme/Admonition';
 
 # <FontAwesomeIcon icon={faChartPie} /> Guide : Visualisation
 
-La visualisation est essentielle pour comprendre les données, déboguer le pipeline et interpréter les résultats du modèle. Ce guide vous présente les outils de visualisation disponibles dans le projet.
+La visualisation est essentielle pour comprendre les données, déboguer le pipeline et interpréter les résultats du modèle. Le projet **AstroSpectro** intègre une suite d'outils de visualisation avancés, principalement orchestrés par le notebook [`02_tools_and_visuals.ipynb`](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/02_tools_and_visuals.ipynb) et la classe [`AstroVisualizer`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/tools/visualizer.py).
 
+## <FontAwesomeIcon icon={faTachometerAlt} /> L'Analyseur de Spectre Augmenté (Outil Principal)
 
-## <FontAwesomeIcon icon={faTachometerAlt} /> Tableau de Bord Interactif (Live Demo)
+C'est l'outil d'exploration "tout-en-un" du projet. Accessible via le notebook `02_tools_and_visuals.ipynb`, cette interface interactive vous permet de :
 
-Pour une exploration interactive et complète, un **tableau de bord en ligne** a été déployé avec Streamlit. Il vous permet de :
+-   **Naviguer** dans l'ensemble des spectres téléchargés.
+-   **Ajuster en temps réel** les paramètres de détection de pics (`prominence`, `window`).
+-   **Visualiser** l'impact de ces paramètres sur la détection des raies (cercles verts).
+-   **Obtenir une prédiction de classe spectrale en direct** en sélectionnant un modèle IA entraîné.
+-   **Consulter une analyse quantitative** des raies détectées (Centroïde, FWHM, Force).
+-   **Exporter** les graphiques (PNG) et les analyses (CSV, LaTeX).
+-   **Générer un rapport HTML** complet de votre session d'analyse.
 
--   **Visualiser n'importe quel spectre** du jeu de données de démonstration.
--   **Téléverser vos propres fichiers FITS** pour les analyser.
--   **Ajuster en temps réel** les paramètres de détection de pics (`prominence`, `window`) et voir l'impact sur le graphique.
--   **Explorer l'en-tête FITS** complet du spectre sélectionné.
-
-<Admonition type="tip" title="Essayez-le !">
-  <p>L'application est hébergée sur Streamlit Community Cloud et est accessible directement ci-dessous.</p>
+<Admonition type="info" title="Exemple de l'Analyseur Interactif">
+  <p>L'image ci-dessous montre l'interface complète en action. On peut y voir le spectre, les paramètres de tuning, le modèle IA sélectionné, le graphique avec les raies détectées, le tableau d'analyse et l'historique de la session.</p>
+  
+  ![Analyseur de Spectre Augmenté](/img/analyseur_spectre_final.png)
 </Admonition>
-
+<br/>
+<Admonition type="tip" title="Essayez-le !">
+  <p>L'application est hébergée sur Streamlit Community Cloud et est accessible directement ci-dessous.  
+  C'est une version simplifié de ce qui se trouve dans le notebook ``02_tools_and_visuals``.</p>
+</Admonition>
 <iframe
   src="https://astrospectro-visualizer.streamlit.app/?embed=true&theme=dark"
   height="800"
   style={{width: '100%', border: '1px solid #333', borderRadius: '10px'}}
 ></iframe>
-
 <br/>
-
-<Admonition type="note" title="Comment ça marche ?">
+<Admonition type="info" title="Comment ça marche ?">
   <p>
     Cette application est construite avec <strong>Streamlit</strong> et utilise le module <code>visualizer.py</code> de notre projet. Elle est déployée automatiquement depuis la branche <code>deploy-streamlit</code> de notre dépôt GitHub.
   </p>
 </Admonition>
 
-## <FontAwesomeIcon icon={faEye} /> Analyse Exploratoire avec `02_tools_and_visuals.ipynb`
+## <FontAwesomeIcon icon={faEye} /> Autres Outils de Visualisation
 
-Le notebook **`notebooks/02_tools_and_visuals.ipynb`** est votre boîte à outils principale pour l'exploration visuelle. Il vous permet de :
+Le notebook `02_tools_and_visuals.ipynb` contient également d'autres outils de diagnostic spécialisés.
 
--   **Visualiser un spectre individuel :** Chargez n'importe quel fichier FITS et affichez son spectre pour inspecter son allure générale, la présence de bruit ou des raies particulières.
--   **Superposer les raies détectées :** Après avoir lancé le `PeakDetector` sur un spectre, vous pouvez superposer les positions des raies détectées (Hα, Hβ, etc.) directement sur le graphique du spectre pour valider visuellement la détection.
--   **Analyser les distributions :** Créez des histogrammes pour visualiser la distribution de certaines métadonnées, comme le rapport signal/bruit (SNR) de vos spectres, afin d'évaluer la qualité générale de votre jeu de données.
+### Tableau de Bord de l'État du Dataset
+Affiche des statistiques clés sur votre collection de données : nombre total de spectres, nombre déjà utilisés pour l'entraînement, et nombre de nouveaux spectres disponibles.
 
-<Admonition type="info" title="Exemple de Visualisation">
-  <p>L'image ci-dessous montre un exemple de spectre avec les raies d'absorption Hα, CaII H et CaII K identifiées par le pipeline et superposées sur le graphique.</p>
-  {/* Remplacez par une vraie image générée par votre notebook */}
-  <img src="/img/placeholder-spectrum-plot.png" alt="Exemple de visualisation d'un spectre avec raies détectées" />
-</Admonition>
+### Explorateur de Header FITS
+Une interface interactive pour naviguer et afficher le contenu complet de l'en-tête (header) de n'importe quel fichier FITS de votre collection.
 
-## <FontAwesomeIcon icon={faChartLine} /> Évaluation des Performances du Modèle
+### Analyse de la Qualité des Features
+Cet outil charge le dernier fichier de *features* généré et affiche un graphique à barres montrant le pourcentage de valeurs nulles pour chaque *feature*. C'est un outil crucial pour diagnostiquer les problèmes d'extraction.
 
-Après l'entraînement, il est crucial de visualiser les performances du modèle pour comprendre ses forces et ses faiblesses.
+### Carte de Couverture Céleste
+Génère une carte du ciel en projection Mollweide montrant la position de tous les plans d'observation que vous avez téléchargés. La taille et la couleur des points indiquent la densité de spectres par plan.
 
-### Matrice de Confusion
+### Inspecteur de Modèles Entraînés
+Permet de sélectionner n'importe quel modèle `.pkl` sauvegardé et d'afficher ses hyperparamètres optimisés ainsi qu'un graphique de l'importance de chaque *feature* pour ses prédictions.
 
-Générée automatiquement lors de l'appel à la méthode `train_and_evaluate` de la classe `SpectralClassifier`, la matrice de confusion est l'outil le plus important pour l'analyse des erreurs.
-
--   **Lecture :** La diagonale principale montre les classifications correctes. Les cases hors de la diagonale montrent les erreurs (par exemple, combien de spectres de type 'G' ont été incorrectement classifiés comme 'K').
--   **Bibliothèque :** Elle est générée en utilisant `Seaborn` et `Matplotlib` pour un rendu clair et lisible.
-
-### Importance des Features
-
-Le notebook `02_tools_and_visuals.ipynb` contient un outil pour charger un modèle `.pkl` et générer un graphique à barres montrant l'importance de chaque feature. C'est essentiel pour comprendre quelles raies spectrales sont les plus discriminantes pour le modèle.
+### Comparateur de Spectres Interactif
+Un outil pour superposer plusieurs spectres sur un même graphique, avec des options de normalisation et de décalage vertical pour faciliter la comparaison visuelle.

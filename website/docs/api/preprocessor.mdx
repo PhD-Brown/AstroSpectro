@@ -5,13 +5,13 @@ hide_title: true
 sidebar_label: Prétraitement
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTools, faArrowRight, faFileCode, faObjectGroup, faExclamationTriangle, faLightbulb, faBook, faProjectDiagram } from '@fortawesome/free-solid-svg-icons'
+import { faTools, faFileCode, faObjectGroup, faExclamationTriangle, faLightbulb, faBook, faProjectDiagram, faArrowRight } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-## <FontAwesomeIcon icon={faTools} /> `preprocessor.py`
+## <FontAwesomeIcon icon={faFileCode} /> `preprocessor.py`
 
 > Ce module contient la classe `SpectraPreprocessor`, responsable du chargement et du nettoyage initial des spectres bruts. C'est la toute première étape de traitement actif du pipeline.
 
@@ -21,12 +21,12 @@ import Admonition from '@theme/Admonition';
 
 ```mermaid
 graph TD
-    A["Fichier FITS brut (.gz)"] --> B(load_spectrum);
-    B --> C{"Spectre (longueur d'onde, flux)"};
-    C --> D(normalize_spectrum);
-    D --> E[Spectre normalisé<br><i>Prêt pour l'extraction de features</i>];
+    A["Fichier FITS brut (.gz)"] -->|astropy.io.fits| B(HDUList);
+    B --> C{load_spectrum};
+    C --> D["Spectre (wavelength, flux, invvar)"];
+    D --> E(normalize_spectrum);
+    E --> F[Spectre Normalisé<br><i>Prêt pour l'extraction de features</i>];
 ```
-
 </div>
 
 ## <FontAwesomeIcon icon={faObjectGroup} /> Classe SpectraPreprocessor
@@ -46,25 +46,21 @@ preprocessor = SpectraPreprocessor()
 
 ## Méthodes Publiques :
 
-
 ### ``load_spectrum(hdul)``
 
 > Cette méthode est le cœur du chargement des données. Elle est spécifiquement conçue pour le format de données de LAMOST DR5.
 
 <details>
 <summary>Cliquez pour voir les détails de la méthode</summary>
-- **Description :** Extrait le spectre (longueur d'onde, flux) à partir d'un objet ``HDUList`` (provenant de ``astropy.io.fits``).
+- **Description :** Extrait le spectre (longueur d'onde, flux) et l'inverse de la variance à partir d'un objet `HDUList` ouvert.
 - **Arguments :**
-  - ``hdul (astropy.io.fits.HDUList)`` : L'objet FITS ouvert contenant les données du spectre.
+- `hdul (astropy.io.fits.HDUList)` : L'objet FITS ouvert.
 - **Retourne :**
-  - tuple ``(np.ndarray, np.ndarray)`` : Un tuple contenant deux tableaux NumPy : ``(wavelength, flux)``.
-- <FontAwesomeIcon icon={faExclamationTriangle} /> Erreurs Possibles :
-  - ``ValueError`` : Levée si les mots-clés ``COEFF0`` ou ``COEFF1`` sont absents de l'en-tête FITS, rendant la reconstruction de l'axe des longueurs d'onde impossible.
-- <FontAwesomeIcon icon={faLightbulb} /> Contexte Scientifique :
-  - Cette méthode est spécifiquement adaptée au format des données LAMOST DR5, où l'axe des longueurs d'onde est défini par une échelle log-linéaire. Elle ne fonctionnera pas "telle quelle" pour des relevés comme SDSS qui utilisent une structure de header différente.
-- Logique :
-  1. Extrait le vecteur de flux depuis la première extension de données ``(hdul[0].data[0])``.
-  2. Reconstruit le vecteur des longueurs d'onde en Angströms en utilisant les coefficients ``COEFF0`` et ``COEFF1`` de l'en-tête FITS.
+- `tuple (np.ndarray, np.ndarray, np.ndarray)` : Un tuple contenant trois tableaux NumPy : `(wavelength, flux, invvar)`.
+- <FontAwesomeIcon icon={faExclamationTriangle} /> **Erreurs Possibles :**
+- `ValueError` : Levée si les mots-clés `COEFF0` ou `COEFF1` sont absents de l'en-tête, ou si la structure de données est invalide.
+- <FontAwesomeIcon icon={faLightbulb} /> **Contexte Scientifique :**
+- Cette méthode est spécifiquement adaptée au format des données LAMOST DR5. Elle extrait le flux de la première ligne de la matrice de données, l'inverse de la variance de la deuxième, et reconstruit l'axe des longueurs d'onde en Angströms en utilisant les coefficients `COEFF0` et `COEFF1` de l'en-tête FITS.
 </details>
 
 <br/>
@@ -77,13 +73,13 @@ preprocessor = SpectraPreprocessor()
 <summary>Cliquez pour voir les détails de la méthode</summary>
 - **Description :** Normalise un vecteur de flux en le divisant par sa valeur médiane.
 - **Arguments :**
-  - ``flux (np.ndarray)`` : Le vecteur de flux du spectre.
+- `flux (np.ndarray)` : Le vecteur de flux du spectre.
 - **Retourne :**
-  - ``np.ndarray`` : Le vecteur de flux normalisé.
-- <FontAwesomeIcon icon={faExclamationTriangle} /> Erreurs Possibles :
-  - Aucune erreur n'est levée directement. Si la médiane du flux est nulle ou négative, la méthode retourne le flux original pour éviter une division par zéro ou des valeurs aberrantes.
-- <FontAwesomeIcon icon={faLightbulb} /> Contexte Scientifique :
-  - La normalisation par la médiane a été choisie pour sa robustesse aux outliers. Contrairement à la moyenne, la médiane est peu affectée par des pixels cosmiques ou des artéfacts très brillants, ce qui en fait un choix plus sûr pour un traitement automatisé en masse.
+- `np.ndarray` : Le vecteur de flux normalisé.
+- <FontAwesomeIcon icon={faExclamationTriangle} /> **Erreurs Possibles :**
+- Aucune. Si la médiane est nulle ou négative, la méthode retourne le flux original pour éviter les erreurs de calcul.
+- <FontAwesomeIcon icon={faLightbulb} /> **Contexte Scientifique :**
+- La normalisation par la médiane a été choisie pour sa robustesse aux *outliers* (comme les rayons cosmiques). Elle permet de ramener le continuum du spectre à une valeur proche de 1.0, ce qui est essentiel pour comparer la forme des raies spectrales entre différentes étoiles.
 </details>
 
 <br/>
@@ -116,14 +112,15 @@ with fits.open(fits_path) as hdul:
 print(f"Spectre chargé. Longueur d'onde de {wavelength.min():.2f} à {wavelength.max():.2f} Å.")
 print(f"Flux normalisé (moyenne) : {flux_normalized.mean():.2f}")
 ```
+<br/>
 <div className="container" style={{padding: '0', marginTop: '2rem'}}>
 <div className="row">
 <div className="col col--6">
 <Admonition type="info" title="Bonnes Pratiques" icon="💡">
 <ul>
-<li><strong>Ordre :</strong> Le prétraitement est toujours la première étape.</li>
-<li><strong>Idempotence :</strong> Ne normalisez pas un spectre déjà normalisé.</li>
-<li><strong>Batch :</strong> Pour traiter de nombreux fichiers, utilisez une boucle avec <code>tqdm</code> pour le suivi.</li>
+<li><strong>Ordre :</strong> Le prétraitement est toujours la première étape active du pipeline.</li>
+<li><strong>Robustesse :</strong> Le code est encapsulé dans des blocs <code>try...except</code> dans le pipeline principal pour gérer les fichiers FITS corrompus.</li>
+<li><strong>Batch :</strong> Pour traiter de nombreux fichiers, cette classe est appelée en boucle par le <code>ProcessingPipeline</code>.</li>
 </ul>
 </Admonition>
 </div>
@@ -138,6 +135,7 @@ print(f"Flux normalisé (moyenne) : {flux_normalized.mean():.2f}")
 </div>
 </div>
 </div>
+<br/>
 <div className="card">
 <div className="card__header" style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
 <FontAwesomeIcon icon={faArrowRight} />

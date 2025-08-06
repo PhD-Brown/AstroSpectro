@@ -4,49 +4,55 @@ title: Prétraitement
 sidebar_label: Prétraitement
 ---
 
-<!-- Compléter avec la photo nécessaire -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMagicWandSparkles, faCogs, faEye, faMagic } from '@fortawesome/free-solid-svg-icons'
+import { faMagicWandSparkles, faCogs, faEye } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
 
-# <FontAwesomeIcon icon={faMagic} /> Guide : Prétraitement des Spectres
+# <FontAwesomeIcon icon={faMagicWandSparkles} /> Guide : Prétraitement des Spectres
 
-> Un spectre brut issu d'un télescope n'est pas directement utilisable pour le Machine Learning. Ce guide explique comment le pipeline **AstroSpectro** nettoie et normalise chaque spectre pour le préparer à l'extraction de features.
+> Un spectre brut issu d'un télescope n'est pas directement utilisable pour le Machine Learning. Ce guide explique comment le pipeline **AstroSpectro** nettoie, normalise et prépare chaque spectre pour l'extraction de *features*.
 
 ## <FontAwesomeIcon icon={faCogs} /> Le Module `SpectraPreprocessor`
 
-Toute la logique de prétraitement est encapsulée dans la classe `SpectraPreprocessor` du fichier `src/pipeline/preprocessor.py`. Le pipeline principal, orchestré par le notebook, fait appel aux méthodes de cette classe pour chaque spectre du lot.
+Toute la logique de prétraitement est encapsulée dans la classe [`SpectraPreprocessor`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/preprocessor.py). Le pipeline principal orchestre le traitement en appelant les méthodes de cette classe pour chaque spectre du lot.
 
 Le processus se déroule en deux étapes principales.
 
-### Étape 1 : Chargement du Spectre
+### Étape 1 : Chargement Robuste du Spectre
 
-La première étape consiste à lire le fichier `.fits.gz` et à en extraire les deux informations essentielles : le flux et la longueur d'onde.
+La première étape consiste à lire le fichier `.fits.gz` et à en extraire les informations essentielles : la longueur d'onde, le flux, et l'inverse de la variance (une mesure de l'incertitude).
 
--   **Extraction du Flux :** Le flux (l'intensité lumineuse) est extrait de la première ligne de la matrice de données du fichier FITS.
--   **Reconstruction de la Longueur d'Onde :** L'axe des longueurs d'onde n'est pas stocké directement. Il est reconstruit à partir des mots-clés `COEFF0` et `COEFF1` présents dans l'en-tête (header) FITS, qui définissent une échelle log-linéaire.
+-   **Extraction des Données :** Le flux (l'intensité lumineuse) et l'inverse de la variance sont extraits de la matrice de données du fichier FITS.
+-   **Reconstruction Adaptative de la Longueur d'Onde :** Les relevés comme LAMOST n'utilisent pas toujours la même méthode pour stocker l'axe des longueurs d'onde. Notre `preprocessor` est **robuste** et sait gérer plusieurs formats :
+    -   Il cherche d'abord les mots-clés `COEFF0` et `COEFF1` pour reconstruire une échelle log-linéaire.
+    -   Si cela échoue, il cherche une colonne de données `loglam`.
+    -   Cette flexibilité garantit que le pipeline peut traiter des spectres de différentes campagnes d'observation sans modification.
 
 ```python title="src/pipeline/preprocessor.py - Exemple simplifié de chargement"
 def load_spectrum(self, hdul):
-    flux = hdul[0].data[0]
-    
-    # Reconstitution de l'axe lambda en Angströms
+    # La logique réelle est plus complexe pour gérer plusieurs formats
     header = hdul[0].header
+    data = hdul[0].data
+    
+    flux = data[0]
+    invvar = data[1]
+
     loglam = header['COEFF0'] + np.arange(len(flux)) * header['COEFF1']
     wavelength = 10**loglam
     
-    return wavelength, flux
+    return wavelength, flux, invvar
 ```
 
 ### Étape 2 : Normalisation du Flux
 
-Les étoiles ont des brillances intrinsèques très différentes. Pour les comparer sur une base équitable, il est essentiel de normaliser leurs spectres.
+Les étoiles ont des brillances intrinsèques et des distances très différentes. Pour les comparer sur une base équitable, il est essentiel de normaliser leurs spectres.
 
-- **Méthode** : Le pipeline applique une normalisation simple mais robuste en divisant l'ensemble du flux par sa valeur médiane.
-- **Objectif** : Cette opération ramène la majorité des spectres à une échelle de flux autour de 1.0, ce qui atténue les différences de magnitude absolue et met en valeur les variations relatives des raies spectrales par rapport au continuum.
+- Méthode : Le pipeline applique une normalisation simple mais robuste en divisant l'ensemble du flux par sa valeur médiane.
+- Objectif : Cette opération ramène le "continuum" (le niveau de base du spectre) à une valeur proche de 1.0. Cela permet d'atténuer les différences de magnitude absolue et de se concentrer sur la forme et la profondeur relatives des raies spectrales, qui sont les véritables signatures physiques du type d'étoile.
 
-```Python title="src/pipeline/preprocessor.py - Normalisation"
+```python title="src/pipeline/preprocessor.py - Normalisation"
 def normalize_spectrum(self, flux):
     median_flux = np.median(flux)
     if median_flux > 0:
@@ -54,22 +60,22 @@ def normalize_spectrum(self, flux):
     return flux
 ```
 
-### <FontAwesomeIcon icon={faEye} /> Visualisation de l'Impact
 
+<FontAwesomeIcon icon={faEye} /> Visualisation de l'Impact
 <Admonition type="info" title="Avant / Après Normalisation">
-
 <p>L'image ci-dessous illustre l'effet de la normalisation. À gauche, deux spectres bruts d'étoiles de magnitudes différentes. À droite, les mêmes deux spectres après normalisation. On peut maintenant comparer directement la forme de leurs raies.</p>
+![alt text](/img/avant_apres_normalisation.png)
 
-{/* Remplacez par une vraie image de votre projet quand vous en aurez une */}
 
-<img src="/img/placeholder-avant-apres.png" alt="Exemple de normalisation d'un spectre" />
+(Conseil : Crée une petite image simple montrant deux spectres avant/après normalisation avec Matplotlib et sauvegarde-la dans static/img/)
+
 </Admonition>
-
 <br/>
 
+
 :::note Pistes d'Amélioration Futures
-Le prétraitement actuel est volontairement simple. La Roadmap du projet prévoit des améliorations futures comme :
-Un ajustement plus fin du continuum.
-Des filtres de débruitage (denoising) comme Savitzky-Golay.
-La correction de l'extinction interstellaire.
+Le prétraitement actuel est conçu pour être rapide et robuste. La Roadmap du projet prévoit des améliorations futures comme :
+Un ajustement plus fin du continuum avec des méthodes polynomiales.
+Des filtres de débruitage (denoising) comme Savitzky-Golay appliqués de manière plus systématique.
+La correction de l'extinction interstellaire pour les analyses les plus fines.
 :::

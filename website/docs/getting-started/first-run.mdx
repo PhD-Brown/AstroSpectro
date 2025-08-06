@@ -3,7 +3,7 @@ title: Lancer le Pipeline
 sidebar_position: 2
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faRocket, faDownload, faCogs, faPoll, faSpinner, faTrophy } from '@fortawesome/free-solid-svg-icons'
@@ -11,7 +11,7 @@ import Admonition from '@theme/Admonition';
 
 # <FontAwesomeIcon icon={faSpinner} /> Premier Lancement : De A à Z
 
-Maintenant que votre environnement est configuré, nous allons lancer le pipeline complet en utilisant le notebook principal `00_master_pipeline.ipynb`. Ce notebook orchestre toutes les étapes, du téléchargement des données à l'entraînement du modèle.
+Maintenant que votre environnement est configuré, nous allons lancer le pipeline complet en utilisant le notebook principal `00_master_pipeline.ipynb`. Ce notebook orchestre toutes les étapes, de la sélection des données à la génération d'un rapport de session complet.
 
 <Admonition type="info" title="Utilisateurs de Codespaces">
   <p>
@@ -19,65 +19,31 @@ Maintenant que votre environnement est configuré, nous allons lancer le pipelin
   </p>
 </Admonition>
 
-### <FontAwesomeIcon icon={faDownload} /> Étape 1 : Télécharger un premier lot de données (pour les installations locales)
-<div className="card-demo">
-  <div className="card margin-bottom--lg">
-    <div className="card__header">
-      <span className="step-number">1</span>
-      <h3><FontAwesomeIcon icon={faDownload} /> Télécharger un premier lot de données</h3>
-    </div>
-    <div className="card__body">
-      <p>
-        Si c'est votre toute première exécution, le dossier <code>[data/raw/](https://github.com/PhD-Brown/AstroSpectro/tree/main/data/raw)</code> est probablement vide. Le pipeline a besoin de spectres pour fonctionner.
-      </p>
-      <ol>
-        <li><strong>Lancez Jupyter Lab ou Jupyter Notebook</strong> depuis votre terminal (où l'environnement <code>venv</code> est toujours actif).</li>
-        <li>Ouvrez le notebook <code>[notebooks/01_download_spectra.ipynb](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/01_download_spectra.ipynb)</code>.</li>
-        <li>Ce notebook utilise le module <code>SmartDownloader</code> pour récupérer les spectres.</li>
-        <li>Exécutez les cellules pour télécharger un premier lot. Un petit lot de <strong>100 à 500 spectres</strong> est suffisant pour un premier test.</li>
-      </ol>
-      <Admonition type="note" title="Conseil">
-        <p>
-          Le downloader est "intelligent" : il garde en mémoire les plans d'observation déjà téléchargés (<code>[downloaded_plans.csv](https://github.com/PhD-Brown/AstroSpectro/blob/main/data/catalog/downloaded_plans.csv)</code>) pour ne pas les reprendre deux fois.
-        </p>
-      </Admonition>
-    </div>
-  </div>
-  <div className="card margin-bottom--lg">
-    <div className="card__header">
-      <span className="step-number">2</span>
-      <h3><FontAwesomeIcon icon={faCogs} /> Lancer le pipeline principal</h3>
-    </div>
-    <div className="card__body">
-      Une fois que vous avez des données dans <code>data/raw/</code>, vous pouvez lancer le workflow complet.
-      <ol>
-        <li>Ouvrez le notebook principal : <code>[notebooks/00_master_pipeline.ipynb](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/00_master_pipeline.ipynb)</code>.</li>
-        <li>Exécutez toutes les cellules. Vous verrez des barres de progression et des messages informatifs à chaque étape.</li>
-      </ol>
-      <p>Ce notebook orchestre les étapes suivantes :</p>
-      <ul>
-        <li>Sélection d'un lot de spectres non traités.</li>
-        <li>Génération d'un catalogue local.</li>
-        <li>Prétraitement et extraction de features.</li>
-        <li>Entraînement et évaluation du modèle.</li>
-      </ul>
-    </div>
-  </div>
-  <div className="card">
-    <div className="card__header">
-      <span className="step-number">3</span>
-      <h3><FontAwesomeIcon icon={faPoll} /> Examiner les Résultats</h3>
-    </div>
-    <div className="card__body">
-      À la fin de l'exécution, plusieurs fichiers auront été créés ou mis à jour. Les plus importants sont :
-      <ul>
-        <li><strong><code>data/processed/</code></strong>: Un fichier CSV avec vos features prêtes pour le ML.</li>
-        <li><strong><code>reports/</code></strong>: Un rapport de session en JSON résumant les performances du modèle.</li>
-      </ul>
-      <p>Directement dans le notebook, vous verrez également apparaître un <strong>rapport de classification</strong> et une <strong>matrice de confusion</strong> pour une première analyse des performances.</p>
-    </div>
-  </div>
-</div>
+### <FontAwesomeIcon icon={faDownload} /> Étape 1 : Acquérir des Données (si nécessaire)
+
+Si c'est votre toute première exécution en local, le dossier `data/raw/` est vide.
+1.  Ouvrez le notebook `notebooks/01_download_spectra.ipynb`.
+2.  Utilisez l'interface interactive pour télécharger un premier lot de spectres (quelques centaines suffisent pour un test).
+
+### <FontAwesomeIcon icon={faCogs} /> Étape 2 : Lancer le Pipeline de Production
+
+Une fois que vous avez des données, le processus est entièrement automatisé.
+1.  Ouvrez le notebook principal : `notebooks/00_master_pipeline.ipynb`.
+2.  **Exécutez toutes les cellules de haut en bas.**
+
+Le notebook va exécuter séquentiellement le `MasterPipeline` :
+-   **Étape 2 : Sélection d'un lot** de spectres non traités.
+-   **Étape 3 : Génération d'un catalogue local** pour ce lot.
+-   **Étape 4 : Traitement & Extraction des Features** (plus de 20 *features* par spectre).
+-   **Étape 5 : Entraînement & Évaluation** avec une interface interactive pour choisir entre `RandomForest` et `XGBoost` et configurer le nombre d'estimateurs.
+
+### <FontAwesomeIcon icon={faPoll} /> Étape 3 : Examiner les Résultats
+
+À la fin de l'exécution, plusieurs artefacts cruciaux auront été créés :
+-   Un fichier **CSV** dans `data/processed/` avec vos *features* prêtes pour l'analyse.
+-   Un modèle **`.pkl`** sauvegardé dans `data/models/`.
+-   Un **rapport de session JSON** détaillé dans `data/reports/`.
+-   Directement dans le notebook, vous verrez le **rapport de classification** et la **matrice de confusion** de votre modèle optimisé.
 
 ### 🎉 Vous avez terminé le Démarrage Rapide !
 

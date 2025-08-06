@@ -5,37 +5,55 @@ hide_title: true
 className: 'doc-page-hub'
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import HomepageHub from '@site/src/components/HomepageHub';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { faNewspaper } from '@fortawesome/free-solid-svg-icons'
 
 {/* --- Section Principale de la Page --- */}
-
 <div style={{textAlign: 'center'}}>
   <h1 style={{fontSize: '2.6rem', marginBottom: '0.2em'}}>
-    Bienvenue sur la Documentation Astro-Spectro
+    Bienvenue sur la Documentation AstroSpectro
   </h1>
   <p style={{maxWidth: 750, margin: 'auto', fontSize: '1.15rem'}}>
-    Ce projet fournit un pipeline robuste et reproductible pour la classification automatique des spectres stellaires.
+    Ce projet fournit un pipeline robuste et reproductible pour la classification automatique des spectres stellaires, atteignant plus de 80% de précision.
   </p>
 </div>
 
 <br/>
 
-{/* On appelle simplement notre composant ici ! */}
+{/* Les 4 cartes principales gérées par le composant */}
 <HomepageHub />
+
+{/* On ajoute la carte pour le blog directement ici */}
+<div className="container" style={{padding: '0'}}>
+  <div className="row">
+    <div className="col col--12 margin-top--lg">
+      <div className="card hub-card">
+        <div className="card__header">
+          <h3><FontAwesomeIcon icon={faNewspaper} /> Journal de Bord</h3>
+        </div>
+        <div className="card__body">
+          <p>Suivez les dernières avancées, les découvertes et le récit du développement du projet, de la baseline initiale aux résultats finaux.</p>
+        </div>
+        <div className="card__footer">
+          <a href="/AstroSpectro/journal" className="button button--primary button--block">
+            Lire le Journal de Bord →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <br/>
 
-:::info 🚧 Note de développement
-Cette documentation est en cours de rédaction active pour la version **`v0.1.0`** du pipeline.
-Certaines pages peuvent être incomplètes ou sujettes à changement.
+:::info ✨ Version 1.0.0
+Cette documentation est maintenant complète et stable pour la version **`v1.0.0`** du pipeline. Le projet est considéré comme mature et fonctionnel.
 :::
 
-{/* 
-  On garde le style pour l'effet de survol des cartes.
-  Il peut aussi être déplacé dans custom.css pour plus de propreté.
-*/}
+{/* Le style pour l'effet de survol */}
 <style>
 {`
   .hub-card {

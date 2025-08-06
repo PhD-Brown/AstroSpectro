@@ -4,14 +4,14 @@ title: Structure du Projet
 sidebar_label: Structure du Projet
 ---
 
-<!-- Complet for v0.1.0-alpha release -->
+<!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFolder, faFolderOpen, faFileCode, faBook, faDatabase, faLaptopCode, faFileAlt, faRoad } from '@fortawesome/free-solid-svg-icons'
+import { faFolder, faFolderOpen, faFileCode, faBook, faDatabase, faLaptopCode, faFileAlt, faRoad, faVial, faTools } from '@fortawesome/free-solid-svg-icons'
 
 # <FontAwesomeIcon icon={faFolderOpen} /> Structure du Projet
 
-Le projet est organisé pour faciliter la reproductibilité, l'extension scientifique et l'utilisation pratique. Voici une description des répertoires principaux et de leur rôle.
+Le projet **AstroSpectro** est organisé selon une architecture modulaire pour faciliter la reproductibilité, l'extension scientifique et la maintenance. Voici une description des répertoires principaux et de leur rôle.
 
 ### Vue d'ensemble de l'arborescence
 
@@ -21,19 +21,20 @@ Le projet est organisé pour faciliter la reproductibilité, l'extension scienti
 <div className="col col--6">
   <h4><FontAwesomeIcon icon={faFolder} /> Répertoires Principaux</h4>
   <ul>
-    <li><code>/src</code> - Cœur du pipeline Python.</li>
-    <li><code>/notebooks</code> - Orchestration et analyse interactive.</li>
+    <li><code>/src</code> - Cœur du pipeline Python (logique métier).</li>
+    <li><code>/notebooks</code> - Tableaux de bord pour l'orchestration et l'analyse.</li>
     <li><code>/data</code> - Données brutes, traitées et catalogues (ignoré par Git).</li>
-    <li><code>/website</code> - Source de cette documentation.</li>
-    <li><code>/reports</code> & <code>/logs</code> - Rapports de session et logs.</li>
+    <li><code>/website</code> - Source de cette documentation (Docusaurus).</li>
+    <li><code>/models</code> - Modèles de Machine Learning entraînés et sauvegardés.</li>
+    <li><code>/reports</code> & <code>/logs</code> - Rapports de session JSON et logs de téléchargement.</li>
   </ul>
 </div>
 <div className="col col--6">
   <h4><FontAwesomeIcon icon={faFileAlt} /> Fichiers à la Racine</h4>
   <ul>
-    <li><code>README.md</code> - Présentation et liens rapides.</li>
-    <li><code>requirements.txt</code> - Dépendances Python.</li>
-    <li><code>ROADMAP.md</code> - Vision et objectifs du projet.</li>
+    <li><code>README.md</code> - Présentation, liens rapides et guide de démarrage.</li>
+    <li><code>requirements.txt</code> - Dépendances Python du projet.</li>
+    <li><code>ROADMAP.md</code> - Vision et objectifs à long terme du projet.</li>
     <li><code>.gitignore</code> - Fichiers et dossiers à ignorer par Git.</li>
   </ul>
 </div>
@@ -50,7 +51,11 @@ Le projet est organisé pour faciliter la reproductibilité, l'extension scienti
       <h4><FontAwesomeIcon icon={faFileCode} /> <code>/src</code></h4>
     </div>
     <div className="card__body">
-      <strong>Le moteur du pipeline.</strong> Contient tout le code Python modulaire pour le traitement des données et le machine learning. Divisé en <code>pipeline/</code> (logique métier) et <code>tools/</code> (utilitaires).
+      <strong>Le moteur du projet.</strong> Contient tout le code Python modulaire. Il est divisé en deux sous-dossiers clés :
+      <ul>
+        <li><code>pipeline/</code> : Les briques de la chaîne de traitement scientifique (prétraitement, extraction de features, classification).</li>
+        <li><code>tools/</code> : Les utilitaires pour la gestion des données et des interfaces (downloader, visualiseur, etc.).</li>
+      </ul>
     </div>
   </div>
 </div>
@@ -60,7 +65,12 @@ Le projet est organisé pour faciliter la reproductibilité, l'extension scienti
       <h4><FontAwesomeIcon icon={faLaptopCode} /> <code>/notebooks</code></h4>
     </div>
     <div className="card__body">
-      <strong>L'interface de contrôle.</strong> Les notebooks Jupyter permettent d'exécuter et d'orchestrer les différentes étapes du pipeline de manière interactive, du téléchargement à la visualisation.
+      <strong>Les tableaux de bord.</strong> Chaque notebook a un rôle précis :
+      <ul>
+        <li><code>00_master_pipeline</code> : L'interface de <strong>production</strong> pour lancer des cycles d'entraînement complets.</li>
+        <li><code>01_download_spectra</code> : L'interface de <strong>gestion</strong> des données (téléchargement, nettoyage).</li>
+        <li><code>02_tools_and_visuals</code> : Le <strong>laboratoire</strong> pour l'exploration, l'analyse et le débogage.</li>
+      </ul>
     </div>
   </div>
 </div>
@@ -70,13 +80,13 @@ Le projet est organisé pour faciliter la reproductibilité, l'extension scienti
       <h4><FontAwesomeIcon icon={faDatabase} /> <code>/data</code></h4>
     </div>
     <div className="card__body">
-      <strong>L'entrepôt de données.</strong> Contient les spectres bruts, les catalogues générés, les features extraites et les modèles entraînés. Ce dossier est ignoré par Git.
+      <strong>L'entrepôt de données.</strong> Contient les spectres bruts, les catalogues générés, les <em>features</em> extraites et les modèles entraînés. Ce dossier est intentionnellement ignoré par Git pour ne pas surcharger le dépôt.
     </div>
   </div>
 </div>
 </div>
 </div>
 
-:::info
-La séparation entre `src/` (le code pur) et `notebooks/` (l'orchestration) est un choix d'architecture clé pour garantir la modularité et la testabilité du code.
+:::info Philosophie d'Architecture
+La séparation stricte entre <code>src/</code> (le code "pur" et testable) et <code>notebooks/</code> (l'orchestration interactive) est un choix de conception fondamental. Elle garantit la modularité, la réutilisabilité et la maintenabilité du projet, ce qui est une pratique standard dans les projets de science des données professionnels.
 :::
