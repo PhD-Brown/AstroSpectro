@@ -23,6 +23,10 @@ Thumbs.db
 # === Data science / Astro-specific ===
 # Ignore all raw data, processed data, models, logs, etc.
 data/
+data/raw/**
+data/raw_backup/**
+data/processed/**
+data/logs/**
 logs/
 reports/
 archive/

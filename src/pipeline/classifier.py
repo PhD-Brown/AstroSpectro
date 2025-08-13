@@ -1,15 +1,57 @@
+"""
+AstroSpectro — Outils d’entraînement et d’évaluation du classifieur spectral.
+
+Ce module encapsule le pipeline ML complet (imputation, scaling, SMOTE,
+sélection de variables optionnelle, tuning par GridSearchCV), l’entraînement,
+l’évaluation et la persistance (pickle + méta-données JSON).
+
+Conventions
+-----------
+- Les longueurs/largeurs sont en unités natives de scikit-learn / xgboost.
+- `feature_names_used` conserve l’ordre des colonnes après préparation (stable).
+
+Entrées / Sorties attendues
+---------------------------
+- Entrée : DataFrame de features (colonnes numériques + méta), incluant
+  au minimum `subclass` pour dériver la cible; autres colonnes sont
+  auto-filtrées par `_prepare_features_and_labels`.
+- Sortie : modèle entraîné (pipeline sklearn/imb), rapports d’évaluation,
+  artefacts persistés (.pkl/.json) via `save_model()`.
+
+API publique (principales méthodes)
+-----------------------------------
+- clean/filter : `_clean_and_filter_data(df)` → DataFrame prêt à l’entraînement
+- features/labels : `_prepare_features_and_labels(df)` → (X, y)
+- train : `train_and_evaluate(features_df, ...)` → (self, cols, X, y)
+- eval : `evaluate(X_test, y_test)` → affiche rapport + matrice de confusion
+- IO : `save_model(path)`, `load_model(path)`
+
+Exemple minimal
+---------------
+>>> clf = SpectralClassifier(model_type="XGBoost", prediction_target="main_class")
+>>> clf.train_and_evaluate(features_df)
+>>> clf.save_model("data/models/spectral_classifier_xgboost.pkl")
+"""
+
+from __future__ import annotations
+
 import pandas as pd
 import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
-import xgboost as xgb
+import os
+import sys
+import json
+import time
+import sklearn
+import xgboost
 
 # --- Imports Scikit-learn ---
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.feature_selection import SelectFromModel
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.impute import SimpleImputer
 
@@ -17,166 +59,635 @@ from sklearn.impute import SimpleImputer
 from imblearn.pipeline import Pipeline as ImbPipeline
 from imblearn.over_sampling import SMOTE
 
+
 class SpectralClassifier:
     """
-    Encapsule un pipeline de classification complet, incluant le scaling des données,
-    le tuning des hyperparamètres via GridSearchCV, l'entraînement et l'évaluation.
+    Classifieur spectral encapsulant un pipeline complet (imputation, scaling,
+    sur-échantillonnage SMOTE, sélection de variables optionnelle et modèle final).
+    Gère aussi le tuning par GridSearchCV, l’évaluation et la persistance du modèle.
     """
-    def __init__(self, model_type='RandomForest', random_state=42):
-        if model_type not in ['RandomForest', 'XGBoost']:
-            raise ValueError("model_type doit être 'RandomForest' ou 'XGBoost'")
+
+    def __init__(
+        self,
+        model_type="XGBoost",
+        prediction_target="main_class",
+        use_feature_selection=True,
+        selector_threshold="median",
+        selector_model="xgb",
+        selector_n_estimators=200,
+        random_state=42,
+    ):
+        """
+        Initialise la configuration du pipeline de classification.
+
+        Args:
+            model_type: Modèle final à entraîner. {"XGBoost", "RandomForest"}.
+            prediction_target: Cible de prédiction (ex. "main_class", "sub_class_top25",
+                "sub_class_bins").
+                NOTE : sub_class_bins fait référence à des classes regroupées en bins donc
+                les sous-classes sont classées par ordre de fréquence.
+            use_feature_selection: Active la sélection de variables via SelectFromModel.
+            selector_threshold: Seuil de sélection (ex. "median", "mean", "0.5*mean").
+            selector_model: Estimateur utilisé pour la sélection des features
+                {"xgb", "rf"}.
+            selector_n_estimators: Nombre d’arbres/boosting rounds pour le sélecteur.
+            random_state: Graine de reproductibilité.
+
+        Attributes:
+            feature_names_used (list[str]): Noms des variables candidates détectées.
+            selected_features_ (list[str] | None): Sous-ensemble retenu après sélection.
+            best_estimator_: Pipeline final issu de GridSearchCV (une fois entraîné).
+        """
         self.model_type = model_type
+        self.prediction_target = prediction_target
+        self.use_feature_selection = use_feature_selection
+        self.selector_threshold = selector_threshold
+        self.selector_model = selector_model
+        self.selector_n_estimators = selector_n_estimators
         self.random_state = random_state
-        self.model_pipeline = None 
-        self.class_labels = None
-        self.best_params_ = None
-        self.feature_names_used = None
 
-    def _clean_and_filter_data(self, df):
+        self.feature_names_used = []
+        self.selected_features_ = None
+        self.best_estimator_ = None
+
+    # ---------------------------------------------------------------------
+    # Préparation des données (construction des labels + nettoyage)
+    # ---------------------------------------------------------------------
+
+    def _clean_and_filter_data(self, df: pd.DataFrame) -> pd.DataFrame | None:
         """
-        Nettoie et filtre le DataFrame pour ne garder que les données exploitables.
-        (Méthode privée pour la clarté)
+        Crée la colonne de label selon la stratégie choisie puis nettoie/filtre
+        le DataFrame pour l’entraînement.
+
+        Étapes principales :
+        1) Construction de `label` selon `prediction_target`.
+        2) Suppression des labels invalides (U, n, N, O, OTHER).
+        3) Filtrage des classes trop rares (<10 échantillons).
+
+        Args:
+            df: DataFrame de départ (catalogue enrichi + features).
+
+        Returns:
+            pd.DataFrame | None: DataFrame prêt pour l’entraînement (avec `label`)
+            ou `None` si trop peu de données valides.
+
+        Notes:
+            Cette méthode ne modifie pas `df` en place (travaille sur une copie).
         """
-        # Création du label à partir de 'subclass'
-        if 'subclass' in df.columns:
-            df['label'] = df['subclass'].astype(str).str[0]
-        else:
-            print("AVERTISSEMENT: Colonne 'subclass' non trouvée. Impossible de créer les labels.")
+        if "subclass" not in df.columns:
+            print(
+                "AVERTISSEMENT: Colonne 'subclass' non trouvée. Impossible de créer des labels."
+            )
             return None
-        
-        # Filtrer les labels invalides (ex: 'U' pour UNKNOWN, 'n' pour non-stellar)
-        initial_count = len(df)
-        df_trainable = df[df["label"].notnull() & ~df["label"].isin(['U', 'n'])].copy()
-        print(f"  > {initial_count - len(df_trainable)} lignes avec des labels invalides ou nuls supprimées.")
 
-        # Filtrer les classes trop rares (moins de 10 échantillons)
+        df_copy = df.copy()
+
+        if self.prediction_target == "main_class":
+            print(
+                "  > Stratégie : Classification des classes principales (A, F, G...)."
+            )
+            df_copy["label"] = df_copy["subclass"].astype(str).str[0]
+
+        elif self.prediction_target == "sub_class_top25":
+            print(
+                "  > Stratégie : Classification fine sur les 25 sous-classes les plus fréquentes."
+            )
+            df_valid = df_copy[
+                df_copy["subclass"].notnull() & (df_copy["subclass"] != "Non")
+            ].copy()
+            # On trouve les 25 sous-classes les plus communes
+            top_n_subclasses = (
+                df_valid["subclass"].value_counts().nlargest(25).index.tolist()
+            )
+            df_copy = df_valid[df_valid["subclass"].isin(top_n_subclasses)].copy()
+            df_copy["label"] = df_copy["subclass"]
+            print(
+                f"  > Sélection de {len(top_n_subclasses)} sous-classes pour l'entraînement."
+            )
+            # Pourquoi: limite la granularité aux classes “fréquentes” pour éviter
+            # les splits train/test dégénérés et des métriques non parlantes.
+        elif self.prediction_target == "sub_class_bins":
+            print(
+                "  > Stratégie : Classification fine par 'bacs' (ex: G_early, G_late)."
+            )
+
+            def map_to_bin(subclass: str) -> str:
+                """
+                Regroupe une sous-classe spectrale fine en bin large de type
+                « X_early » ou « X_late ».
+
+                Règles:
+                    - On ne traite que les formats classiques commençant par une
+                    lettre parmi {A,F,G,K,M} suivie d’un chiffre (ex.: "G2", "F5V", "K7III").
+                    - Si le chiffre < 5  -> "<TYPE>_early"  (ex.: G0–G4 -> "G_early")
+                    - Sinon             -> "<TYPE>_late"   (ex.: G5–G9 -> "G_late")
+                    - Pour tout autre format non reconnu -> "OTHER"
+
+                Args:
+                    subclass: Libellé de sous-classe d’origine (ex.: "G2", "K7III", "WD").
+
+                Returns:
+                    str: Bin large ("G_early", "G_late", …) ou "OTHER" si non reconnu.
+                """
+                s = str(subclass).strip()
+                if s and s[0] in "AFGKM" and len(s) > 1 and s[1].isdigit():
+                    main_type = s[0]
+                    sub_type_digit = int(s[1])
+                    return (
+                        f"{main_type}_early"
+                        if sub_type_digit < 5
+                        else f"{main_type}_late"
+                    )
+                return "OTHER"
+
+            df_copy["label"] = df_copy["subclass"].apply(map_to_bin)
+
+        else:
+            raise ValueError(
+                f"prediction_target '{self.prediction_target}' invalide. Choix possibles : 'main_class', 'sub_class_top25', 'sub_class_bins'."
+            )
+
+        initial_count = len(df_copy)
+        invalid_labels = ["U", "n", "N", "O", "OTHER"]
+        df_trainable = df_copy[
+            df_copy["label"].notnull() & ~df_copy["label"].isin(invalid_labels)
+        ].copy()
+        print(
+            f"  > {initial_count - len(df_trainable)} lignes avec des labels invalides ou nuls supprimées."
+        )
+
         label_counts = df_trainable["label"].value_counts()
         rare_labels = label_counts[label_counts < 10].index.tolist()
         if rare_labels:
-            print(f"  > Suppression des classes trop rares : {rare_labels}")
+            # Attention: seuil 10 choisi pour la robustesse des splits + SMOTE.
+            print(
+                f"  > Suppression des classes trop rares (moins de 10 échantillons) : {rare_labels}"
+            )
             df_trainable = df_trainable[~df_trainable["label"].isin(rare_labels)]
-        
-        if len(df_trainable) < 20: # Seuil de sécurité
-            print("ERREUR : Pas assez de données valides après nettoyage pour entraîner un modèle.")
+
+        if len(df_trainable) < 20:
+            print(
+                "\nERREUR : Pas assez de données valides après nettoyage pour entraîner un modèle."
+            )
             return None
-        
+
+        print(
+            f"  > {len(df_trainable)} échantillons finaux avec {len(df_trainable['label'].unique())} classes pour l'entraînement."
+        )
         return df_trainable
 
-    def _prepare_features_and_labels(self, df_trainable):
-        """
-        Sélectionne les colonnes de features et retourne les matrices X et y.
-        (Méthode privée pour la clarté)
-        """
-        engineered_features = [col for col in df_trainable.columns if col.startswith('feature_')]
-        metadata_features = ['redshift', 'snr_g', 'snr_r', 'snr_i', 'seeing']
-        
-        final_metadata_features = [col for col in metadata_features if col in df_trainable.columns]
-        
-        all_features_to_use = engineered_features + final_metadata_features
-        
-        # On supprime les doublons au cas où et on garde l'ordre
-        all_features_to_use = sorted(list(set(all_features_to_use)))
-        
-        self.feature_names_used = all_features_to_use # On stocke les noms pour plus tard
-        
-        print("\n--- Préparation pour l'entraînement ---")
-        print(f"Features utilisées ({len(all_features_to_use)}) : {all_features_to_use}")
+    # ---------------------------------------------------------------------
+    # Sélection dynamique des features & fabrication de X/y
+    # ---------------------------------------------------------------------
 
-        X = df_trainable[all_features_to_use].values
+    def _prepare_features_and_labels(
+        self, df_trainable: pd.DataFrame
+    ) -> tuple[pd.DataFrame, np.ndarray]:
+        """
+        Sélectionne dynamiquement toutes les colonnes numériques comme features,
+        normalise les NaN/inf, supprime les colonnes vides/constantes et
+        renvoie X (features triées) et y (labels).
+
+        Args:
+            df_trainable: DataFrame nettoyé contenant au moins la colonne `label`.
+
+        Returns:
+            (X, y):
+                - X (pd.DataFrame): Matrice de features en float, colonnes triées.
+                - y (np.ndarray): Vecteur de labels.
+
+        Side Effects:
+            Met à jour `self.feature_names_used` avec l’ordre final des colonnes.
+        """
+        cols_to_exclude = [
+            "file_path",
+            "fits_name",
+            "obsid",
+            "plan_id",
+            "mjd",
+            "class",
+            "subclass",
+            "filename_original",
+            "author",
+            "data_version",
+            "date_creation",
+            "telescope",
+            "obs_date_utc",
+            "designation",
+            "fiber_type",
+            "object_name",
+            "catalog_object_type",
+            "magnitude_type",
+            "heliocentric_correction",
+            "radial_velocity_corr",
+            "label",
+            "source_id",
+            "gaia_ra",
+            "gaia_dec",
+            "match_dist_arcsec",
+            "pipeline_version",
+            "processing_notes",
+            "download_url",
+            "spectrum_hash",
+            "flux_unit",
+            "wavelength_unit",
+        ]
+
+        candidate_cols = [
+            c
+            for c in df_trainable.columns
+            if c not in cols_to_exclude
+            and pd.api.types.is_numeric_dtype(df_trainable[c])
+        ]
+
+        df_num = df_trainable[candidate_cols].copy()
+        df_num.replace({pd.NA: np.nan}, inplace=True)
+        df_num.replace([np.inf, -np.inf], np.nan, inplace=True)
+
+        for c in df_num.columns:
+            if df_num[c].dtype == "object":
+                df_num[c] = pd.to_numeric(df_num[c], errors="coerce")
+
+        df_num = df_num.loc[:, df_num.notna().any(axis=0)]
+
+        const_cols = df_num.nunique(dropna=True)
+        const_cols = const_cols[const_cols <= 1].index.tolist()
+        if const_cols:
+            # Pourquoi: supprimer les colonnes constantes évite du bruit pour la
+            # sélection de features et accélère le fit.
+            df_num.drop(columns=const_cols, inplace=True)
+
+        df_num = df_num.reindex(sorted(df_num.columns), axis=1)
+        self.feature_names_used = list(df_num.columns)
+
+        X = df_num
         y = df_trainable["label"].values
-        
+
+        print(
+            "\n--- Préparation pour l'entraînement (Détection Dynamique des Features) ---"
+        )
+        print(
+            f"Features utilisées ({len(self.feature_names_used)}) : {self.feature_names_used}"
+        )
+
         return X, y
 
-    def train_and_evaluate(self, features_df, test_size=0.25, n_estimators=100):
+    # ---------------------------------------------------------------------
+    # Entraînement + tuning + (optionnel) sélection de variables
+    # ---------------------------------------------------------------------
+
+    def train_and_evaluate(
+        self,
+        features_df: pd.DataFrame,
+        test_size: float = 0.25,
+        n_estimators: int = 100,
+    ) -> tuple["SpectralClassifier", list[str], pd.DataFrame, np.ndarray] | None:
         """
-        Le pipeline principal de cette classe. Prend le DataFrame brut, le nettoie,
-        tune les hyperparamètres, entraîne le meilleur modèle et l'évalue.
+        Entraîne et évalue le modèle avec GridSearchCV + pipeline Imputer/Scaler/SMOTE,
+        (optionnellement) SelectFromModel, puis affiche un rapport et une matrice
+        de confusion.
+
+        Args:
+            features_df: DataFrame complet (features + colonnes méta) avant nettoyage.
+            test_size: Proportion du jeu de test (stratifié).
+            n_estimators: Nombre d’arbres/itérations pour le modèle final.
+
+        Returns:
+            (self, cols_for_report, X, y) ou None:
+                - self (SpectralClassifier): L’instance entraînée (avec pipeline).
+                - cols_for_report (list[str]): Les colonnes utilisées in fine
+                (sélectionnées ou toutes les candidates).
+                - X (pd.DataFrame): Matrice de features utilisée avant split.
+                - y (np.ndarray): Labels correspondants.
+
+        Raises:
+            ValueError: Relevée en interne si GridSearchCV échoue (message affiché).
+
+        Notes:
+            - XGBoost nécessite un encodage numérique des labels (géré ici).
+            - Le nombre de voisins SMOTE est ajusté automatiquement selon la plus
+            petite classe du split d’entraînement.
         """
+        import xgboost as xgb
+
         df_trainable = self._clean_and_filter_data(features_df)
         if df_trainable is None:
-            return None # Arrêt si les données ne sont pas valides
+            return None
 
         X, y = self._prepare_features_and_labels(df_trainable)
-        
-        # --- Gestion des labels pour XGBoost ---
-        if self.model_type == 'XGBoost':
+
+        if self.model_type == "XGBoost":
             le = LabelEncoder()
             y_encoded = le.fit_transform(y)
             self.class_labels = le.classes_
-            X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=test_size, random_state=self.random_state, stratify=y_encoded)
-        else: # Pour RandomForest
+            y_for_training = y_encoded
+        else:
             self.class_labels = sorted(list(set(y)))
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=self.random_state, stratify=y)
-            
-        # --- Définition du pipeline et de la grille de paramètres ---
-        if self.model_type == 'RandomForest':
-            # On passe n_estimators directement au constructeur du modèle
-            clf_model = RandomForestClassifier(n_estimators=n_estimators, random_state=self.random_state, class_weight='balanced')
-            # La grille de recherche ne contient plus n_estimators
-            param_grid = {
-                'clf__max_depth': [20, None],
-                'clf__min_samples_leaf': [1, 3]
-            }
-        elif self.model_type == 'XGBoost':
-            clf_model = xgb.XGBClassifier(n_estimators=n_estimators, random_state=self.random_state, use_label_encoder=False, eval_metric='mlogloss')
-            param_grid = {
-                'clf__max_depth': [5, 10],
-                'clf__learning_rate': [0.1, 0.05]
-            }
-        
-        pipeline = ImbPipeline([
-            ('imputer', SimpleImputer(strategy='constant', fill_value=0.0)),
-            ('scaler', StandardScaler()),
-            ('smote', SMOTE(random_state=self.random_state)),
-            ('clf', clf_model) # On utilise le modèle qu'on vient de créer
-        ])
+            y_for_training = y
 
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y_for_training,
+            test_size=test_size,
+            random_state=self.random_state,
+            stratify=y_for_training,
+        )
 
-        print(f"\n--- [Tuning] Recherche des meilleurs hyperparamètres pour {self.model_type} (n_estimators={n_estimators} fixé) ---")
-        cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=self.random_state)
-        grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, n_jobs=-1, verbose=2, scoring='accuracy')
-        grid_search.fit(X_train, y_train)
-        
+        n_splits_cv = 3
+        _, counts = np.unique(y_train, return_counts=True)
+        min_class_count = counts.min()
+        min_samples_in_cv_fold = int(
+            np.floor(min_class_count * (n_splits_cv - 1) / n_splits_cv)
+        )
+        k_neighbors_for_smote = max(1, min(5, min_samples_in_cv_fold - 1))
+        if min_samples_in_cv_fold <= 5:
+            # Robustesse: ajuste k de SMOTE pour ne pas demander plus de voisins
+            # que d’échantillons disponibles dans le plus petit pli.
+            print(
+                f"\n  > AVERTISSEMENT : la plus petite classe aura ~{min_samples_in_cv_fold} échantillons par pli."
+            )
+            print(f"  > SMOTE configuré avec k_neighbors={k_neighbors_for_smote}.")
+
+        if self.model_type == "RandomForest":
+            clf_model = RandomForestClassifier(
+                n_estimators=n_estimators,
+                random_state=self.random_state,
+                class_weight="balanced",
+            )
+            param_grid = {"clf__max_depth": [20, None], "clf__min_samples_leaf": [1, 3]}
+        elif self.model_type == "XGBoost":
+            clf_model = xgb.XGBClassifier(
+                n_estimators=n_estimators,
+                random_state=self.random_state,
+                eval_metric="mlogloss",
+            )
+            param_grid = {"clf__max_depth": [5, 10], "clf__learning_rate": [0.1, 0.05]}
+        else:
+            raise ValueError(f"Modèle inconnu: {self.model_type}")
+
+        selector_estimator = None
+        if getattr(self, "use_feature_selection", False):
+            want_xgb_selector = (
+                str(getattr(self, "selector_model", "xgb")).lower() == "xgb"
+            )
+
+            if want_xgb_selector and self.model_type != "XGBoost":
+                print(
+                    "  > Sélecteur demandé = XGB mais modèle final = RF -> "
+                    "bascule du sélecteur vers RandomForest pour compatibilité."
+                )
+                want_xgb_selector = False
+                # Pourquoi: XGB selector attend souvent des labels encodés /
+                # comportements différents. On garde une voie sûre et homogène.
+
+            if want_xgb_selector:
+                selector_estimator = xgb.XGBClassifier(
+                    n_estimators=getattr(self, "selector_n_estimators", 200),
+                    random_state=self.random_state,
+                    eval_metric="mlogloss",
+                )
+            else:
+                selector_estimator = RandomForestClassifier(
+                    n_estimators=getattr(self, "selector_n_estimators", 200),
+                    random_state=self.random_state,
+                    class_weight="balanced",
+                )
+
+        steps = [
+            ("imputer", SimpleImputer(strategy="constant", fill_value=0.0)),
+            ("scaler", StandardScaler()),
+        ]
+        if selector_estimator is not None:
+            steps.append(
+                (
+                    "feature_selector",
+                    SelectFromModel(
+                        estimator=selector_estimator,
+                        threshold=getattr(self, "selector_threshold", "median"),
+                        prefit=False,
+                    ),
+                )
+            )
+        steps.append(
+            (
+                "smote",
+                SMOTE(
+                    random_state=self.random_state, k_neighbors=k_neighbors_for_smote
+                ),
+            )
+        )
+        steps.append(("clf", clf_model))
+
+        pipeline = ImbPipeline(steps)
+
+        print(
+            f"\n--- [Tuning] Recherche des meilleurs hyperparamètres pour {self.model_type} "
+            f"(n_estimators={n_estimators} fixé) ---"
+        )
+        cv = StratifiedKFold(
+            n_splits=n_splits_cv, shuffle=True, random_state=self.random_state
+        )
+        grid_search = GridSearchCV(
+            estimator=pipeline,
+            param_grid=param_grid,
+            cv=cv,
+            n_jobs=-1,
+            verbose=2,
+            scoring="accuracy",
+            error_score="raise",
+        )
+
+        try:
+            grid_search.fit(X_train, y_train)
+        except ValueError as e:
+            print(
+                "\nERREUR LORS DU GRIDSEARCHCV. Le processus d'entraînement est arrêté."
+            )
+            print(f"   Détail de l'erreur : {e}")
+            return None
+
         print(f"\n  > Meilleurs paramètres trouvés : {grid_search.best_params_}")
         print(f"  > Meilleur score de précision (CV) : {grid_search.best_score_:.4f}")
-        
+
         self.model_pipeline = grid_search.best_estimator_
         self.best_params_ = grid_search.best_params_
-        
-        print(f"\n--- [Évaluation] Performance de {self.model_type} sur le jeu de test ---")
-        self.evaluate(X_test, y_test)
-        
-        processed_files = df_trainable["file_path"].tolist()
-        return self.feature_names_used, X, y, processed_files
 
-    def evaluate(self, X_test, y_test):
+        self.selected_feature_mask_ = None
+        self.selected_features_ = self.feature_names_used
+        self.selector_importances_df_ = None
+
+        try:
+            if "selector" in self.model_pipeline.named_steps:
+                sel = self.model_pipeline.named_steps["selector"]
+
+                mask = sel.get_support()
+                self.selected_feature_mask_ = mask
+                self.selected_features_ = [
+                    f for f, keep in zip(self.feature_names_used, mask) if keep
+                ]
+
+                est = getattr(sel, "estimator_", None) or getattr(
+                    sel, "estimator", None
+                )
+                importances = None
+                if est is not None:
+                    importances = getattr(est, "feature_importances_", None)
+                    if importances is None:
+                        coef_ = getattr(est, "coef_", None)
+                        if coef_ is not None:
+                            importances = np.abs(np.ravel(coef_))
+
+                if isinstance(importances, np.ndarray):
+                    importances = importances.astype(float)
+                    self.selector_importances_df_ = (
+                        pd.DataFrame(
+                            {
+                                "feature": self.feature_names_used,
+                                "importance": importances,
+                            }
+                        )
+                        .sort_values("importance", ascending=False)
+                        .reset_index(drop=True)
+                    )
+        except Exception as _:
+            pass
+
+        self.selected_features_ = None
+        if getattr(self, "use_feature_selection", False):
+            sel = self.model_pipeline.named_steps.get("feature_selector")
+            if sel is not None and hasattr(sel, "get_support"):
+                mask = sel.get_support()
+                self.selected_features_ = [
+                    f for f, keep in zip(self.feature_names_used, mask) if keep
+                ]
+                print(
+                    f"\n[Feature selection] {len(self.selected_features_)}/{len(self.feature_names_used)} features conservées."
+                )
+                if len(self.selected_features_) <= 30:
+                    print("  > Conservées:", self.selected_features_)
+
+        print(
+            f"\n--- [Évaluation] Performance de {self.model_type} sur le jeu de test ---"
+        )
+        self.evaluate(X_test, y_test)
+
+        cols_for_report = (
+            self.selected_features_
+            if self.selected_features_
+            else self.feature_names_used
+        )
+        return self, cols_for_report, X, y
+
+    # ---------------------------------------------------------------------
+    # Évaluation & persistance
+    # ---------------------------------------------------------------------
+
+    def evaluate(self, X_test: pd.DataFrame | np.ndarray, y_test: np.ndarray) -> None:
+        """
+        Évalue le modèle entraîné sur le jeu de test et affiche le rapport
+        de classification ainsi que la matrice de confusion.
+
+        Args:
+            X_test: Jeu de test transformé comme à l’entraînement (mêmes features).
+            y_test: Labels du jeu de test (encodés si le modèle est XGBoost).
+
+        Returns:
+            None. Affiche les métriques et la matrice de confusion.
+        """
         predictions = self.model_pipeline.predict(X_test)
         print("\n--- Rapport d'Évaluation ---")
-        
-        # On doit utiliser target_names si les labels sont encodés (XGBoost)
-        if self.model_type == 'XGBoost':
-            report = classification_report(y_test, predictions, target_names=self.class_labels, zero_division=0)
+
+        if self.model_type == "XGBoost":
+            report = classification_report(
+                y_test, predictions, target_names=self.class_labels, zero_division=0
+            )
             cm = confusion_matrix(y_test, predictions)
-        else: # Pour RandomForest, les labels sont déjà du texte
-            report = classification_report(y_test, predictions, labels=self.class_labels, zero_division=0)
+        else:
+            report = classification_report(
+                y_test, predictions, labels=self.class_labels, zero_division=0
+            )
             cm = confusion_matrix(y_test, predictions, labels=self.class_labels)
 
         print(report)
         plt.figure(figsize=(10, 7))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=self.class_labels, yticklabels=self.class_labels)
-        plt.xlabel('Prédiction')
-        plt.ylabel('Vraie Valeur')
-        plt.title(f'Matrice de Confusion du Modèle {self.model_type} Optimisé')
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            cmap="Blues",
+            xticklabels=self.class_labels,
+            yticklabels=self.class_labels,
+        )
+        plt.xlabel("Prédiction")
+        plt.ylabel("Vraie Valeur")
+        plt.title(f"Matrice de Confusion du Modèle {self.model_type} Optimisé")
         plt.show()
 
-    def save_model(self, path="model.pkl"):
-        """Sauvegarde l'objet SpectralClassifier complet sur le disque."""
+    def save_model(
+        self,
+        path: str = "model.pkl",
+        trained_on_file: str | None = None,
+        extra_info: dict | None = None,
+    ) -> None:
+        """
+        Sauvegarde l’objet `SpectralClassifier` (pickle) et un fichier JSON de
+        métadonnées à côté du modèle.
+
+        Args:
+            path: Chemin du fichier .pkl à créer.
+            trained_on_file: Nom/chemin du dataset de features utilisé pour l’entraînement.
+            extra_info: Métadonnées supplémentaires à fusionner dans le JSON.
+
+        Returns:
+            None. Écrit `<path>` et `<path>_meta.json`.
+
+        Contenu des métadonnées:
+            Versions (Python, numpy, scikit-learn, xgboost), type de modèle,
+            cible, meilleurs hyperparamètres, labels, features utilisées, etc.
+        """
         joblib.dump(self, path)
+        meta = {
+            "saved_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "python": sys.version.split()[0],
+            "numpy": np.__version__,
+            "scikit_learn": sklearn.__version__,
+            "xgboost": getattr(xgboost, "__version__", "unknown"),
+            "model_type": self.model_type,
+            "prediction_target": self.prediction_target,
+            "best_params_": getattr(self, "best_params_", None),
+            "class_labels": list(getattr(self, "class_labels", [])),
+            "feature_names_used": list(getattr(self, "feature_names_used", [])),
+            "selected_features_": list(getattr(self, "selected_features_", []) or []),
+            "trained_on_file": trained_on_file,
+        }
+        if isinstance(extra_info, dict):
+            meta.update(extra_info)
+
+        meta_path = os.path.splitext(path)[0] + "_meta.json"
+        with open(meta_path, "w", encoding="utf-8") as f:
+            json.dump(meta, f, ensure_ascii=False, indent=2)
+
         print(f"  > Modèle sauvegardé dans : {path}")
+        print(f"  > Métadonnées sauvegardées dans : {meta_path}")
 
     @staticmethod
-    def load_model(path="model.pkl"):
-        """Charge un objet SpectralClassifier depuis le disque."""
+    def load_model(path: str = "model.pkl") -> "SpectralClassifier":
+        """
+        Charge un modèle `SpectralClassifier` sauvegardé via `save_model`.
+
+        Args:
+            path: Chemin du .pkl à charger.
+
+        Returns:
+            SpectralClassifier: L’objet chargé (pipeline + attributs).
+
+        Notes:
+            Si un fichier `<path>_meta.json` est présent, son chemin est affiché
+            à titre informatif.
+        """
         model = joblib.load(path)
         print(f"  > Modèle chargé depuis : {path}")
+        meta_path = os.path.splitext(path)[0] + "_meta.json"
+        if os.path.exists(meta_path):
+            print(f"  > Métadonnées disponibles : {meta_path}")
         return model

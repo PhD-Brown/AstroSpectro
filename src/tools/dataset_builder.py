@@ -1,104 +1,230 @@
+"""AstroSpectro — Gestion des lots d’entraînement (DatasetBuilder)
+
+Ce module fournit une petite brique utilitaire chargée de constituer des lots
+de spectres à entraîner **sans jamais réutiliser** des fichiers déjà vus.
+
+Rôles principaux
+----------------
+1) Scanner l’arborescence `raw/` pour lister tous les fichiers FITS (.fits.gz).
+2) Maintenir un *journal* CSV (`catalog/trained_spectra.csv`) des spectres déjà
+   utilisés par des entraînements précédents.
+3) Sélectionner un nouveau lot de chemins **jamais journalisés**, selon une
+   stratégie simple (“random” ou “first”).
+
+Conventions & I/O
+-----------------
+- Les chemins retournés sont **relatifs** à `raw_data_dir` et **normalisés**
+  avec des “/” (compatibles tous OS).
+- Le journal est stocké dans `catalog_dir/trained_spectra.csv` avec une seule
+  colonne `file_path`.
+- Ce module **ne lit pas** les FITS : il renvoie uniquement les chemins.
+
+API publique (méthodes)
+-----------------------
+- get_new_training_batch(batch_size, strategy) -> list[str]
+- update_trained_log(newly_trained_files) -> None
+
+Exemple minimal
+---------------
+>>> db = DatasetBuilder(catalog_dir="data/catalog", raw_data_dir="data/raw")
+>>> batch = db.get_new_training_batch(batch_size=500, strategy="random")
+>>> # ... lancer le pipeline sur `batch`
+>>> db.update_trained_log(batch)  # journalise les fichiers utilisés
+"""
+
+from __future__ import annotations
+
 import os
-import pandas as pd
 import random
+from typing import List, Literal, Set
+
+import pandas as pd
+
 
 class DatasetBuilder:
+    """Petit gestionnaire de lots d’entraînement.
+
+    Cette classe encapsule la logique pour :
+    - lister les FITS disponibles,
+    - ignorer ceux déjà utilisés (journal `trained_spectra.csv`),
+    - renvoyer des listes de chemins prêts pour le pipeline.
+
+    Attributes
+    ----------
+    catalog_dir : str
+        Répertoire du catalogue (contiendra `trained_spectra.csv`).
+    raw_data_dir : str
+        Racine des données brutes (sous-dossiers avec .fits.gz).
+    trained_log_path : str
+        Chemin absolu vers le journal CSV des spectres déjà entraînés.
     """
-    Gère la constitution de lots d'entraînement en s'assurant
-    de ne jamais réutiliser un spectre déjà vu.
-    """
-    def __init__(self, catalog_dir="../data/catalog/", raw_data_dir="../data/raw/"):
+
+    def __init__(
+        self,
+        catalog_dir: str = "../data/catalog/",
+        raw_data_dir: str = "../data/raw/",
+    ) -> None:
         self.catalog_dir = catalog_dir
         self.raw_data_dir = raw_data_dir
         self.trained_log_path = os.path.join(self.catalog_dir, "trained_spectra.csv")
 
-    def _list_available_fits(self):
+    # ---------------------------------------------------------------------
+    # Helpers internes
+    # ---------------------------------------------------------------------
+
+    def _list_available_fits(self) -> List[str]:
+        """Liste *tous* les fichiers .fits.gz disponibles dans `raw_data_dir`.
+
+        Les chemins renvoyés sont **relatifs** à `raw_data_dir` et normalisés
+        avec des “/” (utile pour rester invariant entre Windows/Linux).
+
+        Returns
+        -------
+        list[str]
+            Chemins relatifs normalisés, ex.:
+            ``GAC_105N29_B1/spec-55863-GAC_105N29_B1_sp01-001.fits.gz``.
         """
-        Scanne le dossier raw/ et retourne une liste de tous les chemins relatifs
-        des fichiers .fits.gz disponibles.
-        """
-        available_files = []
-        for root, _, files in os.walk(self.raw_data_dir):
-            for f in files:
-                if f.endswith(".fits.gz"):
-                    # On stocke le chemin relatif par rapport à 'raw_data_dir'
-                    # ex: 'GAC_105N29_B1/spec-55863-GAC_105N29_B1_sp01-001.fits.gz'
-                    rel_path = os.path.relpath(os.path.join(root, f), self.raw_data_dir)
-                    available_files.append(rel_path.replace('\\', '/')) # Normalise les slashes pour tous les OS
+        available_files: List[str] = []
+
+        # On marche toute l’arborescence sous raw_data_dir
+        for root, _dirs, files in os.walk(self.raw_data_dir):
+            for fname in files:
+                if fname.endswith(".fits.gz"):
+                    # Chemin absolu -> chemin relatif -> normalisation des slashes
+                    full = os.path.join(root, fname)
+                    rel = os.path.relpath(full, self.raw_data_dir).replace("\\", "/")
+                    available_files.append(rel)
+
         return available_files
 
-    def _load_trained_log(self):
-        """Charge la liste des spectres déjà utilisés depuis le log."""
-        if os.path.exists(self.trained_log_path):
-            df = pd.read_csv(self.trained_log_path)
-            return set(df["file_path"].tolist())
-        return set()
+    def _load_trained_log(self) -> Set[str]:
+        """Charge l’ensemble des chemins déjà journalisés.
 
-    def get_new_training_batch(self, batch_size=500, strategy="random"):
+        Le CSV est attendu avec une colonne `file_path`. Les valeurs nulles sont
+        ignorées. Un fichier vide ou mal formé est traité de façon robuste.
+
+        Returns
+        -------
+        set[str]
+            Ensemble de chemins **relatifs** déjà utilisés.
         """
-        Sélectionne un nouveau lot de spectres jamais utilisés.
-        
-        :param batch_size: Le nombre de spectres désiré.
-        :param strategy: 'random' pour un échantillon aléatoire, 'first' pour les premiers disponibles.
-        :return: Une liste de chemins de fichiers relatifs prêts pour le pipeline.
+        if not os.path.exists(self.trained_log_path):
+            return set()
+
+        try:
+            df = pd.read_csv(self.trained_log_path)
+        except pd.errors.EmptyDataError:
+            # Fichier présent mais vide : on considère qu’il n’y a rien dedans
+            return set()
+
+        if "file_path" not in df.columns:
+            print(
+                f"  > AVERTISSEMENT : Le log '{self.trained_log_path}' ne contient pas "
+                "la colonne 'file_path'. Il sera ignoré."
+            )
+            return set()
+
+        # Normalise au cas où (ordre / NaN)
+        return set(df["file_path"].dropna().astype(str).tolist())
+
+    # ---------------------------------------------------------------------
+    # API publique
+    # ---------------------------------------------------------------------
+
+    def get_new_training_batch(
+        self,
+        batch_size: int = 500,
+        strategy: Literal["random", "first"] = "random",
+    ) -> List[str]:
+        """Sélectionne un nouveau lot de fichiers **jamais entraînés**.
+
+        Parameters
+        ----------
+        batch_size : int, default=500
+            Nombre de spectres souhaité pour le lot.
+        strategy : {'random', 'first'}, default='random'
+            - ``'random'`` : échantillon aléatoire dans les fichiers disponibles.
+            - ``'first'``  : on prend les `batch_size` premiers (ordre du scan).
+
+        Returns
+        -------
+        list[str]
+            Chemins *relatifs* (normalisés) prêts à être passés au pipeline.
+            Peut être une liste vide si aucun nouveau fichier n’est disponible.
         """
         print("--- Constitution d'un nouveau lot d'entraînement ---")
-        all_available_fits = self._list_available_fits()
-        already_trained_fits = self._load_trained_log()
-        
-        print(f"  > {len(all_available_fits)} spectres trouvés dans '{self.raw_data_dir}'")
-        print(f"  > {len(already_trained_fits)} spectres déjà utilisés dans des entraînements précédents.")
-        
-        # On ne garde que les fichiers qui n'ont jamais été utilisés
-        new_fits_to_use = [f for f in all_available_fits if f not in already_trained_fits]
-        
-        print(f"  > {len(new_fits_to_use)} spectres nouveaux et disponibles pour l'entraînement.")
 
-        if not new_fits_to_use:
+        all_available = self._list_available_fits()
+        already_used = self._load_trained_log()
+
+        print(f"  > {len(all_available)} spectres trouvés dans '{self.raw_data_dir}'")
+        print(f"  > {len(already_used)} spectres déjà utilisés dans le journal.")
+
+        # Filtre : on ne garde que ce qui n’a jamais été vu
+        new_fits = [p for p in all_available if p not in already_used]
+        print(f"  > {len(new_fits)} spectres **nouveaux** disponibles.")
+
+        if not new_fits:
             print("  > Aucun nouveau spectre à entraîner. Arrêt.")
             return []
 
-        # Appliquer la stratégie de sélection et la limite de taille
-        if len(new_fits_to_use) < batch_size:
-            print(f"  > Avertissement : Moins de spectres disponibles ({len(new_fits_to_use)}) que demandé ({batch_size}).")
-            batch_size = len(new_fits_to_use)
-        
-        if strategy == "random":
-            selected_batch = random.sample(new_fits_to_use, batch_size)
-            print(f"  > Sélection d'un échantillon aléatoire de {batch_size} spectres.")
-        else: # 'first'
-            selected_batch = new_fits_to_use[:batch_size]
-            print(f"  > Sélection des {batch_size} premiers spectres disponibles.")
-            
-        return selected_batch
+        # Ajuste la taille si nécessaire
+        if len(new_fits) < batch_size:
+            print(
+                f"  > Avertissement : {len(new_fits)} disponibles < batch_size={batch_size}."
+            )
+            batch_size = len(new_fits)
 
-    def update_trained_log(self, newly_trained_files):
-        """
-        Met à jour le journal avec la liste des fichiers qui viennent d'être utilisés,
-        en évitant les doublons.
+        # Stratégie de sélection
+        if strategy == "random":
+            selected = random.sample(new_fits, k=batch_size)
+            print(f"  > Sélection aléatoire de {batch_size} spectres.")
+        else:  # 'first'
+            selected = new_fits[:batch_size]
+            print(f"  > Sélection des {batch_size} premiers spectres.")
+
+        return selected
+
+    def update_trained_log(self, newly_trained_files: List[str]) -> None:
+        """Ajoute au journal les fichiers qui viennent d’être utilisés.
+
+        Les doublons sont évités ; la colonne utilisée est `file_path`.
+
+        Parameters
+        ----------
+        newly_trained_files : list[str]
+            Chemins *relatifs* (normalisés “/”) des fichiers utilisés par
+            l’entraînement qui vient d’être exécuté.
         """
         if not newly_trained_files:
             return
 
-        # Charger le log existant
+        # Log existant -> ensemble pour filtrer vite
         if os.path.exists(self.trained_log_path):
-            df_existing = pd.read_csv(self.trained_log_path)
-            existing_files = set(df_existing["file_path"].tolist())
+            try:
+                existing_df = pd.read_csv(self.trained_log_path)
+                existing = set(existing_df.get("file_path", pd.Series([])).astype(str))
+            except pd.errors.EmptyDataError:
+                existing = set()
         else:
-            existing_files = set()
+            # S'assure que le répertoire du log existe
+            os.makedirs(self.catalog_dir, exist_ok=True)
+            existing = set()
 
-        # Filtrer les nouveaux fichiers déjà présents
-        truly_new_files = [f for f in newly_trained_files if f not in existing_files]
-
-        if not truly_new_files:
-            print("\n  > Aucun nouveau spectre à ajouter : tous étaient déjà dans le log.")
+        # On ne journalise que les *vraiment* nouveaux
+        truly_new = [p for p in newly_trained_files if p not in existing]
+        if not truly_new:
+            print("  > Aucun nouvel élément à ajouter (tout déjà journalisé).")
             return
 
-        df_new = pd.DataFrame({"file_path": truly_new_files})
+        df_new = pd.DataFrame({"file_path": truly_new})
         df_new.to_csv(
             self.trained_log_path,
             mode="a",
             index=False,
-            header=not os.path.exists(self.trained_log_path)
+            header=not os.path.exists(self.trained_log_path),
         )
-        print(f"\n  > {len(truly_new_files)} nouveaux spectres ajoutés au journal '{self.trained_log_path}'.")
+        print(
+            f"  > {len(truly_new)} nouveaux spectres ajoutés au journal : "
+            f"'{self.trained_log_path}'."
+        )

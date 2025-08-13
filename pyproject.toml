@@ -32,10 +32,14 @@ dependencies = [
     "pywavelets",
     "jupyterlab",
     "notebook",
-    "ipykernel"
-    "plotly"
-    "streamlit"
-    "imbalanced-learn"
+    "ipykernel",
+    "plotly",
+    "streamlit",
+    "imbalanced-learn",
+    "shap",
+    "astroquery",
+    "ruff",
+    "black"
 ]
 
 [project.urls]
