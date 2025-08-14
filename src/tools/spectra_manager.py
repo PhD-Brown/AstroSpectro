@@ -65,6 +65,18 @@ from datetime import datetime, timezone
 import ipywidgets as widgets
 from IPython.display import display, clear_output, Markdown
 
+PRESETS = {
+    "cautious": dict(
+        workers=8, scrape=4, fast=False, validate=True, per_plan=50, dry_run=False
+    ),
+    "balanced": dict(
+        workers=16, scrape=8, fast=True, validate=True, per_plan=0, dry_run=False
+    ),
+    "max": dict(
+        workers=24, scrape=12, fast=True, validate=False, per_plan=0, dry_run=False
+    ),
+}
+
 
 class SpectraManager:
     """
@@ -155,10 +167,15 @@ class SpectraManager:
         UI:
             - `Plans` (IntText): nombre de plans à traiter (`--limit`)
             - `Spectres` (IntText): plafond de spectres (`--max-spectres`)
+            - Workers = nombre de téléchargements parallèles
+            - Scrape  = parallélisme pendant l’analyse des pages *plan*
+            - Mode rapide = `--delay 0` + `--chunk 131072` (débit maximal)
             - `Afficher la barre (tqdm)` (Checkbox): force `--progress`
-            - `Mode rapide` (Checkbox): `--delay 0 --chunk 131072`
             - Bouton “Lancer le téléchargement…”
             - Zone de progression + sortie texte “live”
+            - `per-plan <N>`: plafonner le # de fichiers pris PAR plan (après anti-doublon)
+            - `validate` : vérifier rapidement que le .fits.gz contient bien un header FITS
+            - `dry-run` : ne rien écrire (aperçu seulement)
 
         Effets:
             - appelle `src/tools/dr5_downloader.py` en sous-processus
@@ -166,7 +183,7 @@ class SpectraManager:
               donc **un seul log** pour la session.
         """
 
-        # Widgets
+        # Widgets de base
         limit_widget = widgets.IntText(value=5, description="Plans:")
         max_spectra_widget = widgets.IntText(value=50, description="Spectres:")
         show_bar = widgets.Checkbox(value=True, description="Afficher la barre (tqdm)")
@@ -177,18 +194,102 @@ class SpectraManager:
             icon="download",
         )
 
+        # Parallélisme
+        workers_widget = widgets.IntSlider(
+            description="Workers", min=1, max=32, value=16
+        )
+        scrape_widget = widgets.IntSlider(description="Scrape", min=1, max=16, value=8)
+
+        # Options avancées
+        per_plan_widget = widgets.IntText(
+            value=0, description="Par plan:"
+        )  # 0 = illimité
+        validate_widget = widgets.Checkbox(value=False, description="Valider FITS")
+        dry_run_widget = widgets.Checkbox(
+            value=False, description="Dry‑run (pas d’écriture)"
+        )
+
+        # ▼ Presets (avec garde‑fou anti-boucle d’événements)
+        preset = widgets.Dropdown(
+            options=[
+                ("Cautious (8/4)", "cautious"),
+                ("Balanced (16/8)", "balanced"),
+                ("Max (24/12)", "max"),
+            ],
+            value="balanced",
+            description="Préréglages:",
+        )
+        applying_preset = False
+        PRESETS = {
+            "cautious": dict(
+                workers=8,
+                scrape=4,
+                fast=False,
+                validate=True,
+                per_plan=50,
+                dry_run=False,
+            ),
+            "balanced": dict(
+                workers=16,
+                scrape=8,
+                fast=True,
+                validate=True,
+                per_plan=0,
+                dry_run=False,
+            ),
+            "max": dict(
+                workers=24,
+                scrape=12,
+                fast=True,
+                validate=False,
+                per_plan=0,
+                dry_run=False,
+            ),
+        }
+
+        def apply_preset(name: str) -> None:
+            nonlocal applying_preset
+            cfg = PRESETS.get(name)
+            if not cfg:
+                return
+            applying_preset = True
+            try:
+                workers_widget.value = cfg["workers"]
+                scrape_widget.value = cfg["scrape"]
+                fast_mode.value = cfg["fast"]
+                validate_widget.value = cfg["validate"]
+                per_plan_widget.value = cfg["per_plan"]
+                dry_run_widget.value = cfg["dry_run"]
+            finally:
+                applying_preset = False
+
+        def on_preset_change(change):
+            if change.get("name") != "value" or applying_preset:
+                return
+            apply_preset(change["new"])
+
+        preset.observe(on_preset_change, names="value")
+        apply_preset(preset.value)
+
+        # Affichages
         progress_display = widgets.HTML(value="")
         log_output = widgets.Output()
 
+        line0 = widgets.HBox([preset])
         line1 = widgets.HBox([limit_widget, max_spectra_widget, show_bar, fast_mode])
+        line2 = widgets.HBox([workers_widget, scrape_widget])
+        line3 = widgets.HBox([per_plan_widget, validate_widget, dry_run_widget])
+
         display(Markdown("### 1. Téléchargement des Spectres"))
         display(
             Markdown(
                 "Utilisez l’interface ci-dessous pour lancer un nouveau téléchargement. "
-                "Les logs de progression s’afficheront en temps réel."
+                "Les logs de progression s’afficheront en temps réel.\n\n"
+                "**Astuces** : Workers = téléchargements parallèles; Scrape = parallélisme d’analyse des pages plan; "
+                "Par plan = coupe la liste par plan; Valider FITS = vérif header; Dry‑run = aperçu sans écriture."
             )
         )
-        display(line1, run_button, progress_display, log_output)
+        display(line0, line1, line2, line3, run_button, progress_display, log_output)
 
         # ------- callback principal -------------------------------------------------
         def on_run_clicked(_):
@@ -213,21 +314,28 @@ class SpectraManager:
                 "--log-to",
                 log_path,
                 "--append",
+                "--workers",
+                str(workers_widget.value),
+                "--scrape-workers",
+                str(scrape_widget.value),
             ]
             if show_bar.value:
                 cmd.append("--progress")
             if fast_mode.value:
-                # boost: délais courts et gros chunks (toujours sûrs, fallback dans le script)
                 cmd += ["--delay", "0", "--chunk", "131072"]  # 128 KB
+            if per_plan_widget.value and per_plan_widget.value > 0:
+                cmd += ["--per-plan", str(per_plan_widget.value)]
+            if validate_widget.value:
+                cmd.append("--validate")
+            if dry_run_widget.value:
+                cmd.append("--dry-run")
 
             # Affichage d’un message + désactivation du bouton (évite double clic)
             progress_display.value = "<b>Lancement du téléchargement...</b>"
             run_button.disabled = True
 
             try:
-                # Journalisation de la commande (debug lisible)
                 print("Commande:", shlex.join(cmd))
-
                 proc = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
@@ -237,38 +345,35 @@ class SpectraManager:
                     encoding="utf-8",
                     errors="replace",
                 )
-
                 if proc.stdout:
                     for line in iter(proc.stdout.readline, ""):
-                        # On intercepte les lignes tqdm pour la barre HTML locale :
                         if "Téléchargement" in line and "%" in line:
                             clean = line.strip()
                             m = self._RE_PCT.search(clean)
                             pct = int(m.group(1)) if m else 0
                             progress_display.value = (
                                 "<div style='font-family:monospace;white-space:pre'>"
-                                f"{clean}</div>"
-                                f"<progress value='{pct}' max='100' "
-                                "style='width:100%;height:18px'></progress>"
+                                + clean
+                                + "</div>"
+                                f"<progress value='{pct}' max='100' style='width:100%;height:18px'></progress>"
                             )
                         else:
-                            # Le reste part dans la zone de logs
                             with log_output:
                                 print(line, end="")
-
                 rc = proc.wait()
-
-                # Résumé (extrait de fin + éventuelle ligne SUMMARY)
                 if rc == 0:
-                    progress_display.value = (
-                        "<b>Téléchargement terminé avec succès.</b>"
-                    )
+                    if dry_run_widget.value:
+                        progress_display.value = (
+                            "<b>Dry‑run terminé (aucune écriture).</b>"
+                        )
+                    else:
+                        progress_display.value = (
+                            "<b>Téléchargement terminé avec succès.</b>"
+                        )
                 else:
                     progress_display.value = (
                         "<b style='color:#c00'>Échec du téléchargement.</b>"
                     )
-
-                # Affiche le chemin du log de session
                 with log_output:
                     print(f"\nLog de session écrit : {log_path}")
                     try:
@@ -279,9 +384,10 @@ class SpectraManager:
                             print(line, end="")
                     except Exception:
                         pass
-
             except Exception as e:
                 progress_display.value = f"<b style='color:#c00'>Erreur : {e}</b>"
+            finally:
+                run_button.disabled = False
 
         run_button.on_click(on_run_clicked)
 

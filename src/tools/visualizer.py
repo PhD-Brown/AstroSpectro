@@ -37,8 +37,8 @@ import io
 import os
 import gzip
 import glob
-import textwrap
 import warnings
+import random
 from typing import Dict, Tuple, Optional
 from datetime import datetime, timezone
 
@@ -68,7 +68,6 @@ from pipeline.preprocessor import SpectraPreprocessor
 from pipeline.feature_engineering import FeatureEngineer
 from pipeline.classifier import SpectralClassifier
 from pipeline.peak_detector import PeakDetector
-from tools.dataset_builder import DatasetBuilder
 from utils import (
     safe_sigma_from_invvar,
 )
@@ -272,6 +271,12 @@ class AstroVisualizer:
         Affiche un `Dropdown` listant tous les spectres trouvés puis rend un
         Markdown joliment structuré pour l'en-tête du fichier sélectionné.
         """
+        display(Markdown("## Explorateur de Header FITS"))
+        display(
+            Markdown(
+                "Utilisez le menu déroulant pour sélectionner un spectre et afficher ses métadonnées complètes."
+            )
+        )
         if not self.available_spectra:
             print("Aucun spectre trouvé à visualiser.")
             return
@@ -882,6 +887,14 @@ class AstroVisualizer:
 
     def interactive_peak_tuner(self):
         """UI ipywidgets pour tuner la détection et (optionnel) prédire avec un modèle .pkl."""
+        display(Markdown("--- \n## Analyseur de Spectre Augmenté"))
+        display(
+            Markdown(
+                "Cet outil tout-en-un vous permet de visualiser un spectre, d'ajuster les "
+                "paramètres de détection de pics en temps réel, et d'évaluer la qualité "
+                "des données et de l'analyse."
+            )
+        )
         if not self.available_spectra:
             print("Aucun spectre trouvé.")
             return
@@ -988,10 +1001,12 @@ class AstroVisualizer:
         - Les warnings numériques de `astropy` sont déjà neutralisés dans les helpers
         utilisés par la chaîne d’extraction (voir `FeatureEngineer.extract_features`).
         """
-        import random
-        import base64
-        import io
-        from datetime import datetime
+        display(Markdown("--- \n## Analyse de la Qualité des Features"))
+        display(
+            Markdown(
+                "Cet outil analyse le dernier fichier de features généré et montre le pourcentage de valeurs nulles pour chaque feature. C'est essentiel pour identifier les features peu informatives."
+            )
+        )
 
         # Récupère et échantillonne la liste des spectres disponibles
         files = list(self.available_spectra)
@@ -1276,6 +1291,13 @@ class AstroVisualizer:
         (RA vers la gauche, centre 0h/24h).
         - La couleur et la taille traduisent `spectra_count` (nombre de spectres par plan).
         """
+        display(Markdown("--- \n## Carte de Couverture Céleste"))
+        display(
+            Markdown(
+                "Cette carte montre la position des plans d'observation que tu as téléchargés. La taille et la couleur des points indiquent le nombre de spectres par plan."
+            )
+        )
+
         # -- 1) Récupération / construction du petit catalogue de positions
         df = self._generate_position_catalog()
         if df.empty:
@@ -1529,6 +1551,14 @@ class AstroVisualizer:
         from ipywidgets import HBox, VBox, Dropdown, Button, HTML
         from IPython.display import display, Markdown
 
+        display(Markdown("--- \n## Inspecteur de Modèles Entraînés"))
+        display(
+            Markdown(
+                "Utilisez le menu déroulant pour sélectionner un modèle `.pkl` sauvegardé. "
+                "Cet outil affichera ses hyperparamètres et un graphique montrant l'importance de chaque feature "
+                "pour la classification."
+            )
+        )
         models_dir = self.paths.get("MODELS_DIR", "../models/")
 
         header = HTML(
@@ -1738,10 +1768,12 @@ class AstroVisualizer:
         - Affiche la figure dans la cellule courante.
         - Si l'export est activé, écrit un PNG dans `self.paths["LOGS_DIR"]`.
         """
-        import os
-        from datetime import datetime, timezone
-        import ipywidgets as widgets
-        from IPython.display import display
+        display(Markdown("--- \n## Comparateur de Spectres"))
+        display(
+            Markdown(
+                "Sélectionnez plusieurs spectres (maintenez `Ctrl` ou `Shift`) pour les superposer. Ajustez le décalage pour mieux les distinguer."
+            )
+        )
 
         if not getattr(self, "available_spectra", None):
             print("Aucun spectre trouvé.")
@@ -2093,152 +2125,249 @@ class AstroVisualizer:
     # Outil 9 : Tableau de Bord du Dataset Spectral ---
     # ==============================================================================
 
-    def display_dataset_dashboard(self) -> pd.DataFrame:
-        """
-        Affiche un mini tableau de bord sur l'état actuel du dataset (dans un notebook)
-        et retourne un petit résumé sous forme de DataFrame.
+    def _resolve_trained_log_path(self):
+        """Essaie de localiser le fichier trained_spectra*.csv de façon robuste."""
+        prj = self.paths.get("PROJECT_ROOT", ".")
+        cat = self.paths.get("CATALOG_DIR", os.path.join(prj, "data", "catalog"))
+        data_root = os.path.join(prj, "data")
 
-        Contenu affiché
-        ---------------
-        - Compte des spectres disponibles (data/raw) vs. déjà utilisés pour l'entraînement.
-        - Nombre de nouveaux spectres potentiellement exploitables.
-        - (optionnel) Statistiques par sous-classe si le fichier
-        ``<CATALOG_DIR>/master_catalog_temp.csv`` est présent.
-        - (optionnel) Comptage par plan (déduit du 1er segment du chemin).
+        candidates = [
+            os.path.join(cat, "trained_spectra.csv"),
+            os.path.join(data_root, "catalog", "trained_spectra.csv"),
+            os.path.join(prj, "trained_spectra.csv"),
+        ]
+        for p in candidates:
+            if os.path.isfile(p):
+                return os.path.abspath(p)
 
-        Returns
-        -------
-        pandas.DataFrame
-            Un tableau récapitulatif avec les compteurs principaux.
+        hits = glob.glob(
+            os.path.join(prj, "**", "trained_spectra*.csv"), recursive=True
+        )
+        if hits:
+            hits.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            return os.path.abspath(hits[0])
+        return None
+
+    def display_dataset_dashboard(self, show_charts: bool = True) -> pd.DataFrame:
         """
+        Mini-dashboard esthétique sur l'état du dataset :
+        - KPI cards (total, déjà utilisés, nouveaux candidats)
+        - Top sous-classes (top 15)
+        - Spectres par plan (top 20)
+        - Récapitulatif final (avec distinct_subclasses / distinct_plans)
+        """
+        import os
+        import pandas as pd
         from IPython.display import display, Markdown, HTML
-        import io
-        import base64
 
+        # ---------- helpers esthétiques ----------
+        def _fmt_fr(n: int) -> str:
+            try:
+                return f"{int(n):,}".replace(",", " ")  # séparateur fin insécable
+            except Exception:
+                return str(n)
+
+        def _style(
+            df: pd.DataFrame, formats: dict | None = None
+        ) -> pd.io.formats.style.Styler:
+            st = df.style.hide(axis="index")
+            if formats:
+                st = st.format(formats)
+            st = st.set_properties(**{"text-align": "left"})
+            st = st.set_table_styles(
+                [
+                    {
+                        "selector": "thead th",
+                        "props": "background-color:#1f1f1f;color:#ddd;border:0;",
+                    },
+                    {"selector": "tbody td", "props": "border:0;"},
+                    {
+                        "selector": "tbody tr:nth-child(even)",
+                        "props": "background-color:#141414;",
+                    },
+                    {
+                        "selector": "tbody tr:nth-child(odd)",
+                        "props": "background-color:#0f0f0f;",
+                    },
+                    {
+                        "selector": "table",
+                        "props": "border-collapse:separate;border-spacing:0 6px;",
+                    },
+                ]
+            )
+            return st
+
+        # ---------- 1) volumes disponibles ----------
         display(Markdown("### Tableau de Bord du Dataset Spectral"))
         display(
             Markdown(
-                "Ce panneau donne un aperçu rapide de votre collection de spectres "
-                "et met en évidence d’éventuelles opportunités de nouveaux entraînements."
+                "Ce panneau donne un aperçu rapide de votre collection de spectres et met en évidence "
+                "d’éventuelles opportunités de nouveaux entraînements."
             )
         )
 
-        summary_rows = []
+        total_available = len(getattr(self, "available_spectra", []) or [])
 
-        # -- 1) Comptage global -------------------------------------------------------
-        try:
-            # utilise le scan déjà fait au __init__
-            available_files = list(getattr(self, "available_spectra", []) or [])
-            total_available = len(available_files)
+        # ---------- 2) retrouver et lire trained_spectra.csv (robuste) ----------
+        def _first_existing(paths):
+            seen, out = set(), []
+            for p in paths:
+                if p and p not in seen and os.path.exists(p):
+                    out.append(p)
+                    seen.add(p)
+            return out
 
-            # log d'entraînement (via DatasetBuilder) s'il existe
-            builder = DatasetBuilder(
-                catalog_dir=self.paths["CATALOG_DIR"],
-                raw_data_dir=self.paths["RAW_DATA_DIR"],
-            )
+        candidates = _first_existing(
+            [
+                os.path.join(self.paths.get("PROJECT_ROOT", ""), "trained_spectra.csv"),
+                os.path.join(self.paths.get("CATALOG_DIR", ""), "trained_spectra.csv"),
+                os.path.join(
+                    self.paths.get("PROCESSED_DIR", ""), "trained_spectra.csv"
+                ),
+                os.path.join(self.paths.get("LOGS_DIR", ""), "trained_spectra.csv"),
+            ]
+        )
+
+        def _read_any_trained(csv_path: str) -> set[str]:
             try:
-                trained_log = builder.load_trained_log()
-                total_trained = len(trained_log) if trained_log is not None else 0
+                with open(csv_path, "r", encoding="utf-8", errors="ignore") as f:
+                    head = f.read(4096)
+                sep = (
+                    "|"
+                    if ("|" in head and "," not in (head.splitlines() or [""])[0])
+                    else ","
+                )
+                df = pd.read_csv(csv_path, sep=sep)
+                for col in ("fits_name", "relative_path", "file", "filename", "path"):
+                    if col in df.columns:
+                        s = df[col].astype(str).str.replace("\\\\", "/", regex=True)
+                        return set(s.tolist())
+                return set(
+                    df.astype(str).apply(lambda r: "/".join(r.values), axis=1).tolist()
+                )
             except Exception:
-                total_trained = 0
+                return set()
 
-            total_new = max(0, total_available - total_trained)
+        trained_paths_all: set[str] = set()
+        for p in candidates:
+            trained_paths_all |= _read_any_trained(p)
 
-            md = textwrap.dedent(
-                f"""
-            - **Spectres téléchargés (data/raw)** : **{total_available}**
-            - **Spectres déjà utilisés pour l’entraînement** : **{total_trained}**
-            - **Nouveaux spectres potentiels** : **{total_new}**
-            """
-            ).strip()
-            display(Markdown(md))
+        def _base_no_gz(path: str) -> str:
+            path = (path or "").replace("\\", "/")
+            return path[:-8] if path.endswith(".fits.gz") else path
 
-            summary_rows.append({"metric": "total_available", "value": total_available})
-            summary_rows.append({"metric": "total_trained", "value": total_trained})
-            summary_rows.append({"metric": "total_new_candidates", "value": total_new})
-        except Exception as e:
-            display(Markdown(f"> Erreur lors du comptage global : `{e}`"))
+        avail_bases = {_base_no_gz(p) for p in (self.available_spectra or [])}
+        trained_bases = {_base_no_gz(p) for p in trained_paths_all}
+        total_trained = len(avail_bases & trained_bases)
+        total_new_candidates = max(0, total_available - total_trained)
 
-        # -- 2) Statistiques par sous-classe (si catalogue temp dispo) ----------------
-        try:
-            cat_path = os.path.join(
-                self.paths["CATALOG_DIR"], "master_catalog_temp.csv"
-            )
-            if os.path.exists(cat_path):
-                import pandas as pd
+        # ---------- 3) KPI cards (HTML) ----------
+        cards_html = f"""
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px;margin:8px 0 16px;">
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;">
+            <div style="font-size:12px;color:#bdbdbd;">Spectres téléchargés (data/raw)</div>
+            <div style="font-size:28px;font-weight:800;margin-top:2px;">{_fmt_fr(total_available)}</div>
+        </div>
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;">
+            <div style="font-size:12px;color:#bdbdbd;">Spectres déjà utilisés</div>
+            <div style="font-size:28px;font-weight:800;margin-top:2px;">{_fmt_fr(total_trained)}</div>
+        </div>
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;">
+            <div style="font-size:12px;color:#bdbdbd;">Nouveaux candidats</div>
+            <div style="font-size:28px;font-weight:800;margin-top:2px;">{_fmt_fr(total_new_candidates)}</div>
+        </div>
+        </div>
+        """
+        display(HTML(cards_html))
 
-                df_cat = pd.read_csv(cat_path, sep="|")
+        # --------- tableau récap du haut (toujours utile à retourner progr.) -------
+        top_df = pd.DataFrame(
+            {
+                "metric": ["total_available", "total_trained", "total_new_candidates"],
+                "# value": [total_available, total_trained, total_new_candidates],
+            }
+        )
+        display(_style(top_df, {"# value": lambda x: _fmt_fr(x)}))
 
-                if {"subclass"}.issubset(df_cat.columns):
-                    counts = (
-                        df_cat["subclass"]
-                        .astype(str)
-                        .value_counts(dropna=False)
-                        .rename_axis("subclass")
-                        .reset_index(name="count")
-                    )
+        # =====================================================================
+        # 4) Top sous-classes (top 15) & Spectres par plan (top 20)
+        # =====================================================================
+        labels = getattr(self, "labels_catalog", {}) or {}
 
-                    display(Markdown("#### Top sous-classes (top 15)"))
-                    display(counts.head(15))
+        # --- sous-classes
+        subclasses, subclass_counts_df = [], None
+        if labels:
+            for rel in self.available_spectra or []:
+                k = _base_no_gz(rel)
+                val = labels.get(k, None)
+                if val is not None and str(val) != "nan":
+                    subclasses.append(str(val))
+            if subclasses:
+                vc = pd.Series(subclasses).value_counts()
+                subclass_counts_df = vc.head(15).rename("# count").reset_index()
+                subclass_counts_df.columns = ["subclass", "# count"]
+                display(Markdown("#### Top sous-classes (top 15)"))
+                display(_style(subclass_counts_df, {"# count": lambda x: _fmt_fr(x)}))
 
-                    # Liens d'export CSV/LaTeX (pratique pour un rapport)
-                    csv_buf = io.StringIO()
-                    counts.to_csv(csv_buf, index=False)
-                    b64_csv = base64.b64encode(csv_buf.getvalue().encode()).decode()
+        # --- plans
+        plans = [
+            str(p).replace("\\", "/").split("/", 1)[0]
+            for p in (self.available_spectra or [])
+        ]
+        plan_counts_df = None
+        if plans:
+            vc = pd.Series(plans).value_counts()
+            plan_counts_df = vc.head(20).rename("# count").reset_index()
+            plan_counts_df.columns = ["plan_id", "# count"]
+            display(Markdown("#### Spectres par plan (top 20)"))
+            display(_style(plan_counts_df, {"# count": lambda x: _fmt_fr(x)}))
 
-                    tex_buf = counts.to_latex(
-                        index=False, caption="Fréquence des sous-classes"
-                    )
-                    b64_tex = base64.b64encode(tex_buf.encode()).decode()
+        # (optionnel) mini-barres
+        if show_charts and subclass_counts_df is not None:
+            try:
+                import matplotlib.pyplot as plt
 
-                    display(
-                        HTML(
-                            "<div style='margin:8px 0'>"
-                            "<a download='subclass_counts.csv' href='data:text/csv;base64,{csv}'>⬇️ CSV</a>"
-                            " &nbsp;|&nbsp; "
-                            "<a download='subclass_counts.tex' href='data:text/plain;base64,{tex}'>⬇️ LaTeX</a>"
-                            "</div>".format(csv=b64_csv, tex=b64_tex)
-                        )
-                    )
-
-                    # Compteurs utiles pour le résumé retourné
-                    summary_rows.append(
-                        {
-                            "metric": "distinct_subclasses",
-                            "value": int(counts["subclass"].nunique()),
-                        }
-                    )
-        except Exception as e:
-            display(
-                Markdown(f"> Impossible de lire le catalogue des sous-classes : `{e}`")
-            )
-
-        # -- 3) Comptage par plan (déduit des chemins) --------------------------------
-        try:
-            if available_files:
-                import pandas as pd
-
-                plans = [p.split("/")[0] for p in available_files]
-                vc = (
-                    pd.Series(plans, name="plan_id")
-                    .value_counts()
-                    .rename_axis("plan_id")
-                    .reset_index(name="count")
+                _ = plt.figure(figsize=(7.5, 4.5))  # variable "dummy", ignorée par ruff
+                ax = plt.gca()
+                ax.barh(
+                    subclass_counts_df["subclass"][::-1],
+                    subclass_counts_df["# count"][::-1],
                 )
-                display(Markdown("#### Spectres par plan (top 20)"))
-                display(vc.head(20))
+                ax.set_title("Distribution des sous-classes (top 15)")
+                ax.set_xlabel("#")
+                ax.grid(True, axis="x", alpha=0.25)
+                plt.tight_layout()
+                plt.show()
+            except Exception:
+                pass
 
-                summary_rows.append(
-                    {"metric": "distinct_plans", "value": int(vc["plan_id"].nunique())}
-                )
-        except Exception as e:
-            display(Markdown(f"> Erreur lors du comptage par plan : `{e}`"))
+        # ---------- 5) récap du bas (avec distincts) ----------
+        distinct_subclasses = int(
+            (pd.Series(subclasses).nunique()) if labels and subclasses else 0
+        )
+        distinct_plans = int((pd.Series(plans).nunique()) if plans else 0)
 
-        # -- 4) Retour d’un petit DataFrame récap -------------------------------------
-        import pandas as pd
+        bottom_df = pd.DataFrame(
+            {
+                "metric": [
+                    "total_available",
+                    "total_trained",
+                    "total_new_candidates",
+                    "distinct_subclasses",
+                    "distinct_plans",
+                ],
+                "# value": [
+                    total_available,
+                    total_trained,
+                    total_new_candidates,
+                    distinct_subclasses,
+                    distinct_plans,
+                ],
+            }
+        )
+        display(_style(bottom_df, {"# value": lambda x: _fmt_fr(x)}))
 
-        summary_df = pd.DataFrame(summary_rows, columns=["metric", "value"])
-        return summary_df
+        return top_df
 
     # ==============================================================================
     # Outil 10 : Analyse d'Interprétabilité des Modèles (SHAP) ---

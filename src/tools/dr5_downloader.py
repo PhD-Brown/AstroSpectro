@@ -55,7 +55,9 @@ from typing import Iterable, List, Optional
 import argparse
 import os
 import sys
-from time import sleep
+import gzip
+import random
+import math
 from urllib.parse import urljoin
 
 import pandas as pd
@@ -63,10 +65,11 @@ import requests
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 __all__ = ["SmartDownloader", "main"]
-__version__ = "2.0.0"
+__version__ = "3.1.0"
 
 
 @dataclass(slots=True)
@@ -127,6 +130,11 @@ class SmartDownloader:
         log_to: Optional[str] = None,
         append: bool = False,
         chunk_size: int = 65536,
+        workers: int = 1,
+        scrape_workers: int = 1,
+        per_plan: int | None = None,
+        validate: bool = False,
+        dry_run: bool = False,
     ) -> None:
         # Résolution robuste des chemins (indépendant du CWD)
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -158,6 +166,13 @@ class SmartDownloader:
         self.timeout = int(timeout)
         self.delay_between = float(delay_between)
         self.total_downloaded_this_session = 0
+        self.workers = max(1, int(workers))
+        self.scrape_workers = max(1, int(scrape_workers))
+        self.per_plan = None if per_plan in (None, 0) else int(per_plan)
+        self.validate_downloads = bool(validate)
+        self.dry_run = bool(dry_run)
+        self.retries = int(retries)
+        self.plan_urls_in_queue: list[str] = []
 
         # HTTP session
         self.session = self._build_session(retries=retries, timeout=timeout)
@@ -217,13 +232,16 @@ class SmartDownloader:
             allowed_methods=("GET", "HEAD"),
             raise_on_status=False,
         )
-        adapter = HTTPAdapter(max_retries=retry_cfg)
+        adapter = HTTPAdapter(
+            max_retries=retry_cfg, pool_connections=64, pool_maxsize=64
+        )
         session.mount("http://", adapter)
         session.mount("https://", adapter)
         session.headers.update(
             {
-                "User-Agent": "AstroSpectro-Downloader/2.0 (+https://example.org)",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "User-Agent": "AstroSpectro-Downloader/3.1 (+https://example.org)",
+                "Accept": "*/*",
+                "Connection": "keep-alive",
             }
         )
         # Timeout par défaut mémorisé (attribut interne simple)
@@ -264,6 +282,39 @@ class SmartDownloader:
             remaining = remaining[: self.limit_plans]
         return remaining
 
+    def _scrape_plan(self, plan_url: str):
+        """
+        Retourne (plan_name, urls .fits.gz) pour une page *plan* (thread‑safe).
+        """
+        session = self._build_session(retries=3, timeout=self.timeout)
+        plan_name = plan_url.rstrip("/").split("/")[-1]
+        urls: list[str] = []
+        try:
+            resp = session.get(plan_url, timeout=session.request_timeout)  # type: ignore[attr-defined]
+            resp.raise_for_status()
+        except requests.RequestException:
+            return plan_name, urls
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for link in soup.find_all("a"):
+            href = (link.get("href") or "").strip()
+            if href.endswith(".fits.gz"):
+                urls.append(urljoin(plan_url, href))
+        return plan_name, urls
+
+    @staticmethod
+    def _is_valid_fits_gz(path: str) -> bool:
+        """
+        Validation légère : header GZIP lisible et carte FITS 'SIMPLE' en tête.
+        Ne décompresse pas tout; lit seulement le début.
+        """
+        try:
+            with gzip.open(path, "rb") as fh:
+                head = fh.read(2880)  # 1 bloc FITS
+            return b"SIMPLE" in head[:80]
+        except Exception:
+            return False
+
     # -------------------------------- phase 1 : scrape --------------------------------
 
     def _build_download_queue(self) -> None:
@@ -277,29 +328,42 @@ class SmartDownloader:
             return
 
         self._say("\n--- [Phase 1/3] Construction ... ---")
-        for i, plan_url in enumerate(self.plans_to_process, start=1):
-            plan_name = plan_url.rstrip("/").split("/")[-1]
-            self._say(f"  > [{i}/{len(self.plans_to_process)}] {plan_name}")
 
-            try:
-                resp = self.session.get(plan_url, timeout=self.session.request_timeout)  # type: ignore[attr-defined]
-                resp.raise_for_status()
-            except requests.RequestException as e:
-                self._say(f"    -> ERREUR : accès impossible ({e}). Plan ignoré.")
-                continue
+        # Mode séquentiel (comportement historique)
+        if self.scrape_workers == 1:
+            for i, plan_url in enumerate(self.plans_to_process, start=1):
+                plan_name, plan_urls = self._scrape_plan(plan_url)
+                self._say(f"  > [{i}/{len(self.plans_to_process)}] {plan_name}")
+                if plan_urls:
+                    self.download_queue.append(plan_urls)
+                else:
+                    self._say("    -> Avertissement : aucun .fits.gz trouvé.")
+            self._say("  > File construite.")
+            return
 
-            soup = BeautifulSoup(resp.text, "html.parser")
-            plan_fits_urls: List[str] = []
-            for link in soup.find_all("a"):
-                href = (link.get("href") or "").strip()
-                if href.endswith(".fits.gz"):
-                    plan_fits_urls.append(urljoin(plan_url, href))
+        # Mode parallèle
+        results: dict[str, list[str]] = {}
+        with ThreadPoolExecutor(max_workers=self.scrape_workers) as ex:
+            futures = {
+                ex.submit(self._scrape_plan, url): url for url in self.plans_to_process
+            }
+            for i, fut in enumerate(as_completed(futures), start=1):
+                plan_url = futures[fut]
+                try:
+                    plan_name, plan_urls = fut.result()
+                except Exception as e:
+                    self._say(f"  > [{i}/{len(futures)}] ERREUR : {e}")
+                    results[plan_url] = []
+                    continue
+                self._say(
+                    f"  > [{i}/{len(futures)}] {plan_url.rstrip('/').split('/')[-1]}  ({len(plan_urls)} fichiers)"
+                )
+                results[plan_url] = plan_urls
 
-            if plan_fits_urls:
-                self.download_queue.append(plan_fits_urls)
-            else:
-                self._say("    -> Avertissement : aucun .fits.gz trouvé.")
-
+        # ➜ file dans l'ordre de self.plans_to_process (et on ignore les plans vides)
+        self.download_queue = [
+            results[u] for u in self.plans_to_process if results.get(u)
+        ]
         self._say("  > File construite.")
 
     # ---------------------------- phase 2 : téléchargement ----------------------------
@@ -314,6 +378,87 @@ class SmartDownloader:
                 dest_path = os.path.join(dest_dir, filename)
                 if not os.path.exists(dest_path):
                     yield file_url
+
+    def _download_one_threaded(self, url: str) -> bool:
+        """Télécharge `url` (nouvelle Session locale) → True si écrit.
+
+        Identique à `_stream_download`, mais calcule `dest_path` et évite de
+        partager `self.session` entre threads (Requests Session n'est pas thread‑safe).
+        """
+        plan_name = url.split("/")[-2]
+        filename = url.split("/")[-1]
+        dest_dir = os.path.join(self.raw_data_dir, plan_name)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_path = os.path.join(dest_dir, filename)
+        temp_path = f"{dest_path}.part"
+
+        # si déjà présent et pas de validation demandée → rien à faire
+        if os.path.exists(dest_path) and not self.validate_downloads:
+            return False
+
+        session = self._build_session(retries=self.retries, timeout=self.timeout)
+
+        # Gestion reprise
+        resume_from = 0
+        headers = {}
+        if os.path.exists(temp_path):
+            resume_from = os.path.getsize(temp_path)
+            if resume_from > 0:
+                headers["Range"] = f"bytes={resume_from}-"
+
+        # Boucle d'essais avec backoff+jitter applicatif (en plus de urllib3 Retry)
+        for attempt in range(self.retries + 1):
+            try:
+                with session.get(url, stream=True, headers=headers, timeout=session.request_timeout) as r:  # type: ignore[attr-defined]
+                    if resume_from and r.status_code == 200:
+                        # Le serveur n'a pas accepté Range → on repart de zéro
+                        resume_from = 0
+                    r.raise_for_status()
+
+                    mode = "ab" if resume_from else "wb"
+                    with open(temp_path, mode) as f:
+                        for chunk in r.iter_content(chunk_size=self.chunk_size):
+                            if chunk:
+                                f.write(chunk)
+                os.replace(temp_path, dest_path)
+
+                # Validation légère (si demandée)
+                if self.validate_downloads and not self._is_valid_fits_gz(dest_path):
+                    self._say_tqdm(
+                        f"    -> Validation échouée : {filename}. Nouvelle tentative…"
+                    )
+                    try:
+                        os.remove(dest_path)
+                    except Exception:
+                        pass
+                    resume_from = 0
+                    headers.pop("Range", None)
+                    # retente
+                    raise requests.RequestException("validation failed")
+
+                self._log(f"OK {plan_name}/{filename}")
+                return True
+
+            except requests.RequestException as e:
+                # petit backoff jitter en plus du Retry de l'adapter
+                if attempt < self.retries:
+                    sleep_s = (0.5 * (2**attempt)) * (0.5 + random.random())
+                    try:
+                        import time as _t
+
+                        _t.sleep(sleep_s)
+                    except Exception:
+                        pass
+                    continue
+                else:
+                    # échec final → nettoyer le .part
+                    try:
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
+                    except Exception:
+                        pass
+                    self._say_tqdm(f"    -> ERREUR : {filename} ({e})")
+                    return False
 
     def _stream_download(self, url: str, dest_path: str) -> bool:
         """Télécharge `url` → `dest_path` avec écriture **atomique**.
@@ -352,12 +497,13 @@ class SmartDownloader:
 
         Respecte `self.max_spectra` si défini. Affiche une barre `tqdm` si
         `self.progress` vaut `True` (ou si `--progress` a été passé en CLI).
+        • Parallèle si `self.workers > 1` (ThreadPoolExecutor + tqdm)
         """
         if not self.download_queue:
             self._say("\n[Phase 2/3] Rien à faire : file vide.")
             return
 
-        # 1) Manquants par plan
+        # 1) Construire la liste entrelacée entre plans
         missing_by_plan: list[list[str]] = []
         for plan_urls in self.download_queue:
             plan_missing: list[str] = []
@@ -375,7 +521,26 @@ class SmartDownloader:
             self._say("\n--- [Phase 2/3] Rien à télécharger (tout est déjà présent).")
             return
 
-        # 2) Entrelacement + coupe `max_spectra` pendant l’entrelacement
+        n_active = len(missing_by_plan)
+        auto_per_plan = None
+        if (
+            (self.per_plan in (None, 0))
+            and (self.max_spectra is not None)
+            and n_active > 0
+        ):
+            auto_per_plan = max(1, math.ceil(int(self.max_spectra) / n_active))
+
+        limit_per_plan = auto_per_plan if auto_per_plan is not None else self.per_plan
+        if limit_per_plan is not None:
+            missing_by_plan = [urls[: int(limit_per_plan)] for urls in missing_by_plan]
+
+        self._say("\nRésumé des manquants (après anti-doublon et per-plan) :")
+        for plan in missing_by_plan:
+            if not plan:
+                continue
+            plan_name = plan[0].split("/")[-2]
+            self._say(f"  - {plan_name}: {len(plan)} fichiers à télécharger")
+
         interleaved: list[str] = []
         for batch in zip_longest(*missing_by_plan):
             for url in batch:
@@ -392,10 +557,62 @@ class SmartDownloader:
                 break
 
         total = len(interleaved)
-        self._say(f"\n--- [Phase 2/3] {total} nouveaux spectres à télécharger ---")
 
-        # 3) Téléchargement avec barre (désactivée si progress=False)
-        disable_progress = not getattr(self, "progress", True)
+        # 2) Mode DRY‑RUN : on montre l'aperçu et on s'arrête ici
+        if self.dry_run:
+            self._say("\n[Dry‑run] Aperçu de la session (aucune écriture disque):")
+            self._say(
+                f"  > {len(missing_by_plan)} plan(s), {total} fichier(s) à traiter (après max_spectres)"
+            )
+            return
+
+        # 3) Téléchargements
+        self._say(
+            f"\n--- [Phase 2/3] {total} nouveaux spectres à télécharger (workers={self.workers}) ---"
+        )
+        disable_progress = not bool(self.progress)
+
+        if self.workers <= 1:
+            # Chemin historique (séquentiel)
+            from time import sleep as _sl
+
+            with tqdm(
+                total=total,
+                desc="Téléchargement",
+                unit="spectre",
+                leave=False,
+                mininterval=0.4,
+                disable=disable_progress,
+            ) as pbar:
+                for url in interleaved:
+                    plan_name = url.split("/")[-2]
+                    filename = url.split("/")[-1]
+                    dest_dir = os.path.join(self.raw_data_dir, plan_name)
+                    dest_path = os.path.join(dest_dir, filename)
+
+                    if os.path.exists(dest_path):
+                        pbar.update(1)
+                        continue
+
+                    if (
+                        self.max_spectra
+                        and self.total_downloaded_this_session >= self.max_spectra
+                    ):
+                        self._say_tqdm(
+                            f"Limite atteinte ({self.max_spectra}). Arrêt du téléchargement."
+                        )
+                        return
+
+                    ok = self._stream_download(url, dest_path)
+                    if ok:
+                        self._log(f"OK {plan_name}/{filename}")
+                        self.total_downloaded_this_session += 1
+                    pbar.update(1)
+                    if self.delay_between > 0:
+                        _sl(self.delay_between)
+            return
+
+        # Parallèle
         with tqdm(
             total=total,
             desc="Téléchargement",
@@ -404,32 +621,18 @@ class SmartDownloader:
             mininterval=0.4,
             disable=disable_progress,
         ) as pbar:
-            for url in interleaved:
-                plan_name = url.split("/")[-2]
-                filename = url.split("/")[-1]
-                dest_dir = os.path.join(self.raw_data_dir, plan_name)
-                dest_path = os.path.join(dest_dir, filename)
-
-                if os.path.exists(dest_path):
+            with ThreadPoolExecutor(max_workers=self.workers) as ex:
+                futures = [
+                    ex.submit(self._download_one_threaded, url) for url in interleaved
+                ]
+                for fut in as_completed(futures):
+                    try:
+                        wrote = fut.result()
+                        if wrote:
+                            self.total_downloaded_this_session += 1
+                    except Exception:
+                        pass
                     pbar.update(1)
-                    continue
-
-                if (
-                    self.max_spectra
-                    and self.total_downloaded_this_session >= self.max_spectra
-                ):
-                    self._say_tqdm(
-                        f"Limite atteinte ({self.max_spectra}). Arrêt du téléchargement."
-                    )
-                    return
-
-                ok = self._stream_download(url, dest_path)
-                if ok:
-                    self._log(f"OK {plan_name}/{filename}")
-                    self.total_downloaded_this_session += 1
-                    pbar.update(1)
-                    if self.delay_between > 0:
-                        sleep(self.delay_between)
 
     # ------------------------------ phase 3 : marquage ------------------------------
 
@@ -442,10 +645,10 @@ class SmartDownloader:
         self._say("\n--- [Phase 3/3] Mise à jour de l'état des plans ---")
 
         newly_completed: List[str] = []
-        for plan_url, fits_list in zip(self.plans_to_process, self.download_queue):
+        for idx, plan_url in enumerate(self.plans_to_process):
+            fits_list = self.download_queue[idx]
             plan_name = plan_url.rstrip("/").split("/")[-1]
             dest_dir = os.path.join(self.raw_data_dir, plan_name)
-
             if all(
                 os.path.exists(os.path.join(dest_dir, url.split("/")[-1]))
                 for url in fits_list
@@ -474,6 +677,14 @@ class SmartDownloader:
         """Enchaîne les 3 phases (scrape → download → update) et résume la session."""
         self._build_download_queue()
         self.run_download()
+
+        # En dry‑run : **ne pas** modifier l'état
+        if self.dry_run:
+            self._say("\n[Dry‑run] État non modifié (aucun plan marqué complété).")
+            self._log("SUMMARY dry_run=True")
+            self._say(f"\nLog de session écrit : {self.session_log_path}")
+            return
+
         self._update_state()
         self._log(f"SUMMARY total_downloaded={self.total_downloaded_this_session}")
         self._say(f"\nLog de session écrit : {self.session_log_path}")
@@ -535,6 +746,34 @@ def _parse_args() -> argparse.Namespace:
         default=65536,
         help="Taille des chunks de téléchargement (octets). 65536=64KB, 131072=128KB, etc.",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Téléchargements parallèles (1 = séquentiel).",
+    )
+    parser.add_argument(
+        "--scrape-workers",
+        type=int,
+        default=1,
+        help="Parallélisme pour le scrape des pages plan.",
+    )
+    parser.add_argument(
+        "--per-plan",
+        type=int,
+        default=None,
+        help="Plafond de fichiers par plan (après anti‑doublon).",
+    )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Valider rapidement les .fits.gz téléchargés (header FITS).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Ne rien écrire : montre seulement ce qui serait fait.",
+    )
     return parser.parse_args()
 
 
@@ -544,11 +783,18 @@ def main(argv: Optional[list[str]] = None) -> int:
     dl = SmartDownloader(
         limit_plans=args.limit,
         max_spectra=args.max_spectres,
-        progress=(args.progress or sys.stdout.isatty()),
+        timeout=args.http_timeout if hasattr(args, "http_timeout") else 60,
         delay_between=args.delay,
-        chunk_size=args.chunk,
+        retries=args.retries if hasattr(args, "retries") else 3,
+        progress=(args.progress or sys.stdout.isatty()),
         log_to=args.log_to,
         append=args.append,
+        chunk_size=args.chunk,
+        workers=args.workers,
+        scrape_workers=args.scrape_workers,
+        per_plan=args.per_plan,
+        validate=args.validate,
+        dry_run=args.dry_run,
     )
     dl.run()
     dl._say(

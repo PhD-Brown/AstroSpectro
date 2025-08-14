@@ -36,6 +36,7 @@ models/
 *.csv
 *.pkl
 static/images/
+!data/catalog/trained_spectra.csv
 
 # === Output, figures, temporary files ===
 *.pdf

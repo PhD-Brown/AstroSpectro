@@ -111,21 +111,46 @@ class DatasetBuilder:
         if not os.path.exists(self.trained_log_path):
             return set()
 
+        # 1) Lecture robuste : tente ',' sinon auto-détection du séparateur
         try:
-            df = pd.read_csv(self.trained_log_path)
+            try:
+                df = pd.read_csv(self.trained_log_path)
+            except Exception:
+                df = pd.read_csv(self.trained_log_path, sep=None, engine="python")
         except pd.errors.EmptyDataError:
-            # Fichier présent mais vide : on considère qu’il n’y a rien dedans
             return set()
 
-        if "file_path" not in df.columns:
+        # 2) Trouver une colonne plausible de chemin
+        candidates = [
+            "file_path",
+            "path",
+            "filepath",
+            "fits_path",
+            "relpath",
+            "raw_path",
+        ]
+        col = next((c for c in candidates if c in df.columns), None)
+        if col is None:
             print(
-                f"  > AVERTISSEMENT : Le log '{self.trained_log_path}' ne contient pas "
-                "la colonne 'file_path'. Il sera ignoré."
+                f"  > AVERTISSEMENT : '{self.trained_log_path}' sans colonne de chemin reconnue ({candidates}). Ignoré."
             )
             return set()
 
-        # Normalise au cas où (ordre / NaN)
-        return set(df["file_path"].dropna().astype(str).tolist())
+        # 3) Normaliser en **relatif à raw_data_dir** + slashes "/"
+        paths = []
+        for p in df[col].dropna().astype(str):
+            p = p.strip().replace("\\", "/")
+            if not p:
+                continue
+            if os.path.isabs(p):
+                try:
+                    p = os.path.relpath(p, self.raw_data_dir).replace("\\", "/")
+                except Exception:
+                    # Si on ne peut pas relativiser (hors raw/), garde tel quel
+                    pass
+            paths.append(p)
+
+        return set(paths)
 
     # ---------------------------------------------------------------------
     # API publique
