@@ -208,6 +208,9 @@ class SpectraManager:
         dry_run_widget = widgets.Checkbox(
             value=False, description="Dry‑run (pas d’écriture)"
         )
+        auto_widget = widgets.Checkbox(value=False, description="Auto‑throttle")
+        maxw_widget = widgets.IntText(value=24, description="Max W:")
+        minw_widget = widgets.IntText(value=4, description="Min W:")
 
         # ▼ Presets (avec garde‑fou anti-boucle d’événements)
         preset = widgets.Dropdown(
@@ -277,8 +280,10 @@ class SpectraManager:
 
         line0 = widgets.HBox([preset])
         line1 = widgets.HBox([limit_widget, max_spectra_widget, show_bar, fast_mode])
-        line2 = widgets.HBox([workers_widget, scrape_widget])
-        line3 = widgets.HBox([per_plan_widget, validate_widget, dry_run_widget])
+        line2 = widgets.HBox([workers_widget, scrape_widget, auto_widget, maxw_widget])
+        line3 = widgets.HBox(
+            [per_plan_widget, validate_widget, dry_run_widget, minw_widget]
+        )
 
         display(Markdown("### 1. Téléchargement des Spectres"))
         display(
@@ -329,6 +334,12 @@ class SpectraManager:
                 cmd.append("--validate")
             if dry_run_widget.value:
                 cmd.append("--dry-run")
+            if auto_widget.value:
+                cmd.append("--auto-throttle")
+                if maxw_widget.value:
+                    cmd += ["--max-workers", str(maxw_widget.value)]
+                if "minw_widget" in locals() and minw_widget.value:
+                    cmd += ["--min-workers", str(minw_widget.value)]
 
             # Affichage d’un message + désactivation du bouton (évite double clic)
             progress_display.value = "<b>Lancement du téléchargement...</b>"

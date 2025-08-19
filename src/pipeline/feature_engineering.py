@@ -37,6 +37,7 @@ from __future__ import annotations
 from typing import Dict, List, Mapping, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 import warnings
 from scipy.signal import savgol_filter
 from specutils import Spectrum, SpectralRegion
@@ -305,3 +306,37 @@ class FeatureEngineer:
             for ml in matched_lines_list
         ]
         return np.asarray(rows, dtype=float)
+
+
+def _signed_log1p(x: pd.Series) -> pd.Series:
+    return np.sign(x) * np.log1p(np.abs(x))
+
+
+def stabilize_spectral_features(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    # Colonnes à transformer (adapte selon ton set)
+    ew_cols = [c for c in df.columns if c.endswith("_eq_width")]
+    prom_cols = [c for c in df.columns if c.endswith("_prominence")]
+    fwhm_cols = [c for c in df.columns if c.endswith("_fwhm")]
+
+    # 2.1 Clip des extrêmes (winsorize soft)
+    def clip_col(s: pd.Series):
+        lo, hi = s.quantile(0.005), s.quantile(0.995)
+        return s.clip(lower=lo, upper=hi)
+
+    for cols, transform in [
+        (ew_cols, _signed_log1p),  # signed-log pour EW
+        (prom_cols, np.log1p),  # log1p pour prominences (>=0)
+        (fwhm_cols, np.log1p),  # log1p pour FWHM (>=0)
+    ]:
+        for c in cols:
+            df[c] = clip_col(df[c])
+            df[c] = transform(df[c].fillna(0.0).astype(float))
+
+    # 2.2 Drapeaux binaires "présence de ligne"
+    for c in prom_cols:
+        flag = c.replace("_prominence", "_present")
+        df[flag] = (df[c] > 0).astype(np.uint8)
+
+    return df

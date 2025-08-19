@@ -58,6 +58,8 @@ import sys
 import gzip
 import random
 import math
+import statistics
+import time
 from urllib.parse import urljoin
 
 import pandas as pd
@@ -135,6 +137,14 @@ class SmartDownloader:
         per_plan: int | None = None,
         validate: bool = False,
         dry_run: bool = False,
+        auto_throttle: bool = False,
+        min_workers: int | None = None,
+        max_workers: int | None = None,
+        target_latency: float = 0.5,  # en secondes (médiane visée)
+        tune_step: int = 2,
+        tune_err_lo: float = 0.02,
+        tune_err_hi: float = 0.05,
+        throttle_delay: float = 0.05,
     ) -> None:
         # Résolution robuste des chemins (indépendant du CWD)
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -173,6 +183,14 @@ class SmartDownloader:
         self.dry_run = bool(dry_run)
         self.retries = int(retries)
         self.plan_urls_in_queue: list[str] = []
+        self.auto_throttle = bool(auto_throttle)
+        self.min_workers = int(min_workers or 4)  # (borne basse)
+        self.max_workers = int(max_workers or self.workers)  # (borne haute)
+        self.target_latency = float(target_latency)  # (s)
+        self.tune_step = int(tune_step)  # (+2 par défaut)
+        self.tune_err_lo = float(tune_err_lo)  # (< 2% : on pousse)
+        self.tune_err_hi = float(tune_err_hi)  # (> 5% : on réduit)
+        self.throttle_delay = float(throttle_delay)  # (retard minimal si 429)
 
         # HTTP session
         self.session = self._build_session(retries=retries, timeout=timeout)
@@ -184,6 +202,7 @@ class SmartDownloader:
         )
         self.plans_to_process = self._load_state()
         self.download_queue: list[list[str]] = []
+        self._med_baseline: float | None = None
 
         # En‑tête de session dans le log
         self._log("--- Nouvelle session de téléchargement ---")
@@ -318,30 +337,41 @@ class SmartDownloader:
     # -------------------------------- phase 1 : scrape --------------------------------
 
     def _build_download_queue(self) -> None:
-        """Scrape chaque page de plan et construit `self.download_queue`.
+        """
+        Phase 1 — scrape des pages de plan et construction de `self.download_queue`.
 
-        Pour chaque plan, toutes les ancres se terminant par `.fits.gz` sont
-        collectées puis **normalisées** en URLs absolues via `urljoin`.
+        • Séquentiel si `self.scrape_workers == 1` (comportement historique).
+        • Parallèle sinon, avec ORDRE STABLE (mappage par URL de plan).
+        • Renseigne aussi `self.plan_urls_in_queue` pour garder l'alignement Phase 2/3.
         """
         if not self.plans_to_process:
             self._say("\nAucun plan à traiter. (Liste vide)")
+            self.download_queue = []
+            self.plan_urls_in_queue = []
             return
 
         self._say("\n--- [Phase 1/3] Construction ... ---")
 
-        # Mode séquentiel (comportement historique)
+        # Mode séquentiel (ordre d'origine garanti)
         if self.scrape_workers == 1:
+            selected: list[str] = []
+            queue: list[list[str]] = []
             for i, plan_url in enumerate(self.plans_to_process, start=1):
                 plan_name, plan_urls = self._scrape_plan(plan_url)
-                self._say(f"  > [{i}/{len(self.plans_to_process)}] {plan_name}")
+                self._say(
+                    f"  > [{i}/{len(self.plans_to_process)}] {plan_name}  ({len(plan_urls)} fichiers)"
+                )
                 if plan_urls:
-                    self.download_queue.append(plan_urls)
+                    queue.append(plan_urls)
+                    selected.append(plan_url)
                 else:
                     self._say("    -> Avertissement : aucun .fits.gz trouvé.")
+            self.download_queue = queue
+            self.plan_urls_in_queue = selected
             self._say("  > File construite.")
             return
 
-        # Mode parallèle
+        # Mode parallèle (on collecte d'abord dans un dict puis on reconstruit dans l'ordre d'origine)
         results: dict[str, list[str]] = {}
         with ThreadPoolExecutor(max_workers=self.scrape_workers) as ex:
             futures = {
@@ -351,19 +381,17 @@ class SmartDownloader:
                 plan_url = futures[fut]
                 try:
                     plan_name, plan_urls = fut.result()
-                except Exception as e:
+                except Exception as e:  # en cas d'erreur réseau/parsing
                     self._say(f"  > [{i}/{len(futures)}] ERREUR : {e}")
-                    results[plan_url] = []
-                    continue
+                    plan_urls = []
                 self._say(
                     f"  > [{i}/{len(futures)}] {plan_url.rstrip('/').split('/')[-1]}  ({len(plan_urls)} fichiers)"
                 )
                 results[plan_url] = plan_urls
 
-        # ➜ file dans l'ordre de self.plans_to_process (et on ignore les plans vides)
-        self.download_queue = [
-            results[u] for u in self.plans_to_process if results.get(u)
-        ]
+        # Reconstitution dans l'ordre self.plans_to_process et exclusion des plans vides
+        self.plan_urls_in_queue = [u for u in self.plans_to_process if results.get(u)]
+        self.download_queue = [results[u] for u in self.plan_urls_in_queue]
         self._say("  > File construite.")
 
     # ---------------------------- phase 2 : téléchargement ----------------------------
@@ -459,6 +487,87 @@ class SmartDownloader:
                         pass
                     self._say_tqdm(f"    -> ERREUR : {filename} ({e})")
                     return False
+
+    def _download_one_stats(self, url: str) -> tuple[bool, float, int]:
+        """
+        Comme `_download_one_threaded`, mais retourne (succès, durée_s, code).
+        code = 0 (ok/erreur générique), 429, 5xx (500–599).
+        """
+        start = time.monotonic()
+        plan_name = url.split("/")[-2]
+        filename = url.split("/")[-1]
+        dest_dir = os.path.join(self.raw_data_dir, plan_name)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_path = os.path.join(dest_dir, filename)
+        temp_path = f"{dest_path}.part"
+
+        if os.path.exists(dest_path) and not self.validate_downloads:
+            return (False, time.monotonic() - start, 0)
+
+        session = self._build_session(retries=self.retries, timeout=self.timeout)
+
+        resume_from = 0
+        headers = {}
+        if os.path.exists(temp_path):
+            resume_from = os.path.getsize(temp_path)
+            if resume_from > 0:
+                headers["Range"] = f"bytes={resume_from}-"
+
+        code = 0
+        for attempt in range(self.retries + 1):
+            try:
+                with session.get(url, stream=True, headers=headers, timeout=session.request_timeout) as r:  # type: ignore[attr-defined]
+                    if resume_from and r.status_code == 200:
+                        resume_from = 0
+                    r.raise_for_status()
+                    mode = "ab" if resume_from else "wb"
+                    with open(temp_path, mode) as f:
+                        for chunk in r.iter_content(chunk_size=self.chunk_size):
+                            if chunk:
+                                f.write(chunk)
+                os.replace(temp_path, dest_path)
+
+                if self.validate_downloads and not self._is_valid_fits_gz(dest_path):
+                    self._say_tqdm(
+                        f"    -> Validation échouée : {filename}. Nouvelle tentative…"
+                    )
+                    try:
+                        os.remove(dest_path)
+                    except Exception:
+                        pass
+                    resume_from = 0
+                    headers.pop("Range", None)
+                    raise requests.RequestException("validation failed")
+
+                self._log(f"OK {plan_name}/{filename}")
+                return (True, time.monotonic() - start, 0)
+
+            except requests.HTTPError as e:
+                sc = getattr(e.response, "status_code", 0) or 0
+                code = 429 if sc == 429 else (sc if 500 <= sc <= 599 else 0)
+                if attempt < self.retries:
+                    sleep_s = (0.5 * (2**attempt)) * (0.5 + random.random())
+                    time.sleep(sleep_s)
+                    continue
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception:
+                    pass
+                self._say_tqdm(f"    -> ERREUR HTTP {sc} : {filename}")
+                return (False, time.monotonic() - start, code)
+            except requests.RequestException:
+                if attempt < self.retries:
+                    sleep_s = (0.5 * (2**attempt)) * (0.5 + random.random())
+                    time.sleep(sleep_s)
+                    continue
+                try:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                except Exception:
+                    pass
+                self._say_tqdm(f"    -> ERREUR : {filename}")
+                return (False, time.monotonic() - start, code)
 
     def _stream_download(self, url: str, dest_path: str) -> bool:
         """Télécharge `url` → `dest_path` avec écriture **atomique**.
@@ -613,46 +722,136 @@ class SmartDownloader:
             return
 
         # Parallèle
-        with tqdm(
-            total=total,
-            desc="Téléchargement",
-            unit="spectre",
-            leave=False,
-            mininterval=0.4,
-            disable=disable_progress,
-        ) as pbar:
-            with ThreadPoolExecutor(max_workers=self.workers) as ex:
-                futures = [
-                    ex.submit(self._download_one_threaded, url) for url in interleaved
-                ]
-                for fut in as_completed(futures):
-                    try:
-                        wrote = fut.result()
-                        if wrote:
-                            self.total_downloaded_this_session += 1
-                    except Exception:
-                        pass
-                    pbar.update(1)
+        if self.workers > 1:
+            if not self.auto_throttle:
+                with tqdm(
+                    total=total,
+                    desc="Téléchargement",
+                    unit="spectre",
+                    leave=False,
+                    mininterval=0.4,
+                    disable=disable_progress,
+                ) as pbar:
+                    with ThreadPoolExecutor(max_workers=self.workers) as ex:
+                        futures = [
+                            ex.submit(self._download_one_threaded, url)
+                            for url in interleaved
+                        ]
+                        for fut in as_completed(futures):
+                            try:
+                                wrote = fut.result()
+                                if wrote:
+                                    self.total_downloaded_this_session += 1
+                            except Exception:
+                                pass
+                            pbar.update(1)
+            else:
+                # Auto‑throttle : on traite en lots de `self.workers` et on ajuste
+                i = 0
+                with tqdm(
+                    total=total,
+                    desc="Téléchargement",
+                    unit="spectre",
+                    leave=False,
+                    mininterval=0.4,
+                    disable=disable_progress,
+                ) as pbar:
+                    while i < len(interleaved):
+                        batch = interleaved[i : i + self.workers]
+                        succ = 0
+                        latencies: list[float] = []
+                        err429 = err5xx = total_b = 0
+
+                        with ThreadPoolExecutor(max_workers=self.workers) as ex:
+                            futs = [
+                                ex.submit(self._download_one_stats, u) for u in batch
+                            ]
+                            for fut in as_completed(futs):
+                                try:
+                                    ok, dt, code = fut.result()
+                                    if ok:
+                                        succ += 1
+                                    latencies.append(dt)
+                                    if code == 429:
+                                        err429 += 1
+                                    elif 500 <= code <= 599:
+                                        err5xx += 1
+                                except Exception:
+                                    pass
+                                total_b += 1
+                                pbar.update(1)
+
+                        # --- Ajustement UNE fois par lot ---
+                        err_rate = (err429 + err5xx) / max(1, total_b)
+                        med = statistics.median(latencies) if latencies else 0.0
+
+                        # compteur mis à jour une seule fois par lot
+                        self.total_downloaded_this_session += succ
+
+                        # Baseline EMA de la latence médiane
+                        if self._med_baseline is None:
+                            self._med_baseline = med or self.target_latency
+                        elif med:
+                            self._med_baseline = 0.2 * med + 0.8 * self._med_baseline
+
+                        # Seuils dynamiques vs baseline
+                        hi_thresh = max(
+                            self.target_latency, (self._med_baseline or 0) * 1.5
+                        )
+                        lo_thresh = max(self.target_latency, (self._med_baseline or 0))
+
+                        new_workers = self.workers
+                        if (
+                            err429 > 0
+                            or err_rate > self.tune_err_hi
+                            or (med and med > hi_thresh)
+                        ):
+                            new_workers = max(self.min_workers, self.workers // 2)
+                            if err429 > 0:
+                                self.delay_between = max(
+                                    self.delay_between, self.throttle_delay
+                                )
+                        elif err_rate < self.tune_err_lo and (
+                            med == 0.0 or med <= lo_thresh
+                        ):
+                            new_workers = min(
+                                self.max_workers, self.workers + self.tune_step
+                            )
+
+                        if new_workers != self.workers:
+                            self._say_tqdm(
+                                f"Auto-throttle: workers {self.workers} → {new_workers}  "
+                                f"(err={err_rate:.1%}, med={med*1000:.0f} ms, base={((self._med_baseline or 0)*1000):.0f} ms)"
+                            )
+                            self.workers = new_workers
+
+                        i += len(batch)
+                # fin auto‑throttle
+            return
 
     # ------------------------------ phase 3 : marquage ------------------------------
 
     def _update_state(self) -> None:
-        """Vérifie quels plans sont désormais **complets**, puis journalise.
+        """
+        Vérifie quels plans sont désormais **complets**, puis journalise.
 
-        Un plan est « complet » si tous les fichiers attendus (liens trouvés
-        pendant la phase 1) existent maintenant sous `data/raw/<plan>/`.
+        Un plan est « complet » si **tous** les fichiers attendus (liens trouvés
+        en phase 1) existent sous `data/raw/<plan>/`.
         """
         self._say("\n--- [Phase 3/3] Mise à jour de l'état des plans ---")
 
         newly_completed: List[str] = []
-        for idx, plan_url in enumerate(self.plans_to_process):
-            fits_list = self.download_queue[idx]
+        for plan_url, fits_list in zip(self.plan_urls_in_queue, self.download_queue):
             plan_name = plan_url.rstrip("/").split("/")[-1]
-            dest_dir = os.path.join(self.raw_data_dir, plan_name)
-            if all(
-                os.path.exists(os.path.join(dest_dir, url.split("/")[-1]))
-                for url in fits_list
-            ):
+            total = len(fits_list)
+            present = sum(
+                1
+                for u in fits_list
+                if os.path.exists(
+                    os.path.join(self.raw_data_dir, plan_name, u.split("/")[-1])
+                )
+            )
+            if total > 0 and present == total:
                 newly_completed.append(plan_url)
                 self._say(f"  > Plan complété : {plan_name}")
 
@@ -774,6 +973,29 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Ne rien écrire : montre seulement ce qui serait fait.",
     )
+    parser.add_argument(
+        "--auto-throttle",
+        action="store_true",
+        help="Ajuster automatiquement le nombre de workers en fonction du réseau/serveur.",
+    )
+    parser.add_argument(
+        "--min-workers",
+        type=int,
+        default=None,
+        help="Borne basse pour l’auto-throttle (défaut: 4).",
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Borne haute pour l’auto-throttle (défaut: =workers).",
+    )
+    parser.add_argument(
+        "--target-lat",
+        type=float,
+        default=0.5,
+        help="Latence médiane visée (s). Si au‑dessus → on réduit.",
+    )
     return parser.parse_args()
 
 
@@ -795,6 +1017,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         per_plan=args.per_plan,
         validate=args.validate,
         dry_run=args.dry_run,
+        auto_throttle=args.auto_throttle,
+        min_workers=args.min_workers,
+        max_workers=args.max_workers,
+        target_latency=args.target_lat,
     )
     dl.run()
     dl._say(

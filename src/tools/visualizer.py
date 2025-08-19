@@ -70,6 +70,7 @@ from pipeline.classifier import SpectralClassifier
 from pipeline.peak_detector import PeakDetector
 from utils import (
     safe_sigma_from_invvar,
+    latest_file,
 )
 
 # --- Constantes (couleurs & limites par défaut) -------------------------------
@@ -115,10 +116,15 @@ class AstroVisualizer:
             au minimum RAW_DATA_DIR, CATALOG_DIR et PROJECT_ROOT.
         """
         self.paths = paths
+
         # Scan des .fits.gz disponibles (retours relatifs à RAW_DATA_DIR)
         self.available_spectra: list[str] = self._scan_for_spectra()
+
         # Modèle non chargé tant qu’on n’en a pas besoin
         self.classifier = None
+
+        # (Optionnel) si tu veux être sûr de rescanner à chaud :
+        # self.refresh_available_spectra()
 
         print("AstroVisualizer initialisé. Les modèles seront chargés à la demande.")
         # Pré-charge (optionnel) du catalogue des labels
@@ -1181,21 +1187,46 @@ class AstroVisualizer:
             self.paths["CATALOG_DIR"], "spectra_position_catalog.csv"
         )
 
-        # 1) Cache sur disque
+        def _fits_latest_mtime(raw_dir: str) -> float:
+            latest = 0.0
+            if os.path.isdir(raw_dir):
+                for root, _, files in os.walk(raw_dir):
+                    for f in files:
+                        if f.endswith(".fits.gz"):
+                            try:
+                                t = os.path.getmtime(os.path.join(root, f))
+                                if t > latest:
+                                    latest = t
+                            except Exception:
+                                continue
+            return latest
+
+        # 1) Cache sur disque — on ne s'y fie que s'il est non-vide, valide, et à jour.
         if os.path.exists(catalog_path) and not force_regenerate:
-            print("  > Catalogue de position existant chargé.")
             try:
                 df_cached = pd.read_csv(catalog_path)
-                # On s’assure des colonnes minimales
                 expected = {"plan_id", "ra", "dec"}
-                if expected.issubset(df_cached.columns):
-                    return df_cached.sort_values("plan_id").reset_index(drop=True)
+                cache_ok = expected.issubset(df_cached.columns) and (len(df_cached) > 0)
+
+                # Rebuild si cache vide/invalide
+                if not cache_ok:
+                    print("  > Cache présent mais vide/invalide — rescannage des FITS…")
+                else:
+                    # Rebuild si les FITS sont plus récents que le CSV
+                    cache_mtime = os.path.getmtime(catalog_path)
+                    latest_fits_mtime = _fits_latest_mtime(
+                        self.paths.get("RAW_DATA_DIR", "../data/raw")
+                    )
+                    if latest_fits_mtime > cache_mtime:
+                        print("  > Des FITS plus récents que le cache — régénération…")
+                    else:
+                        print("  > Catalogue de position existant chargé.")
+                        return df_cached.sort_values("plan_id").reset_index(drop=True)
             except Exception:
-                # Si le cache est corrompu, on retente un scan complet
-                print("  > Avertissement: cache illisible, rescannage des FITS...")
+                print("  > Avertissement: cache illisible — rescannage des FITS…")
 
         # 2) Scan des FITS
-        print("  > Scan des fichiers FITS pour générer le catalogue de position...")
+        print("  > Scan des fichiers FITS pour générer le catalogue de position…")
         if not self.available_spectra:
             print("  > Aucun fichier FITS trouvé.")
             return pd.DataFrame(columns=["plan_id", "ra", "dec", "spectra_count"])
@@ -1210,13 +1241,10 @@ class AstroVisualizer:
                     with fits.open(f_gz, memmap=False) as hdul:
                         h = hdul[0].header
 
-                # Champs indispensables
                 if not all(k in h for k in ("PLANID", "RA", "DEC")):
                     continue
 
                 plan_id = h["PLANID"]
-
-                # Convertit & valide les coordonnées (deg)
                 try:
                     ra = float(h["RA"]) % 360.0
                     dec = float(h["DEC"])
@@ -1225,8 +1253,8 @@ class AstroVisualizer:
                     continue
 
                 if (
-                    not np.isfinite(ra)
-                    or not np.isfinite(dec)
+                    (not np.isfinite(ra))
+                    or (not np.isfinite(dec))
                     or not (-90.0 <= dec <= 90.0)
                 ):
                     invalid += 1
@@ -1235,7 +1263,6 @@ class AstroVisualizer:
                 rows.append({"plan_id": plan_id, "ra": ra, "dec": dec})
 
             except Exception:
-                # On ignore silencieusement les fichiers/headers problématiques
                 invalid += 1
                 continue
 
@@ -1301,8 +1328,11 @@ class AstroVisualizer:
         # -- 1) Récupération / construction du petit catalogue de positions
         df = self._generate_position_catalog()
         if df.empty:
-            print("  > Aucune donnée de position pour la carte de couverture.")
-            return None
+            print("  > Cache vide — rescannage forcé…")
+            df = self._generate_position_catalog(force_regenerate=True)
+            if df.empty:
+                print("  > Aucune donnée de position pour la carte de couverture.")
+                return None
 
         # -- 2) Optionnel : image d'arrière-plan (Voie Lactée en projection Mollweide)
         bg_image = None
@@ -2156,14 +2186,11 @@ class AstroVisualizer:
         - Spectres par plan (top 20)
         - Récapitulatif final (avec distinct_subclasses / distinct_plans)
         """
-        import os
-        import pandas as pd
-        from IPython.display import display, Markdown, HTML
 
         # ---------- helpers esthétiques ----------
         def _fmt_fr(n: int) -> str:
             try:
-                return f"{int(n):,}".replace(",", " ")  # séparateur fin insécable
+                return f"{int(n):,}".replace(",", " ")
             except Exception:
                 return str(n)
 
@@ -2280,74 +2307,33 @@ class AstroVisualizer:
         """
         display(HTML(cards_html))
 
-        # --------- tableau récap du haut (toujours utile à retourner progr.) -------
-        top_df = pd.DataFrame(
-            {
-                "metric": ["total_available", "total_trained", "total_new_candidates"],
-                "# value": [total_available, total_trained, total_new_candidates],
-            }
-        )
-        display(_style(top_df, {"# value": lambda x: _fmt_fr(x)}))
-
         # =====================================================================
         # 4) Top sous-classes (top 15) & Spectres par plan (top 20)
         # =====================================================================
         labels = getattr(self, "labels_catalog", {}) or {}
 
-        # --- sous-classes
-        subclasses, subclass_counts_df = [], None
+        # sous-classes (liste et top 15)
+        subclasses: list[str] = []
         if labels:
             for rel in self.available_spectra or []:
                 k = _base_no_gz(rel)
                 val = labels.get(k, None)
                 if val is not None and str(val) != "nan":
                     subclasses.append(str(val))
-            if subclasses:
-                vc = pd.Series(subclasses).value_counts()
-                subclass_counts_df = vc.head(15).rename("# count").reset_index()
-                subclass_counts_df.columns = ["subclass", "# count"]
-                display(Markdown("#### Top sous-classes (top 15)"))
-                display(_style(subclass_counts_df, {"# count": lambda x: _fmt_fr(x)}))
 
-        # --- plans
+        # plans (top 20)
         plans = [
             str(p).replace("\\", "/").split("/", 1)[0]
             for p in (self.available_spectra or [])
         ]
-        plan_counts_df = None
-        if plans:
-            vc = pd.Series(plans).value_counts()
-            plan_counts_df = vc.head(20).rename("# count").reset_index()
-            plan_counts_df.columns = ["plan_id", "# count"]
-            display(Markdown("#### Spectres par plan (top 20)"))
-            display(_style(plan_counts_df, {"# count": lambda x: _fmt_fr(x)}))
 
-        # (optionnel) mini-barres
-        if show_charts and subclass_counts_df is not None:
-            try:
-                import matplotlib.pyplot as plt
-
-                _ = plt.figure(figsize=(7.5, 4.5))  # variable "dummy", ignorée par ruff
-                ax = plt.gca()
-                ax.barh(
-                    subclass_counts_df["subclass"][::-1],
-                    subclass_counts_df["# count"][::-1],
-                )
-                ax.set_title("Distribution des sous-classes (top 15)")
-                ax.set_xlabel("#")
-                ax.grid(True, axis="x", alpha=0.25)
-                plt.tight_layout()
-                plt.show()
-            except Exception:
-                pass
-
-        # ---------- 5) récap du bas (avec distincts) ----------
-        distinct_subclasses = int(
-            (pd.Series(subclasses).nunique()) if labels and subclasses else 0
+        # ---------- 5) **RÉCAP EN HAUT** (remplace les deux petits tableaux) ----------
+        distinct_subclasses = (
+            int(pd.Series(subclasses).nunique()) if (labels and subclasses) else 0
         )
-        distinct_plans = int((pd.Series(plans).nunique()) if plans else 0)
+        distinct_plans = int(pd.Series(plans).nunique()) if plans else 0
 
-        bottom_df = pd.DataFrame(
+        summary_df = pd.DataFrame(
             {
                 "metric": [
                     "total_available",
@@ -2365,13 +2351,56 @@ class AstroVisualizer:
                 ],
             }
         )
-        display(_style(bottom_df, {"# value": lambda x: _fmt_fr(x)}))
+        display(_style(summary_df, {"# value": lambda x: _fmt_fr(x)}))
 
-        return top_df
+        # ---------- 6) Top sous-classes / spectres par plan ----------
+        if labels and subclasses:
+            vc = pd.Series(subclasses).value_counts()
+            subclass_counts_df = vc.head(15).rename("# count").reset_index()
+            subclass_counts_df.columns = ["subclass", "# count"]
+            display(Markdown("#### Top sous-classes (top 15)"))
+            display(_style(subclass_counts_df, {"# count": lambda x: _fmt_fr(x)}))
+        else:
+            subclass_counts_df = None
+
+        if plans:
+            vc = pd.Series(plans).value_counts()
+            plan_counts_df = vc.head(20).rename("# count").reset_index()
+            plan_counts_df.columns = ["plan_id", "# count"]
+            display(Markdown("#### Spectres par plan (top 20)"))
+            display(_style(plan_counts_df, {"# count": lambda x: _fmt_fr(x)}))
+
+        # (optionnel) mini-barres
+        if show_charts and subclass_counts_df is not None:
+            try:
+                _ = plt.figure(figsize=(7.5, 4.5))
+                ax = plt.gca()
+                ax.barh(
+                    subclass_counts_df["subclass"][::-1],
+                    subclass_counts_df["# count"][::-1],
+                )
+                ax.set_title("Distribution des sous-classes (top 15)")
+                ax.set_xlabel("#")
+                ax.grid(True, axis="x", alpha=0.25)
+                plt.tight_layout()
+                plt.show()
+            except Exception:
+                pass
+
+        return summary_df
 
     # ==============================================================================
     # Outil 10 : Analyse d'Interprétabilité des Modèles (SHAP) ---
     # ==============================================================================
+
+    # ---------------------------------------------------------------------
+    # Helper : rescanner les .fits.gz disponibles
+    # ---------------------------------------------------------------------
+
+    def refresh_available_spectra(self) -> int:
+        """Met à jour self.available_spectra en rescannant data/raw/."""
+        self.available_spectra = self._scan_for_spectra()
+        return len(self.available_spectra)
 
     # ---------------------------------------------------------------------
     # Helper : prépare X pour le modèle (aligne colonnes + étapes pipeline)
@@ -2381,24 +2410,11 @@ class AstroVisualizer:
         """
         Aligne un DataFrame de features sur les colonnes d'entraînement du modèle,
         puis applique les étapes *amont* du pipeline (imputer/scaler/selector).
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            Features calculées dans l’espace "brut" (FeatureEngineer).
-        clf_wrapper : SpectralClassifier
-            Objet chargé via SpectralClassifier.load_model(model_path).
-
-        Returns
-        -------
-        Xt : np.ndarray
-            Matrice transformée **prête** pour .predict() du classifieur.
-        feature_names_for_plot : list[str]
-            Les noms de colonnes correspondant à Xt (après éventuelle sélection).
+        Retourne (Xt, feature_names_for_plot).
         """
         pipe = clf_wrapper.model_pipeline
 
-        # 1) Colonnes d'entraînement attendues
+        # Colonnes attendues
         used_cols = list(getattr(clf_wrapper, "feature_names_used", list(df.columns)))
         X = df.copy()
         for c in used_cols:
@@ -2406,17 +2422,18 @@ class AstroVisualizer:
                 X[c] = np.nan
         X = X.reindex(columns=used_cols)
 
-        # 2) Imputer + scaler (si présents)
-        imp = pipe.named_steps.get("imputer")
-        scl = pipe.named_steps.get("scaler")
+        # Imputer -> Scaler (si présents)
+        imp = getattr(pipe, "named_steps", {}).get("imputer")
+        scl = getattr(pipe, "named_steps", {}).get("scaler")
+
         Xt = X.values
         if imp is not None:
             Xt = imp.transform(X)
         if scl is not None:
             Xt = scl.transform(Xt)
 
-        # 3) Sélection de features (si présente dans le pipeline)
-        sel = pipe.named_steps.get("feature_selector")
+        # Sélection de features (si présente)
+        sel = getattr(pipe, "named_steps", {}).get("feature_selector")
         if sel is not None:
             Xt = sel.transform(Xt)
             feature_names_for_plot = list(
@@ -2426,19 +2443,160 @@ class AstroVisualizer:
         else:
             feature_names_for_plot = used_cols
 
-        # Sécurise la concordance tailles <-> noms (cas artefact incomplet)
+        # Sécurité longueur
         if len(feature_names_for_plot) != Xt.shape[1]:
             feature_names_for_plot = used_cols[: Xt.shape[1]]
 
         return Xt, feature_names_for_plot
 
     # ---------------------------------------------------------------------
+    # Helper : fabrique un échantillon de features prêt pour le modèle
+    # ---------------------------------------------------------------------
+
+    def _get_features_sample(
+        self, clf, sample_n: int, source: str = "auto"
+    ) -> pd.DataFrame:
+        """
+        Retourne un DataFrame X_df (features uniquement) prêt pour l'alignement modèle.
+        source ∈ {"auto","features_csv","raw_fits"}.
+        - 'auto' : essaie d'abord le dernier features_*.csv, sinon les FITS.
+        """
+
+        source = (source or "auto").lower()
+
+        # 1) Tentative via dernier CSV de features
+        if source in ("auto", "features_csv"):
+            latest = latest_file(self.paths["PROCESSED_DIR"], "features_*.csv")
+            if latest and os.path.exists(latest):
+                df = pd.read_csv(latest)
+                # retire colonnes cibles si présentes
+                for col in ("main_class", "label", "target", "y"):
+                    if col in df.columns:
+                        df = df.drop(columns=[col])
+                # garde uniquement les colonnes attendues par le modèle si connues
+                expected = list(getattr(clf, "feature_names_used", list(df.columns)))
+                for c in expected:
+                    if c not in df.columns:
+                        df[c] = 0.0
+                df = df[expected]
+                if len(df) > sample_n:
+                    df = df.sample(sample_n, random_state=42)
+                if not df.empty:
+                    return df
+            if source == "features_csv":
+                raise RuntimeError(
+                    "Aucun features_*.csv utilisable trouvé dans data/processed/."
+                )
+
+        # 2) Fallback : extraction directe depuis les FITS
+        if not getattr(self, "available_spectra", None):
+            self.refresh_available_spectra()
+        files = list(self.available_spectra)
+        if not files:
+            raise RuntimeError("Aucun spectre trouvé dans data/raw/.")
+
+        rng = np.random.default_rng(42)
+        if len(files) > sample_n:
+            files = list(rng.choice(files, size=sample_n, replace=False))
+
+        pre, fe, pk = SpectraPreprocessor(), FeatureEngineer(), PeakDetector()
+        rows, feature_names, errors = [], None, []
+
+        for rel in files:
+            try:
+                full = os.path.join(self.paths["RAW_DATA_DIR"], rel)
+                with gzip.open(full, "rb") as gz:
+                    with fits.open(gz, memmap=False) as hdul:
+                        wl, fl, inv = pre.load_spectrum(hdul)
+                wl = np.asarray(wl, float)
+                fl = pre.normalize_spectrum(np.asarray(fl, float))
+                inv = np.asarray(inv, float)
+
+                peaks, props = pk.detect_peaks(wl, fl)
+                matched = pk.match_known_lines(peaks, wl[peaks], props)
+                vec = fe.extract_features(matched, wl, fl, inv)
+
+                if feature_names is None:
+                    feature_names = list(fe.feature_names)
+                rows.append(vec)
+            except Exception as e:
+                errors.append(str(e))
+                continue
+
+        if not rows:
+            msg = " | ".join(errors[:3]) if errors else "aucun fichier valide"
+            raise RuntimeError(
+                f"Impossible de construire un échantillon (FITS). Détails: {msg}"
+            )
+
+        return pd.DataFrame(np.vstack(rows), columns=feature_names)
+
+    # ---------------------------------------------------------------------
+    # SHAP : fabrique d'explainers (modulaire)
+    # ---------------------------------------------------------------------
+    def _build_shap_explainer(self, *, pipe, model, X_df, mode: str):
+        """
+        Retourne (explainer, X_background) selon le mode.
+        mode ∈ {"auto","tree","linear","kernel","permutation"}.
+        """
+        import shap
+
+        n = len(X_df)
+        # fond compact si gros échantillon
+        try:
+            X_bg = (
+                shap.kmeans(X_df, k=min(50, max(10, n // 200)))
+                if n > 1000
+                else X_df.values
+            )
+        except Exception:
+            X_bg = X_df.sample(n=min(1000, n), random_state=42).values
+
+        model_name = type(model).__name__.lower()
+        is_tree = any(
+            k in model_name
+            for k in ["xgb", "randomforest", "gradientboost", "extra", "gbc", "gbm"]
+        )
+        is_lin = any(
+            k in model_name
+            for k in ["logistic", "linear", "sgd", "ridge", "lasso", "elastic"]
+        )
+
+        if mode == "auto":
+            mode = "tree" if is_tree else ("linear" if is_lin else "kernel")
+
+        if mode == "tree":
+            explainer = shap.TreeExplainer(
+                model, data=X_bg, feature_perturbation="interventional"
+            )
+        elif mode == "linear":
+            try:
+                explainer = shap.LinearExplainer(model, X_bg)
+            except Exception:
+                explainer = shap.Explainer(model, X_bg)
+        elif mode == "kernel":
+            # kernel explainer attend une fonction
+            f = pipe.predict_proba if hasattr(pipe, "predict_proba") else pipe.predict
+            explainer = shap.KernelExplainer(f, X_bg)
+        elif mode == "permutation":
+            explainer = shap.Explainer(model, X_bg, algorithm="permutation")
+        else:
+            raise ValueError(f"Mode SHAP inconnu: {mode}")
+
+        return explainer, X_bg
+
+    # ---------------------------------------------------------------------
     # Lancement d’une analyse SHAP "end-to-end" sur un échantillon
     # ---------------------------------------------------------------------
 
     def _run_shap_analysis(
-        self, model_path: str, sample_n: int = 500
-    ) -> pd.DataFrame | None:
+        self,
+        model_path: str,
+        sample_n: int = 500,
+        *,
+        explainer_mode: str = "auto",
+        data_source: str = "auto",
+    ) -> "pd.DataFrame | None":
         """
         Charge un modèle, calcule un échantillon de features, aligne sur le pipeline
         et produit un tableau des importances SHAP (moyenne |valeur| par feature).
@@ -2457,145 +2615,66 @@ class AstroVisualizer:
             Tableau des importances moyennes SHAP (|valeur|) trié décroissant,
             ou None en cas d’impossibilité.
         """
+        import shap
+
+        # 0) Charger le modèle
+        clf = SpectralClassifier.load_model(model_path)
+        pipe = clf.model_pipeline
+        model_core = getattr(pipe, "named_steps", {}).get("clf", pipe)
+
+        # 1) Échantillon X_df
         try:
-            # -- 1) Charger le classifieur
-            clf_wrapper = SpectralClassifier.load_model(model_path)
-            model = clf_wrapper.model_pipeline.named_steps.get("clf")
-            if model is None:
-                display(Markdown("### Erreur\nPipeline incomplet : pas d'étape `clf`."))
-                return None
-
-            # -- 2) Échantillonner des spectres et calculer les features
-            files = list(self.available_spectra)
-            if not files:
-                display(Markdown("> Aucun spectre disponible pour SHAP."))
-                return None
-
-            files = files[: max(1, min(sample_n, len(files)))]
-            pre = SpectraPreprocessor()
-            det = PeakDetector(prominence=0.2, window=15)
-            fe = FeatureEngineer()
-
-            rows = []
-            for rel in files:
-                try:
-                    with gzip.open(
-                        os.path.join(self.paths["RAW_DATA_DIR"], rel), "rb"
-                    ) as f_gz:
-                        with fits.open(f_gz, memmap=False) as hdul:
-                            wl, fl, inv = pre.load_spectrum(hdul)
-                    fl = pre.normalize_spectrum(fl)
-                    wl = np.asarray(wl, float)
-                    fl = np.asarray(fl, float)
-                    inv = np.asarray(inv, float)
-
-                    pidx, props = det.detect_peaks(wl, fl)
-                    matched = det.match_known_lines(pidx, wl[pidx], props)
-                    vec = fe.extract_features(matched, wl, fl, inv)
-                    rows.append(np.asarray(vec, float))
-                except Exception:
-                    # on ignore les spectres problématiques
-                    continue
-
-            if not rows:
-                display(
-                    Markdown("> Impossible de construire un échantillon de features.")
-                )
-                return None
-
-            X_df = pd.DataFrame(np.vstack(rows), columns=fe.feature_names)
-
-            # -- 3) Aligner sur le pipeline du modèle (imputer/scaler/selector)
-            Xt, names_for_plot = self._prepare_for_model(X_df, clf_wrapper)
-
-            # -- 4) SHAP : TreeExplainer pour RF/XGB, sinon Explainer générique
-            try:
-                explainer = shap.TreeExplainer(model)
-            except Exception:
-                explainer = shap.Explainer(model)
-
-            sv = explainer(Xt, check_additivity=False)  # Explanation ou ndarray
-            values = getattr(sv, "values", sv)
-            values = np.asarray(values)
-
-            # Agrégation éventuelle si multi-sorties (n_samples, n_features, n_outputs)
-            if values.ndim >= 3:
-                values_2d = values.mean(axis=-1)
-            elif values.ndim == 2:
-                values_2d = values
-            else:
-                raise ValueError(f"Forme SHAP inattendue: {values.shape}")
-
-            # Importances : moyenne de |valeur| par feature
-            mean_abs = np.abs(values_2d).mean(axis=0)  # (n_features,)
-            n_feat = mean_abs.shape[-1]
-            if len(names_for_plot) != n_feat:
-                names_for_plot = list(names_for_plot)[:n_feat]
-
-            order = np.argsort(mean_abs)[::-1]
-            shap_df = pd.DataFrame(
-                {
-                    "feature": np.array(names_for_plot)[order],
-                    "mean_abs_shap": mean_abs[order],
-                }
+            X_df = self._get_features_sample(
+                clf, sample_n=int(sample_n), source=data_source
             )
-
-            # -- 5) Exports dans logs/shap/
-            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            out_dir = os.path.join(self.paths["LOGS_DIR"], "shap")
-            os.makedirs(out_dir, exist_ok=True)
-            try:
-                shap_df.to_csv(
-                    os.path.join(out_dir, f"shap_importances_{ts}.csv"), index=False
-                )
-            except Exception:
-                pass
-            try:
-                with open(
-                    os.path.join(out_dir, f"shap_importances_{ts}.tex"),
-                    "w",
-                    encoding="utf-8",
-                ) as f:
-                    f.write(
-                        shap_df.to_latex(
-                            index=False, caption="Importances SHAP (|valeur| moyenne)"
-                        )
-                    )
-            except Exception:
-                pass
-
-            display(shap_df.head(40))
-
-            # -- 6) Mémo pour tracés ultérieurs
-            # on construit une Explanation **2D** pour les plots (beeswarm/bar)
-            try:
-                base_vals = getattr(sv, "base_values", None)
-                if isinstance(base_vals, np.ndarray) and base_vals.ndim >= 2:
-                    base_vals = base_vals.mean(axis=-1)  # (n_samples,)
-            except Exception:
-                base_vals = None
-
-            try:
-                # shap.Explanation(values, base_values=None, data=None, feature_names=None)
-                sv2d = shap.Explanation(
-                    values=values_2d,
-                    base_values=base_vals,
-                    data=Xt[:, : values_2d.shape[1]],
-                    feature_names=list(names_for_plot),
-                )
-            except Exception:
-                sv2d = None  # on retombe sur le bar custom si besoin
-
-            self._last_shap_explanation = sv2d
-            self._last_shap_feature_names = list(names_for_plot)
-            self._last_shap_importances = shap_df.copy()
-            self._last_shap_samples = Xt  # utile si besoin
-
-            return shap_df
-
         except Exception as e:
-            display(Markdown(f"### Erreur lors du calcul/affichage SHAP\n`{e}`"))
+            print(f"[!] Échec construction échantillon ({e}).")
             return None
+
+        # 2) Alignement pipeline (imputer/scaler/selector)
+        Xt, names_for_plot = self._prepare_for_model(X_df, clf)
+
+        # 3) Explainer SHAP
+        mode = (explainer_mode or "auto").lower()
+        try:
+            explainer, _ = self._build_shap_explainer(
+                pipe=pipe, model=model_core, X_df=X_df, mode=mode
+            )
+        except Exception as e:
+            print(f"[!] Explainer '{mode}' indisponible ({e}). Bascule permutation.")
+            explainer = shap.Explainer(pipe, Xt, algorithm="permutation")
+
+        # 4) SHAP values (API homogène : appel direct)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            sv = explainer(Xt)
+
+        # Mémorise l'explication complète pour les tracés
+        self._last_shap_explanation = sv
+
+        # 5) Importances moyen(|val|)
+        vals = getattr(sv, "values", sv)
+        vals = np.asarray(vals)
+        if vals.ndim == 3:  # multi-classes
+            vals = np.mean(np.abs(vals), axis=1)
+        else:
+            vals = np.abs(vals)
+
+        mean_abs = vals.mean(axis=0).astype(float)
+        if len(names_for_plot) != mean_abs.shape[0]:
+            names_for_plot = names_for_plot[: mean_abs.shape[0]]
+
+        df_out = pd.DataFrame(
+            {"feature": names_for_plot, "mean_abs_shap": mean_abs}
+        ).sort_values("mean_abs_shap", ascending=False, ignore_index=True)
+
+        # Mémorise pour les helpers de tracé
+        self._last_shap_importances = df_out
+        return df_out
+
+    # ---------------------------------------------------------------------
+    # Widget notebook
+    # ---------------------------------------------------------------------
 
     def interactive_shap_explainer(self) -> None:
         """
@@ -2615,25 +2694,18 @@ class AstroVisualizer:
         - Les graphes sont générés avec Matplotlib + SHAP (beeswarm).
         - Un CSV des importances peut aussi être exporté dans `logs/`.
         """
-        import os
-        from datetime import datetime, timezone
-        import pandas as pd
-        from IPython.display import display, Markdown
         import ipywidgets as widgets
+        from IPython.display import display, Markdown
+        from datetime import datetime, timezone
 
         display(Markdown("### Outil d'Analyse d'Interprétabilité des Modèles (SHAP)"))
-        display(
-            Markdown(
-                "Sélectionnez un modèle entraîné pour visualiser l'importance et "
-                "l'impact de chaque feature sur ses prédictions."
-            )
-        )
+        display(Markdown("Sélectionnez un modèle entraîné puis lancez l'analyse."))
 
-        # 1) modèles trouvés (triés du plus récent)
+        # modèles
         models_dir = self.paths.get("MODELS_DIR", "../data/models/")
-        saved_models: list[str] = []
-        if os.path.exists(models_dir):
-            saved_models = sorted(
+        saved = []
+        if os.path.isdir(models_dir):
+            saved = sorted(
                 [
                     os.path.join(models_dir, f)
                     for f in os.listdir(models_dir)
@@ -2642,13 +2714,12 @@ class AstroVisualizer:
                 key=os.path.getmtime,
                 reverse=True,
             )
-        if not saved_models:
-            print("Aucun modèle entraîné (.pkl) trouvé dans le dossier 'data/models/'.")
+        if not saved:
+            print("Aucun modèle entraîné (.pkl) trouvé dans data/models/.")
             return
 
-        # 2) widgets
         dd_model = widgets.Dropdown(
-            options=saved_models, description="Modèle :", layout={"width": "800px"}
+            options=saved, description="Modèle :", layout={"width": "700px"}
         )
         sample_slider = widgets.IntSlider(
             value=500,
@@ -2657,7 +2728,6 @@ class AstroVisualizer:
             step=50,
             description="Échantillons :",
             continuous_update=False,
-            layout={"width": "400px"},
         )
         topk_slider = widgets.IntSlider(
             value=30,
@@ -2666,51 +2736,79 @@ class AstroVisualizer:
             step=5,
             description="Top N :",
             continuous_update=False,
-            layout={"width": "300px"},
+        )
+        mode_dd = widgets.Dropdown(
+            options=[
+                ("Auto", "auto"),
+                ("Tree", "tree"),
+                ("Linear", "linear"),
+                ("Kernel", "kernel"),
+                ("Permutation", "permutation"),
+            ],
+            value="auto",
+            description="Explainer :",
+            layout={"width": "200px"},
+        )
+        source_dd = widgets.Dropdown(
+            options=[
+                ("Auto (CSV puis FITS)", "auto"),
+                ("Features CSV seulement", "features_csv"),
+                ("FITS (extraction en direct)", "raw_fits"),
+            ],
+            value="auto",
+            description="Données :",
+            layout={"width": "240px"},
         )
         run_btn = widgets.Button(
             description="Analyser", button_style="success", icon="bar-chart"
         )
         out = widgets.Output()
 
-        # 3) callback
         def _on_click(_):
             out.clear_output()
             with out:
                 shap_df = self._run_shap_analysis(
-                    model_path=dd_model.value, sample_n=int(sample_slider.value)
+                    model_path=dd_model.value,
+                    sample_n=int(sample_slider.value),
+                    explainer_mode=mode_dd.value,
+                    data_source=source_dd.value,
                 )
                 if isinstance(shap_df, pd.DataFrame) and not shap_df.empty:
                     display(Markdown("**Importances SHAP (moyenne |valeur|) :**"))
-                    display(shap_df.head(30))
-                    k = int(topk_slider.value)
-                    display(
-                        Markdown(f"**Importances SHAP (Top {k}, moyenne |valeur|) :**")
-                    )
-                    display(shap_df.head(k))
-
-                    # export (chemin montré pour confirmation)
+                    display(shap_df.head(int(topk_slider.value)))
+                    # export CSV/LaTeX
                     try:
                         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
                         out_dir = os.path.join(self.paths["LOGS_DIR"], "shap")
                         os.makedirs(out_dir, exist_ok=True)
-                        csv_path = os.path.join(out_dir, f"shap_importances_{ts}.csv")
-                        tex_path = os.path.join(out_dir, f"shap_importances_{ts}.tex")
-                        shap_df.to_csv(csv_path, index=False)
-                        shap_df.to_latex(tex_path, index=False, float_format="%.6f")
-                        display(Markdown(f"Export CSV : `{csv_path}`"))
-                        display(Markdown(f"Export LaTeX : `{tex_path}`"))
-                    except Exception as e:
-                        display(
-                            Markdown(f"> Impossible d'exporter (CSV/LaTeX) : `{e}`")
+                        shap_df.to_csv(
+                            os.path.join(out_dir, f"shap_importances_{ts}.csv"),
+                            index=False,
                         )
+                        shap_df.to_latex(
+                            os.path.join(out_dir, f"shap_importances_{ts}.tex"),
+                            index=False,
+                            float_format="%.6f",
+                        )
+                    except Exception as e:
+                        display(Markdown(f"> Export impossible : `{e}`"))
 
         run_btn.on_click(_on_click)
-
-        # 4) layout
         display(
             widgets.VBox(
-                [widgets.HBox([dd_model, sample_slider, topk_slider, run_btn]), out]
+                [
+                    widgets.HBox(
+                        [
+                            dd_model,
+                            sample_slider,
+                            topk_slider,
+                            mode_dd,
+                            source_dd,
+                            run_btn,
+                        ]
+                    ),
+                    out,
+                ]
             )
         )
 
@@ -2757,33 +2855,22 @@ class AstroVisualizer:
                 "Aucun résultat SHAP mémorisé. Lance d'abord interactive_shap_explainer()."
             )
             return None
-
-        # Sélectionne le top N
         top = df.head(int(top_n))
-
-        # Mise en forme du plot
         plt.style.use("dark_background")
         fig, ax = plt.subplots(figsize=(12, max(5, 0.40 * len(top))))
-
-        # barh inversé pour avoir la feature la plus importante en haut
         y_labels = top["feature"].astype(str).iloc[::-1]
         x_vals = top["mean_abs_shap"].astype(float).iloc[::-1]
         ax.barh(y_labels, x_vals)
-
         ax.set_xlabel("mean(|SHAP value|)")
         ax.set_title("SHAP — importances (top)")
         ax.grid(axis="x", alpha=0.30, linestyle="--")
-
         fig.tight_layout()
-
-        # Sauvegarde optionnelle
         if save_path:
             try:
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 fig.savefig(save_path, dpi=150, bbox_inches="tight")
             except Exception as e:
                 print(f"[!] Impossible de sauvegarder la figure ({save_path}) : {e}")
-
         return fig, ax
 
     def plot_shap_beeswarm(
@@ -2823,16 +2910,10 @@ class AstroVisualizer:
         sv = getattr(self, "_last_shap_explanation", None)
         if sv is None:
             print(
-                "Aucune explication SHAP mémorisée. Lance d'abord interactive_shap_explainer() "
-                "ou _run_shap_analysis(...)."
+                "Aucune explication SHAP mémorisée. Lance d'abord interactive_shap_explainer()."
             )
             return None
-
         plt.style.use("dark_background")
-        fig = plt.figure(figsize=(10, 6))
-        ax = plt.gca()
-
-        # Tentative beeswarm → fallback bar SHAP → fallback bar custom
         try:
             shap.plots.beeswarm(sv, max_display=int(max_display), show=False)
         except Exception as e1:
@@ -2840,26 +2921,20 @@ class AstroVisualizer:
                 shap.plots.bar(sv, max_display=int(max_display), show=False)
             except Exception as e2:
                 print(
-                    f"[!] Beeswarm indisponible ({e1}). Fallback bar SHAP indisponible ({e2}). "
-                    "On revient au bar chart custom des importances."
+                    f"[!] Beeswarm indisponible ({e1}). Fallback bar indisponible ({e2})."
                 )
-                # Dernier recours : notre bar chart basé sur le DF mémorisé
                 return self.plot_shap_summary_bar(
                     top_n=int(max_display), save_path=save_path
                 )
-
         fig = plt.gcf()
-        ax = plt.gca()
         fig.tight_layout()
-
         if save_path:
             try:
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 fig.savefig(save_path, dpi=150, bbox_inches="tight")
             except Exception as e:
                 print(f"[!] Impossible de sauvegarder la figure ({save_path}) : {e}")
-
-        return fig, ax
+        return fig, plt.gca()
 
     # ==============================================================================
     # Outil 11 : Analyse des sous-classes spectrales ---

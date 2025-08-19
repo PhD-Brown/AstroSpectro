@@ -44,14 +44,16 @@ Exemple minimal
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 import os
 import json
 import hashlib
+import platform
 from datetime import datetime, timezone
 
 import pandas as pd
+import numpy as np
 import ipywidgets as widgets
 from IPython.display import display, clear_output
 
@@ -61,7 +63,6 @@ from pipeline.processing import ProcessingPipeline
 from pipeline.classifier import SpectralClassifier
 from tools.generate_catalog_from_fits import generate_catalog_from_fits
 from tools.gaia_crossmatcher import enrich_catalog_with_gaia
-from utils import md5sum
 
 # --- Imports Scikit-learn ---
 from sklearn.model_selection import train_test_split
@@ -290,7 +291,7 @@ class MasterPipeline:
             )
             return
 
-        trained_clf, feature_cols_before_fs, X_all, y_all = result
+        trained_clf, feature_cols_before_fs, X_all, y_all, groups_all = result
 
         # Message sur la sélection de features
         if (
@@ -321,6 +322,7 @@ class MasterPipeline:
                     X_all,
                     y_all,
                     processed_files,
+                    groups_all,
                 )
             except Exception as e:
                 print(
@@ -428,179 +430,182 @@ class MasterPipeline:
         X: pd.DataFrame,
         y: pd.Series | List[str] | pd.DataFrame,
         processed_files: List[str],
+        groups=None,
     ) -> Optional[str]:
         """
-        Étapes 6–7 : **journal** + **rapport** de session.
+        Étapes 6 et 7 : met à jour le journal des spectres traités et génère un rapport de session.
+        - Sauvegarde le modèle entraîné et calcule un hash MD5
+        - Évalue le modèle sur un split de test stratifié (seedé) pour reproductibilité
+        - Exporte un rapport JSON (métriques, importances, features retenues, etc.)
 
-        - Met à jour le journal des spectres utilisés,
-        - Sauvegarde le modèle et son MD5,
-        - Calcule les métriques cohérentes (re-split),
-        - Sauvegarde un rapport **JSON** complet.
-
-        Args:
-            clf: Classifieur entraîné.
-            feature_cols: Liste des colonnes candidates (avant sélection).
-            X: Features complètes (base de split pour les métriques).
-            y: Labels correspondants.
-            processed_files: Liste des fichiers traités pour la session.
-
-        Returns:
-            Chemin du rapport JSON, ou None si rien n’a été généré.
+        Parameters
+        ----------
+        clf : SpectralClassifier
+            Classifieur entraîné (contient model_pipeline, best_params_, class_labels, etc.)
+        feature_cols : list[str]
+            Noms des colonnes de features AVANT éventuelle sélection.
+        X : np.ndarray
+            Features (toutes lignes entraînables, alignées avec y).
+        y : np.ndarray | list
+            Labels correspondants.
+        processed_files : list[str]
+            Chemins des spectres traités pour mise à jour du journal.
         """
 
-        if clf is None or not processed_files:
+        # Garde-fous
+        if clf is None or X is None or y is None or len(y) == 0:
             print(
-                "\n> Aucun modèle entraîné ou fichiers traités à consigner. Rapport non généré."
+                "\n> Aucun modèle entraîné ou données manquantes. Rapport non généré."
             )
             return None
 
-        print("\n--- ÉTAPE 6 : Mise à jour du Journal des Spectres Utilisés ---")
+        # 6) Journal des spectres utilisés (optionnel si liste vide)
         try:
-            self.builder.update_trained_log(processed_files)
+            print("\n--- ÉTAPE 6 : Mise à jour du Journal des Spectres Utilisés ---")
+            self.builder.update_trained_log(processed_files or [])
         except Exception as e:
-            print(f"  (avertissement) impossible de mettre à jour le journal : {e}")
+            print(f"  (avertissement) Impossible de mettre à jour le journal : {e}")
 
+        # 7) Génération du rapport de session
         print("\n--- ÉTAPE 7 : Génération du Rapport de Session ---")
 
+        # Un seul timestamp pour tous les artefacts
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-        # 1) Sauvegarde modèle + méta
-        model_fname = f"spectral_classifier_{clf.model_type.lower()}_{ts}.pkl"
-        model_path = os.path.join(self.models_dir, model_fname)
+        # 7.1 Sauvegarde du modèle
+        model_filename = f"spectral_classifier_{clf.model_type.lower()}_{ts}.pkl"
+        model_path = os.path.join(self.models_dir, model_filename)
+        try:
+            clf.save_model(model_path)
+            print(f"  > Modèle sauvegardé dans : {model_path}")
+        except Exception as e:
+            print(f"  (avertissement) Échec de sauvegarde du modèle : {e}")
 
-        extra_info = {}
-        if getattr(self, "last_features_path", None) and os.path.exists(
-            self.last_features_path
-        ):
-            try:
-                extra_info["trained_on_file_md5"] = md5sum(self.last_features_path)
-                extra_info["n_candidate_features"] = len(feature_cols)
-            except Exception:
-                pass
+        # 7.2 Métadonnées (environnement + features)
+        try:
+            import sklearn
+            import xgboost
 
-        clf.save_model(
-            model_path,
-            trained_on_file=getattr(self, "last_features_path", None),
-            extra_info=extra_info,
-        )
+            skver = getattr(sklearn, "__version__", None)
+            xgver = getattr(xgboost, "__version__", None)
+        except Exception:
+            skver, xgver = None, None
 
-        # 2) Hash MD5 du fichier modèle
+        meta = {
+            "saved_at_utc": ts,
+            "python": platform.python_version(),
+            "numpy": np.__version__,
+            "scikit_learn": skver,
+            "xgboost": xgver if clf.model_type == "XGBoost" else None,
+            "model_type": clf.model_type,
+            "prediction_target": getattr(clf, "prediction_target", None),
+            "best_params_": getattr(clf, "best_params_", None),
+            "class_labels": (
+                clf.class_labels.tolist()
+                if hasattr(clf.class_labels, "tolist")
+                else list(clf.class_labels)
+            ),
+            "feature_names_used": (
+                list(feature_cols) if feature_cols is not None else None
+            ),
+            "selected_features_": getattr(clf, "selected_features_", None),
+            "trained_on_file": (
+                os.path.basename(self.last_features_path)
+                if getattr(self, "last_features_path", None)
+                else None
+            ),
+            "n_candidate_features": (
+                int(len(feature_cols)) if feature_cols is not None else None
+            ),
+        }
+        meta_filename = f"spectral_classifier_{clf.model_type.lower()}_{ts}_meta.json"
+        meta_path = os.path.join(self.models_dir, meta_filename)
+        try:
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+            print(f"  > Métadonnées sauvegardées dans : {meta_path}")
+        except Exception as e:
+            print(f"  (avertissement) Échec d’écriture des métadonnées : {e}")
+
+        # 7.3 Hash MD5 du modèle
         model_hash = "N/A"
         try:
-            with open(model_path, "rb") as f:
-                model_hash = hashlib.md5(f.read()).hexdigest()
-            print(f"  > Hash MD5 du modèle : {model_hash}")
-        except Exception:
-            pass
+            if os.path.exists(model_path):
+                with open(model_path, "rb") as f:
+                    model_hash = hashlib.md5(f.read()).hexdigest()
+                print(f"  > Hash MD5 du modèle : {model_hash}")
+        except Exception as e:
+            print(f"  (avertissement) Impossible de calculer le hash : {e}")
 
-        # 3) Re-split pour des métriques stables
-        rnd = getattr(clf, "random_state", 42)
-
-        if clf.model_type == "XGBoost":
-            le = LabelEncoder()
-            y_enc = le.fit_transform(y)
-
-            X_tr, X_te, y_tr, y_te = train_test_split(
-                X, y_enc, test_size=0.25, random_state=rnd, stratify=y_enc
-            )
-
-            y_pred = clf.model_pipeline.predict(X_te)
-
-            class_names = (
-                list(clf.class_labels)
-                if getattr(clf, "class_labels", None) is not None
-                else list(le.classes_)
-            )
-            label_idx = list(range(len(class_names)))
-
-            report_dict = classification_report(
-                y_te,
-                y_pred,
-                labels=label_idx,
-                target_names=class_names,
-                zero_division=0,
-                output_dict=True,
-            )
-            cm = confusion_matrix(y_te, y_pred, labels=label_idx)
-
-        else:  # RandomForest (labels texte)
-            class_names = (
-                list(clf.class_labels)
-                if getattr(clf, "class_labels", None) is not None
-                else sorted(list(set(y)))
-            )
-
-            X_tr, X_te, y_tr, y_te = train_test_split(
-                X, y, test_size=0.25, random_state=rnd, stratify=y
-            )
-            y_pred = clf.model_pipeline.predict(X_te)
-
-            report_dict = classification_report(
-                y_te, y_pred, labels=class_names, zero_division=0, output_dict=True
-            )
-            cm = confusion_matrix(y_te, y_pred, labels=class_names)
-
-        accuracy = float(report_dict.get("accuracy", 0.0))
-        print(f"  > Métriques extraites : Accuracy = {accuracy:.4f}")
-
-        # 4) Importances des features du modèle final (post-sélection le cas échéant)
-        final_est = clf.model_pipeline.named_steps.get("clf")
-        final_importances = None
+        # 7.4 Petites métriques reproductibles (split fixe)
+        report_dict, cm, accuracy = None, None, None
         try:
-            if hasattr(final_est, "feature_importances_"):
-                final_feature_names = (
-                    clf.selected_features_
-                    if getattr(clf, "selected_features_", None)
-                    else feature_cols
+            seed = getattr(clf, "random_state", 42)
+            if clf.model_type == "XGBoost":
+                le = LabelEncoder()
+                y_enc = le.fit_transform(y)
+                X_tr, X_te, y_tr, y_te = train_test_split(
+                    X, y_enc, test_size=0.25, random_state=seed, stratify=y_enc
                 )
-                final_importances = sorted(
-                    [
-                        {"feature": f, "importance": float(v)}
-                        for f, v in zip(
-                            final_feature_names, final_est.feature_importances_
-                        )
-                    ],
-                    key=lambda d: d["importance"],
-                    reverse=True,
+                y_pred = clf.model_pipeline.predict(X_te)
+                report_dict = classification_report(
+                    y_te,
+                    y_pred,
+                    target_names=clf.class_labels,
+                    zero_division=0,
+                    output_dict=True,
                 )
-        except Exception:
-            pass
+                cm = confusion_matrix(y_te, y_pred)
+            else:
+                X_tr, X_te, y_tr, y_te = train_test_split(
+                    X, y, test_size=0.25, random_state=seed, stratify=y
+                )
+                y_pred = clf.model_pipeline.predict(X_te)
+                report_dict = classification_report(
+                    y_te,
+                    y_pred,
+                    labels=clf.class_labels,
+                    zero_division=0,
+                    output_dict=True,
+                )
+                cm = confusion_matrix(y_te, y_pred, labels=clf.class_labels)
 
-        # 5) Infos de sélection
-        selected_features = (
-            list(clf.selected_features_)
-            if getattr(clf, "selected_features_", None)
-            else []
-        )
-        n_selected = len(selected_features) if selected_features else None
+            accuracy = float(report_dict.get("accuracy", 0.0))
+        except Exception as e:
+            print(f"  (avertissement) Échec du calcul des métriques de rapport : {e}")
 
-        # 6) Rapport JSON
-        session_report: Dict[str, Any] = {
+        # 7.5 Rapport JSON
+        session_report = {
             "session_id": ts,
             "model_type": clf.model_type,
             "model_path": model_path,
             "model_hash_md5": model_hash,
-            "random_state": rnd,
-            "total_spectra_processed": int(len(processed_files)),
-            "training_set_size": int(len(X_tr)),
-            "test_set_size": int(len(X_te)),
-            "candidate_feature_columns": list(feature_cols),
-            "selected_features": selected_features or None,
-            "n_selected_features": n_selected,
+            "total_spectra_processed": int(len(processed_files or [])),
+            "training_set_size": int(len(X_tr)) if "X_tr" in locals() else None,
+            "test_set_size": int(len(X_te)) if "X_te" in locals() else None,
+            "feature_columns": list(feature_cols) if feature_cols is not None else None,
+            "selected_features": getattr(clf, "selected_features_", None),
+            "class_labels": (
+                clf.class_labels.tolist()
+                if hasattr(clf.class_labels, "tolist")
+                else list(clf.class_labels)
+            ),
             "best_model_params": getattr(clf, "best_params_", None),
-            "class_labels": class_names,
             "accuracy": accuracy,
             "classification_report": report_dict,
-            "confusion_matrix": cm.tolist(),
+            "confusion_matrix": cm.tolist() if cm is not None else None,
         }
-        if final_importances is not None:
-            session_report["feature_importances_final_clf"] = final_importances
 
-        # 7) Sauvegarde du rapport
-        report_fname = f"session_report_{clf.model_type.lower()}_{ts}.json"
-        report_path = os.path.join(self.reports_dir, report_fname)
-        with open(report_path, "w", encoding="utf-8") as f:
-            json.dump(session_report, f, indent=4)
-        print(f"\nRapport de session sauvegardé dans : {report_path}")
+        report_filename = f"session_report_{clf.model_type.lower()}_{ts}.json"
+        report_path = os.path.join(self.reports_dir, report_filename)
+        try:
+            with open(report_path, "w", encoding="utf-8") as f:
+                json.dump(session_report, f, indent=4)
+            print(f"\nRapport de session sauvegardé dans : {report_path}")
+        except Exception as e:
+            print(
+                f"  (avertissement) Échec lors de la génération du rapport de session : {e}"
+            )
+
         print("\nSESSION DE RECHERCHE TERMINÉE")
         return report_path
