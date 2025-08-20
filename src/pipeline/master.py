@@ -378,7 +378,7 @@ class MasterPipeline:
         """
         # --- 1) Widgets ---
         model_choice = widgets.Dropdown(
-            options=["RandomForest", "XGBoost"],
+            options=["RandomForest", "XGBoost", "SVM"],
             value="XGBoost",
             description="Modèle:",
         )
