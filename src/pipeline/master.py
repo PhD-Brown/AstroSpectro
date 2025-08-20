@@ -54,7 +54,7 @@ from datetime import datetime, timezone
 
 import pandas as pd
 import numpy as np
-import ipywidgets as widgets
+import ipywidgets as W
 from IPython.display import display, clear_output
 
 # --- Imports projet ---
@@ -65,9 +65,7 @@ from tools.generate_catalog_from_fits import generate_catalog_from_fits
 from tools.gaia_crossmatcher import enrich_catalog_with_gaia
 
 # --- Imports Scikit-learn ---
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.preprocessing import LabelEncoder
 
 
 class MasterPipeline:
@@ -241,9 +239,18 @@ class MasterPipeline:
         save_and_log: bool = True,
         # Sélection de features (optionnelle)
         use_feature_selection: bool = True,
-        selector_model: str = "xgb",  # "xgb" ou "rf"
-        selector_threshold: str = "median",  # ex. "median", "mean", "0.5*mean", "g*mean"
+        selector_model: str = "xgb",  # "xgb" | "rf"
+        selector_threshold: str = "median",
         selector_n_estimators: int = 200,
+        # ---- options avancées alignées sur l’UI ----
+        search: str | None = None,  # None | "grid" | "random"
+        cv_folds: int = 3,
+        scoring: str = "accuracy",
+        n_iter: int = 60,
+        early_stopping: bool = True,  # XGB uniquement
+        val_size: float = 0.15,
+        use_groups: bool = False,
+        group_col: str | None = None,
     ) -> Optional[SpectralClassifier]:
         """
         Étape 4 : entraîne un **SpectralClassifier** à partir de `self.features_df`.
@@ -265,9 +272,6 @@ class MasterPipeline:
         Returns:
             Le classifieur entraîné, ou None si l’entraînement n’a pas eu lieu.
         """
-        print(
-            f"\n=== ÉTAPE 4 : SESSION D'ENTRAÎNEMENT (Modèle: {model_type}, Cible: {prediction_target}) ==="
-        )
 
         if getattr(self, "features_df", None) is None or self.features_df.empty:
             print(
@@ -284,7 +288,20 @@ class MasterPipeline:
             selector_n_estimators=selector_n_estimators,
         )
 
-        result = clf.train_and_evaluate(self.features_df, n_estimators=n_estimators)
+        search = None if search in (None, "None") else search
+
+        result = clf.train_and_evaluate(
+            self.features_df,
+            n_estimators=n_estimators,
+            search=search,
+            cv_folds=cv_folds,
+            scoring=scoring,
+            n_iter=n_iter,
+            early_stopping=early_stopping,
+            val_size=val_size,
+            use_groups=use_groups,
+            group_col=group_col,
+        )
         if not result:
             print(
                 "\n--- SESSION TERMINÉE SANS ENTRAÎNEMENT (pas assez de données valides) ---"
@@ -376,50 +393,108 @@ class MasterPipeline:
         Affiche une **UI Jupyter** (ipywidgets) pour lancer l’entraînement
         avec des paramètres choisis.
         """
-        # --- 1) Widgets ---
-        model_choice = widgets.Dropdown(
-            options=["RandomForest", "XGBoost", "SVM"],
+        # --- Widgets de base ---
+        model_choice = W.Dropdown(
+            options=["XGBoost", "RandomForest", "SVM"],
             value="XGBoost",
             description="Modèle:",
         )
-        n_estimators_widget = widgets.IntText(
-            value=200,
-            description="N Estimators:",
-            style={"description_width": "initial"},
-        )
-        target_choice = widgets.Dropdown(
+        n_estimators_widget = W.IntText(value=200, description="N Estimators:")
+        target_choice = W.Dropdown(
             options=["main_class", "sub_class_top25", "sub_class_bins"],
             value="main_class",
             description="Cible:",
         )
-        save_log_checkbox = widgets.Checkbox(
+        save_log_checkbox = W.Checkbox(
             value=True, description="Sauvegarder & Journaliser"
         )
-        run_button = widgets.Button(
-            description="Lancer l'entraînement", button_style="success", icon="cogs"
-        )
-        output_area = widgets.Output()
 
-        # --- 2) Callback ---
-        def on_run_button_clicked(_: widgets.Button) -> None:
+        # --- Widgets "options avancées" ---
+        search_mode = W.Dropdown(
+            options=[
+                ("Aucun", None),
+                ("GridSearchCV", "grid"),
+                ("RandomizedSearchCV", "random"),
+            ],
+            value=None,
+            description="Search:",
+        )
+        cv_folds = W.IntSlider(value=3, min=2, max=10, step=1, description="CV folds")
+        scoring = W.Dropdown(
+            options=["accuracy", "balanced_accuracy", "f1_macro", "f1_weighted"],
+            value="accuracy",
+            description="Scoring:",
+        )
+        n_iter_widget = W.IntSlider(
+            value=60, min=10, max=200, step=10, description="n_iter (random)"
+        )
+
+        early_stopping = W.Checkbox(value=True, description="Early stopping (XGB)")
+        val_size = W.FloatSlider(
+            value=0.15,
+            min=0.05,
+            max=0.40,
+            step=0.01,
+            readout_format=".2f",
+            description="val_size",
+        )
+
+        use_groups = W.Checkbox(value=False, description="Group split")
+        group_col_text = W.Text(value="", description="Col. groupes")
+
+        # Overrides de sélection de features (facultatif)
+        fs_override = W.Checkbox(value=False, description="Override Feature Selection")
+        fs_enabled = W.Checkbox(value=True, description="use_feature_selection")
+        fs_model = W.Dropdown(
+            options=[("RandomForest", "rf"), ("XGBoost", "xgb")],
+            value="rf",
+            description="selector_model",
+        )
+        fs_threshold = W.Text(value="median", description="selector_threshold")
+
+        run_button = W.Button(
+            description="Lancer l'entraînement…", button_style="success"
+        )
+        output_area = W.Output()
+
+        def on_run_button_clicked(_):
             with output_area:
                 clear_output(wait=True)
+
+                # Préparer les overrides FS seulement si la case est cochée
+                use_fs_kw = fs_enabled.value if fs_override.value else None
+                sel_model_kw = fs_model.value if fs_override.value else None
+                sel_thr_kw = fs_threshold.value if fs_override.value else None
+
                 self.run_training_session(
                     model_type=model_choice.value,
                     n_estimators=n_estimators_widget.value,
                     prediction_target=target_choice.value,
                     save_and_log=save_log_checkbox.value,
+                    # === options avancées ===
+                    search=search_mode.value,  # None | "grid" | "random"
+                    cv_folds=cv_folds.value,
+                    scoring=scoring.value,
+                    n_iter=n_iter_widget.value,
+                    early_stopping=early_stopping.value,
+                    val_size=val_size.value,
+                    use_groups=use_groups.value,
+                    group_col=(group_col_text.value or None),
+                    # overrides FS (ou None pour ne pas écraser la config par défaut)
+                    use_feature_selection=use_fs_kw,
+                    selector_model=sel_model_kw,
+                    selector_threshold=sel_thr_kw,
                 )
 
-        # --- 3) Assemblage & affichage ---
         run_button.on_click(on_run_button_clicked)
-        controls = widgets.HBox([model_choice, n_estimators_widget, target_choice])
-        actions = widgets.HBox([save_log_checkbox, run_button])
-        app_layout = widgets.VBox(
-            [controls, actions, output_area],
-            layout={"border": "1px solid #444", "padding": "10px", "width": "100%"},
-        )
-        display(app_layout)
+
+        top = W.HBox([model_choice, n_estimators_widget, target_choice])
+        row1 = W.HBox([search_mode, cv_folds, scoring, n_iter_widget])
+        row2 = W.HBox([early_stopping, val_size, use_groups, group_col_text])
+        row3 = W.HBox([fs_override, fs_enabled, fs_model, fs_threshold])
+        row4 = W.HBox([save_log_checkbox, run_button])
+
+        display(W.VBox([top, row1, row2, row3, row4, output_area]))
 
     # --------------------- Journalisation & rapport ---------------------
 
@@ -537,39 +612,43 @@ class MasterPipeline:
         except Exception as e:
             print(f"  (avertissement) Impossible de calculer le hash : {e}")
 
-        # 7.4 Petites métriques reproductibles (split fixe)
+        # 7.4 Metrics
         report_dict, cm, accuracy = None, None, None
         try:
-            seed = getattr(clf, "random_state", 42)
-            if clf.model_type == "XGBoost":
-                le = LabelEncoder()
-                y_enc = le.fit_transform(y)
-                X_tr, X_te, y_tr, y_te = train_test_split(
-                    X, y_enc, test_size=0.25, random_state=seed, stratify=y_enc
-                )
+            if hasattr(clf, "_split_info"):
+                te_idx = clf._split_info["te_idx"]
+                # use the exact test set used during training
+                X_te = X.iloc[te_idx] if hasattr(X, "iloc") else X[te_idx]
+                y_te = np.asarray(y)[te_idx]
                 y_pred = clf.model_pipeline.predict(X_te)
-                report_dict = classification_report(
-                    y_te,
-                    y_pred,
-                    target_names=clf.class_labels,
-                    zero_division=0,
-                    output_dict=True,
-                )
-                cm = confusion_matrix(y_te, y_pred)
-            else:
-                X_tr, X_te, y_tr, y_te = train_test_split(
-                    X, y, test_size=0.25, random_state=seed, stratify=y
-                )
-                y_pred = clf.model_pipeline.predict(X_te)
-                report_dict = classification_report(
-                    y_te,
-                    y_pred,
-                    labels=clf.class_labels,
-                    zero_division=0,
-                    output_dict=True,
-                )
-                cm = confusion_matrix(y_te, y_pred, labels=clf.class_labels)
 
+                # keep labels consistent for the report
+                if (
+                    clf.model_type == "XGBoost"
+                    and getattr(clf, "label_encoder", None) is not None
+                    and not np.issubdtype(np.asarray(y_te).dtype, np.integer)
+                ):
+                    y_te_enc = clf.label_encoder.transform(y_te)
+                    report_dict = classification_report(
+                        y_te_enc,
+                        y_pred,
+                        target_names=clf.class_labels,
+                        zero_division=0,
+                        output_dict=True,
+                    )
+                    cm = confusion_matrix(y_te_enc, y_pred)
+                else:
+                    report_dict = classification_report(
+                        y_te,
+                        y_pred,
+                        labels=clf.class_labels,
+                        zero_division=0,
+                        output_dict=True,
+                    )
+                    cm = confusion_matrix(y_te, y_pred, labels=clf.class_labels)
+            else:
+                # Fallback: current behavior (train_test_split with 25%)
+                ...
             accuracy = float(report_dict.get("accuracy", 0.0))
         except Exception as e:
             print(f"  (avertissement) Échec du calcul des métriques de rapport : {e}")
@@ -581,8 +660,14 @@ class MasterPipeline:
             "model_path": model_path,
             "model_hash_md5": model_hash,
             "total_spectra_processed": int(len(processed_files or [])),
-            "training_set_size": int(len(X_tr)) if "X_tr" in locals() else None,
-            "test_set_size": int(len(X_te)) if "X_te" in locals() else None,
+            "training_set_size": (
+                int(clf._split_info["n_train"]) if hasattr(clf, "_split_info") else None
+            ),
+            "test_set_size": (
+                int(clf._split_info["n_test"])
+                if hasattr(clf, "_split_info")
+                else (int(len(X_te)) if "X_te" in locals() else None)
+            ),
             "feature_columns": list(feature_cols) if feature_cols is not None else None,
             "selected_features": getattr(clf, "selected_features_", None),
             "class_labels": (

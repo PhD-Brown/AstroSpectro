@@ -74,6 +74,8 @@ from sklearn.metrics import (
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.svm import SVC
+from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.feature_selection import SelectFromModel
 
 # --- Imports Imbalanced-learn ---
 
@@ -447,14 +449,21 @@ class SpectralClassifier:
         test_size: float = 0.21,
         n_estimators: int = 300,
         *,
-        # options avancées (désactivées par défaut)
-        use_groups: bool = False,
+        # ---- options avancées (toutes facultatives) ----
         search: Optional[str] = None,  # None | "grid" | "random"
+        cv_folds: int = 3,
+        scoring: str = "accuracy",
+        use_feature_selection: Optional[bool] = None,
+        selector_model: Optional[str] = None,  # "xgb" | "rf"
+        selector_threshold: Optional[str] = None,  # "median", "mean", ...
+        early_stopping: bool = False,  # XGBoost uniquement
+        val_size: float = 0.15,  # part du train utilisée en validation ES
+        use_groups: bool = False,
+        group_col: Optional[str] = None,  # nom de col. dans features_df
         param_grid: Optional[Dict[str, Any]] = None,
         param_distributions: Optional[Dict[str, Any]] = None,
         n_iter: int = 60,
         random_state: int = 42,
-        plot_confusion: bool = True,
     ) -> bool:
         """
         Entraîne et évalue le modèle avec GridSearchCV + pipeline Imputer/Scaler/SMOTE,
@@ -486,30 +495,33 @@ class SpectralClassifier:
             f"\n=== ÉTAPE 4 : SESSION D'ENTRAÎNEMENT (Modèle: {self.model_type}, Cible: {self.prediction_target}) ==="
         )
 
-        # 0) Nettoyage + création des labels -> puis sélection dynamique des features
+        # 0) Nettoyage + création de label
         df_trainable = self._clean_and_filter_data(features_df)
         if df_trainable is None:
             print("> Aucune donnée exploitable après nettoyage ; arrêt.")
             return False
 
-        X_all, y_all = self._prepare_features_and_labels(df_trainable)
-        groups = None  # (tu pourras brancher un vecteur de groupes plus tard si besoin)
+        # Groupes (optionnel)
+        groups_full = None
+        if use_groups and group_col and group_col in df_trainable.columns:
+            groups_full = df_trainable[group_col].values
 
-        # XGBoost veut des labels entiers -> on encode y (et on décodera pour les rapports)
+        # 1) Features + labels
+        X_all, y_all = self._prepare_features_and_labels(df_trainable)
+
+        # XGB veut des entiers -> on encode (et on décodera pour les rapports)
         label_encoder: Optional[LabelEncoder] = None
         y_enc = y_all
         if self.model_type == "XGBoost":
             label_encoder = LabelEncoder().fit(y_all)
             y_enc = label_encoder.transform(y_all)
 
-        self.label_encoder = label_encoder
-
-        # 1) Split train/test (stratifié ou par groupes)
-        if use_groups and (groups is not None):
+        # 2) Split train/test (stratifié ou par groupes)
+        if use_groups and (groups_full is not None):
             gss = GroupShuffleSplit(
                 n_splits=1, test_size=test_size, random_state=random_state
             )
-            tr_idx, te_idx = next(gss.split(X_all, y_enc, groups=groups))
+            tr_idx, te_idx = next(gss.split(X_all, y_enc, groups=groups_full))
         else:
             sss = StratifiedShuffleSplit(
                 n_splits=1, test_size=test_size, random_state=random_state
@@ -519,21 +531,89 @@ class SpectralClassifier:
         X_train, X_test = X_all.iloc[tr_idx], X_all.iloc[te_idx]
         y_train, y_test = y_enc[tr_idx], y_enc[te_idx]
 
-        # 2) Préprocesseur + estimateur baseline
+        # 3) Préprocesseur + estimateur de base
         preproc = self._build_preprocessor(X_train, self.model_type)
         n_classes = int(np.unique(y_enc).shape[0])
         clf = self._build_estimator(
             self.model_type, n_estimators, n_classes, random_state
         )
 
-        pipe = Pipeline([("prep", preproc), ("clf", clf)])
+        # 3bis) Sélection de features (optionnelle)
+        fs_enabled = (
+            self.use_feature_selection
+            if use_feature_selection is None
+            else use_feature_selection
+        )
+        sel_model = (
+            (self.selector_model or "rf") if selector_model is None else selector_model
+        )
+        sel_threshold = (
+            self.selector_threshold
+            if selector_threshold is None
+            else selector_threshold
+        )
 
-        # 3) (Optionnel) recherche d'hyperparamètres
+        steps = [("prep", preproc)]
+        if fs_enabled:
+            if sel_model == "xgb" and self.model_type == "XGBoost":
+                import xgboost as xgb
+
+                selector_est = xgb.XGBClassifier(
+                    n_estimators=self.selector_n_estimators,
+                    max_depth=6,
+                    learning_rate=0.1,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    objective="multi:softprob",
+                    eval_metric="mlogloss",
+                    num_class=n_classes,
+                    tree_method="hist",
+                    n_jobs=-1,
+                    random_state=random_state,
+                )
+            else:
+                # par défaut / fallback robuste
+                selector_est = RandomForestClassifier(
+                    n_estimators=self.selector_n_estimators,
+                    n_jobs=-1,
+                    random_state=random_state,
+                    class_weight="balanced_subsample",
+                )
+            steps.append(("fs", SelectFromModel(selector_est, threshold=sel_threshold)))
+        steps.append(("clf", clf))
+        pipe = Pipeline(steps)
+
+        # 4) Fit params communs (poids de classes)
+        fit_params: Dict[str, Any] = {}
+        if self.model_type in {"XGBoost", "SVM"}:
+            # SVC et XGB acceptent sample_weight; pour RF on utilise class_weight
+            sw = compute_sample_weight("balanced", y_train)
+            fit_params["clf__sample_weight"] = sw
+
+        # 4bis) Early stopping (XGB uniquement, simple et sûr hors search)
+        X_tr, y_tr = X_train, y_train
+        if (self.model_type == "XGBoost") and early_stopping and search is None:
+            from xgboost.callback import EarlyStopping
+
+            sss_in = StratifiedShuffleSplit(
+                n_splits=1, test_size=val_size, random_state=random_state
+            )
+            tr2_idx, val_idx = next(sss_in.split(X_train, y_train))
+            X_tr, y_tr = X_train.iloc[tr2_idx], y_train[tr2_idx]
+            X_val, y_val = X_train.iloc[val_idx], y_train[val_idx]
+            # Passer les kwargs au step 'clf' du pipeline:
+            fit_params["clf__eval_set"] = [(X_val, y_val)]
+            fit_params["clf__callbacks"] = [
+                EarlyStopping(rounds=50, save_best=True, maximize=False)
+            ]
+            # NB: pas d’early stopping pendant une recherche CV pour rester simple/rapide.
+
+        # 5) (Option) recherche d'hyperparamètres
         best = pipe
         self.best_params_ = None
         if search in {"grid", "random"}:
+            # Grilles par défaut sobres si non fournies
             if param_grid is None and search == "grid":
-                # grilles par défaut raisonnables
                 if self.model_type == "RandomForest":
                     param_grid = {
                         "clf__max_depth": [None, 10, 20],
@@ -551,9 +631,10 @@ class SpectralClassifier:
                         "clf__C": [0.5, 1.0, 2.0],
                         "clf__gamma": ["scale", 0.1, 0.01],
                     }
-
             if param_distributions is None and search == "random":
                 if self.model_type == "RandomForest":
+                    from scipy.stats import randint
+
                     param_distributions = {
                         "clf__max_depth": [None] + list(range(6, 21, 2)),
                         "clf__max_features": ["sqrt", "log2", None],
@@ -563,9 +644,9 @@ class SpectralClassifier:
 
                     param_distributions = {
                         "clf__max_depth": randint(4, 11),
-                        "clf__learning_rate": uniform(0.03, 0.12),  # ~[0.03, 0.15]
-                        "clf__subsample": uniform(0.6, 0.4),  # ~[0.6, 1.0]
-                        "clf__colsample_bytree": uniform(0.6, 0.4),  # ~[0.6, 1.0]
+                        "clf__learning_rate": uniform(0.03, 0.12),
+                        "clf__subsample": uniform(0.6, 0.4),
+                        "clf__colsample_bytree": uniform(0.6, 0.4),
                     }
                 else:  # SVM
                     from scipy.stats import loguniform
@@ -575,14 +656,16 @@ class SpectralClassifier:
                         "clf__gamma": ["scale", "auto"],
                     }
 
-            cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=random_state)
+            cv = StratifiedKFold(
+                n_splits=cv_folds, shuffle=True, random_state=random_state
+            )
             if search == "grid":
                 searcher = GridSearchCV(
                     best,
                     param_grid=param_grid,
                     cv=cv,
                     n_jobs=-1,
-                    scoring="accuracy",
+                    scoring=scoring,
                     verbose=1,
                 )
             else:
@@ -592,79 +675,57 @@ class SpectralClassifier:
                     n_iter=n_iter,
                     cv=cv,
                     n_jobs=-1,
-                    scoring="accuracy",
+                    scoring=scoring,
                     verbose=1,
                     random_state=random_state,
                 )
-
             print("\n--- [Tuning] Recherche des hyperparamètres ---")
-            searcher.fit(X_train, y_train)
+            searcher.fit(X_train, y_train, **fit_params)
             best = searcher.best_estimator_
             self.best_params_ = searcher.best_params_
             print(f"> Meilleurs paramètres : {self.best_params_}")
-
-        # 4) Entraînement final (baseline)
-        if self.best_params_ is None:
+        else:
             print("\n--- Entraînement du modèle (baseline) ---")
-            best.fit(X_train, y_train)
+            best.fit(X_tr, y_tr, **fit_params)
 
-        # 5) Évaluation simple
+        # 6) Évaluation
         y_pred = best.predict(X_test)
-
-        # --- FIX: décoder (si besoin) puis calculer les métriques ---
-        enc = getattr(self, "label_encoder", None)
-        if enc is not None:  # XGBoost avec labels encodés
-            # y_test peut déjà être encodé (int) selon l’appelant
-            if np.issubdtype(np.asarray(y_test).dtype, np.integer):
-                y_test_dec = enc.inverse_transform(y_test)
-            else:
-                y_test_dec = y_test
-            y_pred_dec = enc.inverse_transform(y_pred)
-        else:  # RF / SVM (labels texte)
+        if label_encoder is not None:
+            y_test_dec = label_encoder.inverse_transform(y_test)
+            y_pred_dec = label_encoder.inverse_transform(y_pred)
+        else:
             y_test_dec, y_pred_dec = y_test, y_pred
 
-        # classes dans l’ordre stable pour les rapports/plots
         self.class_labels = sorted(np.unique(y_test_dec))
-
         print("\n--- [Évaluation] ---")
-        print(classification_report(y_test_dec, y_pred_dec, zero_division=0))
+        print(classification_report(y_test_dec, y_pred_dec, digits=2))
         acc = accuracy_score(y_test_dec, y_pred_dec)
         bacc = balanced_accuracy_score(y_test_dec, y_pred_dec)
         print(f"accuracy (micro): {acc:.4f}")
         print(f"balanced_accuracy: {bacc:.4f}")
 
-        # Matrice de confusion (texte)
-        labels_sorted = self.class_labels
+        labels_sorted = sorted(np.unique(y_test_dec))
         cm = confusion_matrix(y_test_dec, y_pred_dec, labels=labels_sorted)
         print("\nMatrice de confusion (labels dans l'ordre) :", labels_sorted)
         print(cm)
 
-        if plot_confusion:
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.heatmap(
-                cm,
-                annot=True,
-                fmt="d",
-                cmap="Blues",
-                cbar=False,
-                xticklabels=labels_sorted,
-                yticklabels=labels_sorted,
-                ax=ax,
-            )
-            ax.set_xlabel("Prédiction")
-            ax.set_ylabel("Vraie Valeur")
-            ax.set_title(f"Matrice de confusion — {self.model_type}")
-            fig.tight_layout()
-            plt.show()
-
-        # expose le pipeline entraîné (pour sauvegarde)
+        # 7) Expose pour sauvegarde / reporting
         self.model_pipeline = best
-        self.selected_features_ = list(X_train.columns)  # indicatif
+        self._split_info = {
+            "tr_idx": tr_idx,
+            "te_idx": te_idx,
+            "n_train": int(len(tr_idx)),
+            "n_test": int(len(te_idx)),
+            "test_size": test_size,
+            "random_state": random_state,
+        }
+        self.selected_features_ = list(X_train.columns)
+        self.label_encoder = label_encoder  # pour evaluate()
 
         feature_cols_before_fs = list(X_all.columns)
         y_all_out = (
-            self.label_encoder.inverse_transform(y_enc)
-            if self.label_encoder is not None
+            label_encoder.inverse_transform(y_enc)
+            if label_encoder is not None
             else y_all
         )
         return self, feature_cols_before_fs, X_all, y_all_out, None
