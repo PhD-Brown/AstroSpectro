@@ -308,6 +308,212 @@ class FeatureEngineer:
         return np.asarray(rows, dtype=float)
 
 
+def add_gaia_derived_features(
+    df: pd.DataFrame, *, min_parallax_snr: float = 5.0
+) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Enrichit le DataFrame avec des features photométriques/astrométriques dérivées Gaia DR3.
+    Retourne (df_enrichi, new_cols).
+    """
+    df = df.copy()
+    new_cols: list[str] = []
+    cols = set(df.columns)
+
+    # ---------------- Couleurs simples si manquantes ----------------
+    if {"phot_bp_mean_mag", "phot_g_mean_mag"} <= cols and "bp_g" not in df:
+        df["bp_g"] = df["phot_bp_mean_mag"] - df["phot_g_mean_mag"]
+        new_cols.append("bp_g")
+    if {"phot_g_mean_mag", "phot_rp_mean_mag"} <= cols and "g_rp" not in df:
+        df["g_rp"] = df["phot_g_mean_mag"] - df["phot_rp_mean_mag"]
+        new_cols.append("g_rp")
+
+    # ---------------- Parallax SNR ----------------
+    if {"parallax", "parallax_error"} <= cols:
+        snr = pd.Series(np.nan, index=df.index)
+        ok = df["parallax_error"].notna() & (df["parallax_error"] > 0)
+        snr.loc[ok] = df.loc[ok, "parallax"] / df.loc[ok, "parallax_error"]
+        df["parallax_snr"] = snr
+        new_cols.append("parallax_snr")
+    else:
+        df["parallax_snr"] = np.nan
+        new_cols.append("parallax_snr")
+
+    # ---------------- Magnitude absolue G ----------------
+    # A) via parallaxe (mas) si SNR suffisant
+    if {"phot_g_mean_mag", "parallax"} <= cols:
+        G = df["phot_g_mean_mag"]
+        p = df["parallax"]
+        snr_ok = p.notna() & (p > 0) & (df["parallax_snr"] >= min_parallax_snr)
+        M_G_par = pd.Series(np.nan, index=df.index)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            M_G_par.loc[snr_ok] = G.loc[snr_ok] - 10.0 + 5.0 * np.log10(p.loc[snr_ok])
+        df["M_G_parallax"] = M_G_par
+        new_cols.append("M_G_parallax")
+
+    # B) via distance_gspphot (pc)
+    if {"phot_g_mean_mag", "distance_gspphot"} <= cols:
+        G = df["phot_g_mean_mag"]
+        d = df["distance_gspphot"]
+        ok = d.notna() & (d > 0)
+        M_G_dist = pd.Series(np.nan, index=df.index)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            M_G_dist.loc[ok] = G.loc[ok] - 5.0 * np.log10(d.loc[ok] / 10.0)
+        df["M_G_dist"] = M_G_dist
+        new_cols.append("M_G_dist")
+
+    # C) Fusion priorisant la parallaxe fiable
+    if "M_G_parallax" in df.columns or "M_G_dist" in df.columns:
+        df["M_G"] = df.get("M_G_parallax", pd.Series(np.nan, index=df.index))
+        if "M_G_dist" in df.columns:
+            use_dist = df["M_G"].isna() & df["M_G_dist"].notna()
+            df.loc[use_dist, "M_G"] = df.loc[use_dist, "M_G_dist"]
+        new_cols.append("M_G")
+
+    # ---------------- RPM & Vitesse tangentielle ----------------
+    if {"pmra", "pmdec"} <= cols:
+        mu_mas = np.sqrt(df["pmra"] ** 2 + df["pmdec"] ** 2)
+        df["pm_total"] = mu_mas
+        new_cols.append("pm_total")
+        if "phot_g_mean_mag" in df.columns:
+            mu_as = mu_mas / 1000.0
+            H = pd.Series(np.nan, index=df.index)
+            ok = mu_as.notna() & (mu_as > 0) & df["phot_g_mean_mag"].notna()
+            with np.errstate(divide="ignore", invalid="ignore"):
+                H.loc[ok] = (
+                    df.loc[ok, "phot_g_mean_mag"] + 5.0 * np.log10(mu_as.loc[ok]) + 5.0
+                )
+            df["H_G"] = H
+            new_cols.append("H_G")
+
+        Vt = pd.Series(np.nan, index=df.index)
+        if "distance_gspphot" in df.columns:
+            d_pc = df["distance_gspphot"]
+            mu_as = mu_mas / 1000.0
+            ok = mu_as.notna() & (mu_as > 0) & d_pc.notna() & (d_pc > 0)
+            Vt.loc[ok] = 4.74047 * mu_as.loc[ok] * d_pc.loc[ok]
+        elif "parallax" in df.columns:
+            p = df["parallax"]
+            ok = mu_mas.notna() & (mu_mas > 0) & p.notna() & (p > 0)
+            Vt.loc[ok] = 4.74047 * mu_mas.loc[ok] / p.loc[ok]
+        df["v_tan_kms"] = Vt
+        new_cols.append("v_tan_kms")
+
+    # ---------------- Extinction & couleurs "0" ----------------
+    if {"phot_g_mean_mag", "ag_gspphot"} <= cols:
+        G0 = pd.Series(np.nan, index=df.index)
+        ok = df["phot_g_mean_mag"].notna() & df["ag_gspphot"].notna()
+        G0.loc[ok] = df.loc[ok, "phot_g_mean_mag"] - df.loc[ok, "ag_gspphot"]
+        df["G0"] = G0
+        new_cols.append("G0")
+
+    if {"bp_rp", "ebpminrp_gspphot"} <= cols:
+        bp_rp0 = pd.Series(np.nan, index=df.index)
+        ok = df["bp_rp"].notna() & df["ebpminrp_gspphot"].notna()
+        bp_rp0.loc[ok] = df.loc[ok, "bp_rp"] - df.loc[ok, "ebpminrp_gspphot"]
+        df["bp_rp0"] = bp_rp0
+        new_cols.append("bp_rp0")
+
+    if "M_G" in df.columns and "ag_gspphot" in df.columns:
+        MG0 = pd.Series(np.nan, index=df.index)
+        ok = df["M_G"].notna() & df["ag_gspphot"].notna()
+        MG0.loc[ok] = df.loc[ok, "M_G"] - df.loc[ok, "ag_gspphot"]
+        df["M_G0"] = MG0
+        new_cols.append("M_G0")
+
+    # ---------------- Ratios/Logs de flux ----------------
+    for num, den, out in [
+        ("phot_bp_mean_flux", "phot_rp_mean_flux", "flux_bp_rp_ratio"),
+        ("phot_g_mean_flux", "phot_rp_mean_flux", "flux_g_rp_ratio"),
+        ("phot_bp_mean_flux", "phot_g_mean_flux", "flux_bp_g_ratio"),
+    ]:
+        if {num, den} <= cols:
+            r = pd.Series(np.nan, index=df.index)
+            x, y = df[num], df[den]
+            ok = x.notna() & y.notna() & (y != 0)
+            r.loc[ok] = x.loc[ok] / y.loc[ok]
+            df[out] = r
+            new_cols.append(out)
+
+            out_log = out + "_log10"
+            lr = pd.Series(np.nan, index=df.index)
+            ok2 = r.notna() & (r > 0)
+            lr.loc[ok2] = np.log10(r.loc[ok2])
+            df[out_log] = lr
+            new_cols.append(out_log)
+
+    # ---------------- Qualité photométrique simple ----------------
+    if {"phot_bp_rp_excess_factor", "bp_rp"} <= cols:
+        exp = 1.0 + 0.015 * (df["bp_rp"] ** 2)
+        df["bp_rp_excess_dev"] = df["phot_bp_rp_excess_factor"] - exp
+        new_cols.append("bp_rp_excess_dev")
+
+    # ---------------- Flags utiles (cast -> int) ----------------
+    if "ruwe" in df.columns:
+        df["is_good_ruwe"] = ((df["ruwe"].notna()) & (df["ruwe"] < 1.4)).astype("int8")
+        new_cols.append("is_good_ruwe")
+    if "astrometric_excess_noise" in df.columns:
+        df["has_astrom_excess"] = (df["astrometric_excess_noise"].fillna(0) > 0).astype(
+            "int8"
+        )
+        new_cols.append("has_astrom_excess")
+    if "phot_variable_flag" in df.columns:
+        df["is_variable_flag"] = (
+            df["phot_variable_flag"]
+            .fillna("")
+            .str.upper()
+            .ne("NOT_AVAILABLE")
+            .astype("int8")
+        )
+        new_cols.append("is_variable_flag")
+
+    # ---------------- Indicateurs de manquants ----------------
+    for col in ("parallax", "distance_gspphot"):
+        if col in df.columns:
+            name = f"{col}_missing"
+            df[name] = df[col].isna().astype("int8")
+            new_cols.append(name)
+
+    return df, new_cols
+
+
+def add_main_sequence_delta(
+    df: pd.DataFrame, *, min_parallax_snr: float = 10.0, poly_degree: int = 3
+) -> tuple[pd.DataFrame, np.ndarray | None]:
+    """
+    Ajoute delta_ms = M_G0 - M_G0_hat((BP-RP)_0)
+    où M_G0_hat est une polynomiale ajustée sur des étoiles 'propres'.
+
+    Retourne (df_modifié, coeffs) ; coeffs=None si pas assez d'étoiles propres.
+    """
+    df = df.copy()
+    needed = {"bp_rp0", "M_G0", "parallax_snr", "is_good_ruwe"}
+    if not needed.issubset(df.columns):
+        df["delta_ms"] = np.nan
+        return df, None
+
+    mask = (
+        (df["is_good_ruwe"] == 1)
+        & (df["parallax_snr"] >= min_parallax_snr)
+        & df["bp_rp0"].between(-0.2, 3.5)
+        & df["M_G0"].between(-5, 15)
+    )
+
+    x = df.loc[mask, "bp_rp0"].astype(float)
+    y = df.loc[mask, "M_G0"].astype(float)
+
+    if x.count() < 200:  # garde-fou
+        df["delta_ms"] = np.nan
+        return df, None
+
+    coeffs = np.polyfit(x, y, poly_degree)
+    yhat = np.polyval(coeffs, df["bp_rp0"])
+    df["delta_ms"] = (
+        df["M_G0"] - yhat
+    )  # <0: sur-lumineuses (géantes), >0: sous-lumineuses
+
+    return df, coeffs
+
+
 def _signed_log1p(x: pd.Series) -> pd.Series:
     return np.sign(x) * np.log1p(np.abs(x))
 

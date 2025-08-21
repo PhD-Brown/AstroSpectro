@@ -237,20 +237,34 @@ class MasterPipeline:
         n_estimators: int = 200,
         prediction_target: str = "main_class",
         save_and_log: bool = True,
-        # Sélection de features (optionnelle)
+        # FS
         use_feature_selection: bool = True,
-        selector_model: str = "xgb",  # "xgb" | "rf"
+        selector_model: str = "xgb",
         selector_threshold: str = "median",
         selector_n_estimators: int = 200,
-        # ---- options avancées alignées sur l’UI ----
-        search: str | None = None,  # None | "grid" | "random"
+        # ---- options avancées ----
+        search: str | None = None,
         cv_folds: int = 3,
         scoring: str = "accuracy",
         n_iter: int = 60,
-        early_stopping: bool = True,  # XGB uniquement
+        early_stopping: bool = True,
+        early_stopping_rounds: int = 50,  # NEW
         val_size: float = 0.15,
         use_groups: bool = False,
         group_col: str | None = None,
+        # split/seed
+        test_size: float = 0.21,
+        random_state: int = 42,
+        # grilles
+        param_grid: dict | None = None,
+        param_distributions: dict | None = None,
+        # poids & calibration
+        use_balanced_weights: bool = True,
+        calibrate_probs: bool = False,
+        calibration_method: str = "sigmoid",
+        # artefacts
+        save_confusion_png: bool = False,
+        base_params: dict | None = None,
     ) -> Optional[SpectralClassifier]:
         """
         Étape 4 : entraîne un **SpectralClassifier** à partir de `self.features_df`.
@@ -298,9 +312,18 @@ class MasterPipeline:
             scoring=scoring,
             n_iter=n_iter,
             early_stopping=early_stopping,
+            early_stopping_rounds=early_stopping_rounds,
             val_size=val_size,
             use_groups=use_groups,
             group_col=group_col,
+            test_size=test_size,
+            random_state=random_state,
+            param_grid=param_grid,
+            param_overrides=base_params,
+            param_distributions=param_distributions,
+            use_balanced_weights=use_balanced_weights,
+            calibrate_probs=calibrate_probs,
+            calibration_method=calibration_method,
         )
         if not result:
             print(
@@ -311,13 +334,15 @@ class MasterPipeline:
         trained_clf, feature_cols_before_fs, X_all, y_all, groups_all = result
 
         # Message sur la sélection de features
-        if (
-            use_feature_selection
-            and getattr(trained_clf, "selected_features_", None) is not None
-        ):
-            kept = len(trained_clf.selected_features_)
+        if use_feature_selection and "fs" in trained_clf.model_pipeline.named_steps:
+            kept = len(getattr(trained_clf, "selected_features_", []) or [])
             total = len(feature_cols_before_fs)
-            print(f"\n[Feature selection] {kept}/{total} features conservées.")
+            msg = (
+                f"[Feature selection] activée — {kept}/{total} features conservées."
+                if kept
+                else "[Feature selection] activée."
+            )
+            print("\n" + msg)
         else:
             print(
                 f"\n[Feature selection] non utilisée. {len(feature_cols_before_fs)} features au total."
@@ -340,6 +365,7 @@ class MasterPipeline:
                     y_all,
                     processed_files,
                     groups_all,
+                    save_confusion_png=save_confusion_png,
                 )
             except Exception as e:
                 print(
@@ -439,6 +465,60 @@ class MasterPipeline:
             description="val_size",
         )
 
+        # --- Nouveaux widgets généraux ---
+        test_size_slider = W.FloatSlider(
+            value=0.21,
+            min=0.05,
+            max=0.40,
+            step=0.01,
+            readout_format=".02f",
+            description="test_size",
+        )
+        seed_box = W.IntText(value=42, description="seed")
+
+        # Early stopping (XGB) — nb de rounds
+        early_rounds = W.IntSlider(
+            value=50, min=10, max=300, step=5, description="ES rounds"
+        )
+
+        # Grilles / distributions (JSON)
+        param_grid_txt = W.Textarea(
+            value="",
+            placeholder='{"clf__max_depth":[4,6,8], "clf__min_child_weight":[1,3,5]}',
+            description="param_grid (JSON)",
+            layout=W.Layout(width="48%", height="84px"),
+        )
+        param_dist_txt = W.Textarea(
+            value="",
+            placeholder='{"clf__learning_rate":[0.03,0.05,0.1], "clf__subsample":[0.7,0.9]}',
+            description="param_dists (JSON)",
+            layout=W.Layout(width="48%", height="84px"),
+        )
+        base_params_txt = W.Textarea(
+            value="",
+            placeholder='{"max_depth": 6, "learning_rate": 0.05, "subsample": 0.8}',
+            description="base_params (JSON)",
+            layout=W.Layout(width="48%", height="80px"),
+        )
+        selector_n_estimators = W.IntSlider(
+            value=400,
+            min=50,
+            max=1500,
+            step=50,
+            description="selector_n_estimators",
+            readout=True,
+        )
+
+        # Poids & calibration
+        balanced_weights = W.Checkbox(value=True, description="Balanced weights")
+        calibrate_probs = W.Checkbox(value=False, description="Calibrate probs")
+        calib_method = W.Dropdown(
+            options=["sigmoid", "isotonic"], value="sigmoid", description="calib"
+        )
+
+        # Artefacts
+        save_cm_png = W.Checkbox(value=False, description="Sauver CM .png")
+
         use_groups = W.Checkbox(value=False, description="Group split")
         group_col_text = W.Text(value="", description="Col. groupes")
 
@@ -461,7 +541,18 @@ class MasterPipeline:
             with output_area:
                 clear_output(wait=True)
 
-                # Préparer les overrides FS seulement si la case est cochée
+                def _parse_json(ta):
+                    import json
+
+                    try:
+                        s = (ta.value or "").strip()
+                        return json.loads(s) if s else None
+                    except Exception as e:
+                        print(
+                            f"(avertissement) JSON invalide pour '{ta.description}': {e}"
+                        )
+                        return None
+
                 use_fs_kw = fs_enabled.value if fs_override.value else None
                 sel_model_kw = fs_model.value if fs_override.value else None
                 sel_thr_kw = fs_threshold.value if fs_override.value else None
@@ -477,9 +568,24 @@ class MasterPipeline:
                     scoring=scoring.value,
                     n_iter=n_iter_widget.value,
                     early_stopping=early_stopping.value,
+                    early_stopping_rounds=early_rounds.value,
                     val_size=val_size.value,
                     use_groups=use_groups.value,
                     group_col=(group_col_text.value or None),
+                    selector_n_estimators=selector_n_estimators.value,
+                    # split/seed
+                    test_size=test_size_slider.value,
+                    random_state=seed_box.value,
+                    # grilles
+                    param_grid=_parse_json(param_grid_txt),
+                    param_distributions=_parse_json(param_dist_txt),
+                    base_params=_parse_json(base_params_txt),
+                    # poids & calibration
+                    use_balanced_weights=balanced_weights.value,
+                    calibrate_probs=calibrate_probs.value,
+                    calibration_method=calib_method.value,
+                    # artefacts
+                    save_confusion_png=save_cm_png.value,
                     # overrides FS (ou None pour ne pas écraser la config par défaut)
                     use_feature_selection=use_fs_kw,
                     selector_model=sel_model_kw,
@@ -491,10 +597,30 @@ class MasterPipeline:
         top = W.HBox([model_choice, n_estimators_widget, target_choice])
         row1 = W.HBox([search_mode, cv_folds, scoring, n_iter_widget])
         row2 = W.HBox([early_stopping, val_size, use_groups, group_col_text])
-        row3 = W.HBox([fs_override, fs_enabled, fs_model, fs_threshold])
+        row2b = W.HBox([test_size_slider, seed_box, early_rounds])
+        row3 = W.HBox([fs_override, fs_enabled])  # toggles
+        row_sel = W.HBox([fs_model, fs_threshold, selector_n_estimators])  # réglages FS
+        rowJSON = W.HBox([param_grid_txt, param_dist_txt, base_params_txt])
+        rowXtras = W.HBox(
+            [balanced_weights, calibrate_probs, calib_method, save_cm_png]
+        )
         row4 = W.HBox([save_log_checkbox, run_button])
-
-        display(W.VBox([top, row1, row2, row3, row4, output_area]))
+        display(
+            W.VBox(
+                [
+                    top,
+                    row1,
+                    row2,
+                    row2b,
+                    row3,
+                    row_sel,
+                    rowJSON,
+                    rowXtras,
+                    row4,
+                    output_area,
+                ]
+            )
+        )
 
     # --------------------- Journalisation & rapport ---------------------
 
@@ -506,6 +632,7 @@ class MasterPipeline:
         y: pd.Series | List[str] | pd.DataFrame,
         processed_files: List[str],
         groups=None,
+        save_confusion_png: bool = False,
     ) -> Optional[str]:
         """
         Étapes 6 et 7 : met à jour le journal des spectres traités et génère un rapport de session.
@@ -552,7 +679,6 @@ class MasterPipeline:
         model_path = os.path.join(self.models_dir, model_filename)
         try:
             clf.save_model(model_path)
-            print(f"  > Modèle sauvegardé dans : {model_path}")
         except Exception as e:
             print(f"  (avertissement) Échec de sauvegarde du modèle : {e}")
 
@@ -598,7 +724,6 @@ class MasterPipeline:
         try:
             with open(meta_path, "w", encoding="utf-8") as f:
                 json.dump(meta, f, indent=2)
-            print(f"  > Métadonnées sauvegardées dans : {meta_path}")
         except Exception as e:
             print(f"  (avertissement) Échec d’écriture des métadonnées : {e}")
 
@@ -615,43 +740,76 @@ class MasterPipeline:
         # 7.4 Metrics
         report_dict, cm, accuracy = None, None, None
         try:
-            if hasattr(clf, "_split_info"):
+            # réutilise exactement le même test set que pendant l'entraînement
+            if hasattr(clf, "_split_info") and "te_idx" in clf._split_info:
                 te_idx = clf._split_info["te_idx"]
-                # use the exact test set used during training
                 X_te = X.iloc[te_idx] if hasattr(X, "iloc") else X[te_idx]
                 y_te = np.asarray(y)[te_idx]
-                y_pred = clf.model_pipeline.predict(X_te)
-
-                # keep labels consistent for the report
-                if (
-                    clf.model_type == "XGBoost"
-                    and getattr(clf, "label_encoder", None) is not None
-                    and not np.issubdtype(np.asarray(y_te).dtype, np.integer)
-                ):
-                    y_te_enc = clf.label_encoder.transform(y_te)
-                    report_dict = classification_report(
-                        y_te_enc,
-                        y_pred,
-                        target_names=clf.class_labels,
-                        zero_division=0,
-                        output_dict=True,
-                    )
-                    cm = confusion_matrix(y_te_enc, y_pred)
-                else:
-                    report_dict = classification_report(
-                        y_te,
-                        y_pred,
-                        labels=clf.class_labels,
-                        zero_division=0,
-                        output_dict=True,
-                    )
-                    cm = confusion_matrix(y_te, y_pred, labels=clf.class_labels)
             else:
-                # Fallback: current behavior (train_test_split with 25%)
-                ...
+                X_te, y_te = X, np.asarray(y)
+
+            y_pred = clf.model_pipeline.predict(X_te)
+
+            if (
+                clf.model_type == "XGBoost"
+                and getattr(clf, "label_encoder", None) is not None
+            ):
+                n_classes = len(clf.class_labels)
+                all_labels = np.arange(n_classes)  # 0..K-1
+                y_te_enc = clf.label_encoder.transform(y_te)
+
+                report_dict = classification_report(
+                    y_te_enc,
+                    y_pred,
+                    labels=all_labels,
+                    target_names=list(clf.class_labels),  # <-- corrigé (underscore)
+                    zero_division=0,
+                    output_dict=True,
+                )
+                cm = confusion_matrix(y_te_enc, y_pred, labels=all_labels)
+            else:
+                report_dict = classification_report(
+                    y_te,
+                    y_pred,
+                    labels=list(clf.class_labels),
+                    zero_division=0,
+                    output_dict=True,
+                )
+                cm = confusion_matrix(y_te, y_pred, labels=list(clf.class_labels))
+
             accuracy = float(report_dict.get("accuracy", 0.0))
+
         except Exception as e:
-            print(f"  (avertissement) Échec du calcul des métriques de rapport : {e}")
+            print(f"  (avertissement) Échec calcul métriques : {e}")
+            report_dict, cm, accuracy = None, None, None
+
+        # Sauvegarde PNG de la matrice de confusion (après calcul de cm)
+        if save_confusion_png and cm is not None:
+            try:
+                import matplotlib.pyplot as plt
+                import seaborn as sns
+
+                fig = plt.figure(figsize=(8, 6))
+                sns.heatmap(
+                    cm,
+                    annot=True,
+                    fmt="d",
+                    xticklabels=list(clf.class_labels),
+                    yticklabels=list(clf.class_labels),
+                )
+                plt.xlabel("Prédiction")
+                plt.ylabel("Vraie valeur")
+                plt.title(f"Matrice de confusion — {clf.model_type}")
+                out_png = os.path.join(
+                    self.reports_dir,
+                    f"confusion_matrix_{clf.model_type.lower()}_{ts}.png",
+                )
+                fig.tight_layout()
+                fig.savefig(out_png, dpi=140)
+                plt.close(fig)
+                print(f"  > Heatmap sauvegardée : {out_png}")
+            except Exception as e:
+                print(f"  (avertissement) Échec sauvegarde heatmap : {e}")
 
         # 7.5 Rapport JSON
         session_report = {
@@ -691,6 +849,58 @@ class MasterPipeline:
             print(
                 f"  (avertissement) Échec lors de la génération du rapport de session : {e}"
             )
+
+        # --- AFFICHAGE RÉSUMÉ DANS LA CELLULE ---
+        try:
+            from sklearn.metrics import balanced_accuracy_score
+
+            # y_true / y_pred sont calculés plus haut
+            y_true_for_scores = y_te_enc if "y_te_enc" in locals() else y_te
+            bal_acc = (
+                balanced_accuracy_score(y_true_for_scores, y_pred)
+                if y_true_for_scores is not None
+                else None
+            )
+
+            print("\n=== RÉSULTATS (jeu test) ===")
+            if report_dict is not None:
+                acc = report_dict.get("accuracy", None)
+                macro_f1 = (report_dict.get("macro avg", {}) or {}).get(
+                    "f1-score", None
+                )
+                if acc is not None:
+                    print(f"Accuracy          : {acc:.2%}")
+                if bal_acc is not None:
+                    print(f"Balanced accuracy : {bal_acc:.2%}")
+                if macro_f1 is not None:
+                    print(f"Macro F1          : {macro_f1:.3f}")
+
+                print("\nPar classe :")
+                for cls_name, row in report_dict.items():
+                    if cls_name in ("accuracy", "macro avg", "weighted avg"):
+                        continue
+                    p = row.get("precision")
+                    r = row.get("recall")
+                    f1 = row.get("f1-score")
+                    if p is not None and r is not None and f1 is not None:
+                        print(f"  - {cls_name:<6}  P={p:.2f}  R={r:.2f}  F1={f1:.2f}")
+            else:
+                print("  (pas de rapport de classification disponible)")
+        except Exception as e:
+            print(f"(avertissement) Affichage métriques ignoré : {e}")
+
+        # --- RÉCAP SELECTION DE FEATURES ---
+        try:
+            if getattr(clf, "selected_features_", None) is not None:
+                kept = len(clf.selected_features_)
+                # ⬇️ le bon nom est "feature_cols" (paramètre de la fonction)
+                total = len(feature_cols) if feature_cols is not None else None
+                msg = f"[FS] Features conservées : {kept}" + (
+                    f"/{total}" if total is not None else ""
+                )
+                print("\n" + msg)
+        except Exception as e:
+            print(f"(avertissement) Récap FS ignoré : {e}")
 
         print("\nSESSION DE RECHERCHE TERMINÉE")
         return report_path
