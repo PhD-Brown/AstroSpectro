@@ -44,33 +44,40 @@ import os
 import sys
 import json
 import time
+import inspect
 import sklearn
 import xgboost
+from typing import Optional, Dict, Any
 
 # --- Imports Scikit-learn ---
+from sklearn.base import clone
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import (
-    train_test_split,
-    GridSearchCV,
-    StratifiedKFold,
+    StratifiedShuffleSplit,
     GroupShuffleSplit,
+    StratifiedKFold,
+    GridSearchCV,
+    RandomizedSearchCV,
+    train_test_split,
+    GroupKFold,
 )
 
 try:
-    from sklearn.model_selection import StratifiedGroupKFold
-
     HAS_SGKF = True
 except Exception:
     HAS_SGKF = False
-from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.pipeline import Pipeline
-from sklearn.feature_selection import SelectFromModel
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+)
 from sklearn.impute import SimpleImputer
-
-# --- Imports Imbalanced-learn ---
-from imblearn.pipeline import Pipeline as ImbPipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.svm import SVC
+from sklearn.utils.class_weight import compute_sample_weight
+from sklearn.feature_selection import SelectFromModel
+from sklearn.calibration import CalibratedClassifierCV
 
 
 class SpectralClassifier:
@@ -294,6 +301,7 @@ class SpectralClassifier:
             "heliocentric_correction",
             "radial_velocity_corr",
             "label",
+            "main_class",
             "source_id",
             "gaia_ra",
             "gaia_dec",
@@ -345,6 +353,92 @@ class SpectralClassifier:
 
         return X, y
 
+    def _build_preprocessor(
+        self, X_train: pd.DataFrame, model_type: str
+    ) -> ColumnTransformer:
+        """
+        Préprocesseur minimal et robuste :
+        - pour RF/XGB : imputation (médiane) des colonnes numériques
+        - pour SVM : imputation + standardisation (important pour SVM)
+        """
+        num_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
+        if not num_cols:
+            raise ValueError("Aucune colonne numérique disponible pour l'entraînement.")
+
+        if model_type in {"SVM"}:
+            return ColumnTransformer(
+                [
+                    (
+                        "num",
+                        Pipeline(
+                            [
+                                ("imp", SimpleImputer(strategy="median")),
+                                ("scaler", StandardScaler()),
+                            ]
+                        ),
+                        num_cols,
+                    )
+                ],
+                remainder="drop",
+            )
+        else:
+            return ColumnTransformer(
+                [("num", SimpleImputer(strategy="median"), num_cols)],
+                remainder="drop",
+            )
+
+    def _build_estimator(
+        self, model_type: str, n_estimators: int, n_classes: int, random_state: int
+    ):
+        """
+        Estimateur baseline par modèle.
+        - RF : rapide, n_jobs=-1
+        - XGB : 'hist' pour la vitesse ; encodage de y géré côté train_and_evaluate
+        - SVM : RBF + class_weight=balanced
+        """
+        if model_type == "RandomForest":
+            return RandomForestClassifier(
+                n_estimators=n_estimators,
+                max_depth=None,
+                n_jobs=-1,
+                random_state=random_state,
+                class_weight="balanced_subsample",
+            )
+
+        if model_type == "XGBoost":
+            try:
+                import xgboost as xgb
+            except Exception as e:
+                raise RuntimeError(
+                    "XGBoost n'est pas installé dans cet environnement."
+                ) from e
+
+            return xgb.XGBClassifier(
+                n_estimators=n_estimators,
+                max_depth=6,
+                learning_rate=0.1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                objective="multi:softprob",
+                eval_metric="mlogloss",
+                num_class=n_classes,
+                tree_method="hist",  # rapide et CPU-friendly
+                n_jobs=-1,
+                random_state=random_state,
+            )
+
+        if model_type == "SVM":
+            return SVC(
+                kernel="rbf",
+                probability=True,
+                class_weight="balanced",
+                random_state=random_state,
+            )
+
+        raise ValueError(
+            f"Modèle inconnu: {model_type} (attendu: RandomForest | XGBoost | SVM)"
+        )
+
     # ---------------------------------------------------------------------
     # Entraînement + tuning + (optionnel) sélection de variables
     # ---------------------------------------------------------------------
@@ -352,9 +446,29 @@ class SpectralClassifier:
     def train_and_evaluate(
         self,
         features_df: pd.DataFrame,
-        test_size: float = 0.25,
-        n_estimators: int = 100,
-    ) -> tuple["SpectralClassifier", list[str], pd.DataFrame, np.ndarray] | None:
+        test_size: float = 0.21,
+        n_estimators: int = 300,
+        *,
+        search: Optional[str] = None,
+        cv_folds: int = 3,
+        scoring: str = "accuracy",
+        use_feature_selection: Optional[bool] = None,
+        selector_model: Optional[str] = None,
+        selector_threshold: Optional[str] = None,
+        early_stopping: bool = False,
+        early_stopping_rounds: int = 50,
+        val_size: float = 0.15,
+        use_groups: bool = False,
+        group_col: Optional[str] = None,
+        param_grid: Optional[Dict[str, Any]] = None,
+        param_distributions: Optional[Dict[str, Any]] = None,
+        n_iter: int = 60,
+        random_state: int = 42,
+        param_overrides: dict | None = None,
+        use_balanced_weights: bool = True,
+        calibrate_probs: bool = False,
+        calibration_method: str = "sigmoid",
+    ) -> bool:
         """
         Entraîne et évalue le modèle avec GridSearchCV + pipeline Imputer/Scaler/SMOTE,
         (optionnellement) SelectFromModel, puis affiche un rapport et une matrice
@@ -381,271 +495,238 @@ class SpectralClassifier:
             - Le nombre de voisins SMOTE est ajusté automatiquement selon la plus
             petite classe du split d’entraînement.
         """
-        import xgboost as xgb
-        from xgboost.callback import EarlyStopping
-        import inspect
+        print(
+            f"\n=== ÉTAPE 4 : SESSION D'ENTRAÎNEMENT (Modèle: {self.model_type}, Cible: {self.prediction_target}) ==="
+        )
 
-        # 1) Nettoyage / préparation
+        # 0) Nettoyage + label
         df_trainable = self._clean_and_filter_data(features_df)
         if df_trainable is None:
-            return None
+            print("> Aucune donnée exploitable après nettoyage ; arrêt.")
+            return False
 
-        # Features/labels
+        # Groupes (optionnel)
+        groups_full = None
+        if use_groups and group_col and group_col in df_trainable.columns:
+            groups_full = df_trainable[group_col].values
+
+        # 1) X/y + encodage XGB
         X_all, y_all = self._prepare_features_and_labels(df_trainable)
-
-        # Groupes (évite fuite d'info entre train/test)
-        groups_series = df_trainable.get("plan_id", None)
-        groups = (
-            None
-            if groups_series is None
-            else groups_series.astype(str).fillna("NA").to_numpy()
-        )
-
-        # Encodage des labels pour XGBoost
+        label_encoder: Optional[LabelEncoder] = None
+        y_enc = y_all
         if self.model_type == "XGBoost":
-            le = LabelEncoder()
-            y_encoded = le.fit_transform(y_all)
-            self.class_labels = le.classes_
-            y_for_split = y_encoded
-        else:
-            self.class_labels = sorted(list(set(y_all)))
-            y_for_split = y_all
+            label_encoder = LabelEncoder().fit(y_all)
+            y_enc = label_encoder.transform(y_all)
 
-        # 2) Holdout final : GroupShuffleSplit si groupes dispo, sinon classique
-        if groups is not None:
+        # 2) Split train/test (stratifié ou par groupes)
+        if use_groups and (groups_full is not None):
             gss = GroupShuffleSplit(
-                n_splits=1, test_size=test_size, random_state=self.random_state
+                n_splits=1, test_size=test_size, random_state=random_state
             )
-            train_idx, test_idx = next(gss.split(X_all, y_for_split, groups))
+            tr_idx, te_idx = next(gss.split(X_all, y_enc, groups=groups_full))
+            groups_train = groups_full[tr_idx]
         else:
-            train_idx, test_idx = train_test_split(
-                np.arange(len(y_for_split)),
-                test_size=test_size,
-                random_state=self.random_state,
-                stratify=y_for_split,
+            sss = StratifiedShuffleSplit(
+                n_splits=1, test_size=test_size, random_state=random_state
             )
+            tr_idx, te_idx = next(sss.split(X_all, y_enc))
+            groups_train = None
 
-        X_train, X_test = X_all.iloc[train_idx], X_all.iloc[test_idx]
-        y_train, y_test = y_for_split[train_idx], y_for_split[test_idx]
-        groups_train = None if groups is None else groups[train_idx]
+        self._split_info = {
+            "tr_idx": tr_idx,
+            "te_idx": te_idx,
+            "n_train": int(len(tr_idx)),
+            "n_test": int(len(te_idx)),
+            "test_size": test_size,
+            "random_state": random_state,
+        }  # pour le rapport
 
-        # 3) Définition du modèle + grille (SMOTE supprimé → on passe sample_weight)
-        if self.model_type == "RandomForest":
-            clf_model = RandomForestClassifier(
-                n_estimators=n_estimators,
-                random_state=self.random_state,
-                class_weight="balanced",
-            )
-            param_grid = {
-                "clf__max_depth": [20, None],
-                "clf__min_samples_leaf": [1, 3],
-            }
-        elif self.model_type == "XGBoost":
-            clf_model = xgb.XGBClassifier(
-                n_estimators=n_estimators,
-                random_state=self.random_state,
-                eval_metric="mlogloss",
-                tree_method="hist",
-            )
-            param_grid = {
-                "clf__max_depth": [6, 8, 10],
-                "clf__learning_rate": [0.05, 0.1],
-                "clf__min_child_weight": [1, 5],
-                "clf__subsample": [0.8, 1.0],
-                "clf__colsample_bytree": [0.6, 0.8, 1.0],
-                "clf__reg_lambda": [1, 2, 5],
-                "clf__gamma": [0, 1],
-            }
+        X_train = X_all.iloc[tr_idx]
+        y_train = y_enc[tr_idx]
 
-        # Pipeline = imputer + scaler + (optionnel: selector) + clf
-        steps = [
-            ("imputer", SimpleImputer(strategy="constant", fill_value=0.0)),
-            ("scaler", StandardScaler()),
-        ]
-        if self.use_feature_selection:
-            # Sélection par modèle (XGB ou RF) avec seuil réglable
-            base_selector = (
-                xgb.XGBClassifier(
-                    n_estimators=getattr(self, "selector_n_estimators", 200),
-                    random_state=self.random_state,
+        # 3) Préprocesseur + estimateur + (optionnel) SelectFromModel
+        n_classes = int(np.unique(y_enc).shape[0])
+        preproc = self._build_preprocessor(X_train, self.model_type)
+        base_est = self._build_estimator(
+            self.model_type, n_estimators, n_classes, random_state
+        )
+        if param_overrides:
+            base_est.set_params(**param_overrides)
+
+        fs_enabled = (
+            self.use_feature_selection
+            if use_feature_selection is None
+            else use_feature_selection
+        )
+        sel_model = (
+            (self.selector_model or "rf") if selector_model is None else selector_model
+        )
+        sel_threshold = (
+            self.selector_threshold
+            if selector_threshold is None
+            else selector_threshold
+        )
+
+        steps = [("prep", preproc)]
+        if fs_enabled:
+            if sel_model == "xgb":
+                import xgboost as xgb
+
+                selector_est = xgb.XGBClassifier(
+                    n_estimators=self.selector_n_estimators,
+                    max_depth=6,
+                    learning_rate=0.1,
+                    subsample=0.8,
+                    colsample_bytree=0.8,
+                    objective="multi:softprob",
                     eval_metric="mlogloss",
+                    num_class=n_classes,
                     tree_method="hist",
-                )
-                if self.selector_model == "xgb"
-                else RandomForestClassifier(
-                    n_estimators=getattr(self, "selector_n_estimators", 200),
-                    random_state=self.random_state,
-                    class_weight="balanced",
-                )
-            )
-            steps.append(
-                (
-                    "selector",
-                    SelectFromModel(
-                        base_selector,
-                        threshold=self.selector_threshold,  # "median", "mean", "0.5*mean", etc.
-                    ),
-                )
-            )
-        steps.append(("clf", clf_model))
-        pipeline = ImbPipeline(
-            steps
-        )  # on garde ImbPipeline par compat, mais il n’y a plus SMOTE
-
-        print(
-            f"\n--- [Tuning] Recherche des meilleurs hyperparamètres pour {self.model_type} (n_estimators={n_estimators} fixé) ---"
-        )
-
-        # CV stratifié groupé si dispo
-        if groups_train is not None and HAS_SGKF:
-            cv = StratifiedGroupKFold(
-                n_splits=3, shuffle=True, random_state=self.random_state
-            )
-            cv_groups = groups_train
-        else:
-            cv = StratifiedKFold(
-                n_splits=3, shuffle=True, random_state=self.random_state
-            )
-            cv_groups = None
-
-        # Poids d’échantillons (à la place de SMOTE)
-        w_train = compute_sample_weight(class_weight="balanced", y=y_train)
-
-        grid_search = GridSearchCV(
-            estimator=pipeline,
-            param_grid=param_grid,
-            cv=cv,
-            n_jobs=-1,
-            verbose=2,
-            scoring="accuracy",
-            error_score="raise",
-            refit=True,  # on refitera de toute façon ensuite avec early stopping
-        )
-
-        try:
-            if cv_groups is not None:
-                grid_search.fit(
-                    X_train,
-                    y_train,
-                    groups=cv_groups,
-                    **{"clf__sample_weight": w_train},
+                    n_jobs=-1,
+                    random_state=random_state,
                 )
             else:
-                grid_search.fit(X_train, y_train, **{"clf__sample_weight": w_train})
-        except ValueError as e:
-            print(
-                "\nERREUR LORS DU GRIDSEARCHCV. Le processus d'entraînement est arrêté."
-            )
-            print(f"   Détail de l'erreur : {e}")
-            return None
-
-        print(f"\n  > Meilleurs paramètres trouvés : {grid_search.best_params_}")
-        print(f"  > Meilleur score de précision (CV) : {grid_search.best_score_:.4f}")
-
-        # 4) Refit final AVEC EARLY STOPPING (XGB uniquement) pour grappiller des points
-        best_pipe = grid_search.best_estimator_
-
-        if self.model_type == "XGBoost":
-            # Sépare train en (train/val) par groupes si dispo
-            if groups_train is not None:
-                gss_iv = GroupShuffleSplit(
-                    n_splits=1, test_size=0.1, random_state=self.random_state
+                selector_est = RandomForestClassifier(
+                    n_estimators=self.selector_n_estimators,
+                    n_jobs=-1,
+                    random_state=random_state,
+                    class_weight="balanced_subsample",
                 )
-                tr_idx, val_idx = next(gss_iv.split(X_train, y_train, groups_train))
+            steps.append(("fs", SelectFromModel(selector_est, threshold=sel_threshold)))
+        steps.append(("clf", base_est))
+        pipe = Pipeline(steps)
+
+        # 4) Fit params : weights + early stopping (XGB)
+        fit_params: Dict[str, Any] = {}
+        if use_balanced_weights:
+            sw = compute_sample_weight("balanced", y_train)
+            fit_params["clf__sample_weight"] = sw
+
+        # ES uniquement hors recherche (sinon masque FS instable entre folds)
+        es_active = (
+            (self.model_type == "XGBoost") and early_stopping and (search is None)
+        )
+        if es_active:
+            # split interne pour l'ES
+            X_tr_in, X_val_in, y_tr_in, y_val_in = train_test_split(
+                X_train,
+                y_train,
+                test_size=val_size,
+                stratify=y_train,
+                random_state=random_state,
+            )
+
+            # pipeline "prep + fs" clonée et FIT sur TOUT X_train (même data que le fit final)
+            pre_fs_steps = steps[
+                :-1
+            ]  # ['prep', ('fs', ...)] si FS actif, sinon juste 'prep'
+            if pre_fs_steps:
+                prep_for_es = clone(Pipeline(pre_fs_steps))
+                prep_for_es.fit(X_train, y_train)
+                X_val_es = prep_for_es.transform(X_val_in)
             else:
-                tr_idx, val_idx = train_test_split(
-                    np.arange(len(y_train)),
-                    test_size=0.1,
-                    random_state=self.random_state,
-                    stratify=y_train,
-                )
+                X_val_es = X_val_in  # (cas sans préproc/FS)
 
-            # Fit/transform du préprocesseur (tout sauf 'clf')
-            preproc = Pipeline([(n, s) for (n, s) in best_pipe.steps if n != "clf"])
-            X_tr_t = preproc.fit_transform(X_train.iloc[tr_idx], y_train[tr_idx])
-            # Si la sélection de variables est active, mémoriser les noms retenus
-            self.selected_features_ = None
-            if self.use_feature_selection and "selector" in preproc.named_steps:
-                try:
-                    mask = preproc.named_steps["selector"].get_support()
-                    self.selected_features_ = [
-                        f for f, keep in zip(self.feature_names_used, mask) if keep
-                    ]
-                    # (optionnel) log rapide
-                    print(
-                        f"  > Features retenues par le sélecteur ({len(self.selected_features_)}): {self.selected_features_}"
-                    )
-                except Exception:
-                    pass
-            X_val_t = preproc.transform(X_train.iloc[val_idx])
-
-            y_tr, y_val = y_train[tr_idx], y_train[val_idx]
-            w_tr = compute_sample_weight("balanced", y_tr)
-
-            # Params du meilleur clf
-            best_clf_params = best_pipe.named_steps["clf"].get_params()
-            # Laisser beaucoup d’itérations, l’early stopping choisira la bonne valeur
-            best_clf_params["n_estimators"] = max(
-                1000, int(best_clf_params.get("n_estimators", 200) * 5)
-            )
-
-            clf_final = xgb.XGBClassifier(**best_clf_params)
-            clf_final.set_params(
-                random_state=self.random_state,
-                eval_metric="mlogloss",
-                verbosity=0,
-            )
-
-            # --- Refit final XGBoost (avec ES si dispo) ---
-            fit_sig = inspect.signature(clf_final.fit)
-            fit_kwargs = {}
-
-            # 1) versions récentes : callbacks supportés
-            if "callbacks" in fit_sig.parameters:
+            # compat XGB 1.x / 2.x : choisir l'API supportée
+            fit_sig = set(inspect.signature(base_est.fit).parameters.keys())
+            fit_params["clf__eval_set"] = [(X_val_es, y_val_in)]
+            if "callbacks" in fit_sig:
                 from xgboost.callback import EarlyStopping
 
-                fit_kwargs["eval_set"] = [(X_val_t, y_val)]
-                fit_kwargs["callbacks"] = [
-                    EarlyStopping(rounds=50, save_best=True, maximize=False)
+                fit_params["clf__callbacks"] = [
+                    EarlyStopping(rounds=int(early_stopping_rounds), save_best=True)
                 ]
-                # on coupe au besoin le print par itération
-                if "verbose" in fit_sig.parameters:
-                    fit_kwargs["verbose"] = False
+            elif "early_stopping_rounds" in fit_sig:
+                fit_params["clf__early_stopping_rounds"] = int(early_stopping_rounds)
+            if "verbose" in fit_sig:
+                fit_params["clf__verbose"] = False
 
-            # 2) versions intermédiaires : early_stopping_rounds
-            elif "early_stopping_rounds" in fit_sig.parameters:
-                fit_kwargs["eval_set"] = [(X_val_t, y_val)]
-                fit_kwargs["early_stopping_rounds"] = 50
-                if "eval_metric" in fit_sig.parameters:
-                    fit_kwargs["eval_metric"] = "mlogloss"
-                if "verbose" in fit_sig.parameters:
-                    fit_kwargs["verbose"] = False
+        # 5) CV aware of groups
+        if use_groups and groups_train is not None:
+            try:
+                from sklearn.model_selection import StratifiedGroupKFold
 
-            # 3) fallback : PAS d'early-stopping -> ne PAS passer eval_set
-            else:
-                print(
-                    "  > Early stopping indisponible dans cette version de xgboost ; fit sans ES."
+                cv = StratifiedGroupKFold(
+                    n_splits=cv_folds, shuffle=True, random_state=random_state
                 )
-                if "verbose" in fit_sig.parameters:
-                    fit_kwargs["verbose"] = False
-
-            # appel final
-            clf_final.fit(X_tr_t, y_tr, sample_weight=w_tr, **fit_kwargs)
-
-            # Pipeline final = preproc + clf_final
-            self.model_pipeline = Pipeline(list(preproc.steps) + [("clf", clf_final)])
+            except Exception:
+                cv = GroupKFold(n_splits=cv_folds)
         else:
-            # RF : on garde le best_estimator_ (refit GridSearch)
-            self.model_pipeline = best_pipe
+            cv = StratifiedKFold(
+                n_splits=cv_folds, shuffle=True, random_state=random_state
+            )
 
-        self.best_params_ = grid_search.best_params_
+        # 6) Fit / Search
+        if search == "grid":
+            searcher = GridSearchCV(
+                pipe,
+                param_grid=(param_grid or {}),
+                scoring=scoring,
+                cv=cv,
+                n_jobs=-1,
+                refit=True,
+                verbose=0,
+            )
+            searcher.fit(X_train, y_train, groups=groups_train, **fit_params)
+            best = searcher.best_estimator_
+            self.best_params_ = searcher.best_params_
+        elif search == "random":
+            searcher = RandomizedSearchCV(
+                pipe,
+                param_distributions=(param_distributions or {}),
+                n_iter=n_iter,
+                scoring=scoring,
+                cv=cv,
+                n_jobs=-1,
+                refit=True,
+                random_state=random_state,
+                verbose=0,
+            )
+            searcher.fit(X_train, y_train, groups=groups_train, **fit_params)
+            best = searcher.best_estimator_
+            self.best_params_ = searcher.best_params_
+        else:
+            pipe.fit(X_train, y_train, **fit_params)
+            best = pipe
+            self.best_params_ = getattr(best[-1], "get_params", lambda: {})()
 
-        print(
-            f"\n--- [Évaluation] Performance de {self.model_type} sur le jeu de test ---"
+        # 7) Calibration (optionnelle)
+        if calibrate_probs and hasattr(best, "predict_proba"):
+            best = CalibratedClassifierCV(best, method=calibration_method, cv=3)
+            best.fit(X_train, y_train)
+
+        # 8) Expose artefacts
+        self.model_pipeline = best
+        self.class_labels = (
+            list(label_encoder.classes_)
+            if label_encoder is not None
+            else sorted(np.unique(y_all))
         )
-        self.evaluate(X_test, y_test)
+        self.label_encoder = label_encoder
 
-        return self, self.feature_names_used, X_all, y_all, groups
+        # features sélectionnées (si FS actif)
+        self.selected_features_ = None
+        if fs_enabled and "fs" in best.named_steps:
+            try:
+                out_names = best.named_steps["prep"].get_feature_names_out()
+                mask = best.named_steps["fs"].get_support()
+                sel = [
+                    n.split("__", 1)[1] if "__" in n else n
+                    for n, keep in zip(out_names, mask)
+                    if keep
+                ]
+                self.selected_features_ = sel
+            except Exception:
+                pass
+
+        # Retour pour MasterPipeline
+        feature_cols_before_fs = list(X_all.columns)
+        y_all_out = (
+            label_encoder.inverse_transform(y_enc)
+            if label_encoder is not None
+            else y_all
+        )
+        return self, feature_cols_before_fs, X_all, y_all_out, groups_full
 
     # ---------------------------------------------------------------------
     # Évaluation & persistance
@@ -664,19 +745,24 @@ class SpectralClassifier:
             None. Affiche les métriques et la matrice de confusion.
         """
         predictions = self.model_pipeline.predict(X_test)
-        print("\n--- Rapport d'Évaluation ---")
 
-        if self.model_type == "XGBoost":
-            report = classification_report(
-                y_test, predictions, target_names=self.class_labels, zero_division=0
-            )
-            cm = confusion_matrix(y_test, predictions)
+        # Décodage si XGBoost
+        if (
+            self.model_type == "XGBoost"
+            and getattr(self, "label_encoder", None) is not None
+        ):
+            # y_test peut être encodé (int) ou déjà texte selon l’appelant
+            if np.issubdtype(np.asarray(y_test).dtype, np.integer):
+                y_test_dec = self.label_encoder.inverse_transform(y_test)
+            else:
+                y_test_dec = y_test
+            y_pred_dec = self.label_encoder.inverse_transform(predictions)
         else:
-            report = classification_report(
-                y_test, predictions, labels=self.class_labels, zero_division=0
-            )
-            cm = confusion_matrix(y_test, predictions, labels=self.class_labels)
+            y_test_dec, y_pred_dec = y_test, predictions
 
+        print("\n--- Rapport d'Évaluation ---")
+        report = classification_report(y_test_dec, y_pred_dec, zero_division=0)
+        cm = confusion_matrix(y_test_dec, y_pred_dec, labels=self.class_labels)
         print(report)
         plt.figure(figsize=(10, 7))
         sns.heatmap(

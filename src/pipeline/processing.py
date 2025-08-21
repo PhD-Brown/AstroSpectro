@@ -74,7 +74,11 @@ from tqdm import tqdm
 
 from .preprocessor import SpectraPreprocessor
 from .peak_detector import PeakDetector, matches_to_series
-from .feature_engineering import FeatureEngineer
+from .feature_engineering import (
+    FeatureEngineer,
+    add_gaia_derived_features,
+    add_main_sequence_delta,
+)
 from utils import sanitize_invvar
 
 
@@ -212,7 +216,6 @@ class ProcessingPipeline:
                 f"\nPipeline de traitement terminé. {len(features_df)} spectres traités."
             )
             if "label" not in features_df.columns:
-                # Valeur par défaut — le classifieur filtrera les labels invalides
                 features_df["label"] = "UNKNOWN"
             return features_df
 
@@ -221,14 +224,30 @@ class ProcessingPipeline:
             lambda x: os.path.basename(x).replace(".gz", "")
         )
 
+        # 1) Jointure d'abord
         merged_df = pd.merge(
             features_df, self.master_catalog, how="left", on="fits_name_only"
         )
 
+        # 2) Puis les features dérivées GAIA (les colonnes existent maintenant)
+        merged_df, new_gaia_cols = add_gaia_derived_features(
+            merged_df, min_parallax_snr=5.0
+        )
+        print(f"  > Features Gaia dérivées ajoutées : {len(new_gaia_cols)} colonnes")
+
+        # 2bis) Écart à la séquence principale (delta_ms)
+        merged_df, ms_coeffs = add_main_sequence_delta(merged_df, min_parallax_snr=10.0)
+        if ms_coeffs is None:
+            np.save("delta_ms_poly_coeffs.npy", ms_coeffs)
+            print(
+                "  > delta_ms : pas assez d'étoiles propres pour ajuster la polynomiale (resté NaN)."
+            )
+        else:
+            print("  > delta_ms ajouté (poly deg=3).")
+
         # --- Indices de couleur photométriques (g-r, r-i) ---
         print("  > Création des features de couleur photométrique...")
 
-        # Convertit en numérique, en neutralisant les placeholders (ex. 99.0)
         mag_cols = ["magnitude_g", "magnitude_r", "magnitude_i"]
         for col in mag_cols:
             if col in merged_df.columns:
@@ -236,7 +255,6 @@ class ProcessingPipeline:
                     99.0, np.nan
                 )
 
-        # Couleurs (si dispo)
         if {"magnitude_g", "magnitude_r"}.issubset(merged_df.columns):
             merged_df["feature_color_gr"] = (
                 merged_df["magnitude_g"] - merged_df["magnitude_r"]
@@ -246,8 +264,6 @@ class ProcessingPipeline:
                 merged_df["magnitude_r"] - merged_df["magnitude_i"]
             )
 
-        # Laisse l’imputeur du classifieur gérer les NaN, mais on peut
-        # remplir ces deux colonnes à 0 si on veut rester conservateur:
         merged_df.fillna({"feature_color_gr": 0, "feature_color_ri": 0}, inplace=True)
 
         # Nettoyage final
