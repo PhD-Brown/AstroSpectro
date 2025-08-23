@@ -264,6 +264,11 @@ class MasterPipeline:
         calibration_method: str = "sigmoid",
         # artefacts
         save_confusion_png: bool = False,
+        save_curves_roc_pr: bool = True,
+        save_calibration: bool = False,
+        save_feature_importance: bool = True,
+        export_test_predictions: bool = False,
+        cm_normalized: bool = False,
         base_params: dict | None = None,
     ) -> Optional[SpectralClassifier]:
         """
@@ -366,6 +371,11 @@ class MasterPipeline:
                     processed_files,
                     groups_all,
                     save_confusion_png=save_confusion_png,
+                    save_curves_roc_pr=save_curves_roc_pr,
+                    save_calibration=save_calibration,
+                    save_feature_importance=save_feature_importance,
+                    export_test_predictions=export_test_predictions,
+                    cm_normalized=cm_normalized,
                 )
             except Exception as e:
                 print(
@@ -519,6 +529,30 @@ class MasterPipeline:
         # Artefacts
         save_cm_png = W.Checkbox(value=False, description="Sauver CM .png")
 
+        # --- Widgets pour graphiques et exports supplémentaires ---
+        # Ces cases permettent de générer des courbes ROC/PR, la calibration,
+        # les importances de features et d'exporter les prédictions test. Une option
+        # pour normaliser la matrice de confusion est également proposée.
+        save_roc_pr = W.Checkbox(value=True, description="ROC & PR .png")
+        save_calib = W.Checkbox(value=False, description="Calibration .png + Brier")
+        save_featimp = W.Checkbox(value=True, description="Feature importance .png")
+        export_preds = W.Checkbox(value=False, description="Exporter prédictions .csv")
+        cm_normalized = W.Checkbox(value=False, description="CM normalisée")
+
+        # Regroupement des cases liées aux graphiques supplémentaires. Le bouton
+        # save_cm_png existant est inclus pour un alignement cohérent de toutes les
+        # options visuelles.
+        rowPlots = W.HBox(
+            [
+                save_cm_png,
+                save_roc_pr,
+                save_calib,
+                save_featimp,
+                export_preds,
+                cm_normalized,
+            ]
+        )
+
         use_groups = W.Checkbox(value=False, description="Group split")
         group_col_text = W.Text(value="", description="Col. groupes")
 
@@ -586,6 +620,11 @@ class MasterPipeline:
                     calibration_method=calib_method.value,
                     # artefacts
                     save_confusion_png=save_cm_png.value,
+                    save_curves_roc_pr=save_roc_pr.value,
+                    save_calibration=save_calib.value,
+                    save_feature_importance=save_featimp.value,
+                    export_test_predictions=export_preds.value,
+                    cm_normalized=cm_normalized.value,
                     # overrides FS (ou None pour ne pas écraser la config par défaut)
                     use_feature_selection=use_fs_kw,
                     selector_model=sel_model_kw,
@@ -601,9 +640,7 @@ class MasterPipeline:
         row3 = W.HBox([fs_override, fs_enabled])  # toggles
         row_sel = W.HBox([fs_model, fs_threshold, selector_n_estimators])  # réglages FS
         rowJSON = W.HBox([param_grid_txt, param_dist_txt, base_params_txt])
-        rowXtras = W.HBox(
-            [balanced_weights, calibrate_probs, calib_method, save_cm_png]
-        )
+        rowXtras = W.HBox([balanced_weights, calibrate_probs, calib_method])
         row4 = W.HBox([save_log_checkbox, run_button])
         display(
             W.VBox(
@@ -616,6 +653,8 @@ class MasterPipeline:
                     row_sel,
                     rowJSON,
                     rowXtras,
+                    # Options de génération de graphes et exports
+                    rowPlots,
                     row4,
                     output_area,
                 ]
@@ -633,6 +672,11 @@ class MasterPipeline:
         processed_files: List[str],
         groups=None,
         save_confusion_png: bool = False,
+        save_curves_roc_pr: bool = True,
+        save_calibration: bool = False,
+        save_feature_importance: bool = True,
+        export_test_predictions: bool = False,
+        cm_normalized: bool = False,
     ) -> Optional[str]:
         """
         Étapes 6 et 7 : met à jour le journal des spectres traités et génère un rapport de session.
@@ -673,6 +717,9 @@ class MasterPipeline:
 
         # Un seul timestamp pour tous les artefacts
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        session_id = ts
+        run_dir = os.path.join(self.reports_dir, session_id)
+        os.makedirs(run_dir, exist_ok=True)
 
         # 7.1 Sauvegarde du modèle
         model_filename = f"spectral_classifier_{clf.model_type.lower()}_{ts}.pkl"
@@ -783,17 +830,58 @@ class MasterPipeline:
             print(f"  (avertissement) Échec calcul métriques : {e}")
             report_dict, cm, accuracy = None, None, None
 
+        # --- Préparation pour courbes ROC/PR, calibration et importances ---
+        # Après avoir évalué les prédictions, nous pouvons déterminer le vecteur
+        # y_true à utiliser (encodé ou non) et tenter de récupérer les
+        # probabilités des classes. Ces objets sont réutilisés dans les
+        # blocs optionnels ci-dessous.
+        y_true_for_scores = None
+        proba = None
+        try:
+            # Détermine si nous devons utiliser la version encodée de y
+            if (
+                clf.model_type == "XGBoost"
+                and getattr(clf, "label_encoder", None) is not None
+                and "y_te_enc" in locals()
+            ):
+                y_true_for_scores = y_te_enc
+            else:
+                y_true_for_scores = y_te
+        except Exception:
+            y_true_for_scores = None
+
+        # Récupération des probabilités prédictives si disponibles. Certaines
+        # implémentations (ex: SVM) nécessitent que `probability=True` soit
+        # activé à la construction du modèle. En cas d'échec, proba reste None.
+        try:
+            if hasattr(clf.model_pipeline, "predict_proba"):
+                proba = clf.model_pipeline.predict_proba(X_te)
+            else:
+                last_est = clf.model_pipeline[-1]
+                if hasattr(last_est, "predict_proba"):
+                    proba = last_est.predict_proba(X_te)
+        except Exception as e:
+            print(f"(avertissement) Probabilités indisponibles : {e}")
+
         # Sauvegarde PNG de la matrice de confusion (après calcul de cm)
         if save_confusion_png and cm is not None:
             try:
                 import matplotlib.pyplot as plt
                 import seaborn as sns
 
+                # Optionnel : normaliser la matrice sur les lignes si demandé
+                cm_plot = cm.astype(float)
+                fmt = "d"
+                if cm_normalized:
+                    # Normalisation par la somme de chaque ligne (évite division par zéro)
+                    cm_plot = cm_plot / (cm_plot.sum(axis=1, keepdims=True) + 1e-12)
+                    fmt = ".2f"
+
                 fig = plt.figure(figsize=(8, 6))
                 sns.heatmap(
-                    cm,
+                    cm_plot,
                     annot=True,
-                    fmt="d",
+                    fmt=fmt,
                     xticklabels=list(clf.class_labels),
                     yticklabels=list(clf.class_labels),
                 )
@@ -801,7 +889,7 @@ class MasterPipeline:
                 plt.ylabel("Vraie valeur")
                 plt.title(f"Matrice de confusion — {clf.model_type}")
                 out_png = os.path.join(
-                    self.reports_dir,
+                    run_dir,
                     f"confusion_matrix_{clf.model_type.lower()}_{ts}.png",
                 )
                 fig.tight_layout()
@@ -810,6 +898,306 @@ class MasterPipeline:
                 print(f"  > Heatmap sauvegardée : {out_png}")
             except Exception as e:
                 print(f"  (avertissement) Échec sauvegarde heatmap : {e}")
+
+        # === Courbes ROC/PR et métriques supplémentaires ===
+        # Ces blocs s'exécutent avant la génération du rapport JSON afin
+        # d'inclure les résultats dans le dictionnaire session_report. Les
+        # variables `roc_auc_results`, `avg_precision_results` et
+        # `brier_score_results` sont initialisées à None et mises à jour si
+        # l'option correspondante est activée et que les probabilités sont
+        # disponibles.
+        roc_auc_results = None
+        avg_precision_results = None
+        brier_score_results = None
+
+        # A) ROC & PR : One-vs-rest
+        if save_curves_roc_pr and proba is not None and y_true_for_scores is not None:
+            try:
+                import matplotlib.pyplot as plt
+                from sklearn.preprocessing import label_binarize
+                from sklearn.metrics import (
+                    roc_curve,
+                    auc,
+                    precision_recall_curve,
+                    average_precision_score,
+                )
+
+                classes = list(clf.class_labels)
+                n_classes = len(classes)
+
+                # Encodage des labels pour label_binarize : valeurs 0..n-1
+                # Si y_true_for_scores contient déjà des entiers, on les utilise
+                # sinon, on mappe chaque libellé vers son index.
+                if len(classes) > 0:
+                    if isinstance(y_true_for_scores[0], (int, np.integer)):
+                        encoded_y_true = np.asarray(y_true_for_scores)
+                    else:
+                        label_map = {lab: idx for idx, lab in enumerate(classes)}
+                        encoded_y_true = np.array(
+                            [label_map.get(lab, -1) for lab in y_true_for_scores]
+                        )
+                else:
+                    encoded_y_true = np.asarray(y_true_for_scores)
+
+                Y = label_binarize(encoded_y_true, classes=np.arange(n_classes))
+
+                # ROC par classe
+                fpr, tpr, roc_auc = {}, {}, {}
+                for i in range(n_classes):
+                    fpr[i], tpr[i], _ = roc_curve(Y[:, i], proba[:, i])
+                    roc_auc[i] = auc(fpr[i], tpr[i])
+
+                # micro/macro ROC
+                fpr["micro"], tpr["micro"], _ = roc_curve(Y.ravel(), proba.ravel())
+                roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
+                all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+                mean_tpr = np.zeros_like(all_fpr)
+                for i in range(n_classes):
+                    mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+                mean_tpr /= n_classes
+                roc_auc["macro"] = auc(all_fpr, mean_tpr)
+
+                # Plot ROC curves
+                fig = plt.figure(figsize=(8, 6))
+                for i, lab in enumerate(classes):
+                    plt.plot(
+                        fpr[i],
+                        tpr[i],
+                        lw=1,
+                        label=f"{lab} (AUC={roc_auc[i]:.2f})",
+                    )
+                plt.plot([0, 1], [0, 1], "--", lw=1, color="grey")
+                plt.plot(
+                    all_fpr,
+                    mean_tpr,
+                    lw=2,
+                    label=f"macro (AUC={roc_auc['macro']:.2f})",
+                )
+                plt.plot(
+                    fpr["micro"],
+                    tpr["micro"],
+                    lw=2,
+                    label=f"micro (AUC={roc_auc['micro']:.2f})",
+                )
+                plt.xlabel("False Positive Rate")
+                plt.ylabel("True Positive Rate")
+                plt.title(f"ROC — {clf.model_type}")
+                plt.legend(fontsize=8, loc="lower right")
+                roc_png = os.path.join(
+                    run_dir,
+                    f"roc_{clf.model_type.lower()}_{ts}.png",
+                )
+                fig.tight_layout()
+                fig.savefig(roc_png, dpi=140)
+                plt.close(fig)
+                print(f"  > ROC sauvegardée : {roc_png}")
+
+                # Courbes Precision–Recall
+                ap = {}
+                fig = plt.figure(figsize=(8, 6))
+                for i, lab in enumerate(classes):
+                    p, r, _ = precision_recall_curve(Y[:, i], proba[:, i])
+                    ap[lab] = average_precision_score(Y[:, i], proba[:, i])
+                    plt.plot(r, p, lw=1, label=f"{lab} (AP={ap[lab]:.2f})")
+                plt.xlabel("Recall")
+                plt.ylabel("Precision")
+                plt.title(f"Precision–Recall — {clf.model_type}")
+                plt.legend(fontsize=8, loc="lower left")
+                pr_png = os.path.join(
+                    run_dir,
+                    f"pr_{clf.model_type.lower()}_{ts}.png",
+                )
+                fig.tight_layout()
+                fig.savefig(pr_png, dpi=140)
+                plt.close(fig)
+                print(f"  > PR sauvegardée : {pr_png}")
+
+                roc_auc_results = {
+                    "micro": float(roc_auc["micro"]),
+                    "macro": float(roc_auc["macro"]),
+                    **{classes[i]: float(roc_auc[i]) for i in range(n_classes)},
+                }
+                avg_precision_results = {k: float(v) for k, v in ap.items()}
+            except Exception as e:
+                print(f"  (avertissement) Courbes ROC/PR ignorées : {e}")
+
+        # B) Calibration curve & Brier score
+        if save_calibration and proba is not None and y_true_for_scores is not None:
+            try:
+                import matplotlib.pyplot as plt
+                from sklearn.calibration import calibration_curve
+                from sklearn.metrics import brier_score_loss
+
+                classes = list(clf.class_labels)
+                n_classes = len(classes)
+                # Encodage des labels (comme ci-dessus)
+                if n_classes > 0:
+                    if isinstance(y_true_for_scores[0], (int, np.integer)):
+                        encoded_y_true = np.asarray(y_true_for_scores)
+                    else:
+                        label_map = {lab: idx for idx, lab in enumerate(classes)}
+                        encoded_y_true = np.array(
+                            [label_map.get(lab, -1) for lab in y_true_for_scores]
+                        )
+                else:
+                    encoded_y_true = np.asarray(y_true_for_scores)
+                # Binarisé pour calibration_curve
+                from sklearn.preprocessing import label_binarize as _label_binarize
+
+                Y = _label_binarize(encoded_y_true, classes=np.arange(n_classes))
+
+                fig = plt.figure(figsize=(8, 6))
+                brier = {}
+                for i, lab in enumerate(classes):
+                    frac_pos, mean_pred = calibration_curve(
+                        Y[:, i], proba[:, i], n_bins=15, strategy="quantile"
+                    )
+                    plt.plot(
+                        mean_pred,
+                        frac_pos,
+                        marker="o",
+                        lw=1,
+                        label=lab,
+                    )
+                    brier[lab] = brier_score_loss(Y[:, i], proba[:, i])
+                plt.plot([0, 1], [0, 1], "--", color="grey")
+                plt.xlabel("Probabilité prédite")
+                plt.ylabel("Fréquence observée")
+                plt.title(f"Calibration — {clf.model_type}")
+                plt.legend(fontsize=8, loc="best")
+                calib_png = os.path.join(
+                    run_dir,
+                    f"calibration_{clf.model_type.lower()}_{ts}.png",
+                )
+                fig.tight_layout()
+                fig.savefig(calib_png, dpi=140)
+                plt.close(fig)
+                print(f"  > Calibration sauvegardée : {calib_png}")
+                brier_score_results = {k: float(v) for k, v in brier.items()}
+            except Exception as e:
+                print(f"  (avertissement) Courbe de calibration ignorée : {e}")
+
+        # C) Importances de features
+        if save_feature_importance:
+            try:
+                import matplotlib.pyplot as plt
+                from sklearn.inspection import permutation_importance
+
+                names = feature_cols  # colonnes avant la FS
+                # Récupère l'estimateur final (dernier élément du pipeline)
+                estimator = clf.model_pipeline[-1]
+                importances = None
+                # Cas 1 : l'estimateur expose feature_importances_
+                if hasattr(estimator, "feature_importances_"):
+                    importances = estimator.feature_importances_
+                # Cas 2 : SVM linéaire → importance ~ poids absolu moyen
+                elif (
+                    clf.model_type == "SVM"
+                    and getattr(estimator, "kernel", "rbf") == "linear"
+                    and hasattr(estimator, "coef_")
+                ):
+                    importances = np.abs(estimator.coef_).mean(axis=0)
+
+                # Cas 3 : fallback par permutation importance
+                if importances is None:
+                    # Utilise le balanced_accuracy comme scoring par défaut
+                    res = permutation_importance(
+                        clf.model_pipeline,
+                        X_te,
+                        y_true_for_scores,
+                        n_repeats=10,
+                        random_state=(
+                            meta.get("random_state", 42)
+                            if isinstance(meta, dict)
+                            else 42
+                        ),
+                        scoring="balanced_accuracy",
+                    )
+                    importances = res.importances_mean
+
+                k = min(20, len(names))
+                idx = np.argsort(importances)[::-1][:k]
+                fig = plt.figure(figsize=(8, 6))
+                plt.barh(range(k), importances[idx][::-1])
+                plt.yticks(range(k), [names[i] for i in idx][::-1], fontsize=8)
+                plt.xlabel("Importance")
+                plt.title(f"Top-{k} features — {clf.model_type}")
+                fi_png = os.path.join(
+                    run_dir,
+                    f"feature_importance_{clf.model_type.lower()}_{ts}.png",
+                )
+                fig.tight_layout()
+                fig.savefig(fi_png, dpi=140)
+                plt.close(fig)
+                print(f"  > Feature importance sauvegardée : {fi_png}")
+            except Exception as e:
+                print(f"  (avertissement) Feature importance ignorée : {e}")
+
+        # D) Export des prédictions test
+        if export_test_predictions:
+            try:
+                import pandas as pd
+
+                classes = list(clf.class_labels)
+                n_samples = len(y_pred)
+                # Prépare un mapping label->index
+                label_map = {lab: idx for idx, lab in enumerate(classes)}
+                # Encodage des prédictions pour indexation
+                if isinstance(y_pred[0], (int, np.integer)):
+                    y_pred_enc = np.asarray(y_pred)
+                else:
+                    y_pred_enc = np.array([label_map.get(lab, -1) for lab in y_pred])
+                # Encodage des y_true pour export
+                if isinstance(y_true_for_scores[0], (int, np.integer)):
+                    y_true_enc = np.asarray(y_true_for_scores)
+                else:
+                    y_true_enc = np.array(
+                        [label_map.get(lab, -1) for lab in y_true_for_scores]
+                    )
+
+                df_export = pd.DataFrame(
+                    {
+                        "y_true": [
+                            classes[int(t)] if int(t) >= 0 else str(t)
+                            for t in y_true_enc
+                        ],
+                        "y_pred": [
+                            classes[int(p)] if int(p) >= 0 else str(p)
+                            for p in y_pred_enc
+                        ],
+                    }
+                )
+                if proba is not None:
+                    # Top-2 classes par probabilité
+                    top2 = np.argsort(proba, axis=1)[:, -2:][:, ::-1]
+                    # Probabilité de la classe prédite
+                    df_export["proba_pred"] = proba[
+                        np.arange(len(y_pred_enc)), y_pred_enc
+                    ]
+                    df_export["top1"] = [classes[i] for i in top2[:, 0]]
+                    df_export["p_top1"] = proba[np.arange(len(y_pred_enc)), top2[:, 0]]
+                    df_export["top2"] = [classes[i] for i in top2[:, 1]]
+                    df_export["p_top2"] = proba[np.arange(len(y_pred_enc)), top2[:, 1]]
+                csv_path = os.path.join(
+                    run_dir,
+                    f"test_predictions_{clf.model_type.lower()}_{ts}.csv",
+                )
+                df_export.to_csv(csv_path, index=False)
+                print(f"  > Prédictions test exportées : {csv_path}")
+            except Exception as e:
+                print(f"  (avertissement) Export prédictions ignoré : {e}")
+
+        # E) Historique d'early stopping pour XGBoost
+        if clf.model_type == "XGBoost":
+            try:
+                booster = clf.model_pipeline[-1].get_booster()
+                hist = booster.evals_result()
+                xgb_hist_json = os.path.join(run_dir, f"xgb_eval_history_{ts}.json")
+                with open(xgb_hist_json, "w", encoding="utf-8") as f:
+                    json.dump(hist, f, indent=2)
+                print(f"  > Historique XGB sauvegardé : {xgb_hist_json}")
+            except Exception:
+                pass
 
         # 7.5 Rapport JSON
         session_report = {
@@ -839,8 +1227,18 @@ class MasterPipeline:
             "confusion_matrix": cm.tolist() if cm is not None else None,
         }
 
+        # Insère les métriques supplémentaires (ROC AUC, Average Precision,
+        # Brier score) si disponibles. Les dictionnaires sont convertis en
+        # nombres flottants pour assurer la sérialisation JSON.
+        if roc_auc_results is not None:
+            session_report["roc_auc"] = roc_auc_results
+        if avg_precision_results is not None:
+            session_report["avg_precision"] = avg_precision_results
+        if brier_score_results is not None:
+            session_report["brier_score"] = brier_score_results
+
         report_filename = f"session_report_{clf.model_type.lower()}_{ts}.json"
-        report_path = os.path.join(self.reports_dir, report_filename)
+        report_path = os.path.join(run_dir, report_filename)
         try:
             with open(report_path, "w", encoding="utf-8") as f:
                 json.dump(session_report, f, indent=4)
@@ -893,7 +1291,7 @@ class MasterPipeline:
         try:
             if getattr(clf, "selected_features_", None) is not None:
                 kept = len(clf.selected_features_)
-                # ⬇️ le bon nom est "feature_cols" (paramètre de la fonction)
+                # le bon nom est "feature_cols" (paramètre de la fonction)
                 total = len(feature_cols) if feature_cols is not None else None
                 msg = f"[FS] Features conservées : {kept}" + (
                     f"/{total}" if total is not None else ""
