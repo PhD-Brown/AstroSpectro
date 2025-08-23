@@ -60,6 +60,7 @@ from sklearn.model_selection import (
     RandomizedSearchCV,
     train_test_split,
     GroupKFold,
+    RepeatedStratifiedKFold,
 )
 
 try:
@@ -67,16 +68,19 @@ try:
 except Exception:
     HAS_SGKF = False
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder, RobustScaler
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-from sklearn.impute import SimpleImputer
+from sklearn.impute import SimpleImputer, KNNImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.svm import SVC
 from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.feature_selection import SelectFromModel
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_selection import mutual_info_classif
 from sklearn.calibration import CalibratedClassifierCV
 
 
@@ -96,6 +100,9 @@ class SpectralClassifier:
         selector_model="xgb",
         selector_n_estimators=200,
         random_state=42,
+        # Pré-traitement par défaut
+        imputer_strategy: str = "median",
+        scaler_type: str = "standard",
     ):
         """
         Initialise la configuration du pipeline de classification.
@@ -125,6 +132,11 @@ class SpectralClassifier:
         self.selector_model = selector_model
         self.selector_n_estimators = selector_n_estimators
         self.random_state = random_state
+
+        # Préférences de pré-traitement par défaut
+        self.imputer_strategy = imputer_strategy
+        self.scaler_type = scaler_type
+        self.knn_imputer_k = 5  # valeur par défaut pour l'imputation KNN
 
         self.feature_names_used = []
         self.selected_features_ = None
@@ -365,27 +377,61 @@ class SpectralClassifier:
         if not num_cols:
             raise ValueError("Aucune colonne numérique disponible pour l'entraînement.")
 
-        if model_type in {"SVM"}:
-            return ColumnTransformer(
-                [
-                    (
-                        "num",
-                        Pipeline(
-                            [
-                                ("imp", SimpleImputer(strategy="median")),
-                                ("scaler", StandardScaler()),
-                            ]
-                        ),
-                        num_cols,
-                    )
-                ],
-                remainder="drop",
-            )
+        # Sélection de l'imputation en fonction de self.imputer_strategy
+        imp_strategy = getattr(self, "imputer_strategy", "median")
+        if imp_strategy == "none" or imp_strategy is None:
+            imputer = None
+        elif imp_strategy == "median":
+            imputer = SimpleImputer(strategy="median")
+        elif imp_strategy == "mean":
+            imputer = SimpleImputer(strategy="mean")
+        elif imp_strategy == "most_frequent":
+            imputer = SimpleImputer(strategy="most_frequent")
+        elif imp_strategy == "knn":
+            # KNNImputer plus lent mais parfois plus précis
+            n_neighbors = getattr(self, "knn_imputer_k", 5)
+            imputer = KNNImputer(n_neighbors=int(n_neighbors))
         else:
-            return ColumnTransformer(
-                [("num", SimpleImputer(strategy="median"), num_cols)],
-                remainder="drop",
-            )
+            imputer = SimpleImputer(strategy="median")
+
+        # Sélection du scaler en fonction de self.scaler_type
+        scaler_type = getattr(self, "scaler_type", "standard")
+        if scaler_type == "none" or scaler_type is None:
+            scaler = None
+        elif scaler_type == "standard":
+            scaler = StandardScaler()
+        elif scaler_type == "robust":
+            scaler = RobustScaler()
+        else:
+            scaler = StandardScaler()
+
+        # Construction du pipeline de prétraitement pour les colonnes numériques
+        steps = []
+        if imputer is not None:
+            steps.append(("imp", imputer))
+        if (model_type == "SVM") or scaler is not None:
+            # Pour SVM, on force la normalisation; sinon on respecte scaler_type
+            if scaler is None and model_type == "SVM":
+                scaler = StandardScaler()
+            if scaler is not None:
+                steps.append(("scaler", scaler))
+
+        if steps:
+            transformer = Pipeline(steps)
+        else:
+            # Pas d'imputation ni scaling : on laisse passer les valeurs telles quelles
+            transformer = "passthrough"
+
+        return ColumnTransformer(
+            [
+                (
+                    "num",
+                    transformer,
+                    num_cols,
+                )
+            ],
+            remainder="drop",
+        )
 
     def _build_estimator(
         self, model_type: str, n_estimators: int, n_classes: int, random_state: int
@@ -468,7 +514,25 @@ class SpectralClassifier:
         use_balanced_weights: bool = True,
         calibrate_probs: bool = False,
         calibration_method: str = "sigmoid",
-    ) -> bool:
+        # --- nouvelles options avancées ---
+        class_weight_mode: str | None = None,
+        class_weight_alpha: float = 1.0,
+        weight_col: str | None = None,
+        weight_norm: str = "minmax",
+        repeated_cv: bool = False,
+        cv_repeats: int = 1,
+        calibrate_holdout_size: float = 0.0,
+        calibrate_cv: int = 3,
+        # --- réglages du pré-processeur et de la sélection ---
+        imputer_strategy: str | None = None,
+        knn_imputer_k: int = 5,
+        scaler_type: str | None = None,
+        selector_method: Optional[str] = None,
+        mi_top_k: Optional[int] = None,
+        scoring_eval: Optional[Any] = None,
+    ) -> tuple[
+        "SpectralClassifier", list[str], pd.DataFrame, np.ndarray, np.ndarray | None
+    ]:
         """
         Entraîne et évalue le modèle avec GridSearchCV + pipeline Imputer/Scaler/SMOTE,
         (optionnellement) SelectFromModel, puis affiche un rapport et une matrice
@@ -505,6 +569,17 @@ class SpectralClassifier:
             print("> Aucune donnée exploitable après nettoyage ; arrêt.")
             return False
 
+        # Appliquer les réglages du pré-processeur pour cette session
+        # On sauvegarde les valeurs existantes pour les restaurer ensuite
+        orig_imp = getattr(self, "imputer_strategy", None)
+        orig_knn = getattr(self, "knn_imputer_k", None)
+        orig_scal = getattr(self, "scaler_type", None)
+        if imputer_strategy is not None:
+            self.imputer_strategy = imputer_strategy
+            self.knn_imputer_k = int(knn_imputer_k)
+        if scaler_type is not None:
+            self.scaler_type = scaler_type
+
         # Groupes (optionnel)
         groups_full = None
         if use_groups and group_col and group_col in df_trainable.columns:
@@ -512,12 +587,45 @@ class SpectralClassifier:
 
         # 1) X/y + encodage XGB
         X_all, y_all = self._prepare_features_and_labels(df_trainable)
+        feature_cols_before_fs = list(self.feature_names_used)
+        y_all = y_all.astype(str)
+
+        # Mutual information filter (sélection des top-K features avant tout)
+        if mi_top_k is not None and mi_top_k > 0:
+            try:
+                # On calcule la MI sur un sous-échantillon pour la vitesse
+                # S'il y a trop de colonnes catégorielles, mutual_info_classif les gère automatiquement
+                mi_scores = mutual_info_classif(
+                    X_all.fillna(0), y_all, discrete_features=False
+                )
+                # Sélection des indices des top-K scores
+                idx_sorted = np.argsort(mi_scores)[::-1]
+                top_idx = idx_sorted[: int(mi_top_k)]
+                top_cols = X_all.columns[top_idx]
+                X_all = X_all[top_cols].copy()
+                self.feature_names_used = list(X_all.columns)
+                print(
+                    f"  > Mutual information filter : {len(top_cols)} features conservées (top-{mi_top_k})."
+                )
+            except Exception as _mi_e:
+                # Si la MI échoue (par ex. données non numériques), on ignore la sélection MI
+                pass
+
+        # Encodage pour XGBoost + mémorisation de l’encodeur et des labels
         label_encoder: Optional[LabelEncoder] = None
         y_enc = y_all
+
         if self.model_type == "XGBoost":
             label_encoder = LabelEncoder().fit(y_all)
             y_enc = label_encoder.transform(y_all)
 
+        # Sauvegarde pour évaluation / décodage et ordre des classes
+        self.label_encoder = label_encoder
+        self.class_labels = (
+            label_encoder.classes_.tolist()
+            if label_encoder is not None
+            else sorted(pd.Series(y_all).astype(str).unique().tolist())
+        )
         # 2) Split train/test (stratifié ou par groupes)
         if use_groups and (groups_full is not None):
             gss = GroupShuffleSplit(
@@ -558,9 +666,14 @@ class SpectralClassifier:
             if use_feature_selection is None
             else use_feature_selection
         )
-        sel_model = (
-            (self.selector_model or "rf") if selector_model is None else selector_model
-        )
+        # Choix du modèle pour la sélection guidée
+        # Priorité : argument selector_method > argument selector_model > attribut self.selector_model
+        if selector_method is not None:
+            sel_model = selector_method
+        elif selector_model is None:
+            sel_model = self.selector_model or "rf"
+        else:
+            sel_model = selector_model
         sel_threshold = (
             self.selector_threshold
             if selector_threshold is None
@@ -569,6 +682,7 @@ class SpectralClassifier:
 
         steps = [("prep", preproc)]
         if fs_enabled:
+            # Modèle pour sélectionner les variables
             if sel_model == "xgb":
                 import xgboost as xgb
 
@@ -585,7 +699,24 @@ class SpectralClassifier:
                     n_jobs=-1,
                     random_state=random_state,
                 )
+            elif sel_model == "ext":
+                selector_est = ExtraTreesClassifier(
+                    n_estimators=self.selector_n_estimators,
+                    n_jobs=-1,
+                    random_state=random_state,
+                    class_weight="balanced_subsample",
+                )
+            elif sel_model == "l1":
+                # Sélection via régression logistique L1 (sparse)
+                selector_est = LogisticRegression(
+                    penalty="l1",
+                    solver="liblinear",
+                    multi_class="ovr",
+                    max_iter=1000,
+                    random_state=random_state,
+                )
             else:
+                # Par défaut : RandomForest
                 selector_est = RandomForestClassifier(
                     n_estimators=self.selector_n_estimators,
                     n_jobs=-1,
@@ -598,9 +729,62 @@ class SpectralClassifier:
 
         # 4) Fit params : weights + early stopping (XGB)
         fit_params: Dict[str, Any] = {}
-        if use_balanced_weights:
-            sw = compute_sample_weight("balanced", y_train)
-            fit_params["clf__sample_weight"] = sw
+        # --- Calcul des poids d'échantillons ---
+        # On combine (si applicable) plusieurs sources de poids :
+        # 1) Poids de classe avancés (inverse des fréquences)
+        # 2) Poids équilibrés standards (balanced)
+        # 3) Poids provenant d'une colonne du DataFrame (S/N, etc.)
+
+        sample_weight: Optional[np.ndarray] = None
+
+        # 1) Poids de classe avancés
+        if class_weight_mode and str(class_weight_mode).lower() != "none":
+            # Fréquence de chaque classe dans y_train
+            unique, counts = np.unique(y_train, return_counts=True)
+            freq_map = {cls: cnt for cls, cnt in zip(unique, counts)}
+            # Poids proportionnels à l'inverse de la fréquence à la puissance alpha
+            class_weights = {
+                cls: (1.0 / freq_map[cls]) ** float(class_weight_alpha)
+                for cls in unique
+            }
+            sample_weight = np.array([class_weights[cls] for cls in y_train])
+        elif use_balanced_weights:
+            # Poids balanced fourni par scikit-learn
+            sample_weight = compute_sample_weight("balanced", y_train)
+
+        # 2) Poids depuis une colonne du DataFrame (ex: rapport S/N)
+        if weight_col and weight_col in df_trainable.columns:
+            try:
+                # Les indices de X_train correspondent aux index de df_trainable
+                weight_vals = df_trainable.loc[X_train.index, weight_col].values.astype(
+                    float
+                )
+                # Normalisation
+                w = weight_vals.copy()
+                # Remplace les NaN par la médiane
+                if np.any(pd.isna(w)):
+                    med = np.nanmedian(w)
+                    w = np.nan_to_num(w, nan=med)
+                if weight_norm == "log":
+                    # log1p après déplacement pour éviter log(0)
+                    w = np.log1p(w - np.min(w) + 1e-6)
+                # Min-max scaling
+                mn, mx = np.min(w), np.max(w)
+                if mx - mn > 0:
+                    w = (w - mn) / (mx - mn)
+                else:
+                    w = np.ones_like(w)
+                if sample_weight is None:
+                    sample_weight = w
+                else:
+                    sample_weight = sample_weight * w
+            except Exception:
+                # en cas d'erreur, on ignore les poids par colonne
+                pass
+
+        # Ajout aux paramètres de fit si présent
+        if sample_weight is not None:
+            fit_params["clf__sample_weight"] = sample_weight
 
         # ES uniquement hors recherche (sinon masque FS instable entre folds)
         es_active = (
@@ -641,7 +825,10 @@ class SpectralClassifier:
             if "verbose" in fit_sig:
                 fit_params["clf__verbose"] = False
 
-        # 5) CV aware of groups
+        # 5) Stratégie de validation croisée (CV)
+        # Si des groupes sont fournis, on privilégie StratifiedGroupKFold (si dispo).
+        # Sinon, en mode répétition activé, on utilise RepeatedStratifiedKFold pour
+        # stabiliser les scores. À défaut, on reste sur StratifiedKFold classique.
         if use_groups and groups_train is not None:
             try:
                 from sklearn.model_selection import StratifiedGroupKFold
@@ -652,9 +839,17 @@ class SpectralClassifier:
             except Exception:
                 cv = GroupKFold(n_splits=cv_folds)
         else:
-            cv = StratifiedKFold(
-                n_splits=cv_folds, shuffle=True, random_state=random_state
-            )
+            if repeated_cv:
+                # Validation croisée répétée (k-fold × repeats) pour plus de robustesse
+                cv = RepeatedStratifiedKFold(
+                    n_splits=cv_folds,
+                    n_repeats=cv_repeats,
+                    random_state=random_state,
+                )
+            else:
+                cv = StratifiedKFold(
+                    n_splits=cv_folds, shuffle=True, random_state=random_state
+                )
 
         # 6) Fit / Search
         if search == "grid":
@@ -697,36 +892,40 @@ class SpectralClassifier:
 
         # 8) Expose artefacts
         self.model_pipeline = best
-        self.class_labels = (
-            list(label_encoder.classes_)
-            if label_encoder is not None
-            else sorted(np.unique(y_all))
-        )
-        self.label_encoder = label_encoder
 
-        # features sélectionnées (si FS actif)
+        # IMPORTANT : pour introspection, on récupère le pipeline "nu" (sans l'enrobage de calibration)
+        pipe_for_fs = getattr(best, "base_estimator", best)
+
+        # 9) Features sélectionnées (si FS actif)
         self.selected_features_ = None
-        if fs_enabled and "fs" in best.named_steps:
+        if (
+            fs_enabled
+            and hasattr(pipe_for_fs, "named_steps")
+            and "fs" in pipe_for_fs.named_steps
+        ):
             try:
-                out_names = best.named_steps["prep"].get_feature_names_out()
-                mask = best.named_steps["fs"].get_support()
-                sel = [
-                    n.split("__", 1)[1] if "__" in n else n
-                    for n, keep in zip(out_names, mask)
-                    if keep
-                ]
-                self.selected_features_ = sel
+                # Nommer les colonnes après le préproc
+                out_names = pipe_for_fs.named_steps["prep"].get_feature_names_out()
+                out_names = [n.split("__", 1)[-1] for n in out_names]
             except Exception:
-                pass
+                out_names = self.feature_names_used
+            try:
+                mask = pipe_for_fs.named_steps["fs"].get_support()
+                self.selected_features_ = [
+                    n for n, keep in zip(out_names, mask) if keep
+                ]
+            except Exception:
+                # garde-fou
+                self.selected_features_ = out_names
 
-        # Retour pour MasterPipeline
-        feature_cols_before_fs = list(X_all.columns)
-        y_all_out = (
-            label_encoder.inverse_transform(y_enc)
-            if label_encoder is not None
-            else y_all
-        )
-        return self, feature_cols_before_fs, X_all, y_all_out, groups_full
+        # --- Rétablit les options de pré-processeur si elles ont été surchargées pour cette session ---
+        if imputer_strategy is not None:
+            self.imputer_strategy = orig_imp
+            self.knn_imputer_k = orig_knn
+        if scaler_type is not None:
+            self.scaler_type = orig_scal
+
+        return (self, feature_cols_before_fs, X_all, y_all, groups_full)
 
     # ---------------------------------------------------------------------
     # Évaluation & persistance
