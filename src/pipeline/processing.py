@@ -78,6 +78,7 @@ from .feature_engineering import (
     FeatureEngineer,
     add_gaia_derived_features,
     add_main_sequence_delta,
+    stabilize_spectral_features,
 )
 from utils import sanitize_invvar
 
@@ -179,6 +180,27 @@ class ProcessingPipeline:
                 )
                 color_index = flux_blue / (flux_red + 1e-6)  # évite /0
 
+                # 4.b) Global continuum shape: slope and curvature (Pack D)
+                # On ajuste un polynôme de degré 2 sur la plage du continuum
+                slope = 0.0
+                curvature = 0.0
+                try:
+                    cont_mask = (wavelength > 4300) & (wavelength < 6800)
+                    lam = wavelength[cont_mask]
+                    flx = flux_norm[cont_mask]
+                    # On n'utilise que les points finits
+                    valid = np.isfinite(lam) & np.isfinite(flx)
+                    lam = lam[valid]
+                    flx = flx[valid]
+                    if lam.size >= 10:
+                        # Ajuste un polynôme de degré 2 : flx ≈ a*λ² + b*λ + c
+                        coeffs = np.polyfit(lam, flx, deg=2)
+                        curvature = float(coeffs[0])
+                        slope = float(coeffs[1])
+                except Exception:
+                    # Laisse slope/curvature à 0 si l'ajustement échoue
+                    pass
+
                 # 5) Assemblage de la ligne
                 record: Dict[str, float] = {"file_path": file_path}
 
@@ -190,6 +212,9 @@ class ProcessingPipeline:
 
                 # feature couleur locale
                 record["feature_color_index_BlueRed"] = float(color_index)
+                # continuité du continuum : pente et courbure
+                record["feature_cont_slope"] = float(slope)
+                record["feature_cont_curvature"] = float(curvature)
 
                 # colonnes issues du matching (wl/prom par raie)
                 record.update(
@@ -205,6 +230,7 @@ class ProcessingPipeline:
                 print(f"\n    -> ERREUR lors du traitement de {file_path}: {e}")
 
         features_df = pd.DataFrame(all_features_list)
+        features_df = stabilize_spectral_features(features_df)
 
         # --- Jointure avec le catalogue maître (si présent) ---
         if (
@@ -235,14 +261,23 @@ class ProcessingPipeline:
         )
         print(f"  > Features Gaia dérivées ajoutées : {len(new_gaia_cols)} colonnes")
 
+        # --- Composites de raies (Pack B) ---
+        try:
+            from .feature_engineering import add_line_composites
+
+            merged_df, new_line_cols = add_line_composites(merged_df)
+            print(f"  > Composites de raies ajoutés : {len(new_line_cols)} colonne(s)")
+        except Exception as exc:
+            print(f"  > AVERTISSEMENT: échec de add_line_composites: {exc}")
+
         # 2bis) Écart à la séquence principale (delta_ms)
         merged_df, ms_coeffs = add_main_sequence_delta(merged_df, min_parallax_snr=10.0)
         if ms_coeffs is None:
-            np.save("delta_ms_poly_coeffs.npy", ms_coeffs)
             print(
                 "  > delta_ms : pas assez d'étoiles propres pour ajuster la polynomiale (resté NaN)."
             )
         else:
+            np.save("delta_ms_poly_coeffs.npy", ms_coeffs)
             print("  > delta_ms ajouté (poly deg=3).")
 
         # --- Indices de couleur photométriques (g-r, r-i) ---

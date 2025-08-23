@@ -85,9 +85,31 @@ class FeatureEngineer:
             ),
         }
 
-        # Indices spectraux (bande feature, bande continuum), en Å
-        self.index_definitions: Dict[str, Tuple[List[float], List[float]]] = {
-            "TiO5": ([7126, 7135], [7042, 7052]),
+        # Indices spectraux (bande feature, bandes de continuum), en Å
+        #
+        # Chaque entrée associe un nom d’indice à une paire (bande_feature, bandes_continuum).
+        # La bande feature est un intervalle [λ_min, λ_max].  Les bandes continuum
+        # sont une liste de sous-intervalles [λ_min, λ_max].  Cette structure
+        # permet de définir des indices plus complexes avec plusieurs régions de
+        # continuum (ex: G4300, Hβ index).  Les moyennes de continuum sont
+        # calculées sur la concaténation de toutes les sous-bandes.
+        self.index_definitions: Dict[str, Tuple[List[float], List[List[float]]]] = {
+            # TiO5 (déjà existant) : bande 7126–7135 Å / continuum 7042–7052 Å
+            "TiO5": ([7126.0, 7135.0], [[7042.0, 7052.0]]),
+            # Dn4000 (narrow Balmer break) : 4000–4100 Å / continuum 3850–3950 Å
+            "Dn4000": ([4000.0, 4100.0], [[3850.0, 3950.0]]),
+            # G4300 (CH band) : 4280–4320 Å / continuum 4260–4280 & 4320–4340 Å
+            "G4300": ([4280.0, 4320.0], [[4260.0, 4280.0], [4320.0, 4340.0]]),
+            # Ca4227 index : 4225–4235 Å / continuum 4215–4225 & 4235–4245 Å
+            "Ca4227": ([4225.0, 4235.0], [[4215.0, 4225.0], [4235.0, 4245.0]]),
+            # Hβ index : 4840–4870 Å / continuum 4820–4840 & 4870–4890 Å
+            "Hbeta_index": ([4840.0, 4870.0], [[4820.0, 4840.0], [4870.0, 4890.0]]),
+            # Mg b index : 5160–5190 Å / continuum 5150–5160 & 5190–5200 Å
+            "Mgb_index": ([5160.0, 5190.0], [[5150.0, 5160.0], [5190.0, 5200.0]]),
+            # CaH2 : 6814–6846 Å / continuum 7042–7056 Å
+            "CaH2": ([6814.0, 6846.0], [[7042.0, 7056.0]]),
+            # CaH3 : 6960–6990 Å / continuum 7042–7056 Å
+            "CaH3": ([6960.0, 6990.0], [[7042.0, 7056.0]]),
         }
 
         # 2) Génère la liste complète et ordonnée des noms de features
@@ -129,18 +151,51 @@ class FeatureEngineer:
             l’indice vaut 0.0 pour rester robuste.
         """
         indices: Dict[str, float] = {}
-        for name, (feature_band, continuum_band) in self.index_definitions.items():
+        for name, (feature_band, continuum_bands) in self.index_definitions.items():
             try:
+                # Masque pour la bande de l'indice
                 f_mask = (wavelength >= feature_band[0]) & (
                     wavelength <= feature_band[1]
                 )
-                c_mask = (wavelength >= continuum_band[0]) & (
-                    wavelength <= continuum_band[1]
-                )
+                # Flux moyen dans la bande feature
+                f_vals = flux_norm[f_mask]
+                mean_f = float(np.nanmean(f_vals)) if f_vals.size > 0 else 0.0
 
-                mean_f = float(np.mean(flux_norm[f_mask]))
-                mean_c = float(np.mean(flux_norm[c_mask]))
-                indices[f"feature_index_{name}"] = mean_f / (mean_c + 1e-6)
+                # Masque(s) pour les bandes de continuum (concaténé)
+                c_vals_list: List[np.ndarray] = []
+                # 'continuum_bands' est une liste de listes [λ_min, λ_max]
+                if isinstance(continuum_bands, list):
+                    for band in continuum_bands:
+                        if band is None:
+                            continue
+                        # Support des entrées [start, end]
+                        if isinstance(band, (list, tuple)) and len(band) == 2:
+                            c_mask = (wavelength >= band[0]) & (wavelength <= band[1])
+                            c_vals_list.append(flux_norm[c_mask])
+                        else:
+                            # Cas fallback: une simple bande continue
+                            c_mask = (wavelength >= continuum_bands[0]) & (
+                                wavelength <= continuum_bands[1]
+                            )
+                            c_vals_list.append(flux_norm[c_mask])
+                            break
+                else:
+                    # Cas simple (ancienne signature) : un seul intervalle [λ_min, λ_max]
+                    c_mask = (wavelength >= continuum_bands[0]) & (
+                        wavelength <= continuum_bands[1]
+                    )
+                    c_vals_list.append(flux_norm[c_mask])
+
+                # Concatène toutes les valeurs du continuum
+                if c_vals_list:
+                    c_concat = np.concatenate(c_vals_list)
+                    mean_c = float(np.nanmean(c_concat)) if c_concat.size > 0 else 0.0
+                else:
+                    mean_c = 0.0
+
+                # Ratio indice : moyenne bande / moyenne continuum
+                denom = mean_c + 1e-6  # évite division par zéro
+                indices[f"feature_index_{name}"] = mean_f / denom if denom != 0 else 0.0
             except Exception:
                 # Robustesse: en cas de bande vide / masque hors-grille,
                 # on garde 0.0 pour éviter de casser la chaîne.
@@ -473,7 +528,172 @@ def add_gaia_derived_features(
             df[name] = df[col].isna().astype("int8")
             new_cols.append(name)
 
+    # ---------------- Pack A: enrichissements Gaia “+” ----------------
+    # Photometric SNRs (and log10)
+    for band in ("g", "bp", "rp"):
+        f = f"phot_{band}_mean_flux_over_error"
+        if f in df.columns:
+            s = pd.to_numeric(df[f], errors="coerce")
+            df[f"{band}_snr"] = s
+            # log10 only for positive SNRs
+            df[f"{band}_snr_log10"] = np.where(s > 0, np.log10(s), np.nan)
+            new_cols += [f"{band}_snr", f"{band}_snr_log10"]
+
+    # Absolute magnitudes for BP/RP computed like M_G
+    def _abs_mag(band: str) -> None:
+        """Compute absolute magnitude M_BP or M_RP via parallax or distance."""
+        name_par, name_dist = f"M_{band.upper()}_parallax", f"M_{band.upper()}_dist"
+        mcol = f"phot_{band}_mean_mag"
+        # via parallax if available
+        if {mcol, "parallax"}.issubset(df.columns):
+            ok = (
+                df["parallax"].notna()
+                & (df["parallax"] > 0)
+                & (df["parallax_snr"] >= 5)
+            )
+            with np.errstate(divide="ignore", invalid="ignore"):
+                df[name_par] = np.where(
+                    ok,
+                    df[mcol] - 10.0 + 5.0 * np.log10(df["parallax"]),
+                    np.nan,
+                )
+            new_cols.append(name_par)
+        # via distance_gspphot
+        if {mcol, "distance_gspphot"}.issubset(df.columns):
+            ok = df["distance_gspphot"].notna() & (df["distance_gspphot"] > 0)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                df[name_dist] = np.where(
+                    ok,
+                    df[mcol] - 5.0 * np.log10(df["distance_gspphot"] / 10.0),
+                    np.nan,
+                )
+            new_cols.append(name_dist)
+        # merge parallax-first, then distance
+        if (name_par in df.columns) or (name_dist in df.columns):
+            M_col = f"M_{band.upper()}"
+            df[M_col] = df.get(name_par, pd.Series(np.nan, index=df.index))
+            if name_dist in df.columns:
+                use = df[M_col].isna() & df[name_dist].notna()
+                df.loc[use, M_col] = df.loc[use, name_dist]
+            new_cols.append(M_col)
+
+    # Compute absolute magnitudes for BP and RP
+    for band in ("bp", "rp"):
+        if f"phot_{band}_mean_mag" in df.columns:
+            _abs_mag(band)
+
+    # Absolute colour and evolutionary flags
+    if {"M_BP", "M_RP"}.issubset(df.columns):
+        df["M_BP_minus_M_RP"] = df["M_BP"] - df["M_RP"]
+        new_cols.append("M_BP_minus_M_RP")
+
+    if "delta_ms" in df.columns:
+        df["is_giant_like"] = (df["delta_ms"] <= -0.8).astype("int8")
+        df["is_subdwarf_like"] = (df["delta_ms"] >= +0.6).astype("int8")
+        new_cols += ["is_giant_like", "is_subdwarf_like"]
+
+    # Useful logs (already suggested)
+    if "v_tan_kms" in df.columns:
+        x = df["v_tan_kms"]
+        df["v_tan_kms_log10"] = np.where(x > 0, np.log10(x), np.nan)
+        new_cols.append("v_tan_kms_log10")
+    if "parallax_snr" in df.columns:
+        s = df["parallax_snr"]
+        df["parallax_snr_log10"] = np.where(s > 0, np.log10(s), np.nan)
+        new_cols.append("parallax_snr_log10")
+
     return df, new_cols
+
+
+def add_line_composites(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Calcule des combinaisons simples d’équivalent widths (EW) et de FWHM
+    pour capturer des rapports Balmer/métaux ainsi qu’une mesure de profondeur
+    moyenne.  Cette fonction inspecte les colonnes existantes pour déterminer
+    les noms standards des raies et produit de nouvelles colonnes dérivées.
+
+    Paramètres
+    ----------
+    df : pd.DataFrame
+        DataFrame contenant des colonnes de raies (ex: feature_Ha_eq_width).
+
+    Retour
+    ------
+    tuple[pd.DataFrame, list[str]]
+        Le DataFrame enrichi et la liste des nouvelles colonnes ajoutées.
+    """
+    df = df.copy()
+    new: list[str] = []
+
+    def pick(*names: str) -> Optional[str]:
+        """Renvoie le premier nom de colonne présent dans df parmi ceux proposés."""
+        return next((n for n in names if n in df.columns), None)
+
+    # Aliases tolérants (ascii/grec).  Les EW sont positives pour absorption.
+    Ha_ew = pick("feature_Ha_eq_width", "feature_Hα_eq_width")
+    Hb_ew = pick("feature_Hb_eq_width", "feature_Hβ_eq_width")
+    Ha_fwhm = pick("feature_Ha_fwhm", "feature_Hα_fwhm")
+    Hb_fwhm = pick("feature_Hb_fwhm", "feature_Hβ_fwhm")
+    CaK_ew = pick("feature_CaIIK_eq_width")
+    CaH_ew = pick("feature_CaIIH_eq_width")
+    MgB_ew = pick("feature_Mg_b_eq_width", "feature_Mgb_eq_width")
+    NaD_ew = pick("feature_Na_D_eq_width", "feature_NaD_eq_width")
+
+    # --- Balmer ratios ---
+    if Ha_ew and Hb_ew:
+        a = df[Ha_ew].abs()
+        b = df[Hb_ew].abs()
+        # ratio EW Hα / Hβ
+        r = np.where((b.notna()) & (b != 0), a / b, np.nan)
+        df["ratio_EW_Ha_Hb"] = r
+        new.append("ratio_EW_Ha_Hb")
+    if Ha_fwhm and Hb_fwhm:
+        # ratio FWHM Hα / Hβ
+        r = np.where(
+            (df[Hb_fwhm].notna()) & (df[Hb_fwhm] != 0),
+            df[Ha_fwhm] / df[Hb_fwhm],
+            np.nan,
+        )
+        df["ratio_FWHM_Ha_Hb"] = r
+        new.append("ratio_FWHM_Ha_Hb")
+
+    # --- Profondeur moyenne ~ EW / FWHM (proxy) pour Hα/Hβ ---
+    if Ha_ew and Ha_fwhm:
+        df["depthproxy_Ha"] = np.where(
+            df[Ha_fwhm] > 0, df[Ha_ew].abs() / df[Ha_fwhm], np.nan
+        )
+        new.append("depthproxy_Ha")
+    if Hb_ew and Hb_fwhm:
+        df["depthproxy_Hb"] = np.where(
+            df[Hb_fwhm] > 0, df[Hb_ew].abs() / df[Hb_fwhm], np.nan
+        )
+        new.append("depthproxy_Hb")
+
+    # --- Métaux : Ca H/K, Mg b, Na D ---
+    if CaH_ew and CaK_ew:
+        # somme des EW CaHK
+        df["EW_CaHK_sum"] = df[CaH_ew].abs() + df[CaK_ew].abs()
+        new.append("EW_CaHK_sum")
+        # ratio CaK / CaH
+        df["ratio_EW_CaK_CaH"] = np.where(
+            df[CaH_ew].abs() > 0, df[CaK_ew].abs() / df[CaH_ew].abs(), np.nan
+        )
+        new.append("ratio_EW_CaK_CaH")
+    if MgB_ew and NaD_ew:
+        # ratio Mg b / Na D
+        df["ratio_EW_MgB_NaD"] = np.where(
+            df[NaD_ew].abs() > 0, df[MgB_ew].abs() / df[NaD_ew].abs(), np.nan
+        )
+        new.append("ratio_EW_MgB_NaD")
+
+    # --- Contraste métaux vs Balmer ---
+    if (CaH_ew and CaK_ew) and (Ha_ew and Hb_ew):
+        metals = df[CaH_ew].abs() + df[CaK_ew].abs()
+        balmer = df[Ha_ew].abs() + df[Hb_ew].abs()
+        df["contrast_metals_vs_balmer"] = np.where(balmer > 0, metals / balmer, np.nan)
+        new.append("contrast_metals_vs_balmer")
+
+    return df, new
 
 
 def add_main_sequence_delta(
