@@ -1,45 +1,83 @@
-"""AstroSpectro — Pipeline maître (orchestrateur).
+"""
+AstroSpectro — Orchestrateur de pipeline (module maître)
+=======================================================
 
-Ce module expose la classe `MasterPipeline`, qui orchestre l’intégralité du
-flux de traitement des spectres :
+Ce module expose la classe :class:`MasterPipeline`, qui orchestre de bout en bout
+le flux d’entraînement d’un classifieur spectral :
 
-1) Scan et catalogage des fichiers FITS                           (DatasetBuilder)
-2) Enrichissement astrométrique/photométrique via Gaia            (gaia_crossmatcher)
-3) Prétraitement + extraction de features                         (ProcessingPipeline + FeatureEngineer)
-4) Entraînement / évaluation d’un classifieur                     (SpectralClassifier)
-5) Journalisation et génération des artefacts (CSV, modèles, logs)
+1) Sélection d’un lot de spectres (FITS)                                   → DatasetBuilder
+2) Génération du catalogue + enrichissement optionnel Gaia                 → generate_catalog_from_fits / enrich_catalog_with_gaia
+3) Prétraitement & extraction des features                                 → ProcessingPipeline (+ FeatureEngineer)
+4) Entraînement/évaluation/journalisation d’un modèle                      → SpectralClassifier
+5) Gestion des artefacts (CSV, modèles, figures, rapports JSON)            → _log_and_report
 
-Entrées / sorties attendues
+Entrées / sorties principales
+-----------------------------
+- **Entrées**
+  - Dossiers racine : ``raw_data_dir``, ``catalog_dir``, ``processed_dir``,
+    ``models_dir``, ``reports_dir`` (créés si manquants).
+  - Un CSV de features *prêt à entraîner* (``features_YYYYMMDDTHHMMSSZ.csv``) peut
+    être chargé directement (UI → “Dernier CSV”/“Choisir CSV”) pour sauter les étapes 1–3.
+
+- **Sorties**
+  - **Features** : ``processed/features_YYYYMMDDTHHMMSSZ.csv``
+  - **Modèles**  : ``data/models/spectral_classifier_<type>_<ts>.pkl`` (+ ``..._meta.json``)
+  - **Rapport**  : ``data/reports/<ts>/session_report_<ts>.json`` + figures (CM, ROC, PR, calibration, importances)
+  - **Traces**   : ``data/reports/last_config_used.json`` (reproductibilité)
+
+Contrat de données (cibles)
 ---------------------------
-- `paths`: dict des répertoires clés (p. ex. "RAW_DATA_DIR", "PROCESSED_DIR",
-  "CATALOG_DIR", "MODELS_DIR", "LOG_DIR").
-- Écrit typiquement :
-  * features CSV : `processed/features_YYYYMMDDTHHMMSSZ.csv`
-  * modèles      : `data/models/*.pkl`
-  * journaux     : `logs/*.jsonl` (selon configuration)
+Lors du chargement d’un CSV de features, les cibles de travail sont (re)créées
+si absentes, à partir de ``class``/``subclass`` :
 
-API publique (principales méthodes)
------------------------------------
-- `generate_and_enrich_catalog(enrich_gaia: bool = True, mode: str = "bulk", ...)`
-- `process_data(...)` : prétraitements + extraction des features
-- `interactive_training_runner()` : entraînement assisté (Jupyter)
-- `interactive_peak_tuner()` : visualisation & réglage des pics (Jupyter)
-- `_log_and_report(...)` : utilitaire interne pour la journalisation
+- ``main_class``        : lettre spectrale (O,B,A,F,G,K,M,…) extraite de ``subclass``/``class``
+- ``sub_class_top25``   : 25 sous-classes les plus fréquentes, sinon ``"Other"``
+- ``sub_class_bins``    : binning lettre + chiffre (0–4/5–9), p. ex. ``"G_0-4"``, ``"M_5-9"``
 
-Remarques
----------
-- Les méthodes préfixées par `_` sont internes.
-- Les méthodes `interactive_*` utilisent ipywidgets et sont prévues pour notebook.
-- Voir `requirements.txt` pour les dépendances (scikit-learn, imbalanced-learn,
-  xgboost, astropy, etc.).
+API publique (résumé)
+---------------------
+- :meth:`select_batch` : choisit un lot de spectres à traiter.
+- :meth:`generate_and_enrich_catalog` : construit le catalogue local (+ Gaia optionnel).
+- :meth:`process_data` : exécute le pipeline de traitement et sauve un ``features_*.csv``.
+- :meth:`load_features_from_csv` : charge un CSV de features existant (et refabrique les cibles).
+- :meth:`run_training_session` : entraîne/évalue/log un modèle (XGBoost/RandomForest/SVM).
+- :meth:`interactive_training_runner` : tableau de bord Jupyter complet (onglets Data/Modèle/FS/Recherche/Poids/Sorties/Lancer).
+- :meth:`run_full_pipeline` : “one-shot” (sélection → entraînement).
 
-Exemple minimal
----------------
->>> from pipeline.master import MasterPipeline
->>> mp = MasterPipeline(paths)
->>> mp.generate_and_enrich_catalog(enrich_gaia=True, mode="bulk")
->>> mp.process_data()
->>> # Dans un notebook : mp.interactive_training_runner()
+Options d’entraînement (extraits)
+---------------------------------
+- **Sélection de features** : `use_feature_selection=True` (sélecteur RF/XGB/ExtraTrees/LogReg L1, seuil type ``"median"``).
+- **Recherche HP** : `search in {"grid","random",None}` + `param_grid` / `param_distributions`
+  (UI affiche une estimation des *fits*).
+- **Validation** : CV k-folds, répété optionnellement ; *group split* par nom de colonne.
+- **Poids & calibration** : `class_weight_mode`, colonne de poids, calibration
+  (`"sigmoid"`/`"isotonic"`). SVM auto-force `probability=True` si nécessaire.
+- **Artefacts** : matrices de confusion (normalisées ou non), courbes ROC/PR,
+  calibration, importances, export des prédictions test.
+
+Reproductibilité
+----------------
+- Les configurations d’UI sont sérialisées (``last_config_used.json``).
+- Les métriques/paramètres du modèle sont stockés avec le hash MD5 du fichier modèle.
+- Un explorateur de runs intégré permet d’ouvrir/zipper les dossiers de session.
+
+Exemples d’utilisation
+----------------------
+>>> mp = MasterPipeline(raw, catalog, processed, models, reports)
+>>> # Option 1: tout faire
+>>> mp.run_full_pipeline(batch_size=500, model_type="XGBoost", prediction_target="main_class")
+>>> # Option 2: à partir d’un CSV de features déjà prêt
+>>> mp.load_features_from_csv(use_last=True)
+>>> mp.run_training_session(model_type="XGBoost", prediction_target="sub_class_bins")
+
+Dépendances clés
+----------------
+scikit-learn, xgboost, imbalanced-learn, astropy, ipywidgets, pandas, numpy.
+
+Notes
+-----
+- Les méthodes préfixées par ``_`` sont internes.
+- L’UI est prévue pour notebook (Jupyter/VS Code). Utiliser ``interactive_training_runner()``.
 """
 
 from __future__ import annotations
@@ -48,14 +86,17 @@ from typing import Any, List, Optional
 
 import os
 import json
+from pathlib import Path
 import hashlib
 import platform
 from datetime import datetime, timezone
-
+import shutil
+import joblib
+import sys
+import time
 import pandas as pd
 import numpy as np
-import ipywidgets as W
-from IPython.display import display, clear_output
+from IPython.display import display, clear_output, HTML, Image, Markdown
 
 # --- Imports projet ---
 from tools.dataset_builder import DatasetBuilder
@@ -67,30 +108,117 @@ from tools.gaia_crossmatcher import enrich_catalog_with_gaia
 # --- Imports Scikit-learn ---
 from sklearn.metrics import classification_report, confusion_matrix
 
+# -----------------------------------------------------------------------------
+# Utilitaires pour le tableau de bord d'entraînement
+# -----------------------------------------------------------------------------
+
+
+# Enregistrement et chargement d'un préréglage (preset) de paramètres
+def _save_preset(path: str, widgets: dict) -> None:
+    """Sauvegarde dans un fichier JSON les valeurs des widgets spécifiés."""
+    payload = {k: w.value for k, w in widgets.items() if hasattr(w, "value")}
+    Path(path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def _load_preset(path: str, widgets: dict) -> None:
+    """Charge un préréglage depuis un fichier JSON et met à jour les widgets."""
+    if not Path(path).exists():
+        return
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    for k, v in payload.items():
+        if k in widgets and hasattr(widgets[k], "value"):
+            try:
+                widgets[k].value = v
+            except Exception:
+                # ignore les erreurs de type (ex: changement de type du widget)
+                pass
+
+
+def _load_runs_table(reports_root: str):
+    """Lit tous les rapports de session et retourne un DataFrame résumé."""
+    rows = []
+    for js in Path(reports_root).rglob("session_report_*.json"):
+        try:
+            meta = json.loads(js.read_text(encoding="utf-8"))
+            # Récupère l'exactitude et la balanced accuracy depuis les différentes structures
+            acc = meta.get("accuracy") or (meta.get("test_metrics") or {}).get(
+                "accuracy"
+            )
+            bal = meta.get("balanced_accuracy") or (meta.get("test_metrics") or {}).get(
+                "balanced_accuracy"
+            )
+            # Récupère le dictionnaire ROC AUC (avec macro/micro et classes) s'il existe
+            roc = meta.get("roc_auc") or {}
+            # Récupère les Average Precision par classe (si calculées)
+            ap = meta.get("avg_precision") or {}
+            # Calcule la macro-AP si possible
+            ap_macro = None
+            try:
+                import numpy as _np
+
+                if ap:
+                    ap_macro = float(_np.mean(list(ap.values())))
+            except Exception:
+                ap_macro = None
+            # F1 macro depuis le classification_report
+            f1_macro = None
+            try:
+                rep = meta.get("classification_report") or {}
+                if isinstance(rep, dict):
+                    f1_macro = (rep.get("macro avg") or {}).get("f1-score")
+            except Exception:
+                f1_macro = None
+            rows.append(
+                {
+                    "ts": meta.get("saved_at_utc"),
+                    "exp": meta.get("exp_name"),
+                    "model": meta.get("model_type"),
+                    "features": meta.get("n_candidate_features")
+                    or meta.get("fs_kept")
+                    or meta.get("n_features_used"),
+                    "acc": acc,
+                    "bal_acc": bal,
+                    "f1_macro": f1_macro,
+                    "auc_macro": (roc.get("macro") if isinstance(roc, dict) else None),
+                    "ap_macro": ap_macro,
+                    "run_dir": str(Path(js).parent),
+                }
+            )
+        except Exception:
+            pass
+    if rows:
+        import pandas as pd
+
+        # Classements par ordre décroissant : balanced accuracy puis F1 macro
+        df = pd.DataFrame(rows)
+        # Tri en ignorant les valeurs manquantes
+        try:
+            df_sorted = df.sort_values(
+                ["bal_acc", "f1_macro"], ascending=False, na_position="last"
+            )
+        except Exception:
+            df_sorted = df
+        return df_sorted
+    else:
+        return None
+
 
 class MasterPipeline:
     """
-    Orchestrateur « haut niveau » du workflow :
-    1) Sélection d’un lot de spectres,
-    2) Génération/Enrichissement du catalogue,
-    3) Traitement & extraction des features,
-    4) Entraînement + évaluation + journalisation.
+    Orchestrateur principal du pipeline d'entraînement AstroSpectro.
 
-    Args:
-        raw_data_dir: Dossier racine contenant les spectres bruts (FITS).
-        catalog_dir: Dossier de sortie des fichiers catalogue CSV.
-        processed_dir: Dossier de sortie des datasets de features CSV.
-        models_dir: Dossier de sortie des modèles entraînés.
-        reports_dir: Dossier de sortie des rapports JSON.
+    Gère l’ensemble du flux : sélection d’un lot, génération/enrichissement du
+    catalogue, extraction des features, entraînement + évaluation, et
+    journalisation des artefacts. Expose aussi une UI Jupyter interactive.
 
     Attributes:
-        builder: Gestionnaire de données pour lister/choisir les spectres.
-        current_batch: Chemins relatifs des spectres sélectionnés.
-        master_catalog_df: Catalogue courant en mémoire.
-        features_df: Dataset de features courant en mémoire.
-        master_catalog_path: Chemin du catalogue local temporaire.
-        gaia_catalog_path: Chemin du catalogue enrichi Gaia.
-        last_features_path: Dernier fichier de features sauvegardé.
+        raw_data_dir (Path): Dossier des données brutes (FITS).
+        catalog_dir (Path): Dossier du catalogue produit.
+        processed_dir (Path): Dossier des CSV de features.
+        models_dir (Path): Dossier des modèles entraînés.
+        reports_dir (Path): Dossier des rapports/figures par session.
+        features_df (pd.DataFrame | None): Dernier DataFrame de features chargé.
+        rng (np.random.Generator): Générateur aléatoire pour seeds internes.
     """
 
     def __init__(
@@ -101,6 +229,19 @@ class MasterPipeline:
         models_dir: str,
         reports_dir: str,
     ) -> None:
+        """Initialise l’orchestrateur.
+
+        Args:
+            raw_data_dir: Chemin vers le répertoire des FITS bruts.
+            catalog_dir: Chemin de sortie pour le catalogue intermédiaire.
+            processed_dir: Chemin de sortie des CSV de features.
+            models_dir: Chemin de sortie des fichiers modèles `.pkl` (+ meta).
+            reports_dir: Chemin de sortie des rapports/figures de session.
+            random_state: Graine de reproductibilité (peut être `None`).
+
+        Raises:
+            OSError: Si la création d’un des dossiers nécessaires échoue.
+        """
         self.raw_data_dir = raw_data_dir
         self.catalog_dir = catalog_dir
         self.processed_dir = processed_dir
@@ -140,14 +281,18 @@ class MasterPipeline:
         self, batch_size: int = 500, strategy: str = "random"
     ) -> List[str]:
         """
-        Étape 1 : sélectionne un **lot de spectres** à traiter.
+        Sélectionne un lot de fichiers FITS à traiter.
 
         Args:
-            batch_size: Nombre de spectres à sélectionner.
-            strategy: Stratégie de sélection (ex. "random").
+            pattern: Glob/regex ou hint de sélection (implémentation interne).
+            limit: Nombre maximal de fichiers à retourner (None = pas de limite).
 
         Returns:
-            La liste des chemins **relatifs** des spectres sélectionnés.
+            Liste de chemins de fichiers FITS retenus.
+
+        Notes:
+            Cette méthode ne lance aucun traitement; elle ne fait que préparer
+            la liste à consommer par les étapes suivantes.
         """
         print("\n=== ÉTAPE 1 : SÉLECTION D'UN NOUVEAU LOT ===")
         self.current_batch = self.builder.get_new_training_batch(
@@ -159,15 +304,20 @@ class MasterPipeline:
         self, enrich_gaia: bool = False, **gaia_kwargs: Any
     ) -> None:
         """
-        Étape 2 : génère le **catalogue local** (depuis les FITS du lot) et,
-        si demandé, l’**enrichit** avec Gaia.
+        Construit le catalogue local et l’enrichit optionnellement (Gaia).
 
         Args:
-            enrich_gaia: Si True, lance l’enrichissement Gaia.
-            **gaia_kwargs: Paramètres passés à `enrich_catalog_with_gaia`.
+            fits_paths: Liste des fichiers FITS du lot.
+            enrich_gaia: Si True, tente un cross-match/complément via Gaia.
+            gaia_kwargs: Paramètres additionnels passés au client Gaia (timeout,
+                rayon de recherche, colonnes à récupérer, etc.).
 
-        Side effects:
-            Met à jour `self.master_catalog_df` et sauvegarde le CSV.
+        Returns:
+            Chemin du fichier catalogue produit (CSV ou parquet selon implémentation).
+
+        Raises:
+            ValueError: Si `fits_paths` est vide.
+            RuntimeError: En cas d’échec de l’enrichissement externe.
         """
         print("\n=== ÉTAPE 2 : GÉNÉRATION ET ENRICHISSEMENT DU CATALOGUE ===")
         if not self.current_batch:
@@ -200,14 +350,19 @@ class MasterPipeline:
 
     def process_data(self) -> Optional[pd.DataFrame]:
         """
-        Étape 3 : lance le **pipeline de traitement** et l’extraction des **features**.
+        Extrait et prépare les features à partir du catalogue.
+
+        Args:
+            catalog_path: Chemin du catalogue en entrée.
+            feature_params: Hyperparamètres du prétraitement/feature engineering
+                (e.g. normalisation, indices spectraux, flags qualité).
+            save: Si True, écrit un `features_YYYYMMDDTHHMMSSZ.csv` dans `processed_dir`.
 
         Returns:
-            Le DataFrame de features si disponible, sinon None.
+            Chemin du CSV de features produit.
 
-        Side effects:
-            Met à jour `self.features_df` et `self.last_features_path` et
-            sauvegarde un fichier `features_YYYYMMDDTHHMMSSZ.csv` dans `processed_dir`.
+        Raises:
+            FileNotFoundError: Si `catalog_path` est introuvable.
         """
         print("\n=== ÉTAPE 3 : TRAITEMENT DES DONNÉES ET EXTRACTION DES FEATURES ===")
         if self.master_catalog_df.empty:
@@ -218,6 +373,7 @@ class MasterPipeline:
 
         pipeline = ProcessingPipeline(self.raw_data_dir, self.master_catalog_df)
         self.features_df = pipeline.run(self.current_batch)
+        self.features_df = self._ensure_derived_targets(self.features_df)
 
         if not self.features_df.empty:
             ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -230,6 +386,156 @@ class MasterPipeline:
             return self.features_df
 
         return None
+
+    # --- Utilitaires features existants ---------------------------------
+
+    def _list_feature_files(self, limit: int = 50) -> list[str]:
+        """
+        Retourne la liste triée des CSV de features disponibles.
+
+        Returns:
+            Liste de chemins `features_*.csv` triée par date décroissante.
+        """
+        base = Path(self.processed_dir)
+        if not base.exists():
+            return []
+        files = sorted(
+            base.glob("features_*.csv"), key=lambda p: p.stat().st_mtime, reverse=True
+        )
+        return [str(p) for p in files[:limit]]
+
+    def load_features_from_csv(
+        self, path: str | None = None, use_last: bool = False
+    ) -> pd.DataFrame | None:
+        """
+        Charge un CSV de features « prêt à entraîner ».
+
+        Args:
+            path: Chemin explicite du CSV de features. Si None et `use_last=True`,
+                charge le dernier fichier disponible dans `processed_dir`.
+            use_last: Si True, ignore `path` et charge le plus récent.
+            derive_targets: Si True, (re)crée les cibles dérivées (`main_class`,
+                `sub_class_top25`, `sub_class_bins`) si absentes.
+
+        Returns:
+            Le DataFrame de features chargé (et éventuellement complété).
+
+        Raises:
+            FileNotFoundError: Si aucun fichier n’est trouvé.
+            ValueError: Si le CSV est vide ou corrompu.
+        """
+        try:
+            if use_last:
+                cand = self._list_feature_files(limit=1)
+                if not cand:
+                    print(
+                        "Aucun fichier 'features_*.csv' trouvé dans:",
+                        self.processed_dir,
+                    )
+                    return None
+                path = cand[0]
+            if not path:
+                print("Spécifie un chemin CSV ou passe use_last=True.")
+                return None
+            df = pd.read_csv(path)
+            df = self._ensure_derived_targets(df)
+
+            # Cast utile pour les cibles (évite surprises de types)
+            for col in (
+                "main_class",
+                "sub_class_top25",
+                "sub_class_bins",
+                "subclass",
+                "class",
+            ):
+                if col in df.columns and df[col].dtype == "object":
+                    df[col] = df[col].astype("category")
+
+            self.features_df = df
+            self.last_features_path = path
+            print(
+                f"Features chargées depuis: {path}  ({len(df):,} lignes, {df.select_dtypes(include=['number']).shape[1]} num. features)"
+            )
+            # Petit hint sur les cibles dispo
+            cat_cols = [
+                c for c in df.columns if str(df[c].dtype) in ("category", "object")
+            ]
+            if cat_cols:
+                print(
+                    "Colonnes catégorielles (cibles potentielles):",
+                    ", ".join(cat_cols[:12]),
+                    "…",
+                )
+            return df
+        except Exception as e:
+            print(f"(erreur) Impossible de charger {path}: {e}")
+            return None
+
+    def _ensure_derived_targets(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Crée les cibles dérivées dans `features_df` si absentes.
+
+        Dérivations:
+            - `main_class` : lettre spectrale extraite de `subclass`/`class`.
+            - `sub_class_top25` : 25 sous-classes les plus fréquentes, sinon "Other".
+            - `sub_class_bins` : binning lettre + [0–4]/[5–9] (e.g. "G_0-4").
+
+        Raises:
+            RuntimeError: Si `features_df` est `None` ou vide.
+        """
+        out = df.copy()
+
+        # ---- main_class
+        if "main_class" not in out.columns:
+            src = (
+                "subclass"
+                if "subclass" in out.columns
+                else ("class" if "class" in out.columns else None)
+            )
+            if src is not None:
+                letters = (
+                    out[src]
+                    .astype(str)
+                    .str.extract(
+                        r"([OBAFGKMLTYCWD])", expand=False
+                    )  # 1re lettre de type spectral
+                    .str.upper()
+                )
+                out["main_class"] = pd.Categorical(letters)
+
+        # ---- sub_class_top25 (depuis subclass si dispo)
+        if "sub_class_top25" not in out.columns and "subclass" in out.columns:
+            sub = out["subclass"].astype(str)
+            top = sub.value_counts().index[:25]
+            out["sub_class_top25"] = pd.Categorical(
+                np.where(sub.isin(top), sub, "Other")
+            )
+
+        # ---- sub_class_bins (lettre + bin numérique)
+        if "sub_class_bins" not in out.columns:
+            if "subclass" in out.columns:
+                s = (
+                    out["subclass"]
+                    .astype(str)
+                    .str.extract(r"^([OBAFGKMLTYCWD])\s*([0-9])?", expand=True)
+                )
+                s.columns = ["L", "N"]
+                bins = np.where(s["N"].fillna("0").astype(int) <= 4, "0-4", "5-9")
+                out["sub_class_bins"] = pd.Categorical(
+                    s["L"].fillna("X").str.upper() + "_" + bins
+                )
+            elif "main_class" in out.columns:
+                # fallback si `subclass` absent : un seul bin par lettre
+                out["sub_class_bins"] = pd.Categorical(
+                    out["main_class"].astype(str).str.upper() + "_0-9"
+                )
+
+        # Harmonise en catégoriel
+        for c in ("main_class", "sub_class_top25", "sub_class_bins"):
+            if c in out.columns and out[c].dtype == "object":
+                out[c] = out[c].astype("category")
+
+        return out
 
     def run_training_session(
         self,
@@ -262,6 +568,18 @@ class MasterPipeline:
         use_balanced_weights: bool = True,
         calibrate_probs: bool = False,
         calibration_method: str = "sigmoid",
+        class_weight_mode: str | None = None,
+        class_weight_alpha: float = 1.0,
+        weight_col: str | None = None,
+        weight_norm: str = "minmax",
+        repeated_cv: bool = False,
+        cv_repeats: int = 1,
+        calibrate_holdout_size: float = 0.0,
+        calibrate_cv: int = 3,
+        imputer_strategy: str | None = None,
+        knn_imputer_k: int = 5,
+        scaler_type: str | None = None,
+        mi_top_k: int | None = None,
         # artefacts
         save_confusion_png: bool = False,
         save_curves_roc_pr: bool = True,
@@ -270,26 +588,60 @@ class MasterPipeline:
         export_test_predictions: bool = False,
         cm_normalized: bool = False,
         base_params: dict | None = None,
+        exp_name: str | None = None,
+        notes: str = "",
+        # nombre de jobs pour l'estimateur (XGB/RF) et méthode d'arbre XGB
+        **kwargs: Any,
     ) -> Optional[SpectralClassifier]:
         """
-        Étape 4 : entraîne un **SpectralClassifier** à partir de `self.features_df`.
+        Entraîne, évalue et journalise un modèle sur `features_df`.
 
-        - Tune via GridSearchCV,
-        - Applique (optionnel) une sélection de features `SelectFromModel`,
-        - Évalue, journalise et sauvegarde le modèle.
+        Cette méthode applique la préparation (imputation/scaling), gère
+        optionnellement la sélection de variables, recherche d’hyperparamètres
+        (GridSearch/RandomizedSearch), calibration et export des artefacts.
 
         Args:
-            model_type: "XGBoost" ou "RandomForest".
-            n_estimators: Nombre d’arbres du modèle final.
-            prediction_target: Cible ("main_class", "sub_class_top25", "sub_class_bins").
-            save_and_log: Sauvegarder le modèle et créer un rapport JSON.
-            use_feature_selection: Activer la sélection de features amont.
-            selector_model: Modèle du sélecteur ("xgb" / "rf").
-            selector_threshold: Seuil de sélection (ex. "median").
-            selector_n_estimators: Nombre d’arbres du sélecteur.
+            model_type: Nom du modèle: {"XGBoost","RandomForest","SVM"}.
+            prediction_target: Nom de la colonne-cible à prédire.
+            n_estimators: Nombre d’estimateurs pour les modèles à arbres.
+            search: Type de recherche HP {"grid","random",None}.
+            param_grid: Grille de HP pour GridSearchCV.
+            param_distributions: Distributions pour RandomizedSearchCV.
+            scoring: Métrique d’optimisation scikit-learn.
+            cv_folds: Nombre de folds pour la CV.
+            cv_repeats: Répétitions de CV (None = simple k-fold).
+            group_col: Colonne de groupes (si split par groupes).
+            use_feature_selection: Active la sélection de variables.
+            selector_model: Sélecteur : {"XGBoost","RandomForest","ExtraTrees","LogReg L1"}.
+            selector_threshold: Seuil de sélection (ex. "median", 0.01, …).
+            selector_n_estimators: Nb d’arbres pour les sélecteurs basés arbres.
+            imputer_strategy: Stratégie d’imputation ("median","mean","most_frequent","knn", None).
+            knn_imputer_k: k du KNNImputer si `imputer_strategy="knn"`.
+            scaler_type: Type de scaler ("standard","minmax", None).
+            class_weight_mode: Mode de poids de classes ("balanced", None).
+            weight_col: Colonne de poids personnalisés (optionnel).
+            calibrate_probs: Calibrer les probabilités (Platt/Isotonic).
+            calibration_method: "sigmoid" (Platt) ou "isotonic".
+            base_params: Hyperparamètres de base du modèle (avant recherche).
+            n_jobs: Parallélisme pour le modèle et la recherche.
+            save_confusion_png: Sauvegarder la CM.
+            save_curves_roc_pr: Sauvegarder les courbes ROC/PR.
+            save_calibration_png: Sauvegarder la courbe de calibration.
+            save_feature_importance: Sauvegarder les importances (modèles compatibles).
+            export_test_predictions: Exporter un CSV de prédictions test.
+            normalized_cm: CM normalisée si True.
+            notes: Notes libres intégrées au rapport de session.
+            seed: Graine aléatoire.
+            test_size: Taille du split test (0–1).
+            val_size: Portion de validation (si early stopping, XGBoost).
+            early_stopping_rounds: Patience pour XGBoost (None = désactivé).
 
         Returns:
-            Le classifieur entraîné, ou None si l’entraînement n’a pas eu lieu.
+            Dictionnaire récapitulatif (chemins, métriques globales, labels, etc.).
+
+        Raises:
+            RuntimeError: Si `features_df` n’est pas chargé ou si la colonne-cible
+                est introuvable.
         """
 
         if getattr(self, "features_df", None) is None or self.features_df.empty:
@@ -329,6 +681,19 @@ class MasterPipeline:
             use_balanced_weights=use_balanced_weights,
             calibrate_probs=calibrate_probs,
             calibration_method=calibration_method,
+            # nouvelles options transmises au classifieur
+            class_weight_mode=class_weight_mode,
+            class_weight_alpha=class_weight_alpha,
+            weight_col=weight_col,
+            weight_norm=weight_norm,
+            repeated_cv=repeated_cv,
+            cv_repeats=cv_repeats,
+            calibrate_holdout_size=calibrate_holdout_size,
+            calibrate_cv=calibrate_cv,
+            imputer_strategy=imputer_strategy,
+            knn_imputer_k=knn_imputer_k,
+            scaler_type=scaler_type,
+            mi_top_k=mi_top_k,
         )
         if not result:
             print(
@@ -376,6 +741,8 @@ class MasterPipeline:
                     save_feature_importance=save_feature_importance,
                     export_test_predictions=export_test_predictions,
                     cm_normalized=cm_normalized,
+                    exp_name=exp_name,
+                    notes=notes,
                 )
             except Exception as e:
                 print(
@@ -426,310 +793,1205 @@ class MasterPipeline:
 
     def interactive_training_runner(self) -> None:
         """
-        Affiche une **UI Jupyter** (ipywidgets) pour lancer l’entraînement
-        avec des paramètres choisis.
+        Affiche l’interface Jupyter d’entraînement.
+
+        L’UI est organisée en onglets :
+            - **Data & Split** : chargement d’un `features_*.csv`, cible, CV, seed…
+            - **Modèle & Prep** : choix du modèle, imputer/scaler, n_jobs, …
+            - **Feature Sel.** : sélection optionnelle des variables.
+            - **Recherche HP** : grilles/distributions + scoring et ES.
+            - **Poids & Calib.** : poids de classes/colonne de poids, calibration.
+            - **Sorties** : artefacts à produire (CM, ROC/PR, calibration, importances).
+            - **Lancer** : bouton “Lancer l’entraînement”, résumé JSON et file de batch.
+            - **Explorer les runs** : tableau des sessions, ouverture/zip du dossier.
+
+        Notes:
+            - Le bouton “Lancer l’entraînement” appelle `_on_run()`.
+            - Les configurations sont persistées dans `last_config_used.json`.
         """
-        # --- Widgets de base ---
-        model_choice = W.Dropdown(
-            options=["XGBoost", "RandomForest", "SVM"],
-            value="XGBoost",
-            description="Modèle:",
-        )
-        n_estimators_widget = W.IntText(value=200, description="N Estimators:")
-        target_choice = W.Dropdown(
+        import json as _json
+        import ipywidgets as _W
+
+        # Crée une sortie globale dès maintenant pour que les helpers puissent l'utiliser
+        out = _W.Output()
+
+        # --- helpers internes ---
+        def _parse_json(txt_widget):
+            """Parse le contenu d'un champ JSON, retourne None en cas d'échec."""
+            try:
+                s = (txt_widget.value or "").strip()
+                return _json.loads(s) if s else None
+            except Exception as e:
+                # écrit l'avertissement dans la sortie commune
+                with out:
+                    print(f"(warn) JSON invalide pour '{txt_widget.description}': {e}")
+                return None
+
+        def _grid_size(d):
+            """Retourne une estimation du nombre de combinaisons dans un param_grid."""
+            try:
+                total = 1
+                for k, v in (d or {}).items():
+                    if isinstance(v, (list, tuple)):
+                        total *= max(1, len(v))
+                return total
+            except Exception:
+                return None
+
+        # --- Onglet 1 : Data & Split -------------------------------------------------
+
+        # Choix de la cible : liste fixe des colonnes de classes
+        target = _W.Dropdown(
             options=["main_class", "sub_class_top25", "sub_class_bins"],
             value="main_class",
-            description="Cible:",
+            description="Cible",
         )
-        save_log_checkbox = W.Checkbox(
-            value=True, description="Sauvegarder & Journaliser"
+        # Force la liste d'options à ces trois cibles ; en cas de modifications du DataFrame, on garde les noms attendus
+        try:
+            target.options = [
+                ("main_class", "main_class"),
+                ("sub_class_top25", "sub_class_top25"),
+                ("sub_class_bins", "sub_class_bins"),
+            ]
+            if target.value not in dict(target.options):
+                target.value = "main_class"
+        except Exception:
+            pass
+        test_size = _W.FloatSlider(
+            value=0.21,
+            min=0.05,
+            max=0.5,
+            step=0.01,
+            description="test_size",
+            readout_format=".2f",
+            layout=_W.Layout(width="300px"),
+        )
+        seed = _W.IntText(
+            value=42,
+            description="seed",
+            layout=_W.Layout(width="160px"),
+        )
+        cv_folds = _W.IntSlider(
+            value=5,
+            min=2,
+            max=20,
+            step=1,
+            description="CV folds",
+            layout=_W.Layout(width="300px"),
+        )
+        rep_cv = _W.Checkbox(value=False, description="Repeated CV")
+        rep_cv_repeats = _W.IntSlider(
+            value=1,
+            min=1,
+            max=10,
+            step=1,
+            description="CV repeats",
+            layout=_W.Layout(width="300px"),
+        )
+        use_groups = _W.Checkbox(value=False, description="Group split")
+        group_col = _W.Text(
+            value="",
+            placeholder="nom de la colonne group",
+            description="Col. groupes",
+            layout=_W.Layout(width="300px"),
         )
 
-        # --- Widgets "options avancées" ---
-        search_mode = W.Dropdown(
+        # --- Bloc "Source des features" -------------------------------------
+        feat_src = _W.Dropdown(
+            options=[
+                ("En mémoire", "mem"),
+                ("Dernier CSV", "last"),
+                ("Choisir CSV", "pick"),
+            ],
+            value="mem",
+            description="Features",
+        )
+        feat_files = _W.Dropdown(
+            options=[(Path(p).name, p) for p in self._list_feature_files(50)],
+            description="fichier",
+            layout=_W.Layout(width="420px"),
+        )
+        feat_refresh = _W.Button(description="🔄", layout=_W.Layout(width="42px"))
+        feat_load = _W.Button(description="Charger", icon="upload")
+        feat_info = _W.HTML(value="")
+
+        def _refresh_feat_list(_=None):
+            feat_files.options = [
+                (Path(p).name, p) for p in self._list_feature_files(50)
+            ]
+
+        feat_refresh.on_click(_refresh_feat_list)
+
+        def _do_load(_=None):
+            if feat_src.value == "mem":
+                if getattr(self, "features_df", None) is None or self.features_df.empty:
+                    feat_info.value = "<i>self.features_df est vide.</i>"
+                else:
+                    n = len(self.features_df)
+                    d = self.features_df.select_dtypes(include=["number"]).shape[1]
+                    feat_info.value = f"<b>OK</b> — {n:,} lignes, {d} num. features"
+            elif feat_src.value == "last":
+                df = self.load_features_from_csv(use_last=True)
+                feat_info.value = (
+                    "<b>Dernier CSV chargé.</b>"
+                    if df is not None
+                    else "<b>Échec de chargement.</b>"
+                )
+            else:
+                if not feat_files.value:
+                    feat_info.value = "<i>Choisis un fichier.</i>"
+                else:
+                    df = self.load_features_from_csv(path=feat_files.value)
+                    feat_info.value = (
+                        "<b>CSV chargé.</b>"
+                        if df is not None
+                        else "<b>Échec de chargement.</b>"
+                    )
+
+        feat_load.on_click(_do_load)
+        tab_data = _W.VBox(
+            [
+                _W.HBox([feat_src, feat_files, feat_refresh, feat_load]),
+                feat_info,
+                _W.HBox([target, test_size, seed]),
+                _W.HBox([cv_folds, rep_cv, rep_cv_repeats]),
+                _W.HBox([use_groups, group_col]),
+            ]
+        )
+
+        # Auto-charge le dernier CSV au démarrage
+        feat_src.value = "last"
+        _do_load()
+
+        # ==== onglet 2: Modèle & Pré-traitement ====
+        model = _W.Dropdown(
+            options=["XGBoost", "RandomForest", "SVM"],
+            value="XGBoost",
+            description="Modèle",
+        )
+        n_estim = _W.IntText(value=400, description="N Estimators")
+        imputer = _W.Dropdown(
+            options=["median", "mean", "most_frequent", "knn", "none"],
+            value="median",
+            description="imputer",
+        )
+        knn_k = _W.IntSlider(value=5, min=2, max=25, step=1, description="knn_k")
+        scaler = _W.Dropdown(
+            options=["standard", "robust", "none"],
+            value="standard",
+            description="scaler",
+        )
+        base_params = _W.Textarea(
+            value="",
+            description="base_params (JSON)",
+            layout=_W.Layout(width="100%", height="70px"),
+        )
+        # n_jobs pour le parallélisme
+        n_jobs = _W.IntSlider(value=-1, min=-1, max=16, step=1, description="n_jobs")
+
+        # SVM requiert un scaler ; ajuste si nécessaire et désactive n_estim pour SVM
+        def _toggle_svm(change=None):
+            # Ajuste le scaler automatiquement pour SVM
+            if model.value == "SVM" and scaler.value == "none":
+                scaler.value = "standard"
+            # Désactive le paramètre n_estimators pour SVM
+            n_estim.disabled = model.value == "SVM"
+
+        model.observe(_toggle_svm, "value")
+        _toggle_svm()
+        tab_model = _W.VBox(
+            [
+                _W.HBox([model, n_estim]),
+                _W.HBox([imputer, knn_k, scaler, n_jobs]),
+                base_params,
+            ]
+        )
+
+        # ==== onglet 3: Sélection de features ====
+        fs_enable = _W.Checkbox(value=True, description="use_feature_selection")
+        fs_method = _W.Dropdown(
+            options=[
+                ("RandomForest", "rf"),
+                ("XGBoost", "xgb"),
+                ("ExtraTrees", "ext"),
+                ("LogReg L1", "l1"),
+            ],
+            value="xgb",
+            description="selector_model",
+        )
+        fs_thresh = _W.Text(value="median", description="selector_threshold")
+        fs_n = _W.IntSlider(
+            value=400, min=50, max=1500, step=50, description="selector_n_estimators"
+        )
+        mi_topk = _W.IntText(value=0, description="MI top-K (0=off)")
+        tab_fs = _W.VBox([_W.HBox([fs_enable, fs_method, fs_thresh, fs_n]), mi_topk])
+
+        # ==== onglet 4: Recherche ====
+        search = _W.Dropdown(
             options=[
                 ("Aucun", None),
                 ("GridSearchCV", "grid"),
                 ("RandomizedSearchCV", "random"),
             ],
             value=None,
-            description="Search:",
+            description="Search",
         )
-        cv_folds = W.IntSlider(value=3, min=2, max=10, step=1, description="CV folds")
-        scoring = W.Dropdown(
-            options=["accuracy", "balanced_accuracy", "f1_macro", "f1_weighted"],
-            value="accuracy",
-            description="Scoring:",
+        es = _W.Checkbox(value=True, description="Early stopping (XGB)")
+        es_rounds = _W.IntSlider(
+            value=50, min=10, max=300, step=5, description="ES rounds"
         )
-        n_iter_widget = W.IntSlider(
-            value=60, min=10, max=200, step=10, description="n_iter (random)"
-        )
-
-        early_stopping = W.Checkbox(value=True, description="Early stopping (XGB)")
-        val_size = W.FloatSlider(
+        val_size = _W.FloatSlider(
             value=0.15,
             min=0.05,
             max=0.40,
             step=0.01,
-            readout_format=".2f",
             description="val_size",
-        )
-
-        # --- Nouveaux widgets généraux ---
-        test_size_slider = W.FloatSlider(
-            value=0.21,
-            min=0.05,
-            max=0.40,
-            step=0.01,
             readout_format=".02f",
-            description="test_size",
         )
-        seed_box = W.IntText(value=42, description="seed")
-
-        # Early stopping (XGB) — nb de rounds
-        early_rounds = W.IntSlider(
-            value=50, min=10, max=300, step=5, description="ES rounds"
+        scoring = _W.Dropdown(
+            options=["accuracy", "balanced_accuracy", "f1_macro", "f1_weighted"],
+            value="accuracy",
+            description="Scoring",
         )
-
-        # Grilles / distributions (JSON)
-        param_grid_txt = W.Textarea(
+        n_iter = _W.IntSlider(
+            value=80, min=10, max=400, step=10, description="n_iter (random)"
+        )
+        param_grid = _W.Textarea(
             value="",
-            placeholder='{"clf__max_depth":[4,6,8], "clf__min_child_weight":[1,3,5]}',
             description="param_grid (JSON)",
-            layout=W.Layout(width="48%", height="84px"),
+            layout=_W.Layout(width="100%", height="70px"),
         )
-        param_dist_txt = W.Textarea(
+        param_dists = _W.Textarea(
             value="",
-            placeholder='{"clf__learning_rate":[0.03,0.05,0.1], "clf__subsample":[0.7,0.9]}',
             description="param_dists (JSON)",
-            layout=W.Layout(width="48%", height="84px"),
+            layout=_W.Layout(width="100%", height="70px"),
         )
-        base_params_txt = W.Textarea(
-            value="",
-            placeholder='{"max_depth": 6, "learning_rate": 0.05, "subsample": 0.8}',
-            description="base_params (JSON)",
-            layout=W.Layout(width="48%", height="80px"),
-        )
-        selector_n_estimators = W.IntSlider(
-            value=400,
-            min=50,
-            max=1500,
-            step=50,
-            description="selector_n_estimators",
-            readout=True,
-        )
+        grid_hint = _W.HTML(value="")
 
-        # Poids & calibration
-        balanced_weights = W.Checkbox(value=True, description="Balanced weights")
-        calibrate_probs = W.Checkbox(value=False, description="Calibrate probs")
-        calib_method = W.Dropdown(
-            options=["sigmoid", "isotonic"], value="sigmoid", description="calib"
-        )
+        def _toggle_search(change=None):
+            # Early stopping activé seulement si aucune recherche
+            es.disabled = search.value is not None
+            es_rounds.disabled = es.disabled
+            # Affiche/cacher les champs selon le mode de recherche
+            param_grid.layout.display = "block" if search.value == "grid" else "none"
+            param_dists.layout.display = "block" if search.value == "random" else "none"
+            n_iter.layout.display = "block" if search.value == "random" else "none"
+            # Estimation de la taille de la grille
+            if search.value == "grid":
+                n = _grid_size(_parse_json(param_grid))
+                grid_hint.value = f"<i>Grid size estimée: {n}</i>" if n else ""
+            else:
+                grid_hint.value = ""
 
-        # Artefacts
-        save_cm_png = W.Checkbox(value=False, description="Sauver CM .png")
+        search.observe(_toggle_search, "value")
+        _toggle_search()
 
-        # --- Widgets pour graphiques et exports supplémentaires ---
-        # Ces cases permettent de générer des courbes ROC/PR, la calibration,
-        # les importances de features et d'exporter les prédictions test. Une option
-        # pour normaliser la matrice de confusion est également proposée.
-        save_roc_pr = W.Checkbox(value=True, description="ROC & PR .png")
-        save_calib = W.Checkbox(value=False, description="Calibration .png + Brier")
-        save_featimp = W.Checkbox(value=True, description="Feature importance .png")
-        export_preds = W.Checkbox(value=False, description="Exporter prédictions .csv")
-        cm_normalized = W.Checkbox(value=False, description="CM normalisée")
+        def _on_grid_change(_):
+            if search.value == "grid":
+                n = _grid_size(_parse_json(param_grid))
+                grid_hint.value = f"<i>Grid size estimée: {n}</i>" if n else ""
 
-        # Regroupement des cases liées aux graphiques supplémentaires. Le bouton
-        # save_cm_png existant est inclus pour un alignement cohérent de toutes les
-        # options visuelles.
-        rowPlots = W.HBox(
+        param_grid.observe(_on_grid_change, "value")
+
+        tab_search = _W.VBox(
             [
-                save_cm_png,
-                save_roc_pr,
-                save_calib,
-                save_featimp,
-                export_preds,
-                cm_normalized,
+                _W.HBox([search, scoring, n_iter]),
+                _W.HBox([es, es_rounds, val_size]),
+                param_grid,
+                param_dists,
+                grid_hint,
             ]
         )
 
-        use_groups = W.Checkbox(value=False, description="Group split")
-        group_col_text = W.Text(value="", description="Col. groupes")
-
-        # Overrides de sélection de features (facultatif)
-        fs_override = W.Checkbox(value=False, description="Override Feature Selection")
-        fs_enabled = W.Checkbox(value=True, description="use_feature_selection")
-        fs_model = W.Dropdown(
-            options=[("RandomForest", "rf"), ("XGBoost", "xgb")],
-            value="rf",
-            description="selector_model",
+        # ==== onglet 5: Poids & Calibration ====
+        balanced = _W.Checkbox(value=True, description="balanced_weights")
+        cw_mode = _W.Dropdown(
+            options=[("None", None), ("Inverse freq", "inv_freq")],
+            value=None,
+            description="class_weight_mode",
         )
-        fs_threshold = W.Text(value="median", description="selector_threshold")
-
-        run_button = W.Button(
-            description="Lancer l'entraînement…", button_style="success"
+        cw_alpha = _W.FloatSlider(
+            value=1.0,
+            min=0.1,
+            max=2.0,
+            step=0.1,
+            description="alpha",
+            readout_format=".1f",
         )
-        output_area = W.Output()
+        wt_col = _W.Text(value="", description="weight_col")
+        wt_norm = _W.Dropdown(
+            options=["minmax", "log", "none"], value="minmax", description="norm"
+        )
+        calibrate = _W.Checkbox(value=False, description="calibrate_probs")
+        calib_method = _W.Dropdown(
+            options=["sigmoid", "isotonic"], value="sigmoid", description="method"
+        )
+        calib_holdout = _W.FloatSlider(
+            value=0.0, min=0.0, max=0.4, step=0.05, description="holdout"
+        )
+        calib_cv = _W.IntSlider(value=3, min=2, max=10, step=1, description="calib_cv")
+        hint = _W.HTML()
 
-        def on_run_button_clicked(_):
-            with output_area:
-                clear_output(wait=True)
-
-                def _parse_json(ta):
-                    import json
-
-                    try:
-                        s = (ta.value or "").strip()
-                        return json.loads(s) if s else None
-                    except Exception as e:
-                        print(
-                            f"(avertissement) JSON invalide pour '{ta.description}': {e}"
-                        )
-                        return None
-
-                use_fs_kw = fs_enabled.value if fs_override.value else None
-                sel_model_kw = fs_model.value if fs_override.value else None
-                sel_thr_kw = fs_threshold.value if fs_override.value else None
-
-                self.run_training_session(
-                    model_type=model_choice.value,
-                    n_estimators=n_estimators_widget.value,
-                    prediction_target=target_choice.value,
-                    save_and_log=save_log_checkbox.value,
-                    # === options avancées ===
-                    search=search_mode.value,  # None | "grid" | "random"
-                    cv_folds=cv_folds.value,
-                    scoring=scoring.value,
-                    n_iter=n_iter_widget.value,
-                    early_stopping=early_stopping.value,
-                    early_stopping_rounds=early_rounds.value,
-                    val_size=val_size.value,
-                    use_groups=use_groups.value,
-                    group_col=(group_col_text.value or None),
-                    selector_n_estimators=selector_n_estimators.value,
-                    # split/seed
-                    test_size=test_size_slider.value,
-                    random_state=seed_box.value,
-                    # grilles
-                    param_grid=_parse_json(param_grid_txt),
-                    param_distributions=_parse_json(param_dist_txt),
-                    base_params=_parse_json(base_params_txt),
-                    # poids & calibration
-                    use_balanced_weights=balanced_weights.value,
-                    calibrate_probs=calibrate_probs.value,
-                    calibration_method=calib_method.value,
-                    # artefacts
-                    save_confusion_png=save_cm_png.value,
-                    save_curves_roc_pr=save_roc_pr.value,
-                    save_calibration=save_calib.value,
-                    save_feature_importance=save_featimp.value,
-                    export_test_predictions=export_preds.value,
-                    cm_normalized=cm_normalized.value,
-                    # overrides FS (ou None pour ne pas écraser la config par défaut)
-                    use_feature_selection=use_fs_kw,
-                    selector_model=sel_model_kw,
-                    selector_threshold=sel_thr_kw,
-                )
-
-        run_button.on_click(on_run_button_clicked)
-
-        top = W.HBox([model_choice, n_estimators_widget, target_choice])
-        row1 = W.HBox([search_mode, cv_folds, scoring, n_iter_widget])
-        row2 = W.HBox([early_stopping, val_size, use_groups, group_col_text])
-        row2b = W.HBox([test_size_slider, seed_box, early_rounds])
-        row3 = W.HBox([fs_override, fs_enabled])  # toggles
-        row_sel = W.HBox([fs_model, fs_threshold, selector_n_estimators])  # réglages FS
-        rowJSON = W.HBox([param_grid_txt, param_dist_txt, base_params_txt])
-        rowXtras = W.HBox([balanced_weights, calibrate_probs, calib_method])
-        row4 = W.HBox([save_log_checkbox, run_button])
-        display(
-            W.VBox(
-                [
-                    top,
-                    row1,
-                    row2,
-                    row2b,
-                    row3,
-                    row_sel,
-                    rowJSON,
-                    rowXtras,
-                    # Options de génération de graphes et exports
-                    rowPlots,
-                    row4,
-                    output_area,
-                ]
+        def _svm_hint(_=None):
+            hint.value = (
+                "<i>Calibration activera un CalibratedClassifierCV pour SVM.</i>"
+                if (model.value == "SVM" and calibrate.value)
+                else ""
             )
+
+        model.observe(_svm_hint, "value")
+        calibrate.observe(_svm_hint, "value")
+        _svm_hint()
+        tab_weight = _W.VBox(
+            [
+                _W.HTML("<b>Poids</b>"),
+                _W.HBox([balanced, cw_mode, cw_alpha]),
+                _W.HBox([wt_col, wt_norm]),
+                _W.HTML("<b>Calibration</b>"),
+                _W.HBox([calibrate, calib_method, calib_holdout, calib_cv]),
+            ]
         )
 
-    # --------------------- Journalisation & rapport ---------------------
+        # ==== onglet 6: Sorties ====
+        save_log = _W.Checkbox(value=True, description="Sauvegarder & Journaliser")
+        save_cm = _W.Checkbox(value=False, description="save_confusion_png")
+        norm_cm = _W.Checkbox(value=False, description="normalized")
+        save_rocpr = _W.Checkbox(value=True, description="save_curves_roc_pr")
+        save_calib = _W.Checkbox(value=False, description="save_calibration")
+        save_feat = _W.Checkbox(value=True, description="save_feature_importance")
+        export_pred = _W.Checkbox(value=False, description="export_test_predictions")
+        tab_out = _W.VBox(
+            [
+                _W.HBox([save_log, save_cm, norm_cm]),
+                save_rocpr,
+                save_calib,
+                save_feat,
+                export_pred,
+            ]
+        )
+
+        # ==== Lancer ====
+        run_btn = _W.Button(
+            description="Lancer l'entraînement",
+            button_style="success",
+            icon="play",
+            layout=_W.Layout(width="240px"),
+        )
+        summary = _W.Textarea(
+            value="",
+            description="Résumé",
+            layout=_W.Layout(width="100%", height="120px"),
+        )
+        tab_run = _W.VBox([run_btn, summary, out])
+
+        # --- Templates d’hyperparamètres ---
+        template_dropdown = _W.Dropdown(
+            options=[
+                ("— Template hyperparams —", ""),
+                ("XGB · medium", "xgb_medium"),
+                ("XGB · wide", "xgb_wide"),
+                ("RF  · medium", "rf_medium"),
+                ("RF  · deep", "rf_deep"),
+                ("SVM · rbf", "svm_rbf"),
+                ("SVM · linear", "svm_linear"),
+            ],
+            value="",
+            description="Templates:",
+            layout=_W.Layout(width="280px"),
+        )
+
+        apply_template_btn = _W.Button(
+            description="Appliquer",
+            icon="wand-magic-sparkles",
+            button_style="",
+            layout=_W.Layout(width="120px"),
+        )
+
+        # --- Notes run (mémorisées dans le JSON du rapport) ---
+        notes_widget = _W.Textarea(
+            value="",
+            placeholder="Notes sur ce run (idées, dataprep, etc.)",
+            description="Notes:",
+            layout=_W.Layout(width="520px", height="60px"),
+        )
+
+        # --- File d’expériences (batch) ---
+        add_to_batch_btn = _W.Button(
+            description="Ajouter au batch", icon="plus", layout=_W.Layout(width="160px")
+        )
+        run_batch_btn = _W.Button(
+            description="Lancer le batch",
+            icon="play",
+            button_style="success",
+            layout=_W.Layout(width="160px"),
+        )
+        clear_batch_btn = _W.Button(
+            description="Vider",
+            icon="trash",
+            button_style="warning",
+            layout=_W.Layout(width="110px"),
+        )
+        batch_progress = _W.IntProgress(
+            value=0, min=0, max=1, description="Batch:", layout=_W.Layout(width="520px")
+        )
+        batch_store = []  # mémoire locale
+
+        # --- Estimation coût / nombre de fits ---
+        fits_label = _W.HTML("<b>Fits estimés:</b> –")
+
+        tpl_box = _W.HBox([template_dropdown, apply_template_btn, fits_label])
+        notes_box = _W.HBox([notes_widget])
+        batch_box = _W.HBox(
+            [add_to_batch_btn, run_batch_btn, clear_batch_btn, batch_progress]
+        )
+
+        # ==== onglets globaux ====
+        tabs = _W.Tab(
+            children=[
+                tab_data,
+                tab_model,
+                tab_fs,
+                tab_search,
+                tab_weight,
+                tab_out,
+                tab_run,
+            ]
+        )
+        tabs.set_title(0, "Data & Split")
+        tabs.set_title(1, "Modèle & Prep")
+        tabs.set_title(2, "Feature Sel.")
+        tabs.set_title(3, "Recherche HP")
+        tabs.set_title(4, "Poids & Calib.")
+        tabs.set_title(5, "Sorties")
+        tabs.set_title(6, "Lancer")
+
+        display(tabs, tpl_box, notes_box, batch_box)
+
+        # Templates hyperparams (callback + dictionnaires)
+        def _tpl_xgb_medium():
+            return {
+                "clf__gamma": [0, 0.1, 0.5, 1.0, 2.0, 5.0],
+                "clf__reg_lambda": [0.5, 1.0, 1.5, 2.0, 5.0],
+                "clf__reg_alpha": [0, 0.1, 0.5, 1.0],
+                "clf__learning_rate": [0.03, 0.05, 0.07, 0.1],
+                "clf__subsample": [0.7, 0.8, 0.9],
+                "clf__colsample_bytree": [0.7, 0.8, 0.9],
+                "clf__max_depth": [4, 6, 8],
+                "clf__min_child_weight": [1, 3, 5],
+            }
+
+        def _tpl_xgb_wide():
+            return {
+                "clf__gamma": [0, 0.05, 0.1, 0.5, 1.0, 2.0],
+                "clf__reg_lambda": [0.0, 0.5, 1.0, 2.0, 5.0, 10.0],
+                "clf__reg_alpha": [0.0, 0.1, 0.5, 1.0, 2.0],
+                "clf__learning_rate": [0.02, 0.03, 0.05, 0.07, 0.1],
+                "clf__subsample": [0.6, 0.7, 0.8, 0.9],
+                "clf__colsample_bytree": [0.6, 0.7, 0.8, 0.9],
+                "clf__max_depth": [3, 4, 6, 8, 10],
+                "clf__min_child_weight": [1, 3, 5, 7],
+            }
+
+        def _tpl_rf_medium():
+            return {
+                "clf__n_estimators": [300, 600, 900],
+                "clf__max_depth": [None, 10, 20],
+                "clf__max_features": ["sqrt", 0.5, 0.8],
+                "clf__min_samples_split": [2, 5, 10],
+                "clf__min_samples_leaf": [1, 2, 4],
+                "clf__bootstrap": [True],
+            }
+
+        def _tpl_rf_deep():
+            return {
+                "clf__n_estimators": [800, 1200],
+                "clf__max_depth": [None, 20, 30],
+                "clf__max_features": ["sqrt", 0.5, 0.8],
+                "clf__min_samples_split": [2, 5],
+                "clf__min_samples_leaf": [1, 2],
+                "clf__bootstrap": [True],
+            }
+
+        def _tpl_svm_rbf():
+            return {
+                "clf__kernel": ["rbf"],
+                "clf__C": [0.5, 1, 2, 5, 10],
+                "clf__gamma": ["scale", 0.01, 0.05, 0.1],
+            }
+
+        def _tpl_svm_linear():
+            return {
+                "clf__kernel": ["linear"],
+                "clf__C": [0.5, 1, 2, 5, 10],
+            }
+
+        def _apply_template(_):
+            tpl = template_dropdown.value
+            if not tpl:
+                return
+            if tpl == "xgb_medium":
+                d = _tpl_xgb_medium()
+            elif tpl == "xgb_wide":
+                d = _tpl_xgb_wide()
+            elif tpl == "rf_medium":
+                d = _tpl_rf_medium()
+            elif tpl == "rf_deep":
+                d = _tpl_rf_deep()
+            elif tpl == "svm_rbf":
+                d = _tpl_svm_rbf()
+            elif tpl == "svm_linear":
+                d = _tpl_svm_linear()
+            else:
+                d = {}
+            param_dists.value = json.dumps(d, indent=2)
+            search.value = "random"  # par défaut pour les templates larges
+            template_dropdown.value = ""  # reset visuel
+
+        apply_template_btn.on_click(_apply_template)
+
+        # Estimation “nombre de fits” (et petit temps indicatif)
+        def _estimate_fits(*args):
+            try:
+                grid = json.loads(param_grid.value or "{}")
+            except Exception:
+                grid = {}
+
+            # We don't use param_dists to compute the fit count; only validate JSON
+            try:
+                json.loads(param_dists.value or "{}")
+            except Exception:
+                pass
+
+            if search.value == "grid":
+                combs = 1
+                for _, v in grid.items():
+                    combs *= max(1, len(v) if isinstance(v, list) else 1)
+            elif search.value == "random":
+                combs = max(1, int(n_iter.value))
+            else:
+                combs = 1
+
+            folds = max(2, int(cv_folds.value))
+            total = combs * folds
+            fits_label.value = f"<b>Fits estimés:</b> {total:,}"
+
+        # observe
+        for w in (param_grid, param_dists, cv_folds, n_iter, search):
+            w.observe(_estimate_fits, "value")
+        _estimate_fits()
+
+        # SVM : proba auto si nécessaire + désactivations contextuelles
+        def _model_context_update(change=None):
+            # désactiver n_estimators quand SVM
+            n_estim.disabled = model.value == "SVM"
+
+            # si SVM et qu'on a besoin de proba → forcer probability=True dans base_params
+            need_proba = calibrate.value or save_rocpr.value or export_pred.value
+            if model.value == "SVM" and need_proba:
+                try:
+                    bp = json.loads(base_params.value or "{}")
+                except Exception:
+                    bp = {}
+                if not bp.get("probability", False):
+                    bp["probability"] = True
+                    base_params.value = json.dumps(bp, indent=2)
+
+        # observe
+        for w in (model, calibrate, save_rocpr, export_pred):
+            w.observe(_model_context_update, "value")
+        _model_context_update()
+
+        # Batch d’expériences (ajout/lecture/exécution sérielle)
+        def _current_config_json() -> dict:
+            """
+            Retourne la configuration courante telle que définie dans l’UI.
+
+            La structure englobe la cible, le modèle, le split, la recherche HP,
+            les réglages de pré-traitement/FS/poids/calibration et les options de sortie.
+
+            Returns:
+                Dictionnaire sérialisable (prêt à écrire en JSON).
+            """
+            import json as _json
+            from pathlib import Path
+
+            # Helpers localisés
+            def _parse_json(txt_widget):
+                try:
+                    s = (txt_widget.value or "").strip()
+                    return _json.loads(s) if s else None
+                except Exception as e:
+                    with out:
+                        print(
+                            f"(warn) JSON invalide pour '{txt_widget.description}': {e}"
+                        )
+                    return None
+
+            # Param grids/distributions (ajout de n_jobs si défini)
+            pg = _parse_json(param_grid) or {}
+            pdists = _parse_json(param_dists) or {}
+            if n_jobs.value is not None:
+                pg.setdefault("clf__n_jobs", [n_jobs.value])
+                pdists.setdefault("clf__n_jobs", [n_jobs.value])
+
+            cfg = {
+                # Data & split
+                "prediction_target": target.value,
+                "test_size": test_size.value,
+                "random_state": seed.value,
+                "cv_folds": cv_folds.value,
+                "repeated_cv": rep_cv.value,
+                "cv_repeats": rep_cv_repeats.value,
+                "use_groups": use_groups.value,
+                "group_col": (group_col.value or None),
+                # Model & preprocessing
+                "model_type": model.value,
+                "n_estimators": n_estim.value,
+                "imputer_strategy": None if imputer.value == "none" else imputer.value,
+                "knn_imputer_k": knn_k.value,
+                "scaler_type": None if scaler.value == "none" else scaler.value,
+                "base_params": _parse_json(base_params),
+                # Feature selection
+                "use_feature_selection": fs_enable.value,
+                "selector_model": fs_method.value,
+                "selector_threshold": fs_thresh.value,
+                "selector_n_estimators": fs_n.value,
+                "mi_top_k": (None if (mi_topk.value or 0) <= 0 else int(mi_topk.value)),
+                # Search
+                "search": search.value,
+                "scoring": scoring.value,
+                "n_iter": n_iter.value,
+                "early_stopping": es.value,
+                "early_stopping_rounds": es_rounds.value,
+                "val_size": val_size.value,
+                "param_grid": pg,
+                "param_distributions": pdists,
+                # Weights & calibration
+                "use_balanced_weights": balanced.value,
+                "class_weight_mode": cw_mode.value,
+                "class_weight_alpha": cw_alpha.value,
+                "weight_col": (wt_col.value or None),
+                "weight_norm": wt_norm.value,
+                "calibrate_probs": calibrate.value,
+                "calibration_method": calib_method.value,
+                "calibrate_holdout_size": 0.0,
+                "calibrate_cv": 3,
+                # Outputs
+                "save_confusion_png": save_cm.value,
+                "cm_normalized": norm_cm.value,
+                "save_curves_roc_pr": save_rocpr.value,
+                "save_calibration": save_calib.value,
+                "save_feature_importance": save_feat.value,
+                "export_test_predictions": export_pred.value,
+                # Notes
+                "notes": notes_widget.value,
+            }
+
+            # Compte des features numériques (pour info)
+            try:
+                cfg["n_features_candidate"] = int(
+                    self.features_df.select_dtypes(include=["number"]).shape[1]
+                )
+            except Exception:
+                cfg["n_features_candidate"] = None
+
+            # Répartition des classes de la cible (si la colonne existe)
+            tcol = cfg.get("prediction_target")
+            if tcol in self.features_df.columns:
+                try:
+                    cfg["class_counts"] = (
+                        self.features_df[tcol].value_counts(dropna=False).to_dict()
+                    )
+                except Exception:
+                    cfg["class_counts"] = {}
+            else:
+                cfg["class_counts"] = {}
+                with out:
+                    print(
+                        f"(warn) Colonne cible absente dans features_df : {tcol!r}. "
+                        f"Choisis une des colonnes catégorielles existantes dans le menu « Cible »."
+                    )
+            # Trace légère de la config
+            Path(self.reports_dir, "last_config_used.json").write_text(
+                _json.dumps(cfg, indent=2),
+                encoding="utf-8",
+            )
+            return cfg
+
+        def _on_add_to_batch(_):
+            cfg = _current_config_json()
+            batch_store.append(cfg)
+            batch_progress.max = len(batch_store)
+            batch_progress.value = min(batch_progress.value, len(batch_store))
+            print(f"→ Ajout au batch ({len(batch_store)} config(s)).")
+
+        def _on_clear_batch(_):
+            batch_store.clear()
+            batch_progress.max = 1
+            batch_progress.value = 0
+            print("Batch vidé.")
+
+        def _on_run_batch(_):
+            if not batch_store:
+                print("Batch vide.")
+                return
+            print(f"⏱ Lancement du batch ({len(batch_store)} runs)…")
+            batch_progress.value = 0
+            for i, cfg in enumerate(list(batch_store), start=1):
+                batch_progress.value = i
+                # Ajuste SVM probability si nécessaire (sécurité)
+                if cfg["model_type"] == "SVM" and (
+                    cfg["calibrate_probs"]
+                    or cfg["save_curves_roc_pr"]
+                    or cfg["export_test_predictions"]
+                ):
+                    bp = cfg.get("base_params") or {}
+                    bp["probability"] = True
+                    cfg["base_params"] = bp
+
+                # Appel direct à la même API que le bouton RUN
+                self.run_training_session(**cfg)
+                # petit sleep de politesse pour l’UI
+                time.sleep(0.1)
+            print("Batch terminé.")
+
+        add_to_batch_btn.on_click(_on_add_to_batch)
+        clear_batch_btn.on_click(_on_clear_batch)
+        run_batch_btn.on_click(_on_run_batch)
+
+        # Rendu du tableau des runs : style + liens cliquables
+        def _render_runs_table(df):
+            if df is None or df.empty:
+                display(HTML("<i>Aucun run trouvé.</i>"))
+                return
+            df = df.copy()
+
+            # Lien cliquable vers le dossier du run (colonne 'run_dir' attendue dans ton df)
+            def _mk_link(p):
+                try:
+                    return f'<a href="file:///{Path(p).as_posix()}" target="_blank">{Path(p).name}</a>'
+                except Exception:
+                    return ""
+
+            if "run_dir" in df.columns:
+                df["run"] = df["run_dir"].map(_mk_link)
+
+            # colonnes à devant
+            wanted = [
+                "ts",
+                "exp",
+                "model",
+                "features",
+                "acc",
+                "bal_acc",
+                "f1_macro",
+                "auc_macro",
+                "ap_macro",
+                "run_dir",
+            ]
+            cols = [c for c in wanted if c in df.columns]
+
+            # style: surligner meilleure bal_acc
+            if "bal_acc" in df.columns:
+                best = df["bal_acc"].max()
+
+                def _hl(v):
+                    return (
+                        "background-color:#c3f7c3;font-weight:bold" if v == best else ""
+                    )
+
+                styler = (
+                    df[cols]
+                    .style.map(
+                        lambda v: (
+                            "background-color:#c3f7c3;font-weight:bold"
+                            if (
+                                isinstance(v, (int, float)) and v == df["bal_acc"].max()
+                            )
+                            else ""
+                        ),
+                        subset=pd.IndexSlice[:, ["bal_acc"]],
+                    )
+                    .format(precision=3)
+                )
+            else:
+                styler = df[cols].style.format(precision=3)
+
+            display(
+                styler.hide(axis="index").set_table_attributes(
+                    'class="dataframe table table-striped"'
+                )
+            )
+
+        # === Explorer de runs =====================================================================
+
+        # Widgets
+        runs_refresh_btn = _W.Button(
+            description="Rafraîchir",
+            icon="rotate-right",
+            layout=_W.Layout(width="120px"),
+        )
+        runs_dropdown = _W.Dropdown(
+            options=[("— aucun —", "")],
+            value="",
+            description="Runs:",
+            layout=_W.Layout(width="520px"),
+        )
+        runs_view_btn = _W.Button(
+            description="Voir le run", icon="eye", layout=_W.Layout(width="140px")
+        )
+        runs_zip_btn = _W.Button(
+            description="Zipper le run",
+            icon="file-zipper",
+            layout=_W.Layout(width="150px"),
+        )
+        runs_open_btn = _W.Button(
+            description="Ouvrir le dossier",
+            icon="folder-open",
+            layout=_W.Layout(width="170px"),
+        )
+
+        runs_box = _W.HBox(
+            [
+                runs_refresh_btn,
+                runs_dropdown,
+                runs_view_btn,
+                runs_zip_btn,
+                runs_open_btn,
+            ]
+        )
+
+        # Helpers -------------------------------------------------------------------
+
+        def _find_run_dirs() -> list[Path]:
+            base = Path(self.reports_dir)
+            if not base.exists():
+                return []
+            # Un run = un dossier de type YYYYMMDDTHHMMSSZ
+            return sorted([p for p in base.iterdir() if p.is_dir()], reverse=True)
+
+        def _session_json_path(run_dir: Path) -> Path | None:
+            try:
+                cand = list(run_dir.glob("session_report_*.json"))
+                return cand[0] if cand else None
+            except Exception:
+                return None
+
+        def _load_session_summary(run_dir: Path) -> dict:
+            """
+            Charge un résumé de session à partir de son dossier.
+
+            Args:
+                run_dir: Dossier de la session (ex: `reports/2025…Z/`).
+
+            Returns:
+                Dictionnaire récapitulatif minimal (modèle, scores, notes, etc.).
+            """
+            out = {
+                "run_dir": str(run_dir),
+                "timestamp": run_dir.name,
+                "model": None,
+                "acc": None,
+                "bal_acc": None,
+                "f1_macro": None,
+                "notes": "",
+            }
+            p = _session_json_path(run_dir)
+            if p and p.exists():
+                try:
+                    js = json.loads(p.read_text(encoding="utf-8"))
+                    out["model"] = js.get("model_type") or js.get("model") or None
+                    out["acc"] = js.get("accuracy") or js.get("acc") or None
+                    out["bal_acc"] = (
+                        js.get("balanced_accuracy") or js.get("bal_acc") or None
+                    )
+                    out["f1_macro"] = js.get("macro_f1") or js.get("f1_macro") or None
+                    out["notes"] = js.get("notes", "")
+                except Exception:
+                    pass
+            return out
+
+        def _refresh_runs(_=None):
+            """
+            Scanne `reports_dir` et reconstruit le tableau des sessions.
+
+            Returns:
+                Un DataFrame avec au minimum: timestamp, modèle, scores récap,
+                nombre de features, et chemin `run_dir` par ligne.
+
+            Notes:
+                Utilisé par l’onglet “Explorer les runs”.
+            """
+            dirs = _find_run_dirs()
+            options = [("— aucun —", "")]
+            for d in dirs:
+                s = _load_session_summary(d)
+                label = (
+                    f'{d.name} · {s["model"] or "?"} · bal_acc={s["bal_acc"]:.3f}'
+                    if s["bal_acc"] is not None
+                    else d.name
+                )
+                options.append((label, str(d)))
+            runs_dropdown.options = options
+            if len(options) > 1:
+                runs_dropdown.value = options[1][1]
+            else:
+                runs_dropdown.value = ""
+            df = _load_runs_table(self.reports_dir)
+            _render_runs_table(df)
+
+        def _open_folder(_=None):
+            val = runs_dropdown.value
+            if not val:
+                print("Pas de run sélectionné.")
+                return
+            p = Path(val)
+            print(f"Dossier: {p}")
+            # Essaye d’ouvrir dans l’OS (ok en local VS Code)
+            try:
+                if os.name == "nt":
+                    os.startfile(str(p))  # type: ignore[attr-defined]
+                elif sys.platform == "darwin":
+                    os.system(f'open "{p}"')
+                else:
+                    os.system(f'xdg-open "{p}"')
+            except Exception as e:
+                print(f"(Info) Impossible d’ouvrir automatiquement: {e}")
+
+        def _zip_run(_=None):
+            val = runs_dropdown.value
+            if not val:
+                print("Pas de run sélectionné.")
+                return
+            run_dir = Path(val)
+            zip_path = run_dir.with_suffix("")  # même nom, sans .zip pour make_archive
+            try:
+                # shutil.make_archive ajoute l'extension .zip
+                archive = shutil.make_archive(
+                    str(zip_path), "zip", root_dir=str(run_dir)
+                )
+                print(f"Archive créée: {archive}")
+            except Exception as e:
+                print(f"Erreur zip: {e}")
+
+        def _show_run(_=None):
+            val = runs_dropdown.value
+            if not val:
+                print("Pas de run sélectionné.")
+                return
+            run_dir = Path(val)
+            info = _load_session_summary(run_dir)
+
+            # Bandeau résumé
+            display(
+                Markdown(
+                    f"### Run `{run_dir.name}` — **{info.get('model','?')}**  \n"
+                    f"- Accuracy: **{info.get('acc','?')}** &nbsp;&nbsp; "
+                    f"- Balanced acc: **{info.get('bal_acc','?')}** &nbsp;&nbsp; "
+                    f"- Macro F1: **{info.get('f1_macro','?')}**  \n"
+                    f"- Notes: _{(info.get('notes') or '').strip() or '—'}_  \n"
+                    f"- Dossier: `{run_dir}`"
+                )
+            )
+
+            # Affiche les figures (on prend les fichiers classiques si présents)
+            fig_names = [
+                "confusion_matrix_*.png",
+                "roc_*.png",
+                "pr_*.png",
+                "calibration_*.png",
+                "feature_importance_*.png",
+            ]
+            any_img = False
+            for pat in fig_names:
+                for p in sorted(run_dir.glob(pat)):
+                    any_img = True
+                    display(Image(filename=str(p), embed=True))
+            if not any_img:
+                print("(Aucune figure trouvée dans ce run)")
+
+            # Aperçu du CSV de prédictions s'il existe
+            preds = list(run_dir.glob("test_predictions_*.csv"))
+            if preds:
+                try:
+                    dfp = pd.read_csv(preds[0])
+                    display(Markdown("**Aperçu des prédictions (top 20)**"))
+                    display(dfp.head(20))
+                except Exception as e:
+                    print(f"(Info) Impossible de lire {preds[0].name}: {e}")
+
+        # Events
+        runs_refresh_btn.on_click(_refresh_runs)
+        runs_view_btn.on_click(_show_run)
+        runs_zip_btn.on_click(_zip_run)
+        runs_open_btn.on_click(_open_folder)
+
+        # Affichage dans le layout principal (place cette ligne où tu affiches tes autres boxes)
+        display(_W.HTML("<hr>"))
+        display(_W.HTML("<h3>🔎 Explorer les runs</h3>"))
+        display(runs_box)
+
+        # première population
+        _refresh_runs()
+
+        def _on_run(_):
+            # UI state
+            run_btn.disabled = True
+            run_btn.button_style = "warning"
+            run_btn.icon = "hourglass"
+            run_btn.description = "En cours…"
+
+            with out:
+                clear_output(wait=True)
+                print("Démarrage de l'entraînement…")
+
+            # 0) Vérifie que des features sont chargées
+            if getattr(self, "features_df", None) is None or self.features_df.empty:
+                with out:
+                    print(
+                        "(erreur) Aucun dataset de features chargé. "
+                        "Utilise le bloc 'Features' (Dernier CSV ou Choisir CSV) "
+                        "ou exécute d'abord les étapes 1–3."
+                    )
+                # Restore bouton et stop
+                run_btn.disabled = False
+                run_btn.button_style = "success"
+                run_btn.icon = "play"
+                run_btn.description = "Lancer l'entraînement"
+                return
+
+            try:
+                cfg = _current_config_json()
+
+                # Validation rapide de la cible
+                tcol = cfg.get("prediction_target")
+                if tcol not in self.features_df.columns:
+                    possibles = [
+                        c
+                        for c in self.features_df.columns
+                        if str(self.features_df[c].dtype) in ("object", "category")
+                    ]
+                    with out:
+                        print(
+                            f"(erreur) La colonne cible {tcol!r} est absente de features_df."
+                        )
+                        if possibles:
+                            print(
+                                "Colonnes catégorielles disponibles :",
+                                ", ".join(possibles[:12]),
+                                "…",
+                            )
+                    return
+
+                # Petit résumé textuel dans la zone "Résumé"
+                try:
+                    import json as _json
+
+                    summary.value = _json.dumps(
+                        {
+                            "model": cfg.get("model_type"),
+                            "target": cfg.get("prediction_target"),
+                            "cv_folds": cfg.get("cv_folds"),
+                            "search": cfg.get("search"),
+                            "scoring": cfg.get("scoring"),
+                            "n_features": int(
+                                self.features_df.select_dtypes(
+                                    include=["number"]
+                                ).shape[1]
+                            ),
+                            "n_rows": int(len(self.features_df)),
+                        },
+                        indent=2,
+                    )
+                except Exception:
+                    pass
+
+                # Lancement effectif
+                with out:
+                    print("Entraînement…")
+                self.run_training_session(**cfg)
+
+                # Rafraîchit le tableau des runs pour voir tout de suite le nouveau dossier
+                try:
+                    _refresh_runs()
+                except Exception:
+                    pass
+
+                with out:
+                    print("Terminé.")
+
+            finally:
+                # Restore button
+                run_btn.disabled = False
+                run_btn.button_style = "success"
+                run_btn.icon = "play"
+                run_btn.description = "Lancer l'entraînement"
+                try:
+                    # Bascule sur l’onglet “Lancer” si l’utilisateur n’y est plus
+                    tabs.selected_index = len(tabs.children) - 1
+                except Exception:
+                    pass
+
+        # >>> ICI on branche le bouton <<<
+        run_btn.on_click(_on_run)
 
     def _log_and_report(
         self,
         clf: SpectralClassifier,
-        feature_cols: List[str],
+        feature_cols: List[str] | None,
         X: pd.DataFrame,
-        y: pd.Series | List[str] | pd.DataFrame,
+        y: np.ndarray,
         processed_files: List[str],
-        groups=None,
+        groups: np.ndarray | None,
         save_confusion_png: bool = False,
-        save_curves_roc_pr: bool = True,
+        save_curves_roc_pr: bool = False,
         save_calibration: bool = False,
-        save_feature_importance: bool = True,
+        save_feature_importance: bool = False,
         export_test_predictions: bool = False,
         cm_normalized: bool = False,
-    ) -> Optional[str]:
+        exp_name: str | None = None,
+        notes: str = "",
+    ) -> str | None:
         """
-        Étapes 6 et 7 : met à jour le journal des spectres traités et génère un rapport de session.
-        - Sauvegarde le modèle entraîné et calcule un hash MD5
-        - Évalue le modèle sur un split de test stratifié (seedé) pour reproductibilité
-        - Exporte un rapport JSON (métriques, importances, features retenues, etc.)
+        Sauve le modèle, calcule les métriques et génère les artefacts de session.
 
-        Parameters
-        ----------
-        clf : SpectralClassifier
-            Classifieur entraîné (contient model_pipeline, best_params_, class_labels, etc.)
-        feature_cols : list[str]
-            Noms des colonnes de features AVANT éventuelle sélection.
-        X : np.ndarray
-            Features (toutes lignes entraînables, alignées avec y).
-        y : np.ndarray | list
-            Labels correspondants.
-        processed_files : list[str]
-            Chemins des spectres traités pour mise à jour du journal.
+        Args:
+            clf: Classifieur entraîné (wrapper interne).
+            feature_cols: Noms des colonnes de features utilisées (après FS).
+            X: Matrice de features de test ou complète selon protocole.
+            y: Cibles vraies alignées avec `X`.
+            y_pred: Prédictions déjà calculées (sinon calcul interne).
+            processed_files: Liste de fichiers FITS traités durant la session.
+            save_confusion_png: Génère la CM (normalisée si `normalized_cm`).
+            save_curves_roc_pr: Génère les courbes ROC et PR multi-classes.
+            save_calibration_png: Génère la courbe de calibration.
+            save_feature_importance: Sauve un barplot des importances si dispo.
+            export_test_predictions: Exporte un CSV des prédictions test.
+            normalized_cm: Normalise la CM par ligne si True.
+            notes: Texte libre à inclure dans le `session_report_*.json`.
+
+        Returns:
+            Chemin du dossier de run (ex: `reports/2025…Z/`).
+
+        Side Effects:
+            Écrit le modèle (`.pkl` + meta JSON), figures PNG, rapport JSON,
+            et optionnellement `test_predictions_*.csv`.
         """
-
-        # Garde-fous
-        if clf is None or X is None or y is None or len(y) == 0:
-            print(
-                "\n> Aucun modèle entraîné ou données manquantes. Rapport non généré."
-            )
-            return None
-
-        # 6) Journal des spectres utilisés (optionnel si liste vide)
-        try:
-            print("\n--- ÉTAPE 6 : Mise à jour du Journal des Spectres Utilisés ---")
-            self.builder.update_trained_log(processed_files or [])
-        except Exception as e:
-            print(f"  (avertissement) Impossible de mettre à jour le journal : {e}")
-
-        # 7) Génération du rapport de session
-        print("\n--- ÉTAPE 7 : Génération du Rapport de Session ---")
-
-        # Un seul timestamp pour tous les artefacts
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        session_id = ts
-        run_dir = os.path.join(self.reports_dir, session_id)
+        model_name = f"spectral_classifier_{clf.model_type.lower()}_{ts}.pkl"
+        run_dir = os.path.join(self.reports_dir, ts)
         os.makedirs(run_dir, exist_ok=True)
+        model_path = os.path.join(self.models_dir, model_name)
 
         # 7.1 Sauvegarde du modèle
-        model_filename = f"spectral_classifier_{clf.model_type.lower()}_{ts}.pkl"
-        model_path = os.path.join(self.models_dir, model_filename)
         try:
-            clf.save_model(model_path)
+            joblib.dump(clf, model_path)
+            print(f"  > Modèle sauvegardé dans : {model_path}")
         except Exception as e:
-            print(f"  (avertissement) Échec de sauvegarde du modèle : {e}")
+            print(f"  (avertissement) Échec sauvegarde modèle : {e}")
+            model_path = None
 
-        # 7.2 Métadonnées (environnement + features)
+        # 7.2 Métadonnées
         try:
             import sklearn
             import xgboost
@@ -765,6 +2027,9 @@ class MasterPipeline:
             "n_candidate_features": (
                 int(len(feature_cols)) if feature_cols is not None else None
             ),
+            # ajoute le dossier de run pour faciliter les comparaisons
+            "run_dir": run_dir,
+            "exp_name": exp_name,
         }
         meta_filename = f"spectral_classifier_{clf.model_type.lower()}_{ts}_meta.json"
         meta_path = os.path.join(self.models_dir, meta_filename)
@@ -773,6 +2038,21 @@ class MasterPipeline:
                 json.dump(meta, f, indent=2)
         except Exception as e:
             print(f"  (avertissement) Échec d’écriture des métadonnées : {e}")
+
+        # Copie le modèle et ses métadonnées dans le dossier de run pour un accès rapide
+        try:
+            if os.path.exists(model_path):
+                shutil.copy2(
+                    model_path, os.path.join(run_dir, os.path.basename(model_path))
+                )
+            if os.path.exists(meta_path):
+                shutil.copy2(
+                    meta_path, os.path.join(run_dir, os.path.basename(meta_path))
+                )
+        except Exception as e:
+            print(
+                f"  (avertissement) Échec de la copie des artefacts dans le dossier de run : {e}"
+            )
 
         # 7.3 Hash MD5 du modèle
         model_hash = "N/A"
@@ -882,6 +2162,7 @@ class MasterPipeline:
                     cm_plot,
                     annot=True,
                     fmt=fmt,
+                    cmap="Blues",
                     xticklabels=list(clf.class_labels),
                     yticklabels=list(clf.class_labels),
                 )
@@ -1225,6 +2506,9 @@ class MasterPipeline:
             "accuracy": accuracy,
             "classification_report": report_dict,
             "confusion_matrix": cm.tolist() if cm is not None else None,
+            # propager le nom d'expérience
+            "exp_name": exp_name,
+            "notes": notes,
         }
 
         # Insère les métriques supplémentaires (ROC AUC, Average Precision,
@@ -1236,6 +2520,32 @@ class MasterPipeline:
             session_report["avg_precision"] = avg_precision_results
         if brier_score_results is not None:
             session_report["brier_score"] = brier_score_results
+
+        # Ajoute la balanced accuracy et la macro-ROC AUC si calculables
+        try:
+            from sklearn.metrics import balanced_accuracy_score
+
+            # Utilise y_true_for_scores s'il a été initialisé, sinon y_te
+            y_true_bal = None
+            if "y_true_for_scores" in locals() and y_true_for_scores is not None:
+                y_true_bal = y_true_for_scores
+            else:
+                y_true_bal = y_te
+            if y_true_bal is not None and y_pred is not None:
+                bal_acc_val = balanced_accuracy_score(y_true_bal, y_pred)
+                session_report["balanced_accuracy"] = float(bal_acc_val)
+        except Exception:
+            pass
+        # Macro AUC pour compatibilité avec l'ancien comparateur
+        try:
+            if (
+                roc_auc_results
+                and isinstance(roc_auc_results, dict)
+                and "macro" in roc_auc_results
+            ):
+                session_report["roc_auc_macro"] = float(roc_auc_results["macro"])
+        except Exception:
+            pass
 
         report_filename = f"session_report_{clf.model_type.lower()}_{ts}.json"
         report_path = os.path.join(run_dir, report_filename)
