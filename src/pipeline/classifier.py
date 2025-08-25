@@ -80,6 +80,27 @@ from sklearn.utils.class_weight import compute_sample_weight
 from sklearn.feature_selection import SelectFromModel
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import (
+    LinearDiscriminantAnalysis,
+    QuadraticDiscriminantAnalysis,
+)
+
+try:
+    from catboost import CatBoostClassifier
+
+    _HAS_CATBOOST = True
+except Exception:
+    _HAS_CATBOOST = False
+
+try:
+    from lightgbm import LGBMClassifier
+
+    _HAS_LGBM = True
+except Exception:
+    _HAS_LGBM = False
 from sklearn.feature_selection import mutual_info_classif
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -141,6 +162,9 @@ class SpectralClassifier:
         self.feature_names_used = []
         self.selected_features_ = None
         self.best_estimator_ = None
+
+        # Nombre de jobs parallèles à utiliser pour certains estimateurs (par défaut -1 = auto)
+        self.n_jobs: int = -1
 
     # ---------------------------------------------------------------------
     # Préparation des données (construction des labels + nettoyage)
@@ -442,15 +466,18 @@ class SpectralClassifier:
         - XGB : 'hist' pour la vitesse ; encodage de y géré côté train_and_evaluate
         - SVM : RBF + class_weight=balanced
         """
+
+        # RandomForest
         if model_type == "RandomForest":
             return RandomForestClassifier(
                 n_estimators=n_estimators,
                 max_depth=None,
-                n_jobs=-1,
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
                 random_state=random_state,
                 class_weight="balanced_subsample",
             )
 
+        # XGBoost
         if model_type == "XGBoost":
             try:
                 import xgboost as xgb
@@ -458,7 +485,6 @@ class SpectralClassifier:
                 raise RuntimeError(
                     "XGBoost n'est pas installé dans cet environnement."
                 ) from e
-
             return xgb.XGBClassifier(
                 n_estimators=n_estimators,
                 max_depth=6,
@@ -469,10 +495,11 @@ class SpectralClassifier:
                 eval_metric="mlogloss",
                 num_class=n_classes,
                 tree_method="hist",  # rapide et CPU-friendly
-                n_jobs=-1,
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
                 random_state=random_state,
             )
 
+        # SVM (RBF)
         if model_type == "SVM":
             return SVC(
                 kernel="rbf",
@@ -481,8 +508,103 @@ class SpectralClassifier:
                 random_state=random_state,
             )
 
+        # ExtraTrees
+        if model_type == "ExtraTrees":
+            return ExtraTreesClassifier(
+                n_estimators=n_estimators,
+                bootstrap=True,
+                class_weight="balanced_subsample",
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
+                random_state=random_state,
+            )
+
+        # Logistic Regression One-vs-Rest
+        if model_type == "LogRegOVR":
+            return LogisticRegression(
+                multi_class="ovr",
+                class_weight="balanced",
+                max_iter=2000,
+                solver="lbfgs",
+                C=1.0,
+                random_state=random_state,
+            )
+
+        # K Nearest Neighbors
+        if model_type == "KNN":
+            return KNeighborsClassifier(
+                n_neighbors=15,
+                weights="distance",
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
+            )
+
+        # Multi-Layer Perceptron
+        if model_type == "MLP":
+            return MLPClassifier(
+                hidden_layer_sizes=(256, 128),
+                activation="relu",
+                alpha=0.0001,
+                learning_rate="adaptive",
+                early_stopping=True,
+                max_iter=300,
+            )
+
+        # Naive Bayes Gaussian
+        if model_type == "NaiveBayes":
+            return GaussianNB()
+
+        # Linear Discriminant Analysis
+        if model_type == "LDA":
+            return LinearDiscriminantAnalysis(
+                solver="svd",
+                shrinkage=None,
+            )
+
+        # Quadratic Discriminant Analysis
+        if model_type == "QDA":
+            return QuadraticDiscriminantAnalysis(
+                reg_param=0.0,
+            )
+
+        # CatBoost
+        if model_type == "CatBoost":
+            if not _HAS_CATBOOST:
+                raise ImportError("catboost n'est pas installé. `pip install catboost`")
+            params = dict(
+                loss_function="MultiClass",
+                iterations=n_estimators,
+                learning_rate=0.05,
+                depth=6,
+                l2_leaf_reg=3.0,
+                auto_class_weights="Balanced",
+                random_seed=random_state,
+                verbose=False,
+            )
+            # thread count
+            if hasattr(self, "n_jobs") and self.n_jobs and self.n_jobs > 0:
+                params["thread_count"] = self.n_jobs
+            return CatBoostClassifier(**params)
+
+        # LightGBM
+        if model_type == "LightGBM":
+            if not _HAS_LGBM:
+                raise ImportError("lightgbm n'est pas installé. `pip install lightgbm`")
+            return LGBMClassifier(
+                objective="multiclass",
+                class_weight="balanced",
+                n_estimators=n_estimators,
+                learning_rate=0.05,
+                num_leaves=31,
+                max_depth=-1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                reg_alpha=0.0,
+                reg_lambda=0.0,
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
+                random_state=random_state,
+            )
+
         raise ValueError(
-            f"Modèle inconnu: {model_type} (attendu: RandomForest | XGBoost | SVM)"
+            f"Modèle inconnu: {model_type} (attendu: RandomForest | XGBoost | SVM | ExtraTrees | LogRegOVR | KNN | MLP | NaiveBayes | LDA | QDA | CatBoost | LightGBM)"
         )
 
     # ---------------------------------------------------------------------

@@ -108,6 +108,137 @@ from tools.gaia_crossmatcher import enrich_catalog_with_gaia
 # --- Imports Scikit-learn ---
 from sklearn.metrics import classification_report, confusion_matrix
 
+# ================================================================
+#  Templates de paramètres (base_params, grid, distributions)
+#  Ces dictionnaires définissent les paramètres par défaut et les grilles de
+#  recherche pour chaque modèle. Ils sont utilisés pour préremplir les champs
+#  correspondants dans l'interface lorsqu'un modèle est sélectionné.
+# ================================================================
+# Pré-configurations de base (paramètres de départ pour chaque modèle)
+PRESET_BASE: dict = {
+    "ExtraTrees": {
+        "bootstrap": True,
+        "class_weight": "balanced_subsample",
+    },
+    "LogRegOVR": {
+        "solver": "lbfgs",
+        "C": 1.0,
+    },
+    "KNN": {
+        "n_neighbors": 15,
+        "weights": "distance",
+    },
+    "MLP": {
+        "hidden_layer_sizes": [256, 128],
+        "activation": "relu",
+        "alpha": 0.0001,
+        "learning_rate": "adaptive",
+        "max_iter": 300,
+    },
+    "LDA": {
+        "solver": "svd",
+        "shrinkage": None,
+    },
+    "QDA": {
+        "reg_param": 0.0,
+    },
+    "CatBoost": {
+        "learning_rate": 0.05,
+        "depth": 6,
+        "l2_leaf_reg": 3.0,
+        "auto_class_weights": "Balanced",
+    },
+    "LightGBM": {
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "max_depth": -1,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "reg_alpha": 0.0,
+        "reg_lambda": 0.0,
+    },
+}
+
+# Grilles de recherche (GridSearchCV)
+PRESET_GRID: dict = {
+    "ExtraTrees": {
+        "clf__max_depth": [None, 10, 20, 30],
+        "clf__min_samples_leaf": [1, 2, 4],
+        "clf__max_features": ["sqrt", "log2", 0.5],
+    },
+    "LogRegOVR": {
+        "clf__C": [0.1, 0.3, 1, 3, 10],
+        "clf__solver": ["lbfgs", "saga"],
+    },
+    "KNN": {
+        "clf__n_neighbors": [5, 9, 15, 25],
+        "clf__weights": ["uniform", "distance"],
+    },
+    "MLP": {
+        "clf__hidden_layer_sizes": [[128], [256, 128], [512, 256]],
+        "clf__alpha": [0.0001, 0.001, 0.01],
+    },
+    "LDA": {
+        "clf__solver": ["svd", "lsqr", "eigen"],
+        "clf__shrinkage": [None, "auto", 0.0, 0.1, 0.3, 0.5],
+    },
+    "QDA": {
+        "clf__reg_param": [0.0, 0.001, 0.01, 0.1, 0.3],
+    },
+    "CatBoost": {
+        "clf__depth": [4, 6, 8],
+        "clf__learning_rate": [0.03, 0.05, 0.08],
+        "clf__l2_leaf_reg": [1.0, 3.0, 5.0],
+    },
+    "LightGBM": {
+        "clf__num_leaves": [31, 63, 127],
+        "clf__max_depth": [-1, 8, 12],
+        "clf__subsample": [0.7, 0.8, 0.9],
+        "clf__colsample_bytree": [0.7, 0.8, 0.9],
+        "clf__learning_rate": [0.03, 0.05, 0.08],
+        "clf__reg_lambda": [0.0, 0.5, 1.0],
+    },
+}
+
+# Distributions pour RandomizedSearchCV
+PRESET_DISTS: dict = {
+    "ExtraTrees": {
+        "clf__min_samples_split": [2, 5, 10],
+        "clf__min_samples_leaf": [1, 2, 4],
+    },
+    "LogRegOVR": {
+        "clf__C": [0.1, 0.3, 1, 3, 10],
+        "clf__solver": ["lbfgs", "saga"],
+    },
+    "KNN": {
+        "clf__n_neighbors": [5, 9, 15, 25, 35],
+        "clf__weights": ["uniform", "distance"],
+    },
+    "MLP": {
+        "clf__alpha": [0.0001, 0.0005, 0.001, 0.01],
+    },
+    "LDA": {
+        "clf__solver": ["svd", "lsqr", "eigen"],
+        "clf__shrinkage": [None, "auto", 0.0, 0.1, 0.3, 0.5],
+    },
+    "QDA": {
+        "clf__reg_param": [0.0, 0.001, 0.01, 0.1, 0.3],
+    },
+    "CatBoost": {
+        "clf__depth": [4, 6, 8, 10],
+        "clf__learning_rate": [0.02, 0.03, 0.05, 0.08],
+        "clf__l2_leaf_reg": [1.0, 2.0, 3.0, 5.0],
+    },
+    "LightGBM": {
+        "clf__num_leaves": [31, 63, 95, 127],
+        "clf__max_depth": [-1, 6, 8, 12],
+        "clf__subsample": [0.6, 0.7, 0.8, 0.9],
+        "clf__colsample_bytree": [0.6, 0.7, 0.8, 0.9],
+        "clf__learning_rate": [0.02, 0.03, 0.05, 0.08],
+        "clf__reg_lambda": [0.0, 0.3, 0.6, 1.0],
+    },
+}
+
 # -----------------------------------------------------------------------------
 # Utilitaires pour le tableau de bord d'entraînement
 # -----------------------------------------------------------------------------
@@ -965,7 +1096,19 @@ class MasterPipeline:
 
         # ==== onglet 2: Modèle & Pré-traitement ====
         model = _W.Dropdown(
-            options=["XGBoost", "RandomForest", "SVM"],
+            options=(
+                "XGBoost",
+                "RandomForest",
+                "SVM",
+                "ExtraTrees",
+                "LogRegOVR",
+                "KNN",
+                "MLP",
+                "LDA",
+                "QDA",
+                "CatBoost",
+                "LightGBM",
+            ),
             value="XGBoost",
             description="Modèle",
         )
@@ -1066,6 +1209,26 @@ class MasterPipeline:
             description="param_dists (JSON)",
             layout=_W.Layout(width="100%", height="70px"),
         )
+
+        # Lorsque le modèle change, préremplit base_params, param_grid et param_distributions
+        def _on_model_change(change=None):
+            mval = model.value
+            try:
+                base_params.value = _json.dumps(PRESET_BASE.get(mval, {}), indent=2)
+            except Exception:
+                base_params.value = "{}"
+            try:
+                param_grid.value = _json.dumps(PRESET_GRID.get(mval, {}), indent=2)
+            except Exception:
+                param_grid.value = "{}"
+            try:
+                param_dists.value = _json.dumps(PRESET_DISTS.get(mval, {}), indent=2)
+            except Exception:
+                param_dists.value = "{}"
+
+        model.observe(_on_model_change, "value")
+        _on_model_change()
+
         grid_hint = _W.HTML(value="")
 
         def _toggle_search(change=None):
@@ -1169,6 +1332,45 @@ class MasterPipeline:
                 export_pred,
             ]
         )
+        # --- Préconfigurations des presets et nom d’expérience ----------------
+        preset_path = _W.Text(
+            value=str(Path(self.reports_dir) / "preset.json"), description="Preset"
+        )
+        btn_save = _W.Button(description="Sauver", icon="save")
+        btn_load = _W.Button(description="Charger", icon="upload")
+
+        def _collect_widgets():
+            # Regroupe les widgets utiles dans un dict {nom: widget}
+            return {
+                # Onglet Data & Split
+                "prediction_target": target,
+                "test_size": test_size,
+                "seed": seed,
+                "cv_folds": cv_folds,
+                "rep_cv": rep_cv,
+                "cv_repeats": rep_cv_repeats,
+                "use_groups": use_groups,
+                "group_col": group_col,
+                # Onglet Modèle & Prep
+                "model_type": model,
+                "n_estimators": n_estim,
+                "imputer_strategy": imputer,
+                "knn_imputer_k": knn_k,
+                "scaler_type": scaler,
+                "base_params": base_params,
+                "param_grid": param_grid,
+                "param_dists": param_dists,
+                # Onglet Recherche HP
+                "search": search,
+                "scoring": scoring,
+                "n_iter": n_iter,
+                "val_size": val_size,
+            }
+
+        btn_save.on_click(lambda _: _save_preset(preset_path.value, _collect_widgets()))
+        btn_load.on_click(lambda _: _load_preset(preset_path.value, _collect_widgets()))
+
+        tab_presets = _W.HBox([preset_path, btn_save, btn_load])
 
         # ==== Lancer ====
         run_btn = _W.Button(
@@ -1182,7 +1384,7 @@ class MasterPipeline:
             description="Résumé",
             layout=_W.Layout(width="100%", height="120px"),
         )
-        tab_run = _W.VBox([run_btn, summary, out])
+        tab_run = _W.VBox([tab_presets, run_btn, summary, out])
 
         # --- Templates d’hyperparamètres ---
         template_dropdown = _W.Dropdown(
@@ -1932,7 +2134,6 @@ class MasterPipeline:
                 except Exception:
                     pass
 
-        # >>> ICI on branche le bouton <<<
         run_btn.on_click(_on_run)
 
     def _log_and_report(
