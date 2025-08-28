@@ -34,24 +34,36 @@ Exemple minimal
 """
 
 from __future__ import annotations
-
-import pandas as pd
-import numpy as np
-import joblib
-import seaborn as sns
-import matplotlib.pyplot as plt
+import inspect
+import warnings
 import os
 import sys
 import json
 import time
-import inspect
-import sklearn
-import xgboost
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+
+import pandas as pd
+import numpy as np
+import joblib
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 # --- Imports Scikit-learn ---
-from sklearn.base import clone
-from sklearn.ensemble import RandomForestClassifier
+import sklearn
+from sklearn.base import (
+    BaseEstimator,
+    TransformerMixin,
+    clone,
+    ClassifierMixin,
+    is_classifier,
+)
+from sklearn.decomposition import PCA
+from sklearn.ensemble import (
+    RandomForestClassifier,
+    ExtraTreesClassifier,
+    VotingClassifier,
+)
 from sklearn.model_selection import (
     StratifiedShuffleSplit,
     GroupShuffleSplit,
@@ -62,11 +74,6 @@ from sklearn.model_selection import (
     GroupKFold,
     RepeatedStratifiedKFold,
 )
-
-try:
-    HAS_SGKF = True
-except Exception:
-    HAS_SGKF = False
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, LabelEncoder, RobustScaler
 from sklearn.metrics import (
@@ -74,14 +81,340 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 from sklearn.impute import SimpleImputer, KNNImputer
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import ColumnTransformer, make_column_selector
 from sklearn.svm import SVC
 from sklearn.utils.class_weight import compute_sample_weight
-from sklearn.feature_selection import SelectFromModel
-from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.feature_selection import (
+    SelectFromModel,
+    mutual_info_classif,
+    VarianceThreshold,
+)
 from sklearn.linear_model import LogisticRegression
-from sklearn.feature_selection import mutual_info_classif
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.discriminant_analysis import (
+    LinearDiscriminantAnalysis,
+    QuadraticDiscriminantAnalysis,
+)
 from sklearn.calibration import CalibratedClassifierCV
+
+
+# imblearn (samplers + pipeline)
+try:
+    from imblearn.pipeline import Pipeline as ImbPipeline
+    from imblearn.over_sampling import SMOTE, BorderlineSMOTE, ADASYN
+    from imblearn.combine import SMOTEENN
+
+    _HAS_IMBLEARN = True
+except Exception:
+    _HAS_IMBLEARN = False
+
+# Optional learners
+try:
+
+    _HAS_XGB = True
+except Exception:
+    _HAS_XGB = False
+
+try:
+    from lightgbm import LGBMClassifier
+
+    _HAS_LGBM = True
+except Exception:
+    _HAS_LGBM = False
+
+try:
+    from catboost import CatBoostClassifier
+
+    _HAS_CATBOOST = True
+except Exception:
+    _HAS_CATBOOST = False
+from sklearn.pipeline import Pipeline as SkPipeline
+
+try:
+    _PIPE_TYPES = (SkPipeline, ImbPipeline)
+except Exception:
+    _PIPE_TYPES = (SkPipeline,)
+
+# ---------- utilitaires ----------
+
+
+def _ece_score(y_true: np.ndarray, proba: np.ndarray, n_bins: int = 15) -> float:
+    """Expected Calibration Error multi-classe (One-vs-max)."""
+    # confiance = max proba ; correct = 1 si argmax proba == y_true
+    conf = np.max(proba, axis=1)
+    pred = np.argmax(proba, axis=1)
+    correct = (pred == y_true).astype(float)
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    ece = 0.0
+    N = len(y_true)
+    for i in range(n_bins):
+        m = (conf >= bins[i]) & (
+            conf < bins[i + 1] if i < n_bins - 1 else conf <= bins[i + 1]
+        )
+        if np.any(m):
+            acc = correct[m].mean()
+            avg_conf = conf[m].mean()
+            ece += np.abs(acc - avg_conf) * (m.sum() / N)
+    return float(ece)
+
+
+class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
+    """Wrap un estimateur de classification et force predict_proba en float64.
+    N'expose PAS decision_function si le modèle de base ne l'a pas.
+    """
+
+    _estimator_type = "classifier"
+
+    def __init__(self, base):
+        self.base = base
+
+    # --- délégation dynamique : n'expose un attribut que si le base l'a ---
+    def __getattr__(self, name):
+        if name.startswith("_"):
+            raise AttributeError
+        return getattr(self.base, name)
+
+    # --- API sklearn ---
+    def get_params(self, deep=True):
+        # pour que clone() fonctionne
+        return {"base": self.base}
+
+    def set_params(self, **params):
+        if "base" in params:
+            self.base = params["base"]
+        return self
+
+    def fit(self, X, y=None, **fit_params):
+        # on fit le modèle de base tel quel
+        self.base.fit(X, y, **fit_params)
+        return self
+
+    def predict(self, X):
+        return self.base.predict(X)
+
+    def predict_proba(self, X):
+        import numpy as np
+
+        proba = self.base.predict_proba(X)
+        return np.asarray(proba, dtype=np.float64)
+
+    @property
+    def classes_(self):
+        # scikit-learn va le lire pendant la calibration
+        return getattr(self.base, "classes_", None)
+
+    def __sklearn_is_fitted__(self):
+        # utilitaire de compatibilité
+        return (
+            hasattr(self.base, "__sklearn_is_fitted__")
+            and self.base.__sklearn_is_fitted__()
+        )
+
+
+class CollinearityFilter(TransformerMixin, BaseEstimator):
+    """Supprime les colonnes très corrélées (> threshold) et faible variance."""
+
+    def __init__(self, var_threshold: float = 0.0, corr_threshold: float = 0.98):
+        self.var_threshold = var_threshold
+        self.corr_threshold = corr_threshold
+        self.keep_columns_: List[str] | None = None
+
+    def fit(self, X: pd.DataFrame, y=None, **fit_params):
+        if not isinstance(X, pd.DataFrame):
+            # tenter de reconstruire un DataFrame si possible
+            X = pd.DataFrame(X)
+        df = X.copy()
+        # Variance threshold
+        if self.var_threshold and self.var_threshold > 0:
+            vt = VarianceThreshold(self.var_threshold)
+            vt.fit(df)
+            df = df.loc[:, vt.get_support()]
+        # Remplir les NaN par médiane (sur train)
+        df = df.copy()
+        for c in df.columns:
+            if df[c].isna().any():
+                df[c] = df[c].fillna(df[c].median())
+        # Corrélation
+        if self.corr_threshold and self.corr_threshold < 1.0:
+            corr = df.corr(numeric_only=True).abs()
+            upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
+            to_drop = [
+                column
+                for column in upper.columns
+                if (upper[column] > self.corr_threshold).any()
+            ]
+            df = df.drop(columns=to_drop, errors="ignore")
+        self.keep_columns_ = list(df.columns)
+        return self
+
+    def transform(self, X):
+        df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
+        if self.keep_columns_ is None:
+            return df.values
+        return df.loc[:, [c for c in self.keep_columns_ if c in df.columns]]
+
+
+class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
+    """
+    Applique un vecteur de seuils par classe sur les probabilités.
+    - fit : optionnellement, tune les seuils sur un petit holdout interne
+            puis refit sur tout X,y (en forwardant les fit_params).
+    - predict : argmax(proba - thr).
+    """
+
+    _estimator_type = "classifier"
+
+    def __init__(
+        self, base_estimator, tune=False, metric="f1_macro", grid=None, random_state=42
+    ):
+        self.base_estimator = base_estimator
+        self.tune = tune
+        self.metric = metric
+        self.grid = None if grid is None else np.asarray(grid, dtype=float)
+        self.random_state = random_state
+        self.thresholds_ = None
+        self.classes_ = None
+
+    @staticmethod
+    def _fit_with_supported_params(
+        estimator, X, y, *, sample_weight=None, fit_params=None
+    ):
+        """Call estimator.fit with only the kwargs it supports."""
+        fit_params = dict(fit_params or {})
+        supported = set(inspect.signature(estimator.fit).parameters.keys())
+
+        # Ne garder que les kwargs réellement supportés
+        clean = {k: v for k, v in fit_params.items() if k in supported}
+
+        # Ajouter sample_weight seulement si supporté
+        if sample_weight is not None and "sample_weight" in supported:
+            clean["sample_weight"] = sample_weight
+        elif sample_weight is not None:
+            warnings.warn(
+                f"{estimator.__class__.__name__} ne supporte pas sample_weight ; "
+                "les poids seront ignorés pour ce modèle."
+            )
+        if "sample_weight" in clean and clean["sample_weight"] is not None:
+            try:
+                clean["sample_weight"] = np.asarray(
+                    clean["sample_weight"], dtype=np.float64
+                )
+            except Exception:
+                pass
+
+        return estimator.fit(X, y, **clean)
+
+    def fit(self, X, y, **fit_params):
+        # récupère/forwarde les params utiles
+        sw = fit_params.pop("sample_weight", None)
+        if sw is not None:
+            sw = np.asarray(sw, dtype=np.float32)
+        eval_set = fit_params.pop("eval_set", None)
+        callbacks = fit_params.pop("callbacks", None)
+        es_rounds = fit_params.pop("early_stopping_rounds", None)
+        verbose = fit_params.pop("verbose", None)
+        grid_arr = np.asarray(
+            self.grid if self.grid is not None else np.linspace(0.2, 0.8, 13),
+            dtype=float,
+        )
+
+        if self.tune and hasattr(self.base_estimator, "predict_proba"):
+            # split interne pour tuner les seuils
+            if sw is None:
+                X_tr, X_val, y_tr, y_val = train_test_split(
+                    X, y, test_size=0.20, stratify=y, random_state=self.random_state
+                )
+                sw_tr = None
+            else:
+                X_tr, X_val, y_tr, y_val, sw_tr, sw_val = train_test_split(
+                    X, y, sw, test_size=0.20, stratify=y, random_state=self.random_state
+                )
+
+            fit_kwargs = {} if verbose is None else {"verbose": verbose}
+            self._fit_with_supported_params(
+                self.base_estimator,
+                X_tr,
+                y_tr,
+                sample_weight=sw_tr,
+                fit_params=fit_kwargs,
+            )
+            proba = self.base_estimator.predict_proba(X_val)
+            n_classes = proba.shape[1]
+            best = np.zeros(n_classes)
+            best_score = -1.0
+
+            # grille commune puis affinement par classe
+            for t in grid_arr:
+                s = self._score_with_thresholds(proba, y_val, np.full(n_classes, t))
+                if s > best_score:
+                    best_score, best = s, np.full(n_classes, t)
+            for k in range(n_classes):
+                for t in grid_arr:
+                    cand = best.copy()
+                    cand[k] = t
+                    s = self._score_with_thresholds(proba, y_val, cand)
+                    if s > best_score:
+                        best_score, best = s, cand
+            self.thresholds_ = best
+
+            # 2) refit final sur toutes les données avec les params transmis
+            extra = {}
+            if eval_set is not None:
+                extra["eval_set"] = eval_set
+            if callbacks is not None:
+                extra["callbacks"] = callbacks
+            if es_rounds is not None:
+                extra["early_stopping_rounds"] = es_rounds
+            if verbose is not None:
+                extra["verbose"] = verbose
+            final_fit_params = dict(fit_params)
+            final_fit_params.update(extra)
+
+            self._fit_with_supported_params(
+                self.base_estimator, X, y, sample_weight=sw, fit_params=final_fit_params
+            )
+        else:
+            # pas de tuning → fit direct avec les params transmis
+            if eval_set is not None:
+                fit_params["eval_set"] = eval_set
+            if callbacks is not None:
+                fit_params["callbacks"] = callbacks
+            if es_rounds is not None:
+                fit_params["early_stopping_rounds"] = es_rounds
+            if verbose is not None:
+                fit_params["verbose"] = verbose
+            self._fit_with_supported_params(
+                self.base_estimator, X, y, sample_weight=sw, fit_params=fit_params
+            )
+
+        self.classes_ = getattr(self.base_estimator, "classes_", None)
+        return self
+
+    def _score_with_thresholds(self, proba, y_true, thr):
+        scores = proba - thr.reshape(1, -1)
+        y_pred = np.argmax(scores, axis=1)
+        from sklearn.metrics import f1_score, balanced_accuracy_score
+
+        return (
+            balanced_accuracy_score(y_true, y_pred)
+            if self.metric == "balanced_accuracy"
+            else f1_score(y_true, y_pred, average="macro")
+        )
+
+    def predict(self, X):
+        if (
+            not hasattr(self.base_estimator, "predict_proba")
+            or self.thresholds_ is None
+        ):
+            return self.base_estimator.predict(X)
+        proba = self.base_estimator.predict_proba(X)
+        idx = np.argmax(proba - self.thresholds_.reshape(1, -1), axis=1)
+        return idx if self.classes_ is None else np.array(self.classes_)[idx]
+
+    def predict_proba(self, X):
+        return self.base_estimator.predict_proba(X)
 
 
 class SpectralClassifier:
@@ -100,9 +433,18 @@ class SpectralClassifier:
         selector_model="xgb",
         selector_n_estimators=200,
         random_state=42,
-        # Pré-traitement par défaut
+        # pré-pro
         imputer_strategy: str = "median",
         scaler_type: str = "standard",
+        var_threshold: float = 0.0,
+        corr_threshold: float = 0.98,
+        use_pca: bool = False,
+        pca_components: float | int = 0.99,
+        # imbalance
+        sampler: str | None = None,  # none/smote/borderline/smoteenn/adasyn
+        # seuils
+        tune_thresholds: bool = False,
+        threshold_metric: str = "f1_macro",
     ):
         """
         Initialise la configuration du pipeline de classification.
@@ -136,11 +478,25 @@ class SpectralClassifier:
         # Préférences de pré-traitement par défaut
         self.imputer_strategy = imputer_strategy
         self.scaler_type = scaler_type
-        self.knn_imputer_k = 5  # valeur par défaut pour l'imputation KNN
+        self.knn_imputer_k = 5
 
-        self.feature_names_used = []
-        self.selected_features_ = None
+        self.var_threshold = var_threshold
+        self.corr_threshold = corr_threshold
+        self.use_pca = use_pca
+        self.pca_components = pca_components
+
+        self.sampler = (sampler or "none").lower()
+        self.tune_thresholds = tune_thresholds
+        self.threshold_metric = threshold_metric
+
+        self.n_jobs: int = -1
+
+        self.feature_names_used: List[str] = []
+        self.selected_features_: List[str] | None = None
         self.best_estimator_ = None
+        self.model_pipeline = None
+        self.label_encoder: LabelEncoder | None = None
+        self.class_labels: List[str] = []
 
     # ---------------------------------------------------------------------
     # Préparation des données (construction des labels + nettoyage)
@@ -410,26 +766,16 @@ class SpectralClassifier:
         if imputer is not None:
             steps.append(("imp", imputer))
         if (model_type == "SVM") or scaler is not None:
-            # Pour SVM, on force la normalisation; sinon on respecte scaler_type
             if scaler is None and model_type == "SVM":
                 scaler = StandardScaler()
             if scaler is not None:
                 steps.append(("scaler", scaler))
 
-        if steps:
-            transformer = Pipeline(steps)
-        else:
-            # Pas d'imputation ni scaling : on laisse passer les valeurs telles quelles
-            transformer = "passthrough"
+        transformer = Pipeline(steps) if steps else "passthrough"
 
+        # Sélection dynamique des colonnes numériques (compatible avec colfilter en amont)
         return ColumnTransformer(
-            [
-                (
-                    "num",
-                    transformer,
-                    num_cols,
-                )
-            ],
+            [("num", transformer, make_column_selector(dtype_include=np.number))],
             remainder="drop",
         )
 
@@ -442,15 +788,18 @@ class SpectralClassifier:
         - XGB : 'hist' pour la vitesse ; encodage de y géré côté train_and_evaluate
         - SVM : RBF + class_weight=balanced
         """
+
+        # RandomForest
         if model_type == "RandomForest":
             return RandomForestClassifier(
                 n_estimators=n_estimators,
                 max_depth=None,
-                n_jobs=-1,
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
                 random_state=random_state,
                 class_weight="balanced_subsample",
             )
 
+        # XGBoost
         if model_type == "XGBoost":
             try:
                 import xgboost as xgb
@@ -458,7 +807,6 @@ class SpectralClassifier:
                 raise RuntimeError(
                     "XGBoost n'est pas installé dans cet environnement."
                 ) from e
-
             return xgb.XGBClassifier(
                 n_estimators=n_estimators,
                 max_depth=6,
@@ -469,10 +817,11 @@ class SpectralClassifier:
                 eval_metric="mlogloss",
                 num_class=n_classes,
                 tree_method="hist",  # rapide et CPU-friendly
-                n_jobs=-1,
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
                 random_state=random_state,
             )
 
+        # SVM (RBF)
         if model_type == "SVM":
             return SVC(
                 kernel="rbf",
@@ -481,8 +830,137 @@ class SpectralClassifier:
                 random_state=random_state,
             )
 
+        # ExtraTrees
+        if model_type == "ExtraTrees":
+            return ExtraTreesClassifier(
+                n_estimators=n_estimators,
+                bootstrap=True,
+                class_weight="balanced_subsample",
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
+                random_state=random_state,
+            )
+
+        # Logistic Regression One-vs-Rest
+        if model_type == "LogRegOVR":
+            return LogisticRegression(
+                multi_class="ovr",
+                class_weight="balanced",
+                max_iter=2000,
+                solver="lbfgs",
+                C=1.0,
+                random_state=random_state,
+            )
+
+        # K Nearest Neighbors
+        if model_type == "KNN":
+            return KNeighborsClassifier(
+                n_neighbors=15,
+                weights="distance",
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
+            )
+
+        # Multi-Layer Perceptron
+        if model_type == "MLP":
+            return MLPClassifier(
+                hidden_layer_sizes=(256, 128),
+                activation="relu",
+                alpha=0.0001,
+                learning_rate="adaptive",
+                early_stopping=True,
+                max_iter=300,
+            )
+
+        # Naive Bayes Gaussian
+        if model_type == "NaiveBayes":
+            return GaussianNB()
+
+        # Linear Discriminant Analysis
+        if model_type == "LDA":
+            return LinearDiscriminantAnalysis(
+                solver="svd",
+                shrinkage=None,
+            )
+
+        # Quadratic Discriminant Analysis
+        if model_type == "QDA":
+            return QuadraticDiscriminantAnalysis(
+                reg_param=0.0,
+            )
+
+        # CatBoost
+        if model_type == "CatBoost":
+            if not _HAS_CATBOOST:
+                raise ImportError("catboost n'est pas installé. `pip install catboost`")
+            params = dict(
+                loss_function="MultiClass",
+                iterations=n_estimators,
+                learning_rate=0.05,
+                depth=6,
+                l2_leaf_reg=3.0,
+                auto_class_weights="Balanced",
+                random_seed=random_state,
+                verbose=False,
+            )
+            # thread count
+            if hasattr(self, "n_jobs") and self.n_jobs and self.n_jobs > 0:
+                params["thread_count"] = self.n_jobs
+            return CatBoostClassifier(**params)
+
+        # LightGBM
+        if model_type == "LightGBM":
+            if not _HAS_LGBM:
+                raise ImportError("lightgbm n'est pas installé. `pip install lightgbm`")
+            return LGBMClassifier(
+                objective="multiclass",
+                class_weight="balanced",
+                n_estimators=n_estimators,
+                learning_rate=0.05,
+                num_leaves=31,
+                max_depth=-1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                reg_alpha=0.0,
+                reg_lambda=0.0,
+                n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
+                random_state=random_state,
+            )
+
+        if model_type == "SoftVoting":
+            # XGB + LGBM + CatBoost (selon dispos)
+            ests = []
+            if _HAS_XGB:
+                ests.append(
+                    (
+                        "xgb",
+                        self._build_estimator(
+                            "XGBoost", n_estimators, n_classes, random_state
+                        ),
+                    )
+                )
+            if _HAS_LGBM:
+                ests.append(
+                    (
+                        "lgbm",
+                        self._build_estimator(
+                            "LightGBM", n_estimators, n_classes, random_state
+                        ),
+                    )
+                )
+            if _HAS_CATBOOST:
+                ests.append(
+                    (
+                        "cat",
+                        self._build_estimator(
+                            "CatBoost", n_estimators, n_classes, random_state
+                        ),
+                    )
+                )
+            if not ests:
+                raise RuntimeError("Aucun learner dispo pour SoftVoting.")
+            return VotingClassifier(estimators=ests, voting="soft", n_jobs=self.n_jobs)
+
         raise ValueError(
-            f"Modèle inconnu: {model_type} (attendu: RandomForest | XGBoost | SVM)"
+            f"Modèle inconnu: {model_type} (attendu: RandomForest | XGBoost | SVM | ExtraTrees | LogRegOVR | KNN | MLP | NaiveBayes | LDA | QDA | CatBoost | LightGBM)"
         )
 
     # ---------------------------------------------------------------------
@@ -496,7 +974,7 @@ class SpectralClassifier:
         n_estimators: int = 300,
         *,
         search: Optional[str] = None,
-        cv_folds: int = 3,
+        cv_folds: int = 5,
         scoring: str = "accuracy",
         use_feature_selection: Optional[bool] = None,
         selector_model: Optional[str] = None,
@@ -508,28 +986,39 @@ class SpectralClassifier:
         group_col: Optional[str] = None,
         param_grid: Optional[Dict[str, Any]] = None,
         param_distributions: Optional[Dict[str, Any]] = None,
-        n_iter: int = 60,
+        n_iter: int = 80,
         random_state: int = 42,
         param_overrides: dict | None = None,
+        # poids & calibration
         use_balanced_weights: bool = True,
-        calibrate_probs: bool = False,
-        calibration_method: str = "sigmoid",
-        # --- nouvelles options avancées ---
-        class_weight_mode: str | None = None,
+        class_weight_mode: str | None = None,  # "inv_freq" ou None
         class_weight_alpha: float = 1.0,
         weight_col: str | None = None,
         weight_norm: str = "minmax",
+        weight_gamma: float = 1.0,  # **nouveau**
+        calibrate_probs: bool = False,
+        calibration_method: str = "sigmoid",
+        calibrate_cv: int = 3,
+        calibrate_holdout_size: float = 0.0,
+        # répétitions de CV
         repeated_cv: bool = False,
         cv_repeats: int = 1,
-        calibrate_holdout_size: float = 0.0,
-        calibrate_cv: int = 3,
-        # --- réglages du pré-processeur et de la sélection ---
+        # filtres/sélection
         imputer_strategy: str | None = None,
         knn_imputer_k: int = 5,
         scaler_type: str | None = None,
-        selector_method: Optional[str] = None,
+        selector_method: Optional[str] = None,  # "rfecv" pour RFECV
         mi_top_k: Optional[int] = None,
-        scoring_eval: Optional[Any] = None,
+        # sampler
+        sampler: Optional[str] = None,
+        # PCA & filtres
+        var_threshold: Optional[float] = None,
+        corr_threshold: Optional[float] = None,
+        use_pca: Optional[bool] = None,
+        pca_components: Optional[float | int] = None,
+        # seuils
+        tune_thresholds: Optional[bool] = None,
+        threshold_metric: Optional[str] = None,
     ) -> tuple[
         "SpectralClassifier", list[str], pd.DataFrame, np.ndarray, np.ndarray | None
     ]:
@@ -579,7 +1068,20 @@ class SpectralClassifier:
             self.knn_imputer_k = int(knn_imputer_k)
         if scaler_type is not None:
             self.scaler_type = scaler_type
-
+        if var_threshold is not None:
+            self.var_threshold = float(var_threshold)
+        if corr_threshold is not None:
+            self.corr_threshold = float(corr_threshold)
+        if use_pca is not None:
+            self.use_pca = bool(use_pca)
+        if pca_components is not None:
+            self.pca_components = pca_components
+        if sampler is not None:
+            self.sampler = (sampler or "none").lower()
+        if tune_thresholds is not None:
+            self.tune_thresholds = bool(tune_thresholds)
+        if threshold_metric is not None:
+            self.threshold_metric = str(threshold_metric)
         # Groupes (optionnel)
         groups_full = None
         if use_groups and group_col and group_col in df_trainable.columns:
@@ -615,9 +1117,12 @@ class SpectralClassifier:
         label_encoder: Optional[LabelEncoder] = None
         y_enc = y_all
 
-        if self.model_type == "XGBoost":
+        if self.model_type in ("XGBoost", "SoftVoting", "MLP"):
             label_encoder = LabelEncoder().fit(y_all)
             y_enc = label_encoder.transform(y_all)
+            self.label_encoder = label_encoder
+        else:
+            y_enc = y_all
 
         # Sauvegarde pour évaluation / décodage et ordre des classes
         self.label_encoder = label_encoder
@@ -628,11 +1133,20 @@ class SpectralClassifier:
         )
         # 2) Split train/test (stratifié ou par groupes)
         if use_groups and (groups_full is not None):
-            gss = GroupShuffleSplit(
-                n_splits=1, test_size=test_size, random_state=random_state
-            )
-            tr_idx, te_idx = next(gss.split(X_all, y_enc, groups=groups_full))
-            groups_train = groups_full[tr_idx]
+            try:
+                from sklearn.model_selection import StratifiedGroupKFold
+
+                cv_split = StratifiedGroupKFold(
+                    n_splits=1, shuffle=True, random_state=random_state
+                )
+                tr_idx, te_idx = next(cv_split.split(X_all, y_enc, groups_full))
+                groups_train = groups_full[tr_idx]
+            except Exception:
+                gss = GroupShuffleSplit(
+                    n_splits=1, test_size=test_size, random_state=random_state
+                )
+                tr_idx, te_idx = next(gss.split(X_all, y_enc, groups=groups_full))
+                groups_train = groups_full[tr_idx]
         else:
             sss = StratifiedShuffleSplit(
                 n_splits=1, test_size=test_size, random_state=random_state
@@ -680,7 +1194,17 @@ class SpectralClassifier:
             else selector_threshold
         )
 
-        steps = [("prep", preproc)]
+        # pipeline (imblearn si sampler actif)
+        Pipe = (
+            ImbPipeline
+            if (_HAS_IMBLEARN and (self.sampler not in ("none", None)))
+            else sklearn.pipeline.Pipeline
+        )
+
+        steps = [
+            ("colfilter", CollinearityFilter(self.var_threshold, self.corr_threshold)),
+            ("prep", preproc),
+        ]
         if fs_enabled:
             # Modèle pour sélectionner les variables
             if sel_model == "xgb":
@@ -723,9 +1247,62 @@ class SpectralClassifier:
                     random_state=random_state,
                     class_weight="balanced_subsample",
                 )
-            steps.append(("fs", SelectFromModel(selector_est, threshold=sel_threshold)))
-        steps.append(("clf", base_est))
-        pipe = Pipeline(steps)
+
+        fs_kind = (selector_method or "sfrommodel").lower()
+
+        if fs_enabled:
+            if fs_kind == "rfecv":
+                from sklearn.feature_selection import RFECV
+
+                min_feats = max(5, int(0.05 * X_train.shape[1]))  # garde-fou
+                steps.append(
+                    (
+                        "fs",
+                        RFECV(
+                            estimator=selector_est,
+                            step=1,
+                            cv=5,  # simple et robuste; ok aussi sans groupes
+                            scoring=scoring,
+                            n_jobs=-1,
+                            min_features_to_select=min_feats,
+                        ),
+                    )
+                )
+            else:
+                # chemin par défaut: SelectFromModel
+                steps.append(
+                    ("fs", SelectFromModel(selector_est, threshold=sel_threshold))
+                )
+
+        if self.use_pca:
+            steps.append(
+                ("pca", PCA(n_components=self.pca_components, svd_solver="full"))
+            )
+
+        # sampler (dans les folds)
+        sampler_name = (sampler or self.sampler or "none").lower()
+        if _HAS_IMBLEARN and sampler_name not in ("none", None):
+            if sampler_name == "smote":
+                steps.append(("sampler", SMOTE(random_state=random_state)))
+            elif sampler_name == "borderline":
+                steps.append(("sampler", BorderlineSMOTE(random_state=random_state)))
+            elif sampler_name == "smoteenn":
+                steps.append(("sampler", SMOTEENN(random_state=random_state)))
+            elif sampler_name == "adasyn":
+                steps.append(("sampler", ADASYN(random_state=random_state)))
+            else:
+                print(f"(info) sampler inconnu '{sampler_name}', désactivé.")
+
+        # wrap seuils
+        final_est = ThresholdTunedClassifier(
+            base_est,
+            tune=self.tune_thresholds,
+            metric=(self.threshold_metric or "f1_macro"),
+            random_state=random_state,
+        )
+
+        steps.append(("clf", final_est))
+        pipe = Pipe(steps)
 
         # 4) Fit params : weights + early stopping (XGB)
         fit_params: Dict[str, Any] = {}
@@ -774,6 +1351,11 @@ class SpectralClassifier:
                     w = (w - mn) / (mx - mn)
                 else:
                     w = np.ones_like(w)
+                # puissance gamma
+                try:
+                    w = np.power(w, float(weight_gamma))
+                except Exception:
+                    pass
                 if sample_weight is None:
                     sample_weight = w
                 else:
@@ -784,6 +1366,7 @@ class SpectralClassifier:
 
         # Ajout aux paramètres de fit si présent
         if sample_weight is not None:
+            sample_weight = np.asarray(sample_weight, dtype=np.float32)
             fit_params["clf__sample_weight"] = sample_weight
 
         # ES uniquement hors recherche (sinon masque FS instable entre folds)
@@ -805,7 +1388,7 @@ class SpectralClassifier:
                 :-1
             ]  # ['prep', ('fs', ...)] si FS actif, sinon juste 'prep'
             if pre_fs_steps:
-                prep_for_es = clone(Pipeline(pre_fs_steps))
+                prep_for_es = clone(Pipe(pre_fs_steps))
                 prep_for_es.fit(X_train, y_train)
                 X_val_es = prep_for_es.transform(X_val_in)
             else:
@@ -885,10 +1468,93 @@ class SpectralClassifier:
             best = pipe
             self.best_params_ = getattr(best[-1], "get_params", lambda: {})()
 
-        # 7) Calibration (optionnelle)
-        if calibrate_probs and hasattr(best, "predict_proba"):
-            best = CalibratedClassifierCV(best, method=calibration_method, cv=3)
-            best.fit(X_train, y_train)
+        # 7) Si calibration demandée ---
+        if calibrate_probs:
+            # 1) éventuel split holdout dédié à la calibration
+            X_tr, y_tr = X_train, y_train
+            X_cal = y_cal = None
+            sw_tr = None
+            sw_all = fit_params.get("clf__sample_weight", None)
+            if calibrate_holdout_size and float(calibrate_holdout_size) > 0:
+                if sw_all is not None:
+                    X_tr, X_cal, y_tr, y_cal, sw_tr, sw_cal = train_test_split(
+                        X_train,
+                        y_train,
+                        sw_all,
+                        test_size=float(calibrate_holdout_size),
+                        stratify=y_train,
+                        random_state=random_state,
+                    )
+                else:
+                    X_tr, X_cal, y_tr, y_cal = train_test_split(
+                        X_train,
+                        y_train,
+                        test_size=float(calibrate_holdout_size),
+                        stratify=y_train,
+                        random_state=random_state,
+                    )
+
+            # 2) refit sur le sous-ensemble d’entraînement (utile si holdout)
+            fit_params_tr = dict(fit_params)
+            if sw_tr is not None:
+                fit_params_tr["clf__sample_weight"] = sw_tr
+            best.fit(X_tr, y_tr, **fit_params_tr)
+
+            # 3) séparer pré-proc/fs et step final
+            if isinstance(best, _PIPE_TYPES):
+                preproc_fs = best[:-1]  # pipeline déjà FIT sans le dernier step
+                final_step = best.steps[-1][1]  # dernier step (peut être ton wrapper)
+            else:
+                preproc_fs = None
+                final_step = best
+
+            # 4) estimateur VRAIMENT calibré = base_estimator s’il y a un wrapper
+            est_to_cal = getattr(final_step, "base_estimator", final_step)
+            if not is_classifier(est_to_cal):
+                raise TypeError(
+                    f"Estimator to calibrate is not a classifier: {type(est_to_cal)}"
+                )
+
+            if X_cal is not None:
+                # ---- mode prefit sur holdout ----
+                X_cal_trans = (
+                    preproc_fs.transform(X_cal) if preproc_fs is not None else X_cal
+                )
+                est_for_cal = _Float64ProbaWrapper(est_to_cal)
+                cal = CalibratedClassifierCV(
+                    estimator=est_for_cal, method=calibration_method, cv="prefit"
+                )
+                cal.fit(
+                    X_cal_trans,
+                    y_cal,
+                    sample_weight=np.asarray(sw_cal, dtype=np.float32),
+                )
+                # ré-injecter le calibrateur
+                if hasattr(final_step, "base_estimator"):
+                    final_step.base_estimator = cal
+                else:
+                    if isinstance(best, _PIPE_TYPES):
+                        best.steps[-1] = (best.steps[-1][0], cal)
+                    else:
+                        best = cal
+            else:
+                # ---- calibration par CV (pas de holdout) : on met le calibrateur COMME step final ----
+                est_for_cal = _Float64ProbaWrapper(est_to_cal)
+                cal = CalibratedClassifierCV(
+                    estimator=est_for_cal,
+                    method=calibration_method,
+                    cv=int(calibrate_cv),
+                )
+                if hasattr(final_step, "base_estimator"):
+                    final_step.base_estimator = cal
+                    best.fit(X_train, y_train, **fit_params)  # refit complet avec cal
+                else:
+                    if isinstance(best, _PIPE_TYPES):
+                        best.steps[-1] = (best.steps[-1][0], cal)
+                        best.fit(X_train, y_train, **fit_params)
+                    else:
+                        best = cal
+                        best.fit(X_train, y_train, **fit_params)
 
         # 8) Expose artefacts
         self.model_pipeline = best
@@ -946,11 +1612,7 @@ class SpectralClassifier:
         predictions = self.model_pipeline.predict(X_test)
 
         # Décodage si XGBoost
-        if (
-            self.model_type == "XGBoost"
-            and getattr(self, "label_encoder", None) is not None
-        ):
-            # y_test peut être encodé (int) ou déjà texte selon l’appelant
+        if self.label_encoder is not None:
             if np.issubdtype(np.asarray(y_test).dtype, np.integer):
                 y_test_dec = self.label_encoder.inverse_transform(y_test)
             else:
@@ -958,6 +1620,25 @@ class SpectralClassifier:
             y_pred_dec = self.label_encoder.inverse_transform(predictions)
         else:
             y_test_dec, y_pred_dec = y_test, predictions
+
+        proba = getattr(self.model_pipeline, "predict_proba", lambda X: None)(X_test)
+        if proba is not None:
+            # indices numériques des vraies classes
+            if (self.label_encoder is not None) and np.issubdtype(
+                np.asarray(y_test).dtype, np.integer
+            ):
+                y_test_dec = self.label_encoder.inverse_transform(y_test)
+                y_pred_dec = self.label_encoder.inverse_transform(predictions)
+            else:
+                y_test_dec, y_pred_dec = y_test, predictions
+                label_to_idx = {lab: i for i, lab in enumerate(self.class_labels)}
+                y_idx = np.array([label_to_idx.get(str(v), -1) for v in y_test_dec])
+                mask = y_idx >= 0
+                proba = proba[mask]
+                y_idx = y_idx[mask]
+            ece = _ece_score(y_idx, proba)
+            top2 = (y_idx == np.argsort(proba, axis=1)[:, -2:]).any(axis=1).mean()
+            print(f"ECE={ece:.3f} | Top-2 acc={top2:.3f}")
 
         print("\n--- Rapport d'Évaluation ---")
         report = classification_report(y_test_dec, y_pred_dec, zero_division=0)
@@ -999,13 +1680,20 @@ class SpectralClassifier:
             Versions (Python, numpy, scikit-learn, xgboost), type de modèle,
             cible, meilleurs hyperparamètres, labels, features utilisées, etc.
         """
+        try:
+            import xgboost
+
+            xgb_ver = getattr(xgboost, "__version__", "unknown")
+        except Exception:
+            xgb_ver = "not-installed"
+
         joblib.dump(self, path)
         meta = {
             "saved_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "python": sys.version.split()[0],
             "numpy": np.__version__,
             "scikit_learn": sklearn.__version__,
-            "xgboost": getattr(xgboost, "__version__", "unknown"),
+            "xgboost": xgb_ver,
             "model_type": self.model_type,
             "prediction_target": self.prediction_target,
             "best_params_": getattr(self, "best_params_", None),

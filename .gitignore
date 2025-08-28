@@ -47,6 +47,10 @@ static/images/
 # === Notion, idées, doc privée ===
 notes/
 *.md~
+learn_error.tsv
+time_left.tsv
+events.out.tfevents
+catboost_training.json
 
 # Output, figures, temporary files
 outputs/

@@ -81,22 +81,28 @@ Notes
 """
 
 from __future__ import annotations
-
-from typing import Any, List, Optional
-
+from typing import Any, Optional
 import os
+import sys
 import json
-from pathlib import Path
+import time
+import shutil
 import hashlib
 import platform
+from pathlib import Path
 from datetime import datetime, timezone
-import shutil
+
 import joblib
-import sys
-import time
 import pandas as pd
 import numpy as np
+
 from IPython.display import display, clear_output, HTML, Image, Markdown
+
+try:
+    import ipywidgets as W  # type: ignore
+except Exception:
+    # Si ipywidgets n'est pas disponible (par exemple hors environnement Jupyter), on définit W à None
+    W = None  # type: ignore
 
 # --- Imports projet ---
 from tools.dataset_builder import DatasetBuilder
@@ -106,7 +112,143 @@ from tools.generate_catalog_from_fits import generate_catalog_from_fits
 from tools.gaia_crossmatcher import enrich_catalog_with_gaia
 
 # --- Imports Scikit-learn ---
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+)
+
+
+# ================================================================
+#  Templates de paramètres (base_params, grid, distributions)
+#  Ces dictionnaires définissent les paramètres par défaut et les grilles de
+#  recherche pour chaque modèle. Ils sont utilisés pour préremplir les champs
+#  correspondants dans l'interface lorsqu'un modèle est sélectionné.
+# ================================================================
+# Pré-configurations de base (paramètres de départ pour chaque modèle)
+PRESET_BASE: dict = {
+    "ExtraTrees": {
+        "bootstrap": True,
+        "class_weight": "balanced_subsample",
+    },
+    "LogRegOVR": {
+        "solver": "lbfgs",
+        "C": 1.0,
+    },
+    "KNN": {
+        "n_neighbors": 15,
+        "weights": "distance",
+    },
+    "MLP": {
+        "hidden_layer_sizes": [256, 128],
+        "activation": "relu",
+        "alpha": 0.0001,
+        "learning_rate": "adaptive",
+        "max_iter": 300,
+    },
+    "LDA": {
+        "solver": "svd",
+        "shrinkage": None,
+    },
+    "QDA": {
+        "reg_param": 0.0,
+    },
+    "CatBoost": {
+        "learning_rate": 0.05,
+        "depth": 6,
+        "l2_leaf_reg": 3.0,
+        "auto_class_weights": "Balanced",
+    },
+    "LightGBM": {
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "max_depth": -1,
+        "bagging_fraction": 0.8,
+        "feature_fraction": 0.8,
+        "reg_alpha": 0.0,
+        "reg_lambda": 0.0,
+    },
+    "SoftVoting": {},
+}
+
+# Grilles de recherche (GridSearchCV)
+PRESET_GRID: dict = {
+    "ExtraTrees": {
+        "clf__max_depth": [None, 10, 20, 30],
+        "clf__min_samples_leaf": [1, 2, 4],
+        "clf__max_features": ["sqrt", "log2", 0.5],
+    },
+    "LogRegOVR": {
+        "clf__base_estimator__C": [0.1, 0.3, 1, 3, 10],
+        "clf__base_estimator__solver": ["lbfgs", "liblinear", "saga"],
+    },
+    "KNN": {
+        "clf__n_neighbors": [5, 9, 15, 25],
+        "clf__weights": ["uniform", "distance"],
+    },
+    "MLP": {
+        "clf__hidden_layer_sizes": [[128], [256, 128], [512, 256]],
+        "clf__alpha": [0.0001, 0.001, 0.01],
+    },
+    "LDA": {
+        "clf__solver": ["svd", "lsqr", "eigen"],
+        "clf__shrinkage": [None, "auto", 0.0, 0.1, 0.3, 0.5],
+    },
+    "QDA": {
+        "clf__reg_param": [0.0, 0.001, 0.01, 0.1, 0.3],
+    },
+    "CatBoost": {
+        "clf__depth": [4, 6, 8],
+        "clf__learning_rate": [0.03, 0.05, 0.08],
+        "clf__l2_leaf_reg": [1.0, 3.0, 5.0],
+    },
+    "LightGBM": {
+        "clf__num_leaves": [31, 63, 127],
+        "clf__max_depth": [-1, 8, 12],
+        "clf__bagging_fraction": [0.7, 0.8, 0.9],
+        "clf__feature_fraction": [0.7, 0.8, 0.9],
+        "clf__learning_rate": [0.03, 0.05, 0.08],
+        "clf__reg_lambda": [0.0, 0.5, 1.0],
+    },
+}
+
+# Distributions pour RandomizedSearchCV
+PRESET_DISTS: dict = {
+    "ExtraTrees": {
+        "clf__min_samples_split": [2, 5, 10],
+        "clf__min_samples_leaf": [1, 2, 4],
+    },
+    "LogRegOVR": {
+        "clf__base_estimator__C": [0.1, 0.3, 1, 3, 10],
+        "clf__base_estimator__solver": ["lbfgs", "liblinear"],
+    },
+    "KNN": {
+        "clf__n_neighbors": [5, 9, 15, 25, 35],
+        "clf__weights": ["uniform", "distance"],
+    },
+    "MLP": {
+        "clf__alpha": [0.0001, 0.0005, 0.001, 0.01],
+    },
+    "LDA": {
+        "clf__solver": ["svd", "lsqr", "eigen"],
+        "clf__shrinkage": [None, "auto", 0.0, 0.1, 0.3, 0.5],
+    },
+    "QDA": {
+        "clf__reg_param": [0.0, 0.001, 0.01, 0.1, 0.3],
+    },
+    "CatBoost": {
+        "clf__depth": [4, 6, 8, 10],
+        "clf__learning_rate": [0.02, 0.03, 0.05, 0.08],
+        "clf__l2_leaf_reg": [1.0, 2.0, 3.0, 5.0],
+    },
+    "LightGBM": {
+        "clf__num_leaves": [31, 63, 95, 127],
+        "clf__max_depth": [-1, 6, 8, 12],
+        "clf__bagging_fraction": [0.6, 0.7, 0.8, 0.9],
+        "clf__feature_fraction": [0.6, 0.7, 0.8, 0.9],
+        "clf__learning_rate": [0.02, 0.03, 0.05, 0.08],
+        "clf__reg_lambda": [0.0, 0.3, 0.6, 1.0],
+    },
+}
 
 # -----------------------------------------------------------------------------
 # Utilitaires pour le tableau de bord d'entraînement
@@ -132,6 +274,25 @@ def _load_preset(path: str, widgets: dict) -> None:
             except Exception:
                 # ignore les erreurs de type (ex: changement de type du widget)
                 pass
+
+
+def _json_default(o):
+    # numpy -> types natifs
+    try:
+        import numpy as _np
+
+        if isinstance(o, _np.generic):
+            return o.item()
+        if hasattr(o, "tolist"):
+            return o.tolist()
+    except Exception:
+        pass
+    # sklearn / objets divers -> représentation courte
+    try:
+        name = getattr(o, "__name__", None) or o.__class__.__name__
+        return name
+    except Exception:
+        return str(o)
 
 
 def _load_runs_table(reports_root: str):
@@ -168,14 +329,27 @@ def _load_runs_table(reports_root: str):
                     f1_macro = (rep.get("macro avg") or {}).get("f1-score")
             except Exception:
                 f1_macro = None
+            features = (
+                meta.get("n_candidate_features")
+                or (
+                    len((meta.get("feature_columns") or []))
+                    if isinstance(meta.get("feature_columns"), list)
+                    else None
+                )
+                or (
+                    len((meta.get("selected_features") or []))
+                    if isinstance(meta.get("selected_features"), list)
+                    else None
+                )
+            )
             rows.append(
                 {
-                    "ts": meta.get("saved_at_utc"),
+                    "ts": meta.get("saved_at_utc")
+                    or meta.get("session_id")
+                    or Path(js).parent.name,
                     "exp": meta.get("exp_name"),
                     "model": meta.get("model_type"),
-                    "features": meta.get("n_candidate_features")
-                    or meta.get("fs_kept")
-                    or meta.get("n_features_used"),
+                    "features": features,
                     "acc": acc,
                     "bal_acc": bal,
                     "f1_macro": f1_macro,
@@ -253,7 +427,7 @@ class MasterPipeline:
         )
 
         # État
-        self.current_batch: List[str] = []
+        self.current_batch: list[str] = []
         self.master_catalog_df: pd.DataFrame = pd.DataFrame()
         self.features_df: pd.DataFrame = pd.DataFrame()
 
@@ -275,11 +449,26 @@ class MasterPipeline:
         ]:
             os.makedirs(path, exist_ok=True)
 
+        # Output container for the run explorer (prevent stacking) and last run timestamp
+        # Utilise ipywidgets.Output si disponible, sinon un nullcontext pour compatibilité hors Jupyter
+        if W is not None:
+            self._runs_out = W.Output(
+                layout=W.Layout(
+                    border="1px solid #333", max_height="360px", overflow="auto"
+                )
+            )
+        else:
+            # fall-back: simple context manager qui ne fait rien
+            from contextlib import nullcontext
+
+            self._runs_out = nullcontext()
+        self._last_run_ts: Optional[str] = None
+
     # --------------------- API publique (Notebook) ---------------------
 
     def select_batch(
         self, batch_size: int = 500, strategy: str = "random"
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Sélectionne un lot de fichiers FITS à traiter.
 
@@ -537,6 +726,142 @@ class MasterPipeline:
 
         return out
 
+    # ---------------------------------------------------------------------
+    # Runs explorer helpers (highlight last run and refresh table)
+    # ---------------------------------------------------------------------
+    def _style_highlight_ts(
+        self,
+        df: pd.DataFrame,
+        last_ts: str | None = None,
+        best_ts: str | None = None,
+        metric_col: str = "bal_acc",
+    ) -> "pd.io.formats.style.Styler":
+        """
+        Retourne un Styler pandas qui applique un surlignage sur la ligne dont la colonne
+        'ts' correspond à highlight_ts. Met également en forme certaines colonnes
+        numériques avec trois décimales.
+
+        Args:
+            df: DataFrame contenant les runs.
+            highlight_ts: Timestamp du run à surligner (str ou None).
+
+        Returns:
+            Un objet Styler pandas prêt à être affiché.
+        """
+        # couleurs
+        c_last = "#fff6bf"  # jaune pâle  = dernier run
+        c_best = "#d6f5d6"  # vert pâle   = meilleure ligne
+        c_cell = "#a3e6a3"  # vert + fort = meilleure cellule du metric
+
+        # repère l’index de la meilleure ligne selon metric_col
+        m = pd.to_numeric(df.get(metric_col, pd.Series(dtype="float")), errors="coerce")
+        if best_ts is None and not m.isna().all():
+            try:
+                best_ts = df.loc[m.idxmax(), "ts"]
+            except Exception:
+                best_ts = None
+
+        def _hl(row):
+            styles = []
+            is_last = last_ts is not None and str(row.get("ts")) == str(last_ts)
+            is_best = best_ts is not None and str(row.get("ts")) == str(best_ts)
+            for col in row.index:
+                base = ""
+                if is_best:
+                    base = f"background-color:{c_best};"
+                if is_last and not is_best:
+                    base = f"background-color:{c_last};"
+                # en plus, on met le metric en vert plus soutenu si c’est la best row
+                if is_best and col == metric_col:
+                    base = f"background-color:{c_cell}; font-weight:bold;"
+                styles.append(base)
+            return styles
+
+        fmt_cols = {
+            "acc": "{:.3f}",
+            "bal_acc": "{:.3f}",
+            "f1_macro": "{:.3f}",
+            "auc_macro": "{:.3f}",
+            "ap_macro": "{:.3f}",
+        }
+        return df.style.format(fmt_cols).apply(_hl, axis=1)
+
+    def _refresh_runs_table(self, highlight_ts: Optional[str] = None) -> None:
+        """
+        Recharge la table des runs dans un output dédié sans empilement et surligne
+        éventuellement la ligne correspondant à highlight_ts ou au dernier run connu.
+
+        Args:
+            highlight_ts: Timestamp à surligner explicitement (optionnel).
+
+        Side effects:
+            Met à jour l'Output widget self._runs_out avec la nouvelle table.
+        """
+        df = _load_runs_table(self.reports_dir)
+        with self._runs_out:
+            clear_output(wait=True)
+            if df is None or len(df) == 0:
+                display(HTML("<i>Aucun run trouvé</i>"))
+                return
+
+            # 1) dernier run demandé ou mémorisé
+            last_ts = highlight_ts or getattr(self, "_last_run_ts", None)
+
+            # 2) FALLBACK : si inconnu/non présent, on prend le plus récent par timestamp
+            try:
+                ts_set = set(df["ts"].astype(str))
+                if last_ts is None or str(last_ts) not in ts_set:
+                    last_ts = max(ts_set)  # ex: "20250827T162302Z"
+            except Exception:
+                last_ts = None
+
+            # 3) meilleure ligne (bal_acc ou f1_macro)
+            metric_col = (
+                "bal_acc"
+                if "bal_acc" in df.columns
+                else ("f1_macro" if "f1_macro" in df.columns else None)
+            )
+            best_ts = None
+            if metric_col is not None:
+                m = pd.to_numeric(df[metric_col], errors="coerce")
+                if not m.isna().all():
+                    best_ts = df.loc[m.idxmax(), "ts"]
+
+            display(
+                self._style_highlight_ts(
+                    df,
+                    last_ts=last_ts,
+                    best_ts=best_ts,
+                    metric_col=metric_col or "bal_acc",
+                )
+            )
+
+    def _parse_exclusions(self, txt: str, selected) -> list[str]:
+        excl = set()
+        if selected:
+            excl.update(str(s) for s in selected)
+        if txt:
+            excl.update(s.strip() for s in txt.split(",") if s.strip())
+        return sorted(excl)
+
+    def _apply_class_filter(
+        self, df: pd.DataFrame, target_col: str, excluded: list[str]
+    ):
+        """Filtre df en enlevant les lignes dont la classe (target_col) est dans excluded."""
+        if not excluded:
+            return df, 0
+        before = len(df)
+        out = df[~df[target_col].astype(str).isin(excluded)].copy()
+        removed = before - len(out)
+        ncls = out[target_col].nunique()
+        if ncls < 2:
+            raise ValueError(
+                f"Le filtrage laisse {ncls} classe(s) — il en faut au moins 2."
+            )
+        return out, removed
+
+    # Entraînement et évaluation
+
     def run_training_session(
         self,
         model_type: str = "XGBoost",
@@ -548,6 +873,7 @@ class MasterPipeline:
         selector_model: str = "xgb",
         selector_threshold: str = "median",
         selector_n_estimators: int = 200,
+        selector_method: str = "sfrommodel",
         # ---- options avancées ----
         search: str | None = None,
         cv_folds: int = 3,
@@ -581,6 +907,7 @@ class MasterPipeline:
         scaler_type: str | None = None,
         mi_top_k: int | None = None,
         # artefacts
+        fi_n_repeats: int = 10,
         save_confusion_png: bool = False,
         save_curves_roc_pr: bool = True,
         save_calibration: bool = False,
@@ -590,6 +917,18 @@ class MasterPipeline:
         base_params: dict | None = None,
         exp_name: str | None = None,
         notes: str = "",
+        # --- NEW: filtres & PCA & sampler ---
+        var_threshold: float | None = None,
+        corr_threshold: float | None = None,
+        use_pca: bool | None = None,
+        pca_components: float | int | None = None,
+        sampler: str | None = None,
+        # --- NEW: tuning de seuils ---
+        tune_thresholds: bool | None = None,
+        threshold_metric: str | None = None,
+        # --- NEW: n_jobs pour les learners ---
+        n_jobs: int | None = None,
+        exclude_classes: list[str] | None = None,
         # nombre de jobs pour l'estimateur (XGB/RF) et méthode d'arbre XGB
         **kwargs: Any,
     ) -> Optional[SpectralClassifier]:
@@ -601,7 +940,7 @@ class MasterPipeline:
         (GridSearch/RandomizedSearch), calibration et export des artefacts.
 
         Args:
-            model_type: Nom du modèle: {"XGBoost","RandomForest","SVM"}.
+            model_type: Nom du modèle: {"XGBoost","RandomForest","SVM","ExtraTrees","LogRegOVR","KNN","MLP","LDA","QDA","CatBoost","LightGBM","SoftVoting"}.
             prediction_target: Nom de la colonne-cible à prédire.
             n_estimators: Nombre d’estimateurs pour les modèles à arbres.
             search: Type de recherche HP {"grid","random",None}.
@@ -626,7 +965,7 @@ class MasterPipeline:
             n_jobs: Parallélisme pour le modèle et la recherche.
             save_confusion_png: Sauvegarder la CM.
             save_curves_roc_pr: Sauvegarder les courbes ROC/PR.
-            save_calibration_png: Sauvegarder la courbe de calibration.
+            save_calibration: Sauvegarder la courbe de calibration.
             save_feature_importance: Sauvegarder les importances (modèles compatibles).
             export_test_predictions: Exporter un CSV de prédictions test.
             normalized_cm: CM normalisée si True.
@@ -650,6 +989,39 @@ class MasterPipeline:
             )
             return
 
+        if use_groups:
+            if not group_col or group_col not in self.features_df.columns:
+                print(
+                    f"ERREUR : Group split activé mais colonne absente: {group_col!r}. "
+                    "Désactivez 'Group split' ou indiquez une colonne valide."
+                )
+                return
+
+        df_for_training = self.features_df
+        excluded = exclude_classes or []
+        if excluded:
+            try:
+                df_for_training, removed = self._apply_class_filter(
+                    df_for_training, prediction_target, excluded
+                )
+                # Mémorise ce qui s'est passé pour le rapport
+                self._last_class_filter = {
+                    "mode": "exclude",
+                    "classes": list(excluded),
+                    "rows_removed": int(removed),
+                    "n_classes_after": int(
+                        df_for_training[prediction_target].nunique()
+                    ),
+                }
+                print(
+                    f"[Class filter] exclusions={excluded}  (lignes retirées: {removed})"
+                )
+            except ValueError as e:
+                print(f"ERREUR filtre de classes: {e}")
+                return
+        else:
+            self._last_class_filter = None
+
         clf = SpectralClassifier(
             model_type=model_type,
             prediction_target=prediction_target,
@@ -658,11 +1030,13 @@ class MasterPipeline:
             selector_threshold=selector_threshold,
             selector_n_estimators=selector_n_estimators,
         )
+        if n_jobs is not None:
+            clf.n_jobs = int(n_jobs)
 
         search = None if search in (None, "None") else search
 
         result = clf.train_and_evaluate(
-            self.features_df,
+            df_for_training,
             n_estimators=n_estimators,
             search=search,
             cv_folds=cv_folds,
@@ -693,7 +1067,21 @@ class MasterPipeline:
             imputer_strategy=imputer_strategy,
             knn_imputer_k=knn_imputer_k,
             scaler_type=scaler_type,
+            # FS
+            use_feature_selection=use_feature_selection,
+            selector_model=selector_model,
+            selector_threshold=selector_threshold,
+            selector_method=selector_method,
+            # NEW: filtres/PCA/sampler
+            var_threshold=var_threshold,
+            corr_threshold=corr_threshold,
+            use_pca=use_pca,
+            pca_components=pca_components,
+            sampler=sampler,
             mi_top_k=mi_top_k,
+            # tuning de seuils
+            tune_thresholds=tune_thresholds,
+            threshold_metric=threshold_metric,
         )
         if not result:
             print(
@@ -719,22 +1107,30 @@ class MasterPipeline:
             )
 
         # Sauvegarde + rapport
-        if save_and_log:
-            if "file_path" in self.features_df.columns:
-                processed_files = (
-                    self.features_df["file_path"].dropna().astype(str).unique().tolist()
-                )
-            else:
-                processed_files = []
+        processed_files = []
+        if "file_path" in self.features_df.columns:
+            processed_files = (
+                self.features_df["file_path"].dropna().astype(str).unique().tolist()
+            )
 
+        if save_and_log:
+            # Si on a demandé un split par groupes, valider la colonne
+            if use_groups and (
+                not group_col or group_col not in self.features_df.columns
+            ):
+                print(
+                    f"ERREUR : Group split activé mais colonne absente: {group_col!r}."
+                )
+                return
             try:
-                self._log_and_report(
+                # Journalisation et rapport : retourne le chemin du dossier du run
+                run_dir = self._log_and_report(
                     trained_clf,
                     feature_cols_before_fs,
                     X_all,
                     y_all,
-                    processed_files,
-                    groups_all,
+                    processed_files=processed_files,
+                    groups=groups_all,
                     save_confusion_png=save_confusion_png,
                     save_curves_roc_pr=save_curves_roc_pr,
                     save_calibration=save_calibration,
@@ -743,11 +1139,18 @@ class MasterPipeline:
                     cm_normalized=cm_normalized,
                     exp_name=exp_name,
                     notes=notes,
+                    fi_n_repeats=fi_n_repeats,
                 )
+                # Enregistre le timestamp du dernier run et rafraîchit la table de runs
+                if run_dir:
+                    try:
+                        ts = Path(run_dir).name
+                        self._last_run_ts = ts  # mémorise le dernier run effectué
+                        self._refresh_runs_table(highlight_ts=ts)
+                    except Exception:
+                        pass
             except Exception as e:
-                print(
-                    f"\n(avertissement) Échec lors de la génération du rapport de session : {e}"
-                )
+                print(f"(avertissement) Échec lors de la génération du rapport : {e}")
         else:
             print("\n--- SESSION D'EXPÉRIMENTATION TERMINÉE (non sauvegardée) ---")
 
@@ -915,6 +1318,42 @@ class MasterPipeline:
         feat_load = _W.Button(description="Charger", icon="upload")
         feat_info = _W.HTML(value="")
 
+        # --- Exclure des classes du target ---
+        exclude_txt = _W.Text(
+            value="",
+            placeholder="ex: B,D,W",
+            description="Exclure (CSV)",
+            layout=_W.Layout(width="260px"),
+        )
+        exclude_dd = _W.SelectMultiple(
+            options=[],  # rempli après chargement
+            value=(),
+            description="Exclure (liste)",
+            rows=6,
+            layout=_W.Layout(width="320px"),
+        )
+        exclude_refresh = _W.Button(
+            description="⟳ classes", layout=_W.Layout(width="110px")
+        )
+
+        def _refresh_exclude_choices(*_):
+            try:
+                df = getattr(self, "features_df", None)
+                col = target.value
+                if df is None or df.empty or col not in df.columns:
+                    exclude_dd.options = []
+                    exclude_dd.value = ()
+                    return
+                classes = sorted(df[col].astype(str).unique().tolist())
+                exclude_dd.options = classes
+                # ne force pas value, pour ne pas effacer une sélection en cours
+            except Exception:
+                exclude_dd.options = []
+                exclude_dd.value = ()
+
+        exclude_refresh.on_click(_refresh_exclude_choices)
+        target.observe(lambda ch: _refresh_exclude_choices(), "value")
+
         def _refresh_feat_list(_=None):
             feat_files.options = [
                 (Path(p).name, p) for p in self._list_feature_files(50)
@@ -926,6 +1365,7 @@ class MasterPipeline:
             if feat_src.value == "mem":
                 if getattr(self, "features_df", None) is None or self.features_df.empty:
                     feat_info.value = "<i>self.features_df est vide.</i>"
+                    _refresh_exclude_choices()
                 else:
                     n = len(self.features_df)
                     d = self.features_df.select_dtypes(include=["number"]).shape[1]
@@ -956,6 +1396,7 @@ class MasterPipeline:
                 _W.HBox([target, test_size, seed]),
                 _W.HBox([cv_folds, rep_cv, rep_cv_repeats]),
                 _W.HBox([use_groups, group_col]),
+                _W.HBox([exclude_txt, exclude_dd, exclude_refresh]),
             ]
         )
 
@@ -965,7 +1406,20 @@ class MasterPipeline:
 
         # ==== onglet 2: Modèle & Pré-traitement ====
         model = _W.Dropdown(
-            options=["XGBoost", "RandomForest", "SVM"],
+            options=(
+                "XGBoost",
+                "RandomForest",
+                "SVM",
+                "ExtraTrees",
+                "LogRegOVR",
+                "KNN",
+                "MLP",
+                "LDA",
+                "QDA",
+                "CatBoost",
+                "LightGBM",
+                "SoftVoting",
+            ),
             value="XGBoost",
             description="Modèle",
         )
@@ -977,7 +1431,7 @@ class MasterPipeline:
         )
         knn_k = _W.IntSlider(value=5, min=2, max=25, step=1, description="knn_k")
         scaler = _W.Dropdown(
-            options=["standard", "robust", "none"],
+            options=["standard", "robust", "minmax", "none"],
             value="standard",
             description="scaler",
         )
@@ -988,6 +1442,22 @@ class MasterPipeline:
         )
         # n_jobs pour le parallélisme
         n_jobs = _W.IntSlider(value=-1, min=-1, max=16, step=1, description="n_jobs")
+
+        # NEW: filtres colinéarité/variance + PCA
+        var_threshold = _W.FloatText(description="Var. threshold", value=0.0)
+        corr_threshold = _W.FloatSlider(
+            description="Corr. max", min=0.90, max=0.999, step=0.001, value=0.98
+        )
+        use_pca = _W.Checkbox(description="PCA", value=False)
+        pca_components = _W.FloatSlider(
+            description="PCA n_comp", min=0.5, max=0.999, step=0.001, value=0.99
+        )
+        # NEW: sampler
+        sampler = _W.Dropdown(
+            description="Sampler (CV)",
+            options=["none", "smote", "borderline", "smoteenn", "adasyn"],
+            value="none",
+        )
 
         # SVM requiert un scaler ; ajuste si nécessaire et désactive n_estim pour SVM
         def _toggle_svm(change=None):
@@ -1004,6 +1474,11 @@ class MasterPipeline:
                 _W.HBox([model, n_estim]),
                 _W.HBox([imputer, knn_k, scaler, n_jobs]),
                 base_params,
+                var_threshold,
+                corr_threshold,
+                use_pca,
+                pca_components,
+                sampler,
             ]
         )
 
@@ -1023,8 +1498,15 @@ class MasterPipeline:
         fs_n = _W.IntSlider(
             value=400, min=50, max=1500, step=50, description="selector_n_estimators"
         )
+        # NEW: RFECV vs SelectFromModel
+        fs_kind = _W.Dropdown(
+            description="Méthode FS",
+            options=[("SelectFromModel", "sfrommodel"), ("RFECV", "rfecv")],
+            value="sfrommodel",
+            tooltip="Choisir RFECV pour un ranking récursif ; sinon SelectFromModel.",
+        )
         mi_topk = _W.IntText(value=0, description="MI top-K (0=off)")
-        tab_fs = _W.VBox([_W.HBox([fs_enable, fs_method, fs_thresh, fs_n]), mi_topk])
+        tab_fs = _W.VBox([fs_enable, fs_kind, fs_method, fs_thresh, fs_n, mi_topk])
 
         # ==== onglet 4: Recherche ====
         search = _W.Dropdown(
@@ -1066,6 +1548,26 @@ class MasterPipeline:
             description="param_dists (JSON)",
             layout=_W.Layout(width="100%", height="70px"),
         )
+
+        # Lorsque le modèle change, préremplit base_params, param_grid et param_distributions
+        def _on_model_change(change=None):
+            mval = model.value
+            try:
+                base_params.value = _json.dumps(PRESET_BASE.get(mval, {}), indent=2)
+            except Exception:
+                base_params.value = "{}"
+            try:
+                param_grid.value = _json.dumps(PRESET_GRID.get(mval, {}), indent=2)
+            except Exception:
+                param_grid.value = "{}"
+            try:
+                param_dists.value = _json.dumps(PRESET_DISTS.get(mval, {}), indent=2)
+            except Exception:
+                param_dists.value = "{}"
+
+        model.observe(_on_model_change, "value")
+        _on_model_change()
+
         grid_hint = _W.HTML(value="")
 
         def _toggle_search(change=None):
@@ -1132,6 +1634,15 @@ class MasterPipeline:
         calib_cv = _W.IntSlider(value=3, min=2, max=10, step=1, description="calib_cv")
         hint = _W.HTML()
 
+        tune_thresholds = _W.Checkbox(
+            description="Tuning de seuils par classe", value=False
+        )
+        threshold_metric = _W.Dropdown(
+            description="Métrique seuils",
+            options=["f1_macro", "balanced_accuracy"],
+            value="f1_macro",
+        )
+
         def _svm_hint(_=None):
             hint.value = (
                 "<i>Calibration activera un CalibratedClassifierCV pour SVM.</i>"
@@ -1149,6 +1660,8 @@ class MasterPipeline:
                 _W.HBox([wt_col, wt_norm]),
                 _W.HTML("<b>Calibration</b>"),
                 _W.HBox([calibrate, calib_method, calib_holdout, calib_cv]),
+                _W.HBox([tune_thresholds, threshold_metric]),
+                hint,
             ]
         )
 
@@ -1160,15 +1673,58 @@ class MasterPipeline:
         save_calib = _W.Checkbox(value=False, description="save_calibration")
         save_feat = _W.Checkbox(value=True, description="save_feature_importance")
         export_pred = _W.Checkbox(value=False, description="export_test_predictions")
+        fi_nrep = _W.IntSlider(
+            value=10, min=3, max=50, step=1, description="FI n_repeats"
+        )
         tab_out = _W.VBox(
             [
                 _W.HBox([save_log, save_cm, norm_cm]),
                 save_rocpr,
                 save_calib,
                 save_feat,
+                fi_nrep,
                 export_pred,
             ]
         )
+        # --- Préconfigurations des presets et nom d’expérience ----------------
+        preset_path = _W.Text(
+            value=str(Path(self.reports_dir) / "preset.json"), description="Preset"
+        )
+        btn_save = _W.Button(description="Sauver", icon="save")
+        btn_load = _W.Button(description="Charger", icon="upload")
+
+        def _collect_widgets():
+            # Regroupe les widgets utiles dans un dict {nom: widget}
+            return {
+                # Onglet Data & Split
+                "prediction_target": target,
+                "test_size": test_size,
+                "seed": seed,
+                "cv_folds": cv_folds,
+                "rep_cv": rep_cv,
+                "cv_repeats": rep_cv_repeats,
+                "use_groups": use_groups,
+                "group_col": group_col,
+                # Onglet Modèle & Prep
+                "model_type": model,
+                "n_estimators": n_estim,
+                "imputer_strategy": imputer,
+                "knn_imputer_k": knn_k,
+                "scaler_type": scaler,
+                "base_params": base_params,
+                "param_grid": param_grid,
+                "param_dists": param_dists,
+                # Onglet Recherche HP
+                "search": search,
+                "scoring": scoring,
+                "n_iter": n_iter,
+                "val_size": val_size,
+            }
+
+        btn_save.on_click(lambda _: _save_preset(preset_path.value, _collect_widgets()))
+        btn_load.on_click(lambda _: _load_preset(preset_path.value, _collect_widgets()))
+
+        tab_presets = _W.HBox([preset_path, btn_save, btn_load])
 
         # ==== Lancer ====
         run_btn = _W.Button(
@@ -1182,7 +1738,7 @@ class MasterPipeline:
             description="Résumé",
             layout=_W.Layout(width="100%", height="120px"),
         )
-        tab_run = _W.VBox([run_btn, summary, out])
+        tab_run = _W.VBox([tab_presets, run_btn, summary, out])
 
         # --- Templates d’hyperparamètres ---
         template_dropdown = _W.Dropdown(
@@ -1234,13 +1790,20 @@ class MasterPipeline:
         batch_progress = _W.IntProgress(
             value=0, min=0, max=1, description="Batch:", layout=_W.Layout(width="520px")
         )
+        exp_name_widget = _W.Text(
+            value="",
+            placeholder="Nom d’expérience (ex: lgbm_bins_v2)",
+            description="Exp name:",
+            layout=_W.Layout(width="320px"),
+        )
+
         batch_store = []  # mémoire locale
 
         # --- Estimation coût / nombre de fits ---
         fits_label = _W.HTML("<b>Fits estimés:</b> –")
 
         tpl_box = _W.HBox([template_dropdown, apply_template_btn, fits_label])
-        notes_box = _W.HBox([notes_widget])
+        notes_box = _W.HBox([notes_widget, exp_name_widget])
         batch_box = _W.HBox(
             [add_to_batch_btn, run_batch_btn, clear_batch_btn, batch_progress]
         )
@@ -1428,11 +1991,11 @@ class MasterPipeline:
                     return None
 
             # Param grids/distributions (ajout de n_jobs si défini)
-            pg = _parse_json(param_grid) or {}
-            pdists = _parse_json(param_dists) or {}
-            if n_jobs.value is not None:
-                pg.setdefault("clf__n_jobs", [n_jobs.value])
-                pdists.setdefault("clf__n_jobs", [n_jobs.value])
+            # pg = _parse_json(param_grid) or {}
+            # pdists = _parse_json(param_dists) or {}
+
+            def _get_excluded():
+                return self._parse_exclusions(exclude_txt.value, exclude_dd.value)
 
             cfg = {
                 # Data & split
@@ -1451,11 +2014,15 @@ class MasterPipeline:
                 "knn_imputer_k": knn_k.value,
                 "scaler_type": None if scaler.value == "none" else scaler.value,
                 "base_params": _parse_json(base_params),
+                # NEW: parallélisme (utilisé par run_training_session → clf.n_jobs)
+                "n_jobs": int(n_jobs.value),
                 # Feature selection
                 "use_feature_selection": fs_enable.value,
                 "selector_model": fs_method.value,
                 "selector_threshold": fs_thresh.value,
                 "selector_n_estimators": fs_n.value,
+                # NEW: type de sélection (RFECV vs SelectFromModel)
+                "selector_method": fs_kind.value,  # <— BRANCHÉ
                 "mi_top_k": (None if (mi_topk.value or 0) <= 0 else int(mi_topk.value)),
                 # Search
                 "search": search.value,
@@ -1464,8 +2031,8 @@ class MasterPipeline:
                 "early_stopping": es.value,
                 "early_stopping_rounds": es_rounds.value,
                 "val_size": val_size.value,
-                "param_grid": pg,
-                "param_distributions": pdists,
+                "param_grid": _parse_json(param_grid) or {},
+                "param_distributions": _parse_json(param_dists) or {},
                 # Weights & calibration
                 "use_balanced_weights": balanced.value,
                 "class_weight_mode": cw_mode.value,
@@ -1474,8 +2041,28 @@ class MasterPipeline:
                 "weight_norm": wt_norm.value,
                 "calibrate_probs": calibrate.value,
                 "calibration_method": calib_method.value,
-                "calibrate_holdout_size": 0.0,
-                "calibrate_cv": 3,
+                # utiliser les widgets (pas des constantes)
+                "calibrate_holdout_size": float(calib_holdout.value),
+                "calibrate_cv": int(calib_cv.value),
+                # filtres/ PCA / sampler
+                "var_threshold": (
+                    None
+                    if (var_threshold.value is None or var_threshold.value <= 0)
+                    else float(var_threshold.value)
+                ),
+                "corr_threshold": (
+                    None
+                    if (corr_threshold.value is None or corr_threshold.value <= 0)
+                    else float(corr_threshold.value)
+                ),
+                "use_pca": bool(use_pca.value),
+                "pca_components": (
+                    None if not use_pca.value else float(pca_components.value)
+                ),
+                "sampler": (None if sampler.value == "none" else sampler.value),
+                # NEW: tuning de seuils
+                "tune_thresholds": bool(tune_thresholds.value),
+                "threshold_metric": threshold_metric.value,
                 # Outputs
                 "save_confusion_png": save_cm.value,
                 "cm_normalized": norm_cm.value,
@@ -1483,8 +2070,11 @@ class MasterPipeline:
                 "save_calibration": save_calib.value,
                 "save_feature_importance": save_feat.value,
                 "export_test_predictions": export_pred.value,
+                "fi_n_repeats": int(fi_nrep.value),
                 # Notes
                 "notes": notes_widget.value,
+                "exp_name": (exp_name_widget.value or None),
+                "exclude_classes": _get_excluded(),
             }
 
             # Compte des features numériques (pour info)
@@ -1587,7 +2177,7 @@ class MasterPipeline:
                 "f1_macro",
                 "auc_macro",
                 "ap_macro",
-                "run_dir",
+                "run",
             ]
             cols = [c for c in wanted if c in df.columns]
 
@@ -1713,11 +2303,8 @@ class MasterPipeline:
 
         def _refresh_runs(_=None):
             """
-            Scanne `reports_dir` et reconstruit le tableau des sessions.
-
-            Returns:
-                Un DataFrame avec au minimum: timestamp, modèle, scores récap,
-                nombre de features, et chemin `run_dir` par ligne.
+            Scanne `reports_dir` et reconstruit la liste des sessions dans le
+            dropdown, puis rafraîchit la table des runs via un output unique.
 
             Notes:
                 Utilisé par l’onglet “Explorer les runs”.
@@ -1737,8 +2324,8 @@ class MasterPipeline:
                 runs_dropdown.value = options[1][1]
             else:
                 runs_dropdown.value = ""
-            df = _load_runs_table(self.reports_dir)
-            _render_runs_table(df)
+            # Met à jour la table des runs sans empilement
+            self._refresh_runs_table()
 
         def _open_folder(_=None):
             val = runs_dropdown.value
@@ -1830,8 +2417,10 @@ class MasterPipeline:
         display(_W.HTML("<hr>"))
         display(_W.HTML("<h3>🔎 Explorer les runs</h3>"))
         display(runs_box)
+        # Zone d'affichage unique pour la table des runs
+        display(self._runs_out)
 
-        # première population
+        # première population : remplit le dropdown et rafraîchit la table
         _refresh_runs()
 
         def _on_run(_):
@@ -1932,16 +2521,15 @@ class MasterPipeline:
                 except Exception:
                     pass
 
-        # >>> ICI on branche le bouton <<<
         run_btn.on_click(_on_run)
 
     def _log_and_report(
         self,
         clf: SpectralClassifier,
-        feature_cols: List[str] | None,
+        feature_cols: list[str] | None,
         X: pd.DataFrame,
         y: np.ndarray,
-        processed_files: List[str],
+        processed_files: list[str],
         groups: np.ndarray | None,
         save_confusion_png: bool = False,
         save_curves_roc_pr: bool = False,
@@ -1951,6 +2539,7 @@ class MasterPipeline:
         cm_normalized: bool = False,
         exp_name: str | None = None,
         notes: str = "",
+        fi_n_repeats: int = 10,
     ) -> str | None:
         """
         Sauve le modèle, calcule les métriques et génère les artefacts de session.
@@ -1964,7 +2553,7 @@ class MasterPipeline:
             processed_files: Liste de fichiers FITS traités durant la session.
             save_confusion_png: Génère la CM (normalisée si `normalized_cm`).
             save_curves_roc_pr: Génère les courbes ROC et PR multi-classes.
-            save_calibration_png: Génère la courbe de calibration.
+            save_calibration: Génère la courbe de calibration.
             save_feature_importance: Sauve un barplot des importances si dispo.
             export_test_predictions: Exporte un CSV des prédictions test.
             normalized_cm: Normalise la CM par ligne si True.
@@ -1977,6 +2566,10 @@ class MasterPipeline:
             Écrit le modèle (`.pkl` + meta JSON), figures PNG, rapport JSON,
             et optionnellement `test_predictions_*.csv`.
         """
+        from sklearn.metrics import (
+            balanced_accuracy_score as sk_balanced_accuracy_score,
+        )
+
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         model_name = f"spectral_classifier_{clf.model_type.lower()}_{ts}.pkl"
         run_dir = os.path.join(self.reports_dir, ts)
@@ -2035,7 +2628,7 @@ class MasterPipeline:
         meta_path = os.path.join(self.models_dir, meta_filename)
         try:
             with open(meta_path, "w", encoding="utf-8") as f:
-                json.dump(meta, f, indent=2)
+                json.dump(meta, f, indent=2, default=_json_default)
         except Exception as e:
             print(f"  (avertissement) Échec d’écriture des métadonnées : {e}")
 
@@ -2066,6 +2659,7 @@ class MasterPipeline:
 
         # 7.4 Metrics
         report_dict, cm, accuracy = None, None, None
+
         try:
             # réutilise exactement le même test set que pendant l'entraînement
             if hasattr(clf, "_split_info") and "te_idx" in clf._split_info:
@@ -2077,19 +2671,15 @@ class MasterPipeline:
 
             y_pred = clf.model_pipeline.predict(X_te)
 
-            if (
-                clf.model_type == "XGBoost"
-                and getattr(clf, "label_encoder", None) is not None
-            ):
+            if getattr(clf, "label_encoder", None) is not None:
                 n_classes = len(clf.class_labels)
-                all_labels = np.arange(n_classes)  # 0..K-1
+                all_labels = np.arange(n_classes)
                 y_te_enc = clf.label_encoder.transform(y_te)
-
                 report_dict = classification_report(
                     y_te_enc,
                     y_pred,
                     labels=all_labels,
-                    target_names=list(clf.class_labels),  # <-- corrigé (underscore)
+                    target_names=list(clf.class_labels),
                     zero_division=0,
                     output_dict=True,
                 )
@@ -2110,29 +2700,42 @@ class MasterPipeline:
             print(f"  (avertissement) Échec calcul métriques : {e}")
             report_dict, cm, accuracy = None, None, None
 
-        # --- Préparation pour courbes ROC/PR, calibration et importances ---
-        # Après avoir évalué les prédictions, nous pouvons déterminer le vecteur
-        # y_true à utiliser (encodé ou non) et tenter de récupérer les
-        # probabilités des classes. Ces objets sont réutilisés dans les
-        # blocs optionnels ci-dessous.
-        y_true_for_scores = None
-        proba = None
+        # Ajoute la balanced accuracy (robuste aux types)
+
+        # Si on a encodé y pendant l'entraînement (LabelEncoder), on encode aussi y_te
+        if getattr(clf, "label_encoder", None) is not None:
+            y_te_enc = clf.label_encoder.transform(y_te)
+            y_true_for_scores = y_te_enc
+        else:
+            y_true_for_scores = y_te
+
+        # Assure le même type des deux côtés
+        y_pred_arr = np.asarray(y_pred)
+
+        # Valeur par défaut au cas où tout échoue
+        bal_acc_val = float("nan")
+
         try:
-            # Détermine si nous devons utiliser la version encodée de y
-            if (
-                clf.model_type == "XGBoost"
-                and getattr(clf, "label_encoder", None) is not None
-                and "y_te_enc" in locals()
-            ):
-                y_true_for_scores = y_te_enc
-            else:
-                y_true_for_scores = y_te
+            # voie normale
+            bal_acc_val = float(
+                sk_balanced_accuracy_score(y_true_for_scores, y_pred_arr)
+            )
         except Exception:
-            y_true_for_scores = None
+            # fallback en castant en str si besoin
+            try:
+                bal_acc_val = float(
+                    sk_balanced_accuracy_score(
+                        np.asarray(y_true_for_scores).astype(str),
+                        y_pred_arr.astype(str),
+                    )
+                )
+            except Exception as e:
+                print(f"(warn) balanced_accuracy_score failed in report: {e}")
 
         # Récupération des probabilités prédictives si disponibles. Certaines
         # implémentations (ex: SVM) nécessitent que `probability=True` soit
         # activé à la construction du modèle. En cas d'échec, proba reste None.
+        proba = None
         try:
             if hasattr(clf.model_pipeline, "predict_proba"):
                 proba = clf.model_pipeline.predict_proba(X_te)
@@ -2247,7 +2850,7 @@ class MasterPipeline:
                         lw=1,
                         label=f"{lab} (AUC={roc_auc[i]:.2f})",
                     )
-                plt.plot([0, 1], [0, 1], "--", lw=1, color="grey")
+                plt.plot([0, 1], [0, 1], "--", lw=1, color="royalblue")
                 plt.plot(
                     all_fpr,
                     mean_tpr,
@@ -2364,7 +2967,7 @@ class MasterPipeline:
                 import matplotlib.pyplot as plt
                 from sklearn.inspection import permutation_importance
 
-                names = feature_cols  # colonnes avant la FS
+                names = getattr(clf, "selected_features_", None) or feature_cols
                 # Récupère l'estimateur final (dernier élément du pipeline)
                 estimator = clf.model_pipeline[-1]
                 importances = None
@@ -2386,7 +2989,7 @@ class MasterPipeline:
                         clf.model_pipeline,
                         X_te,
                         y_true_for_scores,
-                        n_repeats=10,
+                        n_repeats=int(max(1, fi_n_repeats)),
                         random_state=(
                             meta.get("random_state", 42)
                             if isinstance(meta, dict)
@@ -2448,12 +3051,15 @@ class MasterPipeline:
                         ],
                     }
                 )
-                if proba is not None:
+                if proba is not None and proba.shape[1] >= 2:
                     # Top-2 classes par probabilité
                     top2 = np.argsort(proba, axis=1)[:, -2:][:, ::-1]
+                    idx = np.arange(len(y_pred_enc))
+                    mask = y_pred_enc >= 0
                     # Probabilité de la classe prédite
-                    df_export["proba_pred"] = proba[
-                        np.arange(len(y_pred_enc)), y_pred_enc
+                    df_export["proba_pred"] = np.nan
+                    df_export.loc[mask, "proba_pred"] = proba[
+                        idx[mask], y_pred_enc[mask]
                     ]
                     df_export["top1"] = [classes[i] for i in top2[:, 0]]
                     df_export["p_top1"] = proba[np.arange(len(y_pred_enc)), top2[:, 0]]
@@ -2509,7 +3115,14 @@ class MasterPipeline:
             # propager le nom d'expérience
             "exp_name": exp_name,
             "notes": notes,
+            "balanced_accuracy": float(bal_acc_val),
         }
+        # Si un filtre de classes a été utilisé, on l'enregistre dans le rapport
+        try:
+            if getattr(self, "_last_class_filter", None):
+                session_report["class_filter"] = self._last_class_filter
+        except Exception:
+            pass
 
         # Insère les métriques supplémentaires (ROC AUC, Average Precision,
         # Brier score) si disponibles. Les dictionnaires sont convertis en
@@ -2521,21 +3134,6 @@ class MasterPipeline:
         if brier_score_results is not None:
             session_report["brier_score"] = brier_score_results
 
-        # Ajoute la balanced accuracy et la macro-ROC AUC si calculables
-        try:
-            from sklearn.metrics import balanced_accuracy_score
-
-            # Utilise y_true_for_scores s'il a été initialisé, sinon y_te
-            y_true_bal = None
-            if "y_true_for_scores" in locals() and y_true_for_scores is not None:
-                y_true_bal = y_true_for_scores
-            else:
-                y_true_bal = y_te
-            if y_true_bal is not None and y_pred is not None:
-                bal_acc_val = balanced_accuracy_score(y_true_bal, y_pred)
-                session_report["balanced_accuracy"] = float(bal_acc_val)
-        except Exception:
-            pass
         # Macro AUC pour compatibilité avec l'ancien comparateur
         try:
             if (
@@ -2551,7 +3149,7 @@ class MasterPipeline:
         report_path = os.path.join(run_dir, report_filename)
         try:
             with open(report_path, "w", encoding="utf-8") as f:
-                json.dump(session_report, f, indent=4)
+                json.dump(session_report, f, indent=4, default=_json_default)
             print(f"\nRapport de session sauvegardé dans : {report_path}")
         except Exception as e:
             print(
@@ -2563,7 +3161,12 @@ class MasterPipeline:
             from sklearn.metrics import balanced_accuracy_score
 
             # y_true / y_pred sont calculés plus haut
-            y_true_for_scores = y_te_enc if "y_te_enc" in locals() else y_te
+            y_true_for_scores = (
+                y_te_enc
+                if "y_te_enc" in locals()
+                and clf.model_type in {"MLP", "KNN", "LogRegOVR", "SVM", "SoftVoting"}
+                else y_te
+            )
             bal_acc = (
                 balanced_accuracy_score(y_true_for_scores, y_pred)
                 if y_true_for_scores is not None
@@ -2571,6 +3174,7 @@ class MasterPipeline:
             )
 
             print("\n=== RÉSULTATS (jeu test) ===")
+            bal_acc = bal_acc_val if "bal_acc_val" in locals() else None
             if report_dict is not None:
                 acc = report_dict.get("accuracy", None)
                 macro_f1 = (report_dict.get("macro avg", {}) or {}).get(
