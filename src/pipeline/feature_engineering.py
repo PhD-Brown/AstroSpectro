@@ -49,19 +49,16 @@ from utils import safe_sigma_from_invvar
 
 
 class FeatureEngineer:
-    """
-    Extracteur de descripteurs spectroscopiques « ligne-centrés ».
+    """Extracteur de descripteurs spectroscopiques « ligne‑centrés ».
 
-    Cette classe :
-      - définit un vocabulaire de raies cibles et de métriques par raie,
-      - calcule quelques indices spectraux simples (bandes de flux),
-      - construit un vecteur de features dans un ordre **stable** (self.feature_names).
+    Cette classe définit un vocabulaire de raies cibles et de métriques par raie,
+    calcule quelques indices spectraux simples et construit un vecteur de
+    features dans un ordre stable (`feature_names`).
 
-    Notes
-    -----
-    - Les largeurs/FWHM sont en Angströms (Å).
-    - Les largeurs équivalentes (EW) sont en Angströms, calculées sur le spectre normalisé.
-    - Les « prominences » proviennent du détecteur de pics (amplitude/score transmis).
+    Notes:
+        - Les largeurs/FWHM sont en Ångströms (Å).
+        - Les largeurs équivalentes (EW) sont en Å, calculées sur le spectre normalisé.
+        - Les « prominences » proviennent du détecteur de pics en amont.
     """
 
     def __init__(self) -> None:
@@ -133,22 +130,20 @@ class FeatureEngineer:
         self, wavelength: np.ndarray, flux_norm: np.ndarray
     ) -> Dict[str, float]:
         """
-        Calcule quelques indices spectraux simples basés sur des bandes de flux.
+        Calcule des indices spectraux basés sur des bandes de flux.
 
-        L’indice est défini comme le **rapport** : moyenne(bande_feature) / moyenne(bande_continuum).
+        Chaque indice est défini comme le rapport de la moyenne du flux dans
+        une bande d'intérêt à la moyenne du flux dans une ou plusieurs bandes
+        de continuum.
 
-        Parameters
-        ----------
-        wavelength : np.ndarray
-            Longueurs d’onde en Å, même taille que `flux_norm`.
-        flux_norm : np.ndarray
-            Flux normalisé (autour de 1), même taille que `wavelength`.
+        Args:
+            wavelength (np.ndarray): Tableau des longueurs d'onde en Ångströms.
+            flux_norm (np.ndarray): Flux normalisé correspondant.
 
-        Returns
-        -------
-        Dict[str, float]
-            Dictionnaire `{ "feature_index_<nom>": valeur }`. En cas d’échec,
-            l’indice vaut 0.0 pour rester robuste.
+        Returns:
+            Dict[str, float]: Dictionnaire des indices calculés, dont les clés sont
+            préfixées par ``"feature_index_"``. En cas d'échec pour un indice,
+            sa valeur est fixée à ``0.0`` pour rester robuste.
         """
         indices: Dict[str, float] = {}
         for name, (feature_band, continuum_bands) in self.index_definitions.items():
@@ -213,34 +208,25 @@ class FeatureEngineer:
         flux_norm: np.ndarray,
         invvar: np.ndarray,
     ) -> List[float]:
-        """
-        Extrait un vecteur de descripteurs pour les raies détectées.
+        """Extrait le vecteur de descripteurs pour un spectre.
 
-        Pour chaque raie de `self.base_lines`, on renseigne :
-          - *prominence* (score transmis via `matched_lines`),
-          - *fwhm* (Å) estimée par ajustement gaussien local,
-          - *eq_width* (Å) via `specutils.equivalent_width` sur le spectre normalisé.
+        Pour chaque raie définie dans ``base_lines``, cette méthode récupère la
+        prominence transmise, estime la largeur à mi‑hauteur (FWHM) par ajustement
+        gaussien local et calcule la largeur équivalente (EW) sur le spectre
+        normalisé. Elle calcule également des ratios de prominences et des
+        indices spectraux simples. Le résultat est renvoyé dans l'ordre défini
+        par ``self.feature_names``.
 
-        On calcule ensuite :
-          - des *ratios* de prominences (définis dans `self.ratio_definitions`),
-          - des *indices* spectraux simples (cf. `_calculate_spectroscopic_indices`).
+        Args:
+            matched_lines (Mapping[str, Optional[Tuple[float, float]]]): Dictionnaire
+                associant à chaque raie le couple ``(lambda_detectée, prominence)``,
+                ou ``None`` si la raie est absente.
+            wavelength (np.ndarray): Longueurs d'onde en Å.
+            flux_norm (np.ndarray): Flux normalisé (même taille que ``wavelength``).
+            invvar (np.ndarray): Inverse‑variance du flux.
 
-        Parameters
-        ----------
-        matched_lines : Mapping[str, Optional[Tuple[float, float]]]
-            Pour chaque raie, un tuple `(lambda_detectée, prominence)` ou `None`.
-            Les clés doivent correspondre à `self.base_lines`.
-        wavelength : np.ndarray
-            Longueurs d’onde en Å.
-        flux_norm : np.ndarray
-            Flux normalisé (même taille que `wavelength`).
-        invvar : np.ndarray
-            Inverse-variance du flux (même taille), potentiellement bruitée (NaN/Inf/négative).
-
-        Returns
-        -------
-        List[float]
-            Le vecteur de features **dans l’ordre `self.feature_names`**.
+        Returns:
+            List[float]: Vecteur des features dans l'ordre ``self.feature_names``.
         """
         all_line_features: Dict[str, float] = {}
 
@@ -308,7 +294,6 @@ class FeatureEngineer:
                         eq_width_val = float(ew.to_value(u.AA))
 
                 except Exception:
-                    # Tolérance locale : on garde les défauts à 0.0 si l’ajustement échoue
                     pass
 
             all_line_features[f"feature_{line_key}_prominence"] = float(prominence)
@@ -342,19 +327,18 @@ class FeatureEngineer:
         invvar: np.ndarray,
     ) -> np.ndarray:
         """
-        Applique `extract_features` à une liste d’objets `matched_lines`.
+        Applique ``extract_features`` sur une liste de spectres.
 
-        Parameters
-        ----------
-        matched_lines_list : List[Mapping[str, Optional[Tuple[float, float]]]]
-            Liste d’annotations de pics (une entrée par spectre).
-        wavelength, flux_norm, invvar : np.ndarray
-            Séries communes (si tous les spectres sont rééchantillonnés pareil).
+        Args:
+            matched_lines_list (List[Mapping[str, Optional[Tuple[float, float]]]]):
+                Liste des annotations de pics, une entrée par spectre.
+            wavelength (np.ndarray): Tableau commun des longueurs d'onde.
+            flux_norm (np.ndarray): Tableau commun du flux normalisé.
+            invvar (np.ndarray): Tableau commun de l'inverse‑variance.
 
-        Returns
-        -------
-        np.ndarray
-            Matrice (n_spectres, n_features) construite dans l’ordre `self.feature_names`.
+        Returns:
+            np.ndarray: Matrice de dimension ``(n_spectres, n_features)``
+            alignée sur ``feature_names``.
         """
         rows = [
             self.extract_features(ml, wavelength, flux_norm, invvar)
@@ -367,14 +351,28 @@ def add_gaia_derived_features(
     df: pd.DataFrame, *, min_parallax_snr: float = 5.0
 ) -> tuple[pd.DataFrame, list[str]]:
     """
-    Enrichit le DataFrame avec des features photométriques/astrométriques dérivées Gaia DR3.
-    Retourne (df_enrichi, new_cols).
+    Ajoute des colonnes dérivées des mesures Gaia au DataFrame.
+
+    Cette fonction crée des couleurs simples, des rapports de flux, des magnitudes
+    absolues, des indices de variabilité et divers indicateurs basés sur les
+    colonnes Gaia DR3 disponibles dans ``df``. Les nouvelles colonnes sont
+    compilées dans une liste renvoyée avec le DataFrame enrichi.
+
+    Args:
+        df (pd.DataFrame): DataFrame contenant les colonnes issues de Gaia.
+        min_parallax_snr (float, optional): Seuil minimum du rapport signal/bruit de la
+            parallaxe pour calculer une magnitude absolue fiable. Defaults to 5.0.
+
+    Returns:
+        Tuple[pd.DataFrame, list[str]]: Un couple ``(df_enrichi, new_cols)`` où
+        ``df_enrichi`` est le DataFrame original complété et ``new_cols`` est la
+        liste des noms de colonnes ajoutées.
     """
     df = df.copy()
     new_cols: list[str] = []
     cols = set(df.columns)
 
-    # ---------------- Couleurs simples si manquantes ----------------
+    # ---------------- Couleurs simples ----------------
     if {"phot_bp_mean_mag", "phot_g_mean_mag"} <= cols and "bp_g" not in df:
         df["bp_g"] = df["phot_bp_mean_mag"] - df["phot_g_mean_mag"]
         new_cols.append("bp_g")
@@ -539,9 +537,9 @@ def add_gaia_derived_features(
             df[f"{band}_snr_log10"] = np.where(s > 0, np.log10(s), np.nan)
             new_cols += [f"{band}_snr", f"{band}_snr_log10"]
 
-    # Absolute magnitudes for BP/RP computed like M_G
+    # Magnétude absolue pour BP/RP calculé comme M_G
     def _abs_mag(band: str) -> None:
-        """Compute absolute magnitude M_BP or M_RP via parallax or distance."""
+        """Calcule la magnitude absolue M_BP ou M_RP via la parallaxe ou la distance."""
         name_par, name_dist = f"M_{band.upper()}_parallax", f"M_{band.upper()}_dist"
         mcol = f"phot_{band}_mean_mag"
         # via parallax if available
@@ -558,7 +556,7 @@ def add_gaia_derived_features(
                     np.nan,
                 )
             new_cols.append(name_par)
-        # via distance_gspphot
+
         if {mcol, "distance_gspphot"}.issubset(df.columns):
             ok = df["distance_gspphot"].notna() & (df["distance_gspphot"] > 0)
             with np.errstate(divide="ignore", invalid="ignore"):
@@ -568,7 +566,6 @@ def add_gaia_derived_features(
                     np.nan,
                 )
             new_cols.append(name_dist)
-        # merge parallax-first, then distance
         if (name_par in df.columns) or (name_dist in df.columns):
             M_col = f"M_{band.upper()}"
             df[M_col] = df.get(name_par, pd.Series(np.nan, index=df.index))
@@ -577,12 +574,12 @@ def add_gaia_derived_features(
                 df.loc[use, M_col] = df.loc[use, name_dist]
             new_cols.append(M_col)
 
-    # Compute absolute magnitudes for BP and RP
+    # Calcule la magnitude absolue pour BP/RP
     for band in ("bp", "rp"):
         if f"phot_{band}_mean_mag" in df.columns:
             _abs_mag(band)
 
-    # Absolute colour and evolutionary flags
+    # Couleur absolue et drapeaux évolutifs
     if {"M_BP", "M_RP"}.issubset(df.columns):
         df["M_BP_minus_M_RP"] = df["M_BP"] - df["M_RP"]
         new_cols.append("M_BP_minus_M_RP")
@@ -592,7 +589,7 @@ def add_gaia_derived_features(
         df["is_subdwarf_like"] = (df["delta_ms"] >= +0.6).astype("int8")
         new_cols += ["is_giant_like", "is_subdwarf_like"]
 
-    # Useful logs (already suggested)
+    # Vitesse tangentielle
     if "v_tan_kms" in df.columns:
         x = df["v_tan_kms"]
         df["v_tan_kms_log10"] = np.where(x > 0, np.log10(x), np.nan)
@@ -741,7 +738,6 @@ def _signed_log1p(x: pd.Series) -> pd.Series:
 def stabilize_spectral_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
 
-    # Colonnes à transformer (adapte selon ton set)
     ew_cols = [c for c in df.columns if c.endswith("_eq_width")]
     prom_cols = [c for c in df.columns if c.endswith("_prominence")]
     fwhm_cols = [c for c in df.columns if c.endswith("_fwhm")]

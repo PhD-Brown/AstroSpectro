@@ -99,7 +99,6 @@ from sklearn.discriminant_analysis import (
 )
 from sklearn.calibration import CalibratedClassifierCV
 
-
 # imblearn (samplers + pipeline)
 try:
     from imblearn.pipeline import Pipeline as ImbPipeline
@@ -141,7 +140,20 @@ except Exception:
 
 
 def _ece_score(y_true: np.ndarray, proba: np.ndarray, n_bins: int = 15) -> float:
-    """Expected Calibration Error multi-classe (One-vs-max)."""
+    """
+    Calcule l'erreur de calibration attendue (ECE) pour un problème multi‑classe.
+
+    Cette fonction estime l'erreur de calibration attendue en comparant les
+    probabilités prédites à l'accuracy observée dans des intervalles de confiance.
+
+    Args:
+        y_true (np.ndarray): Vecteur des labels vrais.
+        proba (np.ndarray): Matrice des probabilités prédites (n_samples × n_classes).
+        n_bins (int): Nombre de bins de confiance à utiliser pour le calcul.
+
+    Returns:
+        float: Valeur de l'ECE (plus petit est meilleur).
+    """
     # confiance = max proba ; correct = 1 si argmax proba == y_true
     conf = np.max(proba, axis=1)
     pred = np.argmax(proba, axis=1)
@@ -161,8 +173,13 @@ def _ece_score(y_true: np.ndarray, proba: np.ndarray, n_bins: int = 15) -> float
 
 
 class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
-    """Wrap un estimateur de classification et force predict_proba en float64.
-    N'expose PAS decision_function si le modèle de base ne l'a pas.
+    """
+    Enveloppe un estimateur de classification pour forcer ``predict_proba`` en ``float64``.
+
+    Cette classe délègue tous les attributs et méthodes à l'estimateur de base et
+    veille à ce que la méthode ``predict_proba`` retourne un tableau de type
+    ``float64``. Elle ne fournit pas de ``decision_function`` si l'estimateur de base
+    n'en dispose pas.
     """
 
     _estimator_type = "classifier"
@@ -170,7 +187,6 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
     def __init__(self, base):
         self.base = base
 
-    # --- délégation dynamique : n'expose un attribut que si le base l'a ---
     def __getattr__(self, name):
         if name.startswith("_"):
             raise AttributeError
@@ -178,7 +194,6 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
 
     # --- API sklearn ---
     def get_params(self, deep=True):
-        # pour que clone() fonctionne
         return {"base": self.base}
 
     def set_params(self, **params):
@@ -202,7 +217,6 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
 
     @property
     def classes_(self):
-        # scikit-learn va le lire pendant la calibration
         return getattr(self.base, "classes_", None)
 
     def __sklearn_is_fitted__(self):
@@ -214,7 +228,23 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
 
 
 class CollinearityFilter(TransformerMixin, BaseEstimator):
-    """Supprime les colonnes très corrélées (> threshold) et faible variance."""
+    """
+    Filtre de colinéarité et de faible variance pour DataFrame.
+
+    Ce transformateur identifie et supprime les colonnes numériques présentant une
+    variance inférieure à un seuil ou une corrélation absolue supérieure à un
+    seuil donné. Il peut être utilisé dans un pipeline scikit‑learn pour
+    réduire la redondance des données.
+
+    Args:
+        var_threshold (float): Seuil minimum de variance en dessous duquel une colonne
+            est supprimée. Utiliser ``0.0`` pour désactiver le filtrage de variance.
+        corr_threshold (float): Seuil de corrélation absolue au-dessus duquel une colonne
+            redondante est supprimée. Doit être dans l'intervalle [0, 1].
+
+    Attributes:
+        keep_columns_ (List[str] | None): Liste des colonnes conservées après appel de ``fit``.
+    """
 
     def __init__(self, var_threshold: float = 0.0, corr_threshold: float = 0.98):
         self.var_threshold = var_threshold
@@ -222,6 +252,17 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
         self.keep_columns_: List[str] | None = None
 
     def fit(self, X: pd.DataFrame, y=None, **fit_params):
+        """
+        Apprend quelles colonnes conserver selon la variance et la corrélation.
+
+        Args:
+            X (pd.DataFrame): Données d'entrée comportant des colonnes numériques.
+            y: Ignoré, présent pour compatibilité avec l'API sklearn.
+            **fit_params: Paramètres supplémentaires ignorés.
+
+        Returns:
+            CollinearityFilter: L'instance elle‑même.
+        """
         if not isinstance(X, pd.DataFrame):
             # tenter de reconstruire un DataFrame si possible
             X = pd.DataFrame(X)
@@ -250,6 +291,16 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
+        """Transforme les données en conservant uniquement les colonnes sélectionnées.
+
+        Args:
+            X: Tableau ou DataFrame à transformer.
+
+        Returns:
+            pd.DataFrame | np.ndarray: Sous‑ensemble de ``X`` contenant uniquement les colonnes
+            sélectionnées lors de ``fit``. Si aucune colonne n'a été apprise,
+            les valeurs brutes sont retournées.
+        """
         df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
         if self.keep_columns_ is None:
             return df.values
@@ -257,11 +308,24 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
 
 
 class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
-    """
-    Applique un vecteur de seuils par classe sur les probabilités.
-    - fit : optionnellement, tune les seuils sur un petit holdout interne
-            puis refit sur tout X,y (en forwardant les fit_params).
-    - predict : argmax(proba - thr).
+    """Ajoute un ajustement de seuils par classe à un estimateur de classification.
+
+    Ce wrapper applique un vecteur de seuils spécifiques à chaque classe aux
+    probabilités retournées par l'estimateur de base. L'entraînement (``fit``)
+    peut, si ``tune`` est ``True``, rechercher des seuils optimaux sur un
+    sous‑ensemble de validation interne avant de ré‑entraîner le modèle sur
+    l'ensemble complet. La prédiction se fait via ``argmax(proba - thresholds)``.
+
+    Args:
+        base_estimator: Estimateur de base supportant ``predict_proba``.
+        tune (bool): Si ``True``, ajuste les seuils sur un sous‑ensemble de validation.
+        metric (str): Métrique utilisée pour optimiser les seuils (`'f1_macro'` ou `'balanced_accuracy'`).
+        grid (np.ndarray | None): Grille de seuils à explorer. Si ``None``, une grille linéaire est utilisée.
+        random_state (int): Graine de reproductibilité pour le split interne.
+
+    Attributes:
+        thresholds_ (np.ndarray | None): Seuils appris par classe.
+        classes_ (np.ndarray | None): Tableau des étiquettes de classe.
     """
 
     _estimator_type = "classifier"
@@ -418,10 +482,31 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
 
 
 class SpectralClassifier:
-    """
-    Classifieur spectral encapsulant un pipeline complet (imputation, scaling,
-    sur-échantillonnage SMOTE, sélection de variables optionnelle et modèle final).
-    Gère aussi le tuning par GridSearchCV, l’évaluation et la persistance du modèle.
+    """Classifieur spectral pour la classification de spectres de type stellaire.
+
+    Cette classe encapsule l'intégralité du pipeline de préparation des données,
+    la sélection de caractéristiques, la gestion du déséquilibre des classes,
+    l'entraînement de plusieurs modèles, la recherche d'hyperparamètres via
+    ``GridSearchCV`` ou ``RandomizedSearchCV``, l'évaluation et la persistance.
+    Elle supporte plusieurs modèles (RandomForest, XGBoost, SVM, etc.) et
+    sélectionne dynamiquement les caractéristiques numériques pertinentes.
+
+    Args:
+        model_type (str): Nom du modèle final à entraîner (ex. 'XGBoost', 'RandomForest').
+        prediction_target (str): Cible de prédiction (ex. 'main_class', 'sub_class_top25', 'sub_class_bins').
+        use_feature_selection (bool): Active ou non la sélection de variables via ``SelectFromModel``.
+        selector_threshold (str): Seuil pour la sélection (ex. 'median', 'mean', '0.5*mean').
+        selector_model (str): Estimateur utilisé pour la sélection des features ('xgb' ou 'rf').
+        selector_n_estimators (int): Nombre d'arbres/itérations pour l'estimateur de sélection.
+        random_state (int): Graine de reproductibilité pour tous les générateurs aléatoires.
+
+    Attributes:
+        feature_names_used (List[str]): Noms des variables candidates détectées lors de la préparation.
+        selected_features_ (List[str] | None): Sous‑ensemble retenu après sélection, ou ``None`` si la sélection n'a pas été appliquée.
+        best_estimator_: Pipeline final issu de la recherche d'hyperparamètres.
+        model_pipeline: Pipeline complet (préprocesseur + estimateur) entraîné.
+        label_encoder (LabelEncoder | None): Encodeur pour les labels, utilisé pour certains modèles comme XGBoost.
+        class_labels (List[str]): Liste des étiquettes de classes dans l'ordre utilisé par l'encodeur.
     """
 
     def __init__(
@@ -441,7 +526,7 @@ class SpectralClassifier:
         use_pca: bool = False,
         pca_components: float | int = 0.99,
         # imbalance
-        sampler: str | None = None,  # none/smote/borderline/smoteenn/adasyn
+        sampler: str | None = None,
         # seuils
         tune_thresholds: bool = False,
         threshold_metric: str = "f1_macro",
@@ -503,24 +588,25 @@ class SpectralClassifier:
     # ---------------------------------------------------------------------
 
     def _clean_and_filter_data(self, df: pd.DataFrame) -> pd.DataFrame | None:
-        """
-        Crée la colonne de label selon la stratégie choisie puis nettoie/filtre
-        le DataFrame pour l’entraînement.
+        """Construit la colonne de label et filtre les exemples.
 
-        Étapes principales :
-        1) Construction de `label` selon `prediction_target`.
-        2) Suppression des labels invalides (U, n, N, O, OTHER).
-        3) Filtrage des classes trop rares (<10 échantillons).
+        En fonction de l'attribut ``prediction_target``, cette méthode crée une
+        colonne ``label`` à partir de la colonne ``subclass``, supprime les lignes
+        aux labels invalides et retire les classes trop rares. Le DataFrame
+        d'origine n'est pas modifié : un nouvel objet est renvoyé.
 
         Args:
-            df: DataFrame de départ (catalogue enrichi + features).
+            df (pd.DataFrame): DataFrame contenant les colonnes de features et la colonne
+                ``subclass`` servant à dériver la cible.
 
         Returns:
-            pd.DataFrame | None: DataFrame prêt pour l’entraînement (avec `label`)
-            ou `None` si trop peu de données valides.
+            pd.DataFrame | None: DataFrame prêt pour l'entraînement avec une colonne ``label``,
+            ou ``None`` si le nettoyage conduit à un jeu de données trop petit.
 
         Notes:
-            Cette méthode ne modifie pas `df` en place (travaille sur une copie).
+            - Les labels invalides ('U', 'n', 'N', 'O', 'OTHER') sont supprimés.
+            - Les classes ayant moins de 10 exemples sont retirées pour assurer un
+              minimum de support pendant l'entraînement.
         """
         if "subclass" not in df.columns:
             print(
@@ -632,20 +718,23 @@ class SpectralClassifier:
         self, df_trainable: pd.DataFrame
     ) -> tuple[pd.DataFrame, np.ndarray]:
         """
-        Sélectionne dynamiquement toutes les colonnes numériques comme features,
-        normalise les NaN/inf, supprime les colonnes vides/constantes et
-        renvoie X (features triées) et y (labels).
+        Sélectionne dynamiquement les colonnes numériques pour constituer X et y.
+
+        Cette méthode élimine les colonnes non numériques, remplace les valeurs non
+        numériques ou infinies par ``NaN``, supprime les colonnes vides ou constantes,
+        trie les colonnes et retourne la matrice des features et le vecteur des
+        labels. L'ordre des colonnes est conservé dans ``feature_names_used``.
 
         Args:
-            df_trainable: DataFrame nettoyé contenant au moins la colonne `label`.
+            df_trainable (pd.DataFrame): DataFrame nettoyé contenant au moins la colonne ``label``.
 
         Returns:
-            (X, y):
-                - X (pd.DataFrame): Matrice de features en float, colonnes triées.
-                - y (np.ndarray): Vecteur de labels.
+            Tuple[pd.DataFrame, np.ndarray]: Un tuple ``(X, y)`` où ``X`` est un DataFrame
+            de features numériques et ``y`` est un tableau des labels.
 
         Side Effects:
-            Met à jour `self.feature_names_used` avec l’ordre final des colonnes.
+            Met à jour l'attribut ``feature_names_used`` avec l'ordre final des colonnes
+            sélectionnées.
         """
         cols_to_exclude = [
             "file_path",
@@ -702,7 +791,7 @@ class SpectralClassifier:
         const_cols = df_num.nunique(dropna=True)
         const_cols = const_cols[const_cols <= 1].index.tolist()
         if const_cols:
-            # Pourquoi: supprimer les colonnes constantes évite du bruit pour la
+            # Supprimer les colonnes constantes évite du bruit pour la
             # sélection de features et accélère le fit.
             df_num.drop(columns=const_cols, inplace=True)
 
@@ -725,9 +814,23 @@ class SpectralClassifier:
         self, X_train: pd.DataFrame, model_type: str
     ) -> ColumnTransformer:
         """
-        Préprocesseur minimal et robuste :
-        - pour RF/XGB : imputation (médiane) des colonnes numériques
-        - pour SVM : imputation + standardisation (important pour SVM)
+        Construit le préprocesseur pour le pipeline.
+
+        Le préprocesseur effectue l'imputation des valeurs manquantes et la
+        normalisation/standardisation des colonnes numériques selon le type de modèle
+        choisi. Pour les modèles qui n'exigent pas de scaling, seules les imputations
+        sont appliquées.
+
+        Args:
+            X_train (pd.DataFrame): Matrice de features d'entraînement.
+            model_type (str): Type du modèle final (ex. 'RandomForest', 'XGBoost', 'SVM').
+
+        Returns:
+            ColumnTransformer: Un transformateur appliquant les étapes d'imputation et
+            de scaling sur les colonnes numériques.
+
+        Raises:
+            ValueError: Si aucune colonne numérique n'est disponible dans ``X_train``.
         """
         num_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
         if not num_cols:
@@ -783,10 +886,22 @@ class SpectralClassifier:
         self, model_type: str, n_estimators: int, n_classes: int, random_state: int
     ):
         """
-        Estimateur baseline par modèle.
-        - RF : rapide, n_jobs=-1
-        - XGB : 'hist' pour la vitesse ; encodage de y géré côté train_and_evaluate
-        - SVM : RBF + class_weight=balanced
+        Construit l'estimateur de base selon le type de modèle.
+
+        Args:
+            model_type (str): Choix du modèle ('RandomForest', 'XGBoost', 'SVM',
+                'ExtraTrees', 'LogRegOVR', 'KNN', 'MLP', 'NaiveBayes', 'LDA', 'QDA',
+                'CatBoost', 'LightGBM', 'SoftVoting').
+            n_estimators (int): Nombre d'arbres ou d'itérations, selon le modèle.
+            n_classes (int): Nombre de classes cibles.
+            random_state (int): Graine de reproductibilité.
+
+        Returns:
+            Estimator: Un estimateur scikit‑learn ou compatible.
+
+        Raises:
+            ImportError: Si le modèle choisi nécessite un paquet non installé.
+            ValueError: Si ``model_type`` n'est pas reconnu.
         """
 
         # RandomForest
@@ -926,7 +1041,7 @@ class SpectralClassifier:
             )
 
         if model_type == "SoftVoting":
-            # XGB + LGBM + CatBoost (selon dispos)
+            # XGB + LGBM + CatBoost
             ests = []
             if _HAS_XGB:
                 ests.append(
@@ -991,7 +1106,7 @@ class SpectralClassifier:
         param_overrides: dict | None = None,
         # poids & calibration
         use_balanced_weights: bool = True,
-        class_weight_mode: str | None = None,  # "inv_freq" ou None
+        class_weight_mode: str | None = None,
         class_weight_alpha: float = 1.0,
         weight_col: str | None = None,
         weight_norm: str = "minmax",
@@ -1007,7 +1122,7 @@ class SpectralClassifier:
         imputer_strategy: str | None = None,
         knn_imputer_k: int = 5,
         scaler_type: str | None = None,
-        selector_method: Optional[str] = None,  # "rfecv" pour RFECV
+        selector_method: Optional[str] = None,
         mi_top_k: Optional[int] = None,
         # sampler
         sampler: Optional[str] = None,
@@ -1022,31 +1137,72 @@ class SpectralClassifier:
     ) -> tuple[
         "SpectralClassifier", list[str], pd.DataFrame, np.ndarray, np.ndarray | None
     ]:
-        """
-        Entraîne et évalue le modèle avec GridSearchCV + pipeline Imputer/Scaler/SMOTE,
-        (optionnellement) SelectFromModel, puis affiche un rapport et une matrice
-        de confusion.
+        """Entraîne le classifieur spectral et effectue une évaluation initiale.
+
+        Cette méthode exécute le pipeline complet : nettoyage des données,
+        préparation de ``X`` et ``y``, éventuelle sélection de variables,
+        recherche d'hyperparamètres via ``GridSearchCV`` ou ``RandomizedSearchCV``,
+        entraînement du modèle final, et affichage d'un rapport d'évaluation
+        sur le jeu de test. De nombreux paramètres permettent de contrôler
+        l'équilibrage des classes, l'imputation, le scaling, la sélection des features,
+        la réduction de dimension, le sur‑échantillonnage, l'arrêt précoce et la
+        calibration des probabilités.
 
         Args:
-            features_df: DataFrame complet (features + colonnes méta) avant nettoyage.
-            test_size: Proportion du jeu de test (stratifié).
-            n_estimators: Nombre d’arbres/itérations pour le modèle final.
+            features_df (pd.DataFrame): DataFrame complet (features + colonnes méta) avant nettoyage.
+            test_size (float, optional): Proportion du jeu de données affectée au test. Defaults to 0.21.
+            n_estimators (int, optional): Nombre d'arbres ou d'itérations pour l'estimateur de base. Defaults to 300.
+            search (str | None, optional): Type de recherche d'hyperparamètres ('grid' ou 'random').
+            cv_folds (int, optional): Nombre de plis pour la validation croisée. Defaults to 5.
+            scoring (str, optional): Métrique optimisée par la recherche. Defaults to 'accuracy'.
+            use_feature_selection (bool | None, optional): Force l'activation ou la désactivation de la sélection de features.
+            selector_model (str | None, optional): Modèle utilisé pour la sélection de features.
+            selector_threshold (str | None, optional): Seuil utilisé pour la sélection de features.
+            early_stopping (bool, optional): Active l'arrêt précoce pour certains estimateurs. Defaults to False.
+            early_stopping_rounds (int, optional): Nombre d'itérations sans amélioration avant arrêt. Defaults to 50.
+            val_size (float, optional): Proportion réservée pour la validation dans l'arrêt précoce. Defaults to 0.15.
+            use_groups (bool, optional): Si True, utilise une colonne de groupes pour stratifier le split. Defaults to False.
+            group_col (str | None, optional): Nom de la colonne contenant les groupes pour le split. Defaults to None.
+            param_grid (Dict[str, Any] | None, optional): Grille d'hyperparamètres pour ``GridSearchCV``.
+            param_distributions (Dict[str, Any] | None, optional): Distributions pour ``RandomizedSearchCV``.
+            n_iter (int, optional): Nombre d'itérations pour ``RandomizedSearchCV``. Defaults to 80.
+            random_state (int, optional): Graine aléatoire. Defaults to 42.
+            param_overrides (dict | None, optional): Dictionnaire de paramètres supplémentaires à forcer dans l'estimateur.
+            use_balanced_weights (bool, optional): Active le calcul de poids d'équilibrage des classes. Defaults to True.
+            class_weight_mode (str | None, optional): Méthode pour déterminer les poids ('inv_freq' ou None).
+            class_weight_alpha (float, optional): Coefficient pour ajuster les poids inverses. Defaults to 1.0.
+            weight_col (str | None, optional): Nom d'une colonne contenant des poids personnalisés. Defaults to None.
+            weight_norm (str, optional): Normalisation des poids ('minmax', etc.). Defaults to 'minmax'.
+            weight_gamma (float, optional): Exposant pour pondérer la distribution des poids. Defaults to 1.0.
+            calibrate_probs (bool, optional): Si True, applique une calibration des probabilités a posteriori. Defaults to False.
+            calibration_method (str, optional): Méthode de calibration ('sigmoid' ou 'isotonic'). Defaults to 'sigmoid'.
+            calibrate_cv (int, optional): Nombre de plis pour la calibration. Defaults to 3.
+            calibrate_holdout_size (float, optional): Taille de l'ensemble de validation pour la calibration. Defaults to 0.0.
+            repeated_cv (bool, optional): Active la validation croisée répétée. Defaults to False.
+            cv_repeats (int, optional): Nombre de répétitions de la validation croisée. Defaults to 1.
+            imputer_strategy (str | None, optional): Stratégie d'imputation ('median', 'mean', etc.) écrasant la valeur de l'instance.
+            knn_imputer_k (int, optional): Nombre de voisins pour ``KNNImputer``. Defaults to 5.
+            scaler_type (str | None, optional): Type de scaler ('standard', 'robust', etc.).
+            selector_method (str | None, optional): Méthode de sélection ('rfecv' par exemple).
+            mi_top_k (int | None, optional): Nombre de features à conserver en fonction de l'information mutuelle.
+            sampler (str | None, optional): Méthode de sur‑échantillonnage ('smote', 'adasyn', etc.).
+            var_threshold (float | None, optional): Seuil de variance pour supprimer les colonnes. Defaults to None.
+            corr_threshold (float | None, optional): Seuil de corrélation pour supprimer les colonnes. Defaults to None.
+            use_pca (bool | None, optional): Si True, applique une réduction de dimension par PCA. Defaults to None.
+            pca_components (float | int | None, optional): Nombre ou fraction de composantes conservées par PCA. Defaults to None.
+            tune_thresholds (bool | None, optional): Active l'ajustement des seuils via ``ThresholdTunedClassifier``. Defaults to None.
+            threshold_metric (str | None, optional): Métrique pour optimiser les seuils. Defaults to None.
 
         Returns:
-            (self, cols_for_report, X, y) ou None:
-                - self (SpectralClassifier): L’instance entraînée (avec pipeline).
-                - cols_for_report (list[str]): Les colonnes utilisées in fine
-                (sélectionnées ou toutes les candidates).
-                - X (pd.DataFrame): Matrice de features utilisée avant split.
-                - y (np.ndarray): Labels correspondants.
+            Tuple[SpectralClassifier, List[str], pd.DataFrame, np.ndarray, np.ndarray | None]:
+                - ``self`` : L'instance entraînée, permettant le chaînage.
+                - ``cols_for_report`` : Liste des colonnes finalement utilisées pour l'entraînement.
+                - ``X`` (pd.DataFrame) : Matrice des features utilisée avant le split.
+                - ``y`` (np.ndarray) : Vecteur des labels.
+                - ``np.ndarray | None`` : Tableau des indices de validation ou ``None`` si non applicable.
 
         Raises:
-            ValueError: Relevée en interne si GridSearchCV échoue (message affiché).
-
-        Notes:
-            - XGBoost nécessite un encodage numérique des labels (géré ici).
-            - Le nombre de voisins SMOTE est ajusté automatiquement selon la plus
-            petite classe du split d’entraînement.
+            ValueError: Si la recherche d'hyperparamètres échoue ou si un estimateur requis est manquant.
         """
         print(
             f"\n=== ÉTAPE 4 : SESSION D'ENTRAÎNEMENT (Modèle: {self.model_type}, Cible: {self.prediction_target}) ==="
@@ -1470,7 +1626,7 @@ class SpectralClassifier:
 
         # 7) Si calibration demandée ---
         if calibrate_probs:
-            # 1) éventuel split holdout dédié à la calibration
+            # 7.1) éventuel split holdout dédié à la calibration
             X_tr, y_tr = X_train, y_train
             X_cal = y_cal = None
             sw_tr = None
@@ -1494,21 +1650,21 @@ class SpectralClassifier:
                         random_state=random_state,
                     )
 
-            # 2) refit sur le sous-ensemble d’entraînement (utile si holdout)
+            # 7.2) refit sur le sous-ensemble d’entraînement (utile si holdout)
             fit_params_tr = dict(fit_params)
             if sw_tr is not None:
                 fit_params_tr["clf__sample_weight"] = sw_tr
             best.fit(X_tr, y_tr, **fit_params_tr)
 
-            # 3) séparer pré-proc/fs et step final
+            # 7.3) séparer pré-proc/fs et step final
             if isinstance(best, _PIPE_TYPES):
-                preproc_fs = best[:-1]  # pipeline déjà FIT sans le dernier step
-                final_step = best.steps[-1][1]  # dernier step (peut être ton wrapper)
+                preproc_fs = best[:-1]
+                final_step = best.steps[-1][1]
             else:
                 preproc_fs = None
                 final_step = best
 
-            # 4) estimateur VRAIMENT calibré = base_estimator s’il y a un wrapper
+            # 7.4) estimateur VRAIMENT calibré = base_estimator s’il y a un wrapper
             est_to_cal = getattr(final_step, "base_estimator", final_step)
             if not is_classifier(est_to_cal):
                 raise TypeError(
@@ -1538,7 +1694,7 @@ class SpectralClassifier:
                     else:
                         best = cal
             else:
-                # ---- calibration par CV (pas de holdout) : on met le calibrateur COMME step final ----
+                # ---- calibration par CV (pas de holdout) : on met le calibrateur comme step final ----
                 est_for_cal = _Float64ProbaWrapper(est_to_cal)
                 cal = CalibratedClassifierCV(
                     estimator=est_for_cal,
@@ -1547,7 +1703,7 @@ class SpectralClassifier:
                 )
                 if hasattr(final_step, "base_estimator"):
                     final_step.base_estimator = cal
-                    best.fit(X_train, y_train, **fit_params)  # refit complet avec cal
+                    best.fit(X_train, y_train, **fit_params)
                 else:
                     if isinstance(best, _PIPE_TYPES):
                         best.steps[-1] = (best.steps[-1][0], cal)
@@ -1559,7 +1715,7 @@ class SpectralClassifier:
         # 8) Expose artefacts
         self.model_pipeline = best
 
-        # IMPORTANT : pour introspection, on récupère le pipeline "nu" (sans l'enrobage de calibration)
+        # Pour introspection, on récupère le pipeline sans l'enrobage de calibration
         pipe_for_fs = getattr(best, "base_estimator", best)
 
         # 9) Features sélectionnées (si FS actif)

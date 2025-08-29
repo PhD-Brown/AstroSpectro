@@ -58,7 +58,6 @@ Exemple minimal
 >>> pp = ProcessingPipeline(paths)                        # chemins/répertoires utiles
 >>> row = pp.process_one("data/raw/spec-XXXXX.fits.gz")   # ligne de features pour 1 spectre
 >>> df  = pp.process_many(["specA.fits.gz", "specB.fits.gz"])  # batch -> DataFrame
-
 """
 
 from __future__ import annotations
@@ -84,17 +83,22 @@ from utils import sanitize_invvar
 
 
 class ProcessingPipeline:
-    """Pipeline de traitement “par spectre”.
+    """Exécute un pipeline complet de traitement pour chaque spectre FITS.
+
+    Ce pipeline applique les étapes de prétraitement, de détection de raies,
+    d'extraction de descripteurs, d'ajout de features photométriques et
+    d'agrégation des résultats dans un DataFrame.
 
     Args:
-        raw_data_dir: Dossier racine contenant les fichiers FITS (gz).
-        master_catalog_df: Catalogue courant (métadonnées par spectre).
+        raw_data_dir (str): Dossier contenant les fichiers FITS (gz).
+        master_catalog_df (pd.DataFrame): Catalogue de métadonnées pour enrichir
+            les spectres avec des informations photométriques ou Gaia.
 
     Attributes:
-        preprocessor: Opérations de chargement/normalisation par spectre.
-        peak_detector: Détection + association des raies.
-        feature_engineer: Calcul des descripteurs spectroscopiques.
-        master_catalog: Catalogue (potentiellement enrichi Gaia).
+        preprocessor (SpectraPreprocessor): Utilitaire pour charger et normaliser les spectres.
+        peak_detector (PeakDetector): Détection et association des raies d'absorption.
+        feature_engineer (FeatureEngineer): Extraction des descripteurs spectroscopiques.
+        master_catalog (pd.DataFrame): Catalogue enrichi (optionnel) utilisé pour joindre des informations.
     """
 
     def __init__(self, raw_data_dir: str, master_catalog_df: pd.DataFrame) -> None:
@@ -118,23 +122,19 @@ class ProcessingPipeline:
                 )
 
     def run(self, batch_paths: List[str]) -> pd.DataFrame:
-        """Traite un lot de spectres et retourne le DataFrame de features.
+        """Traite une liste de spectres et renvoie un DataFrame de features.
 
-        Étapes (par fichier):
-          - ouverture FITS (.gz),
-          - `load_spectrum` (+ sécurisation `invvar`),
-          - normalisation du flux,
-          - détection/association de raies,
-          - extraction des features “ligne-centrées”,
-          - ajout des colonnes `match_*` (wl/prom) stables,
-          - feature couleur (bande bleue/rouge),
-          - jointure finale au catalogue maître + indices photométriques.
+        Pour chaque chemin fourni, cette méthode charge le spectre, normalise
+        le flux, détecte les raies, extrait les descripteurs spectroscopiques,
+        calcule des features de couleur et joint éventuellement des informations
+        provenant du catalogue maître. Les features sont stabilisées et enrichies
+        avec des colonnes Gaia et des composites de raies.
 
         Args:
-            batch_paths: chemins **relatifs** des FITS à traiter (par ex. “B6001/spec-…gz”).
+            batch_paths (List[str]): Chemins relatifs des fichiers FITS à traiter.
 
         Returns:
-            DataFrame contenant les features calculées (et jointes au catalogue si dispo).
+            pd.DataFrame: Tableau des features calculés et enrichis pour l'ensemble des spectres.
         """
         all_features_list: List[Dict[str, float]] = []
 
@@ -178,7 +178,7 @@ class ProcessingPipeline:
                 flux_red = float(
                     np.nanmean(flux_norm[(wavelength > 6500) & (wavelength < 7000)])
                 )
-                color_index = flux_blue / (flux_red + 1e-6)  # évite /0
+                color_index = flux_blue / (flux_red + 1e-6)
 
                 # 4.b) Global continuum shape: slope and curvature (Pack D)
                 # On ajuste un polynôme de degré 2 sur la plage du continuum

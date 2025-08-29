@@ -1,83 +1,40 @@
-"""
-AstroSpectro — Orchestrateur de pipeline (module maître)
-=======================================================
+"""AstroSpectro — orchestrateur de pipeline.
 
-Ce module expose la classe :class:`MasterPipeline`, qui orchestre de bout en bout
-le flux d’entraînement d’un classifieur spectral :
+Ce module définit la classe :class:`MasterPipeline` qui orchestre un
+pipeline complet de traitement et d’apprentissage sur des spectres
+astronomiques au format FITS. Le workflow comprend la sélection d’un
+lot de spectres, la construction et l’enrichissement d’un catalogue
+(option Gaia), le pré‑traitement et l’extraction de caractéristiques,
+l’entraînement et l’évaluation d’un classifieur spectral, puis la
+journalisation des résultats et des artefacts.
 
-1) Sélection d’un lot de spectres (FITS)                                   → DatasetBuilder
-2) Génération du catalogue + enrichissement optionnel Gaia                 → generate_catalog_from_fits / enrich_catalog_with_gaia
-3) Prétraitement & extraction des features                                 → ProcessingPipeline (+ FeatureEngineer)
-4) Entraînement/évaluation/journalisation d’un modèle                      → SpectralClassifier
-5) Gestion des artefacts (CSV, modèles, figures, rapports JSON)            → _log_and_report
+Les méthodes publiques de :class:`MasterPipeline` permettent notamment :
 
-Entrées / sorties principales
------------------------------
-- **Entrées**
-  - Dossiers racine : ``raw_data_dir``, ``catalog_dir``, ``processed_dir``,
-    ``models_dir``, ``reports_dir`` (créés si manquants).
-  - Un CSV de features *prêt à entraîner* (``features_YYYYMMDDTHHMMSSZ.csv``) peut
-    être chargé directement (UI → “Dernier CSV”/“Choisir CSV”) pour sauter les étapes 1–3.
+* :meth:`select_batch` — sélectionner un lot de spectres non encore utilisés.
+* :meth:`generate_and_enrich_catalog` — générer le catalogue maître et
+  l’enrichir éventuellement avec Gaia.
+* :meth:`process_data` — exécuter le pipeline de pré‑traitement et
+  sauvegarder un CSV de features.
+* :meth:`run_training_session` — entraîner et évaluer un modèle tout en
+  journalisant les artefacts (modèle, rapports, figures).
+* :meth:`run_full_pipeline` — enchaîner toutes les étapes pour un run
+  « one‑shot ».
+* :meth:`interactive_training_runner` — proposer une interface
+  interactive (ipywidgets) pour configurer et lancer des entraînements.
 
-- **Sorties**
-  - **Features** : ``processed/features_YYYYMMDDTHHMMSSZ.csv``
-  - **Modèles**  : ``data/models/spectral_classifier_<type>_<ts>.pkl`` (+ ``..._meta.json``)
-  - **Rapport**  : ``data/reports/<ts>/session_report_<ts>.json`` + figures (CM, ROC, PR, calibration, importances)
-  - **Traces**   : ``data/reports/last_config_used.json`` (reproductibilité)
+Entrées :
+    Les répertoires racine pour les données brutes, le catalogue, les
+    features, les modèles et les rapports. Un CSV de features prêt à
+    l’emploi peut également être chargé.
 
-Contrat de données (cibles)
----------------------------
-Lors du chargement d’un CSV de features, les cibles de travail sont (re)créées
-si absentes, à partir de ``class``/``subclass`` :
+Sorties :
+    Fichiers CSV de features, modèles sérialisés (et métadonnées),
+    figures (matrices de confusion, courbes ROC/PR, etc.) et rapport
+    JSON de session, ainsi que la configuration de l’interface.
 
-- ``main_class``        : lettre spectrale (O,B,A,F,G,K,M,…) extraite de ``subclass``/``class``
-- ``sub_class_top25``   : 25 sous-classes les plus fréquentes, sinon ``"Other"``
-- ``sub_class_bins``    : binning lettre + chiffre (0–4/5–9), p. ex. ``"G_0-4"``, ``"M_5-9"``
-
-API publique (résumé)
----------------------
-- :meth:`select_batch` : choisit un lot de spectres à traiter.
-- :meth:`generate_and_enrich_catalog` : construit le catalogue local (+ Gaia optionnel).
-- :meth:`process_data` : exécute le pipeline de traitement et sauve un ``features_*.csv``.
-- :meth:`load_features_from_csv` : charge un CSV de features existant (et refabrique les cibles).
-- :meth:`run_training_session` : entraîne/évalue/log un modèle (XGBoost/RandomForest/SVM).
-- :meth:`interactive_training_runner` : tableau de bord Jupyter complet (onglets Data/Modèle/FS/Recherche/Poids/Sorties/Lancer).
-- :meth:`run_full_pipeline` : “one-shot” (sélection → entraînement).
-
-Options d’entraînement (extraits)
----------------------------------
-- **Sélection de features** : `use_feature_selection=True` (sélecteur RF/XGB/ExtraTrees/LogReg L1, seuil type ``"median"``).
-- **Recherche HP** : `search in {"grid","random",None}` + `param_grid` / `param_distributions`
-  (UI affiche une estimation des *fits*).
-- **Validation** : CV k-folds, répété optionnellement ; *group split* par nom de colonne.
-- **Poids & calibration** : `class_weight_mode`, colonne de poids, calibration
-  (`"sigmoid"`/`"isotonic"`). SVM auto-force `probability=True` si nécessaire.
-- **Artefacts** : matrices de confusion (normalisées ou non), courbes ROC/PR,
-  calibration, importances, export des prédictions test.
-
-Reproductibilité
-----------------
-- Les configurations d’UI sont sérialisées (``last_config_used.json``).
-- Les métriques/paramètres du modèle sont stockés avec le hash MD5 du fichier modèle.
-- Un explorateur de runs intégré permet d’ouvrir/zipper les dossiers de session.
-
-Exemples d’utilisation
-----------------------
->>> mp = MasterPipeline(raw, catalog, processed, models, reports)
->>> # Option 1: tout faire
->>> mp.run_full_pipeline(batch_size=500, model_type="XGBoost", prediction_target="main_class")
->>> # Option 2: à partir d’un CSV de features déjà prêt
->>> mp.load_features_from_csv(use_last=True)
->>> mp.run_training_session(model_type="XGBoost", prediction_target="sub_class_bins")
-
-Dépendances clés
-----------------
-scikit-learn, xgboost, imbalanced-learn, astropy, ipywidgets, pandas, numpy.
-
-Notes
------
-- Les méthodes préfixées par ``_`` sont internes.
-- L’UI est prévue pour notebook (Jupyter/VS Code). Utiliser ``interactive_training_runner()``.
+Dépendances :
+    scikit‑learn, xgboost, imbalanced‑learn, astropy, ipywidgets, pandas,
+    numpy.
 """
 
 from __future__ import annotations
@@ -99,10 +56,9 @@ import numpy as np
 from IPython.display import display, clear_output, HTML, Image, Markdown
 
 try:
-    import ipywidgets as W  # type: ignore
+    import ipywidgets as W
 except Exception:
-    # Si ipywidgets n'est pas disponible (par exemple hors environnement Jupyter), on définit W à None
-    W = None  # type: ignore
+    W = None
 
 # --- Imports projet ---
 from tools.dataset_builder import DatasetBuilder
@@ -117,13 +73,13 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
-
 # ================================================================
 #  Templates de paramètres (base_params, grid, distributions)
 #  Ces dictionnaires définissent les paramètres par défaut et les grilles de
 #  recherche pour chaque modèle. Ils sont utilisés pour préremplir les champs
 #  correspondants dans l'interface lorsqu'un modèle est sélectionné.
 # ================================================================
+
 # Pré-configurations de base (paramètres de départ pour chaque modèle)
 PRESET_BASE: dict = {
     "ExtraTrees": {
@@ -255,15 +211,42 @@ PRESET_DISTS: dict = {
 # -----------------------------------------------------------------------------
 
 
-# Enregistrement et chargement d'un préréglage (preset) de paramètres
 def _save_preset(path: str, widgets: dict) -> None:
-    """Sauvegarde dans un fichier JSON les valeurs des widgets spécifiés."""
+    """
+    Sauvegarde dans un fichier JSON les valeurs des widgets spécifiés.
+
+    Les widgets doivent posséder un attribut ``value`` ; cette fonction
+    extrait ces valeurs et les sérialise sous forme de dictionnaire JSON.
+
+    Args:
+        path (str): Chemin du fichier JSON où écrire les valeurs.
+        widgets (dict): Dictionnaire de widgets ipywidgets. Seuls les
+            éléments disposant d’un attribut ``value`` seront sérialisés.
+
+    Side Effects:
+        Écrit un fichier JSON à l’emplacement indiqué.
+    """
     payload = {k: w.value for k, w in widgets.items() if hasattr(w, "value")}
     Path(path).write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
 def _load_preset(path: str, widgets: dict) -> None:
-    """Charge un préréglage depuis un fichier JSON et met à jour les widgets."""
+    """
+    Charge un préréglage depuis un fichier JSON et met à jour les widgets.
+
+    Cette fonction lit un fichier JSON généré par :func:`_save_preset` et
+    affecte les valeurs chargées aux widgets correspondants. Les clés
+    absentes de ``widgets`` ou les widgets sans attribut ``value`` sont
+    ignorés.
+
+    Args:
+        path (str): Chemin vers le fichier JSON à charger.
+        widgets (dict): Dictionnaire de widgets à mettre à jour ; seules
+            les clés présentes dans ce dictionnaire seront modifiées.
+
+    Side Effects:
+        Met à jour la propriété ``value`` des widgets concernés.
+    """
     if not Path(path).exists():
         return
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -272,11 +255,26 @@ def _load_preset(path: str, widgets: dict) -> None:
             try:
                 widgets[k].value = v
             except Exception:
-                # ignore les erreurs de type (ex: changement de type du widget)
                 pass
 
 
 def _json_default(o):
+    """
+    Convertit des objets non sérialisables en types natifs pour JSON.
+
+    Cette fonction sert de callback ``default`` pour :func:`json.dump` et
+    :func:`json.dumps`. Elle gère notamment les scalaires NumPy et les
+    tableaux NumPy en les convertissant en types Python natifs. Pour les
+    objets de bibliothèques tierces (par exemple scikit‑learn), elle
+    renvoie le nom de la classe comme représentation courte.
+
+    Args:
+        o: Objet à convertir en type sérialisable.
+
+    Returns:
+        Un objet compatible avec la sérialisation JSON : valeur numérique,
+        liste, nom de classe ou chaîne.
+    """
     # numpy -> types natifs
     try:
         import numpy as _np
@@ -296,7 +294,25 @@ def _json_default(o):
 
 
 def _load_runs_table(reports_root: str):
-    """Lit tous les rapports de session et retourne un DataFrame résumé."""
+    """
+    Lit tous les rapports de session présents dans un dossier de rapports.
+
+    La fonction parcourt récursivement ``reports_root`` à la recherche
+    de fichiers ``session_report_*.json``. Pour chaque rapport trouvé,
+    elle extrait certaines métriques clés telles que la précision, la
+    balanced accuracy, la F1 macro, l’AUC macro, ainsi que le nombre de
+    features utilisées. Ces informations sont agrégées dans un
+    :class:`pandas.DataFrame` qui est ensuite trié par performance.
+
+    Args:
+        reports_root (str): Chemin vers le répertoire contenant les rapports
+            JSON des sessions.
+
+    Returns:
+        pandas.DataFrame | None: Un DataFrame résumant les runs trié par
+            ordre décroissant de performance, ou ``None`` si aucun rapport
+            n’est trouvé.
+    """
     rows = []
     for js in Path(reports_root).rglob("session_report_*.json"):
         try:
@@ -379,20 +395,34 @@ def _load_runs_table(reports_root: str):
 
 class MasterPipeline:
     """
-    Orchestrateur principal du pipeline d'entraînement AstroSpectro.
+    Orchestrateur principal du pipeline d’entraînement AstroSpectro.
 
-    Gère l’ensemble du flux : sélection d’un lot, génération/enrichissement du
-    catalogue, extraction des features, entraînement + évaluation, et
-    journalisation des artefacts. Expose aussi une UI Jupyter interactive.
+    Cette classe encapsule un workflow reproductible qui va de la sélection
+    d’un lot de fichiers FITS jusqu’à l’entraînement et l’évaluation d’un
+    classifieur spectral. Les principales étapes comprennent la construction
+    et l’enrichissement d’un catalogue à partir des FITS sélectionnés, le
+    prétraitement et l’extraction de caractéristiques, l’entraînement et
+    l’évaluation d’un modèle supervisé, et la journalisation complète des
+    artefacts de session (figures, rapports, modèles). Une interface
+    interactive basée sur ipywidgets est fournie pour piloter les runs
+    depuis Jupyter ou VS Code.
 
     Attributes:
-        raw_data_dir (Path): Dossier des données brutes (FITS).
-        catalog_dir (Path): Dossier du catalogue produit.
-        processed_dir (Path): Dossier des CSV de features.
-        models_dir (Path): Dossier des modèles entraînés.
-        reports_dir (Path): Dossier des rapports/figures par session.
-        features_df (pd.DataFrame | None): Dernier DataFrame de features chargé.
-        rng (np.random.Generator): Générateur aléatoire pour seeds internes.
+        raw_data_dir (str): Dossier contenant les FITS bruts.
+        catalog_dir (str): Répertoire de sortie pour le catalogue intermédiaire.
+        processed_dir (str): Répertoire de sortie des CSV de features générés.
+        models_dir (str): Répertoire de sauvegarde des modèles entraînés.
+        reports_dir (str): Répertoire des rapports et figures par session.
+        builder (DatasetBuilder): Sélecteur de lots et gestionnaire de journalisation.
+        current_batch (list[str]): Liste des chemins relatifs du lot courant.
+        master_catalog_df (pandas.DataFrame): Catalogue principal, éventuellement
+            enrichi.
+        features_df (pandas.DataFrame): Dernier DataFrame de features chargé ou généré.
+        master_catalog_path (str): Chemin vers le catalogue maître temporaire.
+        gaia_catalog_path (str): Chemin vers le catalogue enrichi via Gaia.
+        last_features_path (str | None): Chemin du dernier CSV de features chargé.
+        _runs_out (ipywidgets.Output | contextlib.AbstractContextManager): Sortie
+            utilisée pour afficher la table des runs dans l’interface.
     """
 
     def __init__(
@@ -403,18 +433,24 @@ class MasterPipeline:
         models_dir: str,
         reports_dir: str,
     ) -> None:
-        """Initialise l’orchestrateur.
+        """
+        Initialise l’orchestrateur et prépare l’état interne du pipeline.
+
+        Cette méthode assure l’existence des répertoires de travail,
+        instancie un :class:`DatasetBuilder` pointant vers ``raw_data_dir`` et
+        ``catalog_dir``, et initialise les attributs du pipeline (lot courant,
+        chemins de catalogue temporaire, DataFrames vides). Si ipywidgets est
+        disponible, un conteneur de sortie est créé pour l’explorateur de runs.
 
         Args:
-            raw_data_dir: Chemin vers le répertoire des FITS bruts.
-            catalog_dir: Chemin de sortie pour le catalogue intermédiaire.
-            processed_dir: Chemin de sortie des CSV de features.
-            models_dir: Chemin de sortie des fichiers modèles `.pkl` (+ meta).
-            reports_dir: Chemin de sortie des rapports/figures de session.
-            random_state: Graine de reproductibilité (peut être `None`).
+            raw_data_dir (str): Répertoire des fichiers FITS bruts (données source).
+            catalog_dir (str): Répertoire de sortie pour le catalogue intermédiaire.
+            processed_dir (str): Répertoire de sortie des CSV de features.
+            models_dir (str): Répertoire de sortie des modèles sérialisés.
+            reports_dir (str): Répertoire de sortie des rapports JSON et figures.
 
         Raises:
-            OSError: Si la création d’un des dossiers nécessaires échoue.
+            OSError: En cas d’échec de création d’un des répertoires requis.
         """
         self.raw_data_dir = raw_data_dir
         self.catalog_dir = catalog_dir
@@ -470,18 +506,25 @@ class MasterPipeline:
         self, batch_size: int = 500, strategy: str = "random"
     ) -> list[str]:
         """
-        Sélectionne un lot de fichiers FITS à traiter.
+        Sélectionne un lot de spectres à traiter et le mémorise.
+
+        Cette méthode interroge le :class:`DatasetBuilder` associé pour
+        obtenir un ensemble de chemins FITS relatifs au répertoire des
+        données brutes. Les spectres déjà marqués comme entraînés dans
+        ``trained_spectra.csv`` sont automatiquement exclus afin d’éviter
+        les doublons entre sessions.
 
         Args:
-            pattern: Glob/regex ou hint de sélection (implémentation interne).
-            limit: Nombre maximal de fichiers à retourner (None = pas de limite).
+            batch_size (int, optional): Nombre de spectres à inclure dans le lot.
+            strategy (str, optional): Stratégie de sélection (p. ex. ``"random"``).
+                Reportez‑vous à :class:`DatasetBuilder` pour les stratégies supportées.
 
         Returns:
-            Liste de chemins de fichiers FITS retenus.
+            list[str]: Liste des chemins FITS relatifs qui constituent le lot
+            courant.
 
-        Notes:
-            Cette méthode ne lance aucun traitement; elle ne fait que préparer
-            la liste à consommer par les étapes suivantes.
+        Side Effects:
+            Met à jour :attr:`current_batch` avec les chemins sélectionnés.
         """
         print("\n=== ÉTAPE 1 : SÉLECTION D'UN NOUVEAU LOT ===")
         self.current_batch = self.builder.get_new_training_batch(
@@ -493,20 +536,22 @@ class MasterPipeline:
         self, enrich_gaia: bool = False, **gaia_kwargs: Any
     ) -> None:
         """
-        Construit le catalogue local et l’enrichit optionnellement (Gaia).
+        Construit le catalogue maître à partir du lot courant et l’enrichit optionnellement.
+
+        La méthode lit les fichiers FITS du lot sélectionné, génère un catalogue
+        maître intermédiaire et, si ``enrich_gaia`` est vrai, effectue un
+        croisement avec le catalogue Gaia en utilisant les paramètres fournis.
 
         Args:
-            fits_paths: Liste des fichiers FITS du lot.
-            enrich_gaia: Si True, tente un cross-match/complément via Gaia.
-            gaia_kwargs: Paramètres additionnels passés au client Gaia (timeout,
-                rayon de recherche, colonnes à récupérer, etc.).
+            enrich_gaia (bool, optional): Active l’enrichissement via Gaia.
+            **gaia_kwargs: Paramètres additionnels à transmettre à
+                :func:`enrich_catalog_with_gaia` (p. ex. rayon de recherche,
+                colonnes à joindre).
 
-        Returns:
-            Chemin du fichier catalogue produit (CSV ou parquet selon implémentation).
-
-        Raises:
-            ValueError: Si `fits_paths` est vide.
-            RuntimeError: En cas d’échec de l’enrichissement externe.
+        Side Effects:
+            Met à jour :attr:`master_catalog_df` avec le catalogue généré.
+            Écrit un fichier CSV ``master_catalog_temp.csv`` ou ``master_catalog_gaia.csv``
+            dans ``catalog_dir`` selon que l’enrichissement Gaia est activé.
         """
         print("\n=== ÉTAPE 2 : GÉNÉRATION ET ENRICHISSEMENT DU CATALOGUE ===")
         if not self.current_batch:
@@ -539,19 +584,23 @@ class MasterPipeline:
 
     def process_data(self) -> Optional[pd.DataFrame]:
         """
-        Extrait et prépare les features à partir du catalogue.
+        Exécute le pipeline de pré‑traitement et génère un CSV de features.
 
-        Args:
-            catalog_path: Chemin du catalogue en entrée.
-            feature_params: Hyperparamètres du prétraitement/feature engineering
-                (e.g. normalisation, indices spectraux, flags qualité).
-            save: Si True, écrit un `features_YYYYMMDDTHHMMSSZ.csv` dans `processed_dir`.
+        Cette étape construit un :class:`ProcessingPipeline` à partir du
+        catalogue courant, exécute les opérations de nettoyage, de
+        normalisation et d’extraction de caractéristiques, puis enregistre
+        le DataFrame résultant dans un fichier ``features_<horodatage>.csv``
+        sous ``processed_dir``. Les colonnes cibles dérivées sont ajoutées via
+        :meth:`_ensure_derived_targets` et le DataFrame final est stocké dans
+        :attr:`features_df`.
 
         Returns:
-            Chemin du CSV de features produit.
+            pandas.DataFrame | None: Le DataFrame de features généré, ou
+            ``None`` si le catalogue est vide.
 
-        Raises:
-            FileNotFoundError: Si `catalog_path` est introuvable.
+        Side Effects:
+            Met à jour :attr:`features_df` et :attr:`last_features_path`.
+            Écrit un fichier ``features_*.csv`` dans ``processed_dir``.
         """
         print("\n=== ÉTAPE 3 : TRAITEMENT DES DONNÉES ET EXTRACTION DES FEATURES ===")
         if self.master_catalog_df.empty:
@@ -580,10 +629,14 @@ class MasterPipeline:
 
     def _list_feature_files(self, limit: int = 50) -> list[str]:
         """
-        Retourne la liste triée des CSV de features disponibles.
+        Retourne la liste triée des fichiers CSV de features disponibles.
+
+        Args:
+            limit (int, optional): Nombre maximum de fichiers à retourner. Les
+                fichiers sont triés par date de modification décroissante.
 
         Returns:
-            Liste de chemins `features_*.csv` triée par date décroissante.
+            list[str]: Chemins des fichiers ``features_*.csv`` les plus récents.
         """
         base = Path(self.processed_dir)
         if not base.exists():
@@ -597,21 +650,26 @@ class MasterPipeline:
         self, path: str | None = None, use_last: bool = False
     ) -> pd.DataFrame | None:
         """
-        Charge un CSV de features « prêt à entraîner ».
+        Charge un fichier CSV de features existant et reconstitue les cibles dérivées.
+
+        Si ``use_last`` est vrai, la méthode recherche le fichier
+        ``features_*.csv`` le plus récent dans ``processed_dir`` et le charge.
+        Sinon, elle charge le fichier indiqué par ``path``. Après chargement,
+        :meth:`_ensure_derived_targets` est appelée pour garantir la présence
+        des colonnes cibles dérivées.
 
         Args:
-            path: Chemin explicite du CSV de features. Si None et `use_last=True`,
-                charge le dernier fichier disponible dans `processed_dir`.
-            use_last: Si True, ignore `path` et charge le plus récent.
-            derive_targets: Si True, (re)crée les cibles dérivées (`main_class`,
-                `sub_class_top25`, `sub_class_bins`) si absentes.
+            path (str | None, optional): Chemin explicite vers le CSV de features
+                à charger. Ignoré si ``use_last`` est ``True``.
+            use_last (bool, optional): S’il est ``True``, charge automatiquement
+                le dernier fichier ``features_*.csv`` trouvé dans ``processed_dir``.
 
         Returns:
-            Le DataFrame de features chargé (et éventuellement complété).
+            pandas.DataFrame | None: Le DataFrame de features chargé, ou ``None`` en cas d’échec.
 
-        Raises:
-            FileNotFoundError: Si aucun fichier n’est trouvé.
-            ValueError: Si le CSV est vide ou corrompu.
+        Side Effects:
+            Met à jour :attr:`features_df` et :attr:`last_features_path`.
+            Affiche un résumé des colonnes catégorielles disponibles.
         """
         try:
             if use_last:
@@ -662,15 +720,22 @@ class MasterPipeline:
 
     def _ensure_derived_targets(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Crée les cibles dérivées dans `features_df` si absentes.
+        Crée les cibles dérivées standardisées si elles sont absentes dans un DataFrame.
 
-        Dérivations:
-            - `main_class` : lettre spectrale extraite de `subclass`/`class`.
-            - `sub_class_top25` : 25 sous-classes les plus fréquentes, sinon "Other".
-            - `sub_class_bins` : binning lettre + [0–4]/[5–9] (e.g. "G_0-4").
+        Cette fonction ajoute jusqu’à trois colonnes cibles dérivées :
 
-        Raises:
-            RuntimeError: Si `features_df` est `None` ou vide.
+        * ``main_class`` : la lettre spectrale (O, B, A, F, G, K, M, …) extraite
+          de la colonne ``subclass`` ou ``class``.
+        * ``sub_class_top25`` : les 25 sous‑classes les plus fréquentes dans
+          ``subclass`` ; toutes les autres sont regroupées sous ``"Other"``.
+        * ``sub_class_bins`` : combinaison de la lettre spectrale avec un bin
+          numérique (``"0-4"`` ou ``"5-9"``) selon le chiffre de sous‑classe.
+
+        Args:
+            df (pandas.DataFrame): DataFrame des features contenant ``class`` et/ou ``subclass``.
+
+        Returns:
+            pandas.DataFrame: Une copie du DataFrame d’entrée complétée avec les colonnes dérivées.
         """
         out = df.copy()
 
@@ -692,7 +757,7 @@ class MasterPipeline:
                 )
                 out["main_class"] = pd.Categorical(letters)
 
-        # ---- sub_class_top25 (depuis subclass si dispo)
+        # ---- sub_class_top25
         if "sub_class_top25" not in out.columns and "subclass" in out.columns:
             sub = out["subclass"].astype(str)
             top = sub.value_counts().index[:25]
@@ -729,6 +794,7 @@ class MasterPipeline:
     # ---------------------------------------------------------------------
     # Runs explorer helpers (highlight last run and refresh table)
     # ---------------------------------------------------------------------
+
     def _style_highlight_ts(
         self,
         df: pd.DataFrame,
@@ -837,6 +903,16 @@ class MasterPipeline:
             )
 
     def _parse_exclusions(self, txt: str, selected) -> list[str]:
+        """
+        Combine les exclusions provenant d’un champ texte et d’une sélection multiple.
+
+        Args:
+            txt (str): Chaîne CSV d’exclusions saisie manuellement.
+            selected: Valeurs sélectionnées dans la liste interactive (selectmultiple).
+
+        Returns:
+            list[str]: Liste triée de classes à exclure du jeu d’entraînement.
+        """
         excl = set()
         if selected:
             excl.update(str(s) for s in selected)
@@ -847,7 +923,21 @@ class MasterPipeline:
     def _apply_class_filter(
         self, df: pd.DataFrame, target_col: str, excluded: list[str]
     ):
-        """Filtre df en enlevant les lignes dont la classe (target_col) est dans excluded."""
+        """
+        Filtre un DataFrame en retirant les lignes dont la classe est exclue.
+
+        Args:
+            df (pandas.DataFrame): DataFrame source.
+            target_col (str): Nom de la colonne contenant la classe cible.
+            excluded (list[str]): Liste des classes à exclure.
+
+        Returns:
+            tuple[pandas.DataFrame, int]: Une copie du DataFrame filtré et le
+            nombre de lignes supprimées.
+
+        Raises:
+            ValueError: Si le filtrage laisse moins de deux classes distinctes.
+        """
         if not excluded:
             return df, 0
         before = len(df)
@@ -859,8 +949,6 @@ class MasterPipeline:
                 f"Le filtrage laisse {ncls} classe(s) — il en faut au moins 2."
             )
         return out, removed
-
-    # Entraînement et évaluation
 
     def run_training_session(
         self,
@@ -917,72 +1005,104 @@ class MasterPipeline:
         base_params: dict | None = None,
         exp_name: str | None = None,
         notes: str = "",
-        # --- NEW: filtres & PCA & sampler ---
+        # filtres & PCA & sampler
         var_threshold: float | None = None,
         corr_threshold: float | None = None,
         use_pca: bool | None = None,
         pca_components: float | int | None = None,
         sampler: str | None = None,
-        # --- NEW: tuning de seuils ---
+        # tuning de seuils
         tune_thresholds: bool | None = None,
         threshold_metric: str | None = None,
-        # --- NEW: n_jobs pour les learners ---
+        # n_jobs pour les learners
         n_jobs: int | None = None,
         exclude_classes: list[str] | None = None,
         # nombre de jobs pour l'estimateur (XGB/RF) et méthode d'arbre XGB
         **kwargs: Any,
     ) -> Optional[SpectralClassifier]:
         """
-        Entraîne, évalue et journalise un modèle sur `features_df`.
+        Entraîne et évalue un classifieur spectral en journalisant les artefacts.
 
-        Cette méthode applique la préparation (imputation/scaling), gère
-        optionnellement la sélection de variables, recherche d’hyperparamètres
-        (GridSearch/RandomizedSearch), calibration et export des artefacts.
+        Cette méthode constitue le cœur du pipeline d’apprentissage. Elle prépare
+        les données d’entraînement et de test (avec option de séparation par
+        groupes), applique éventuellement une sélection de variables, instancie et
+        entraîne le modèle choisi, effectue une recherche d’hyperparamètres et
+        une calibration si demandé, puis évalue le modèle et enregistre les
+        différents artefacts (matrice de confusion, courbes ROC/PR, importances,
+        rapports JSON, modèle sérialisé, etc.). De nombreuses options permettent
+        de contrôler la taille des ensembles, la sélection de features, le
+        sampling, la calibration, la recherche d’hyperparamètres et la
+        production de sorties.
 
         Args:
-            model_type: Nom du modèle: {"XGBoost","RandomForest","SVM","ExtraTrees","LogRegOVR","KNN","MLP","LDA","QDA","CatBoost","LightGBM","SoftVoting"}.
-            prediction_target: Nom de la colonne-cible à prédire.
-            n_estimators: Nombre d’estimateurs pour les modèles à arbres.
-            search: Type de recherche HP {"grid","random",None}.
-            param_grid: Grille de HP pour GridSearchCV.
-            param_distributions: Distributions pour RandomizedSearchCV.
-            scoring: Métrique d’optimisation scikit-learn.
-            cv_folds: Nombre de folds pour la CV.
-            cv_repeats: Répétitions de CV (None = simple k-fold).
-            group_col: Colonne de groupes (si split par groupes).
-            use_feature_selection: Active la sélection de variables.
-            selector_model: Sélecteur : {"XGBoost","RandomForest","ExtraTrees","LogReg L1"}.
-            selector_threshold: Seuil de sélection (ex. "median", 0.01, …).
-            selector_n_estimators: Nb d’arbres pour les sélecteurs basés arbres.
-            imputer_strategy: Stratégie d’imputation ("median","mean","most_frequent","knn", None).
-            knn_imputer_k: k du KNNImputer si `imputer_strategy="knn"`.
-            scaler_type: Type de scaler ("standard","minmax", None).
-            class_weight_mode: Mode de poids de classes ("balanced", None).
-            weight_col: Colonne de poids personnalisés (optionnel).
-            calibrate_probs: Calibrer les probabilités (Platt/Isotonic).
-            calibration_method: "sigmoid" (Platt) ou "isotonic".
-            base_params: Hyperparamètres de base du modèle (avant recherche).
-            n_jobs: Parallélisme pour le modèle et la recherche.
-            save_confusion_png: Sauvegarder la CM.
-            save_curves_roc_pr: Sauvegarder les courbes ROC/PR.
-            save_calibration: Sauvegarder la courbe de calibration.
-            save_feature_importance: Sauvegarder les importances (modèles compatibles).
-            export_test_predictions: Exporter un CSV de prédictions test.
-            normalized_cm: CM normalisée si True.
-            notes: Notes libres intégrées au rapport de session.
-            seed: Graine aléatoire.
-            test_size: Taille du split test (0–1).
-            val_size: Portion de validation (si early stopping, XGBoost).
-            early_stopping_rounds: Patience pour XGBoost (None = désactivé).
+            model_type (str): Type de modèle à entraîner (p. ex. ``"XGBoost"``,
+                ``"RandomForest"``, ``"SVM"``, etc.).
+            n_estimators (int): Nombre d’estimateurs (arbres) lorsque applicable.
+            prediction_target (str): Nom de la colonne cible à prédire dans
+                :attr:`features_df`.
+            save_and_log (bool): Si ``True``, enregistre le modèle et génère les artefacts.
+            use_feature_selection (bool): Active la sélection de variables via un modèle.
+            selector_model (str): Modèle utilisé pour la sélection de variables.
+            selector_threshold (str): Seuil pour la sélection (``"median"``, valeur
+                numérique, etc.).
+            selector_n_estimators (int): Nombre d’estimateurs pour le sélecteur.
+            selector_method (str): Méthode de sélection (``"sfrommodel"`` ou ``"rfecv"``).
+            search (str | None): Mode de recherche d’hyperparamètres (``"grid"``,
+                ``"random"`` ou ``None``).
+            cv_folds (int): Nombre de folds pour la validation croisée.
+            scoring (str): Métrique d’optimisation pour la recherche d’hyperparamètres.
+            n_iter (int): Nombre d’itérations pour une recherche aléatoire.
+            early_stopping (bool): Active l’early stopping (XGB).
+            early_stopping_rounds (int): Nombre de rounds sans gain pour stopper.
+            val_size (float): Taille du jeu de validation pour l’early stopping.
+            use_groups (bool): Active un split par groupes via ``group_col``.
+            group_col (str | None): Nom de la colonne contenant les groupes.
+            test_size (float): Proportion dédiée au test si pas de validation croisée.
+            random_state (int): Graine de génération aléatoire.
+            param_grid (dict | None): Grille pour GridSearchCV.
+            param_distributions (dict | None): Distributions pour RandomizedSearchCV.
+            use_balanced_weights (bool): Pondération équilibrée des classes.
+            calibrate_probs (bool): Calibration des probabilités.
+            calibration_method (str): Méthode de calibration (``"sigmoid"`` ou
+                ``"isotonic"``).
+            class_weight_mode (str | None): Mode de pondération des classes.
+            class_weight_alpha (float): Paramètre alpha pour la pondération.
+            weight_col (str | None): Colonne des poids d’échantillon.
+            weight_norm (str): Méthode de normalisation des poids.
+            repeated_cv (bool): Effectuer une validation croisée répétée.
+            cv_repeats (int): Nombre de répétitions pour la validation croisée.
+            calibrate_holdout_size (float): Taille du holdout pour la calibration.
+            calibrate_cv (int): Nombre de folds pour la calibration.
+            imputer_strategy (str | None): Stratégie d’imputation des valeurs manquantes.
+            knn_imputer_k (int): Nombre de voisins pour l’imputation KNN.
+            scaler_type (str | None): Type de mise à l’échelle des features.
+            mi_top_k (int | None): Nombre de features à sélectionner via l’information
+                mutuelle (0 pour désactiver).
+            var_threshold (float | None): Seuil de variance pour filtrer les features.
+            corr_threshold (float | None): Seuil de corrélation maximale entre features.
+            use_pca (bool | None): Active l’utilisation d’une PCA.
+            pca_components (float | int | None): Nombre ou proportion de composantes PCA.
+            sampler (str | None): Méthode de sur/échantillonnage (``"smote"``, etc.).
+            tune_thresholds (bool | None): Active le tuning de seuils par classe.
+            threshold_metric (str | None): Métrique pour le tuning de seuils.
+            n_jobs (int | None): Nombre de tâches parallèles pour certains modèles.
+            exclude_classes (list[str] | None): Liste de classes à exclure du
+                jeu d’entraînement.
+            **kwargs: Options supplémentaires transmises au classifieur.
 
         Returns:
-            Dictionnaire récapitulatif (chemins, métriques globales, labels, etc.).
+            SpectralClassifier | None: L’objet classifieur entraîné (typiquement
+            :class:`SpectralClassifier`), ou ``None`` si l’entraînement n’a pas
+            pu être réalisé.
 
         Raises:
-            RuntimeError: Si `features_df` n’est pas chargé ou si la colonne-cible
-                est introuvable.
-        """
+            ValueError: Si la séparation par groupes est activée sans fournir
+                ``group_col`` ou si le filtrage de classes laisse moins de deux classes.
+            RuntimeError: En cas d’échec critique lors de l’entraînement ou de la journalisation.
 
+        See Also:
+            :meth:`_log_and_report` — gestion des artefacts générés.
+        """
         if getattr(self, "features_df", None) is None or self.features_df.empty:
             print(
                 "ERREUR : Le DataFrame de features est vide. Veuillez d'abord exécuter `process_data`."
@@ -1055,7 +1175,6 @@ class MasterPipeline:
             use_balanced_weights=use_balanced_weights,
             calibrate_probs=calibrate_probs,
             calibration_method=calibration_method,
-            # nouvelles options transmises au classifieur
             class_weight_mode=class_weight_mode,
             class_weight_alpha=class_weight_alpha,
             weight_col=weight_col,
@@ -1072,7 +1191,7 @@ class MasterPipeline:
             selector_model=selector_model,
             selector_threshold=selector_threshold,
             selector_method=selector_method,
-            # NEW: filtres/PCA/sampler
+            # filtres/PCA/sampler
             var_threshold=var_threshold,
             corr_threshold=corr_threshold,
             use_pca=use_pca,
@@ -1122,8 +1241,9 @@ class MasterPipeline:
                     f"ERREUR : Group split activé mais colonne absente: {group_col!r}."
                 )
                 return
+
             try:
-                # Journalisation et rapport : retourne le chemin du dossier du run
+                # Journalisation & rapport : retourne le chemin du dossier du run
                 run_dir = self._log_and_report(
                     trained_clf,
                     feature_cols_before_fs,
@@ -1141,14 +1261,46 @@ class MasterPipeline:
                     notes=notes,
                     fi_n_repeats=fi_n_repeats,
                 )
-                # Enregistre le timestamp du dernier run et rafraîchit la table de runs
+
+                # Enregistre le timestamp du dernier run et rafraîchit la table des runs
                 if run_dir:
                     try:
                         ts = Path(run_dir).name
-                        self._last_run_ts = ts  # mémorise le dernier run effectué
+                        self._last_run_ts = ts
                         self._refresh_runs_table(highlight_ts=ts)
                     except Exception:
                         pass
+
+                # mettre à jour trained_spectra.csv via DatasetBuilder
+                try:
+                    # 1) Préférence : chemins issus des features (col. file_path) utilisés
+                    to_log = list(processed_files) if processed_files else []
+
+                    # 2) Robustesse : si un chemin absolu a fuité, rebase en relatif sur raw_data_dir
+                    rel: list[str] = []
+                    for p in to_log:
+                        q = str(p)
+                        if os.path.isabs(q):
+                            try:
+                                q = os.path.relpath(q, start=self.raw_data_dir)
+                            except Exception:
+                                pass
+                        rel.append(q.replace("\\", "/"))
+
+                    # 3) Fallback : si rien côté features, utiliser le lot courant (select_batch)
+                    if not rel and getattr(self, "current_batch", None):
+                        rel = [str(p).replace("\\", "/") for p in self.current_batch]
+
+                    if rel:
+                        self.builder.update_trained_log(rel)  # ← dédup & append safe
+                        print(
+                            f"  > trained_spectra.csv mis à jour (+{len(rel)} entrées)."
+                        )
+                    else:
+                        print("  > (info) Rien à journaliser (liste vide).")
+                except Exception as e:
+                    print(f"(warn) Mise à jour trained_spectra.csv impossible: {e}")
+
             except Exception as e:
                 print(f"(avertissement) Échec lors de la génération du rapport : {e}")
         else:
@@ -1169,16 +1321,25 @@ class MasterPipeline:
         **gaia_kwargs: Any,
     ) -> None:
         """
-        Exécute **tout le pipeline** de A à Z (sélection → entraînement).
+        Exécute l’ensemble du pipeline d’un bout à l’autre, de la sélection au modèle entraîné.
+
+        Cette méthode combine l’appel à :meth:`select_batch`,
+        :meth:`generate_and_enrich_catalog`, :meth:`process_data` et
+        :meth:`run_training_session` avec les paramètres fournis. Elle est
+        pratique pour exécuter un run complet sans passer par l’interface
+        interactive.
 
         Args:
-            batch_size: Taille du lot de spectres.
-            model_type: Modèle final.
-            n_estimators: Nombre d’arbres du modèle.
-            prediction_target: Cible de prédiction.
-            save_and_log: Si True, sauvegarde et journalise.
-            enrich_gaia: Si True, enrichit le catalogue avec Gaia.
-            **gaia_kwargs: Paramètres pour l’enrichissement Gaia.
+            batch_size (int, optional): Taille du lot de spectres à traiter.
+            model_type (str, optional): Type de modèle à entraîner.
+            n_estimators (int, optional): Nombre d’estimateurs du modèle final.
+            prediction_target (str, optional): Nom de la colonne cible.
+            save_and_log (bool, optional): Active la sauvegarde du modèle et des artefacts.
+            enrich_gaia (bool, optional): Si ``True``, enrichit le catalogue avec Gaia.
+            **gaia_kwargs: Paramètres additionnels pour l’enrichissement Gaia.
+
+        Side Effects:
+            Appelle en interne les autres méthodes du pipeline et met à jour l’état interne.
         """
         self.select_batch(batch_size=batch_size)
         if not self.current_batch:
@@ -1194,23 +1355,33 @@ class MasterPipeline:
             model_type, n_estimators, prediction_target, save_and_log
         )
 
+        # Ajout : journaliser les spectres entraînés dans trained_spectra.csv
+        # Lorsque save_and_log est activé et qu'un lot a été sélectionné,
+        # on enregistre la liste des fichiers relatifs dans le journal via le DatasetBuilder.
+        if save_and_log and getattr(self, "current_batch", None):
+            try:
+                # Utilise update_trained_log pour ne journaliser que les nouveaux spectres
+                self.builder.update_trained_log(self.current_batch)
+            except Exception as e:
+                print(f"(warn) Impossible de mettre à jour trained_spectra.csv : {e}")
+
     def interactive_training_runner(self) -> None:
         """
-        Affiche l’interface Jupyter d’entraînement.
+        Affiche l’interface interactive d’entraînement sous Jupyter ou VS Code.
 
-        L’UI est organisée en onglets :
-            - **Data & Split** : chargement d’un `features_*.csv`, cible, CV, seed…
-            - **Modèle & Prep** : choix du modèle, imputer/scaler, n_jobs, …
-            - **Feature Sel.** : sélection optionnelle des variables.
-            - **Recherche HP** : grilles/distributions + scoring et ES.
-            - **Poids & Calib.** : poids de classes/colonne de poids, calibration.
-            - **Sorties** : artefacts à produire (CM, ROC/PR, calibration, importances).
-            - **Lancer** : bouton “Lancer l’entraînement”, résumé JSON et file de batch.
-            - **Explorer les runs** : tableau des sessions, ouverture/zip du dossier.
+        L’interface utilisateur repose sur ipywidgets et est organisée en plusieurs
+        onglets permettant de configurer la source des features et la partition
+        des données, de choisir le type de modèle et ses paramètres, d’activer
+        la sélection de variables et la recherche d’hyperparamètres, de définir
+        les poids et la calibration, et de choisir les artefacts à produire.
+        Un bouton « Lancer l’entraînement » exécute :meth:`run_training_session`
+        avec les paramètres courants, et un explorateur de runs permet de
+        consulter les sessions précédentes.
 
         Notes:
-            - Le bouton “Lancer l’entraînement” appelle `_on_run()`.
-            - Les configurations sont persistées dans `last_config_used.json`.
+            La configuration courante peut être sauvegardée ou rechargée depuis un
+            fichier JSON via des boutons dédiés. Le lancement effectif est
+            délégué à une fonction interne ``_on_run``.
         """
         import json as _json
         import ipywidgets as _W
@@ -1326,7 +1497,7 @@ class MasterPipeline:
             layout=_W.Layout(width="260px"),
         )
         exclude_dd = _W.SelectMultiple(
-            options=[],  # rempli après chargement
+            options=[],
             value=(),
             description="Exclure (liste)",
             rows=6,
@@ -1346,7 +1517,7 @@ class MasterPipeline:
                     return
                 classes = sorted(df[col].astype(str).unique().tolist())
                 exclude_dd.options = classes
-                # ne force pas value, pour ne pas effacer une sélection en cours
+
             except Exception:
                 exclude_dd.options = []
                 exclude_dd.value = ()
@@ -1443,7 +1614,7 @@ class MasterPipeline:
         # n_jobs pour le parallélisme
         n_jobs = _W.IntSlider(value=-1, min=-1, max=16, step=1, description="n_jobs")
 
-        # NEW: filtres colinéarité/variance + PCA
+        # filtres colinéarité/variance + PCA
         var_threshold = _W.FloatText(description="Var. threshold", value=0.0)
         corr_threshold = _W.FloatSlider(
             description="Corr. max", min=0.90, max=0.999, step=0.001, value=0.98
@@ -1452,7 +1623,7 @@ class MasterPipeline:
         pca_components = _W.FloatSlider(
             description="PCA n_comp", min=0.5, max=0.999, step=0.001, value=0.99
         )
-        # NEW: sampler
+        # sampler
         sampler = _W.Dropdown(
             description="Sampler (CV)",
             options=["none", "smote", "borderline", "smoteenn", "adasyn"],
@@ -1498,7 +1669,7 @@ class MasterPipeline:
         fs_n = _W.IntSlider(
             value=400, min=50, max=1500, step=50, description="selector_n_estimators"
         )
-        # NEW: RFECV vs SelectFromModel
+        # FECV vs SelectFromModel
         fs_kind = _W.Dropdown(
             description="Méthode FS",
             options=[("SelectFromModel", "sfrommodel"), ("RFECV", "rfecv")],
@@ -1907,7 +2078,7 @@ class MasterPipeline:
             else:
                 d = {}
             param_dists.value = json.dumps(d, indent=2)
-            search.value = "random"  # par défaut pour les templates larges
+            search.value = "random"
             template_dropdown.value = ""  # reset visuel
 
         apply_template_btn.on_click(_apply_template)
@@ -1919,7 +2090,6 @@ class MasterPipeline:
             except Exception:
                 grid = {}
 
-            # We don't use param_dists to compute the fit count; only validate JSON
             try:
                 json.loads(param_dists.value or "{}")
             except Exception:
@@ -1990,10 +2160,6 @@ class MasterPipeline:
                         )
                     return None
 
-            # Param grids/distributions (ajout de n_jobs si défini)
-            # pg = _parse_json(param_grid) or {}
-            # pdists = _parse_json(param_dists) or {}
-
             def _get_excluded():
                 return self._parse_exclusions(exclude_txt.value, exclude_dd.value)
 
@@ -2014,14 +2180,14 @@ class MasterPipeline:
                 "knn_imputer_k": knn_k.value,
                 "scaler_type": None if scaler.value == "none" else scaler.value,
                 "base_params": _parse_json(base_params),
-                # NEW: parallélisme (utilisé par run_training_session → clf.n_jobs)
+                # parallélisme (utilisé par run_training_session → clf.n_jobs)
                 "n_jobs": int(n_jobs.value),
                 # Feature selection
                 "use_feature_selection": fs_enable.value,
                 "selector_model": fs_method.value,
                 "selector_threshold": fs_thresh.value,
                 "selector_n_estimators": fs_n.value,
-                # NEW: type de sélection (RFECV vs SelectFromModel)
+                # type de sélection (RFECV vs SelectFromModel)
                 "selector_method": fs_kind.value,  # <— BRANCHÉ
                 "mi_top_k": (None if (mi_topk.value or 0) <= 0 else int(mi_topk.value)),
                 # Search
@@ -2060,7 +2226,7 @@ class MasterPipeline:
                     None if not use_pca.value else float(pca_components.value)
                 ),
                 "sampler": (None if sampler.value == "none" else sampler.value),
-                # NEW: tuning de seuils
+                # Tuning de seuils
                 "tune_thresholds": bool(tune_thresholds.value),
                 "threshold_metric": threshold_metric.value,
                 # Outputs
@@ -2334,10 +2500,9 @@ class MasterPipeline:
                 return
             p = Path(val)
             print(f"Dossier: {p}")
-            # Essaye d’ouvrir dans l’OS (ok en local VS Code)
             try:
                 if os.name == "nt":
-                    os.startfile(str(p))  # type: ignore[attr-defined]
+                    os.startfile(str(p))
                 elif sys.platform == "darwin":
                     os.system(f'open "{p}"')
                 else:
@@ -2351,9 +2516,8 @@ class MasterPipeline:
                 print("Pas de run sélectionné.")
                 return
             run_dir = Path(val)
-            zip_path = run_dir.with_suffix("")  # même nom, sans .zip pour make_archive
+            zip_path = run_dir.with_suffix("")
             try:
-                # shutil.make_archive ajoute l'extension .zip
                 archive = shutil.make_archive(
                     str(zip_path), "zip", root_dir=str(run_dir)
                 )
@@ -2542,29 +2706,36 @@ class MasterPipeline:
         fi_n_repeats: int = 10,
     ) -> str | None:
         """
-        Sauve le modèle, calcule les métriques et génère les artefacts de session.
+        Sauvegarde le modèle, calcule les métriques et génère les artefacts de session.
 
         Args:
-            clf: Classifieur entraîné (wrapper interne).
-            feature_cols: Noms des colonnes de features utilisées (après FS).
-            X: Matrice de features de test ou complète selon protocole.
-            y: Cibles vraies alignées avec `X`.
-            y_pred: Prédictions déjà calculées (sinon calcul interne).
-            processed_files: Liste de fichiers FITS traités durant la session.
-            save_confusion_png: Génère la CM (normalisée si `normalized_cm`).
-            save_curves_roc_pr: Génère les courbes ROC et PR multi-classes.
-            save_calibration: Génère la courbe de calibration.
-            save_feature_importance: Sauve un barplot des importances si dispo.
-            export_test_predictions: Exporte un CSV des prédictions test.
-            normalized_cm: Normalise la CM par ligne si True.
-            notes: Texte libre à inclure dans le `session_report_*.json`.
+            clf (SpectralClassifier): Classifieur entraîné.
+            feature_cols (list[str] | None): Noms des colonnes de features utilisées
+                après sélection.
+            X (pandas.DataFrame): Matrice de features pour l’évaluation/test.
+            y (numpy.ndarray): Cibles vraies alignées avec ``X``.
+            processed_files (list[str]): Liste de fichiers FITS traités durant
+                la session.
+            groups (numpy.ndarray | None): Tableau des groupes utilisé pour la CV,
+                ou ``None`` si non applicable.
+            save_confusion_png (bool): Sauvegarder la matrice de confusion au format PNG.
+            save_curves_roc_pr (bool): Sauvegarder les courbes ROC et PR multi‑classes.
+            save_calibration (bool): Sauvegarder la courbe de calibration.
+            save_feature_importance (bool): Sauvegarder un diagramme d’importance des features.
+            export_test_predictions (bool): Exporter un CSV des prédictions sur le jeu de test.
+            cm_normalized (bool): Normaliser la matrice de confusion par ligne.
+            exp_name (str | None): Nom lisible de l’expérience à inclure dans le rapport JSON.
+            notes (str): Notes libres à inclure dans le rapport JSON.
+            fi_n_repeats (int): Nombre de répétitions pour la permutation d’importance des features.
 
         Returns:
-            Chemin du dossier de run (ex: `reports/2025…Z/`).
+            str | None: Le chemin du dossier de run créé (p. ex. ``reports/20250827T162302Z/``)
+            ou ``None`` en cas d’erreur.
 
         Side Effects:
-            Écrit le modèle (`.pkl` + meta JSON), figures PNG, rapport JSON,
-            et optionnellement `test_predictions_*.csv`.
+            Écrit sur disque : le modèle sérialisé (.pkl), un fichier de métadonnées JSON,
+            des figures (matrice de confusion, courbes ROC/PR, calibration), un
+            rapport JSON résumant la session et, éventuellement, un CSV des prédictions.
         """
         from sklearn.metrics import (
             balanced_accuracy_score as sk_balanced_accuracy_score,
@@ -2620,7 +2791,6 @@ class MasterPipeline:
             "n_candidate_features": (
                 int(len(feature_cols)) if feature_cols is not None else None
             ),
-            # ajoute le dossier de run pour faciliter les comparaisons
             "run_dir": run_dir,
             "exp_name": exp_name,
         }
@@ -2661,7 +2831,6 @@ class MasterPipeline:
         report_dict, cm, accuracy = None, None, None
 
         try:
-            # réutilise exactement le même test set que pendant l'entraînement
             if hasattr(clf, "_split_info") and "te_idx" in clf._split_info:
                 te_idx = clf._split_info["te_idx"]
                 X_te = X.iloc[te_idx] if hasattr(X, "iloc") else X[te_idx]
@@ -2700,9 +2869,6 @@ class MasterPipeline:
             print(f"  (avertissement) Échec calcul métriques : {e}")
             report_dict, cm, accuracy = None, None, None
 
-        # Ajoute la balanced accuracy (robuste aux types)
-
-        # Si on a encodé y pendant l'entraînement (LabelEncoder), on encode aussi y_te
         if getattr(clf, "label_encoder", None) is not None:
             y_te_enc = clf.label_encoder.transform(y_te)
             y_true_for_scores = y_te_enc
@@ -2914,7 +3080,7 @@ class MasterPipeline:
 
                 classes = list(clf.class_labels)
                 n_classes = len(classes)
-                # Encodage des labels (comme ci-dessus)
+                # Encodage des labels
                 if n_classes > 0:
                     if isinstance(y_true_for_scores[0], (int, np.integer)):
                         encoded_y_true = np.asarray(y_true_for_scores)
@@ -3112,7 +3278,6 @@ class MasterPipeline:
             "accuracy": accuracy,
             "classification_report": report_dict,
             "confusion_matrix": cm.tolist() if cm is not None else None,
-            # propager le nom d'expérience
             "exp_name": exp_name,
             "notes": notes,
             "balanced_accuracy": float(bal_acc_val),
@@ -3160,7 +3325,6 @@ class MasterPipeline:
         try:
             from sklearn.metrics import balanced_accuracy_score
 
-            # y_true / y_pred sont calculés plus haut
             y_true_for_scores = (
                 y_te_enc
                 if "y_te_enc" in locals()
