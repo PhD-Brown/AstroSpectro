@@ -8,7 +8,7 @@ name = "astrospectro"
 version = "0.1.0"
 description = "A modular pipeline for stellar spectral classification."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11,<3.12"
 license = { text = "MIT License" }
 authors = [
   { name = "Alex Baker", email = "alex.baker.1@ulaval.ca" },
@@ -40,14 +40,18 @@ dependencies = [
     "astroquery",
     "ruff",
     "black",
-    "catboost"
+    "catboost",
+    "python-dotenv",
+    "Pillow"
 ]
 
 [project.urls]
 Homepage = "https://github.com/PhD-Brown/AstroSpectro"
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+py-modules = ["utils"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-dir]
-"" = "src"
+include = ["*"]
