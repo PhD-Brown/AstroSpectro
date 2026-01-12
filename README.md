@@ -80,7 +80,7 @@ For users who prefer to work on their own machine.
 
 #### Prerequisites
 
-*   Python 3.9+
+*   Python **3.11.x**
 *   Git
 
 #### Installation Steps
@@ -90,17 +90,51 @@ For users who prefer to work on their own machine.
     git clone https://github.com/PhD-Brown/AstroSpectro.git
     cd AstroSpectro
     ```
-2.  **Set up your Python environment**
-    ```sh
-    # Create and activate a virtual environment
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `.\venv\Scripts\activate`
-    
-    # Install dependencies
-    pip install -r requirements.txt
+2. **Create and activate a virtual environment** (at the repo root, named `.venv`)
+
+    ```powershell
+    py -3.11 -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+
+    # If script execution is blocked:
+    # Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
     ```
-3.  **Run the pipeline**
-    *   The main entry point is the `notebooks/00_master_pipeline.ipynb` notebook.
+
+    ```bash
+    python3.11 -m venv .venv
+    source .venv/bin/activate
+    ```
+
+3. **Install AstroSpectro (editable) and dependencies**
+
+    ```sh
+    python -m pip install --upgrade pip
+    python -m pip install -e . -r requirements.txt
+    ```
+
+4. **Register the Jupyter kernel** (so notebooks use this venv)
+
+    ```sh
+    python -m ipykernel install --user --name astrospectro \
+      --display-name "AstroSpectro (Py3.11)"
+    ```
+
+5. **(Optional) Configure credentials**
+
+    ```sh
+    # Windows
+    copy .env.example .env
+    # macOS/Linux
+    cp .env.example .env
+    ```
+
+Fill `GAIA_USER` / `GAIA_PASS` in `.env` if you have an account (otherwise anonymous/bulk works for many tasks).
+
+6. **Run the pipeline**
+
+    * Open `notebooks/00_master_pipeline.ipynb`
+    * Select the kernel **AstroSpectro (Py3.11)** (top-right in VS Code/Jupyter)
+    * Follow the notebook cells to initialize and launch the workflow
     *   For a detailed step-by-step guide, see the **[First Run Tutorial](https://phd-brown.github.io/AstroSpectro/docs/getting-started/first-run)** in our documentation.
 ---
 

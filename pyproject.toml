@@ -42,7 +42,8 @@ dependencies = [
     "black",
     "catboost",
     "python-dotenv",
-    "Pillow"
+    "Pillow",
+    "python-dateutil"
 ]
 
 [project.urls]

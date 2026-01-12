@@ -70,10 +70,10 @@ const config: Config = {
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'docsSidebar',
-          position: 'left',
+          to: '/docs',
           label: 'Documentation',
+          position: 'left',
+          activeBasePath: 'docs',
         },
         {
           to: '/journal',

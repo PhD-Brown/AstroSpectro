@@ -57,3 +57,14 @@ catboost_training.json
 outputs/
 figures/
 tmp/
+
+# JetBrains / PyCharm
+.idea/
+*.iml
+
+# Node / Docusaurus
+node_modules/
+**/node_modules/
+.docusaurus/
+build/
+.cache/
