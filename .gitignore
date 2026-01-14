@@ -33,15 +33,12 @@ archive/
 models/
 *.fits
 *.fits.gz
-*.csv
 *.pkl
 static/images/
 /data/catalog/trained_spectra.csv
 delta_ms_poly_coeffs.npy
 
 # === Output, figures, temporary files ===
-*.pdf
-*.svg
 *.tmp
 *.out
 

@@ -222,6 +222,31 @@ body[data-docs-slug='/'] li {
   align-items: center;
 }
 
+/* Boutons d'appel à l'action plein largeur mais centrés */
+.cta-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 0.35rem;
+  padding-top: calc(var(--ifm-button-padding-vertical) + 9px);
+  padding-bottom: calc(var(--ifm-button-padding-vertical) - 9px);
+  padding-left: 2.25rem;
+  padding-right: 2.25rem;
+  margin: 0 auto;
+  min-width: 260px;
+}
+
+.cta-button svg {
+  margin-left: 0.15rem;
+}
+
+/* Varie l'équilibre vertical pour les CTA primaires (emoji + texte long) */
+.button--primary.cta-button {
+  padding-top: calc(var(--ifm-button-padding-vertical) + 12px);
+  padding-bottom: calc(var(--ifm-button-padding-vertical) - 12px);
+}
+
 /*
   ==========================================================================
   Style pour les cartes d'étapes ("Step Cards") dans les tutoriels

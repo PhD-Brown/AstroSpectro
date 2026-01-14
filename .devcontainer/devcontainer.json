@@ -1,10 +1,10 @@
 {
   "name": "AstroSpectro Dev Environment",
 
-  // --- On utilise notre propre Dockerfile ---
+
   "build": {
     "dockerfile": "Dockerfile",
-    "context": ".." // Le contexte est le dossier parent, donc la racine du projet
+    "context": ".."
   },
 
   // --- Personnalisation de VS Code ---

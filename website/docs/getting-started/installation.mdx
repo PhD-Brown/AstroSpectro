@@ -7,90 +7,284 @@ sidebar_label: Installation
 <!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faTools, faBoxOpen, faVial, faPlayCircle, faRocket, faCloud, faDesktop } from '@fortawesome/free-solid-svg-icons'
+import { faTools, faCloud, faDesktop, faRocket, faKey, faCircleCheck, faStopCircle } from '@fortawesome/free-solid-svg-icons'
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 
 # <FontAwesomeIcon icon={faTools} /> Installation
 
-Bienvenue sur la page d'installation du pipeline **Astro-Spectro** !  
+Bienvenue sur la page d'installation du pipeline **AstroSpectro** !  
 Vous avez deux options pour démarrer : via le cloud avec GitHub Codespaces (simple et rapide) ou manuellement sur votre machine locale.
 
-> Pour toute explication détaillée, consultez la [Guide utilisateur](https://phd-brown.github.io/AstroSpectro/docs/user-guides).
+> Pour toute explication détaillée, consultez le [Guide utilisateur](https://phd-brown.github.io/AstroSpectro/docs/user-guides).
 
-### <FontAwesomeIcon icon={faCloud} /> Option 1 : Via GitHub Codespaces (Recommandé)
+## <FontAwesomeIcon icon={faCloud} /> Option 1 : GitHub Codespaces (Recommandé)
 
 C'est la méthode la plus simple. Elle ne requiert **aucune installation** sur votre ordinateur.
 
-1.  **Rendez-vous sur le [dépôt GitHub du projet](https://github.com/PhD-Brown/AstroSpectro)**.
-2.  Cliquez sur le bouton vert **`< > Code`**, puis allez dans l'onglet **`Codespaces`**.
-3.  Cliquez sur **`Create codespace on main`**.
+### Étape 1 : Créer le Codespace
+
+1. Rendez-vous sur le **[dépôt GitHub du projet](https://github.com/PhD-Brown/AstroSpectro)**.
+2. Cliquez sur **`< > Code`** → onglet **Codespaces**.
+3. Cliquez sur **`Create codespace on main`**.
 
 <div style={{textAlign: 'center', margin: '2rem 0'}}>
-  <a href="https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=588658495" className="button button--success button--lg">
+  <a href="https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=588658495" className="button button--success button--lg cta-button">
     Lancer un Codespace Maintenant →
   </a>
 </div>
 
-L'environnement se préparera automatiquement en quelques minutes, incluant l'installation des dépendances et le téléchargement d'un jeu de données de démarrage.
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/create-codespace.png')}
+    alt="GitHub → Code → Codespaces → Create codespace on main"
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>GitHub → Code → Codespaces → Create codespace on main</small>
+  </p>
+</div>
+
+<br />
+
+:::tip Note sur la bande passante
+L'environnement Codespaces est une machine virtuelle complète. Bien que l'exécution du code soit rapide, les opérations d'entrée/sortie (comme le téléchargement de données massives) dépendent de la bande passante du cloud, ce qui peut occasionner un léger délai par rapport à un stockage local SSD. 
+:::
+
+<br />
+
+:::info Interface familière
+Par défaut, Codespaces s'ouvre dans une interface style VS Code. Si vous préférez les notebooks classiques, cliquez sur le menu de votre Codespace et sélectionnez **`Open in JupyterLab`**.
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/jupyter.png')}
+    alt=""
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>Open in JupyterLab</small>
+  </p>
+</div>
+:::
+
+<br />
+
+### Étape 2 : Configurer `.env` (Gaia)
+
+Vous devez renommer le fichier **`.env.example`** au nom de **`.env`** et y mettre vos informations de **[connexion Gaia](/docs/user-guides/connexion-gaia)**.
+
+:::danger  Sécurité
+Ne committez **jamais** votre `.env` sur GitHub. Il contient vos mots de passe.
+:::
+
+<br />
+
+### Étape 3 : Sélectionner le bon Kernel (Jupyter / VS Code)
+
+Dans Codespaces, ouvrez un notebook (`.ipynb`) puis :
+
+- Cliquez sur **Select Kernel** (en haut à droite)
+- Choisissez **`venv (Python 3.11.6)`**
+
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/codespace.png')}
+    alt="ouvrez un notebook → Select Kernel → venv (Python 3.11.6)"
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>ouvrez un notebook → Select Kernel → venv (Python 3.11.6)</small>
+  </p>
+</div>
+
+<br />
+
+:::tip Astuce
+Si vous ne voyez pas le kernel `venv`, redémarrez le notebook (**Restart Kernel**) ou rechargez la page du Codespace.
+:::
+
+<br />
+
+### Étape 4 : Installation terminée !
+
+Votre environnement est maintenant entièrement configuré : les dépendances sont installées et le noyau Python est prêt à l'emploi.
+
+**Et maintenant ?**
+Il est temps de passer à l'action ! Pour apprendre à télécharger vos premiers spectres et exécuter votre première classification scientifique, passez à la section suivante :
+
+<br />
+
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <a
+    className="button button--primary button--lg cta-button"
+    href="./first-run"
+    style={{textDecoration: 'none'}}
+  >
+    🚀 Guide de Démarrage : Lancer le Pipeline
+  </a>
+</div>
+
+<br />
+
+### Étape 5 : Gérer son Codespace (Important)
+
+Si vous utilisez GitHub Codespaces, gardez en tête que l'utilisation consomme des minutes de calcul (limitées, même pour les étudiants).
+
+:::warning Ne confondez pas "Arrêter" et "Supprimer"
+* **⏸️ Arrêter (Stop) :** Met la machine en pause. Vos fichiers, vos données téléchargées et votre environnement `.env` sont **sauvegardés**. C'est l'action recommandée quand vous avez fini votre journée.
+* **🗑️ Supprimer (Delete) :** Détruit complètement l'environnement. Tout travail non sauvegardé sur GitHub (via `git push`) sera **perdu**. Utilisez ceci uniquement pour faire le ménage.
+:::
+
+**Comment arrêter proprement ?**
+1.  Allez sur votre tableau de bord : [github.com/codespaces](https://github.com/codespaces).
+2.  Cliquez sur les trois points `...` à côté de votre instance active.
+3.  Sélectionnez **Stop codespace**.
+
+*(Note : Par défaut, Codespaces s'arrête aussi automatiquement après 30 minutes d'inactivité).*
 
 ---
 
-### <FontAwesomeIcon icon={faDesktop} /> Option 2 : Installation Locale Manuelle
+## <FontAwesomeIcon icon={faDesktop} /> Option 2 : Installation Locale Manuelle
 
-#### Prérequis
+Cette méthode installe le projet sur votre propre machine. Assurez-vous d'avoir les prérequis suivants :
 
-- **Python 3.9+**
-- **Git**
-- (Optionnel) **JupyterLab** ou **Jupyter Notebook** pour exécuter les notebooks interactifs
+* **Python 3.11** (Version recommandée et testée).
+    * *Note : Python 3.9+ peut fonctionner mais n'est pas garanti.*
+* **Git** installé.
+* (Optionnel) **JupyterLab** ou VS Code pour exécuter les notebooks.
+
+<br />
 
 ### Étape 1 : Cloner le dépôt
-
-Ouvrez votre terminal et lancez :
+Ouvrez votre terminal et lancez :
 
 ```bash
 git clone https://github.com/PhD-Brown/AstroSpectro.git
 cd AstroSpectro
 ```
 
-### Étape 2 : Créer et activer un environnement virtuel Python
+<br />
+
+### Étape 2 : Installation (Deux méthodes)
+
+Choisissez la méthode qui vous convient le mieux.
+
+
+#### ⚡ Méthode A : Installation Automatique (Recommandé)
+
+Nous fournissons des scripts qui créent l'environnement virtuel, installent les dépendances et configurent le noyau Jupyter pour vous en une seule commande.
+
+**Sur Windows (PowerShell) :**
+```PowerShell
+# 1. Autoriser l'exécution de scripts (temporaire pour cette fenêtre)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+# 2. Lancer le script
+.\scripts\setup.ps1
+```
+
+**Sur macOS / Linux :**
+```bash
+# Donnez les permissions d'exécution si nécessaire
+chmod +x scripts/setup.sh
+# Lancez le script
+bash scripts/setup.sh
+```
+
+<br />
+
+#### 🛠️ Méthode B : Installation Manuelle (Détaillée)
+
+Si vous préférez contrôler chaque étape ou si les scripts ne fonctionnent pas, suivez cette procédure :
+
+**1. Créer et activer l'environnement virtuel**
 
 ```bash
+# Création
 python -m venv venv
-source venv/bin/activate    # Sur Windows : .\venv\Scripts\activate
+
+# Activation
+# Windows (PowerShell) :
+.\venv\Scripts\Activate.ps1
+# Windows (CMD) :
+.\venv\Scripts\activate.bat
+# Mac/Linux :
+source venv/bin/activate
 ```
 
-### Étape 3 : Installer les dépendances
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/venv.png')}
+    alt="Terminal avec venv activé"
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>Terminal avec venv activé</small>
+  </p>
+</div>
+
+**2. Installer le projet et ses dépendances**  
+
+L'option *`-e .`* est cruciale pour le développement. Nous utilisons python -m pip pour garantir l'installation dans le bon environnement.
 
 ```bash
-pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -e .
+python -m pip install -r requirements.txt
 ```
 
-Les dépendances principales incluent :  
-`astropy`, `specutils`, `numpy`, `scikit-learn`, `xgboost`, `matplotlib`, `imbalanced-learn`, `pandas`, `seaborn`, `tqdm`, `joblib`, `requests`, `jupyterlab`, `notebook`, `ipywidgets`  
-Pour des fonctionnalités avancées : dé-commentez dans `requirements.txt` les lignes pour `lightgbm`, `pywavelets`, etc.
+**3. Enregistrer le noyau (Kernel) pour Jupyter**
 
-
-### Étape 4 : Lancer Jupyter (optionnel mais recommandé)
-
-Pour démarrer l'interface interactive :
+Cette étape permet à Jupyter de reconnaître votre environnement virtuel sous le nom "AstroSpectro".
 
 ```bash
-jupyter lab
-# ou
-jupyter notebook
+python -m pip install ipykernel
+python -m ipykernel install --user --name astrospectro --display-name "AstroSpectro (Py3.11)"
 ```
 
-### Étape 5 : Premier lancement du pipeline
+<br />
 
-Le notebook principal est :  
-[`notebooks/00_master_pipeline.ipynb`](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/00_master_pipeline.ipynb)
+### Étape 3 : Configuration (.env)
 
-Pour télécharger vos premiers spectres :  
-Ouvrez [`notebooks/01_download_spectra.ipynb`](https://github.com/PhD-Brown/AstroSpectro/blob/main/notebooks/01_download_spectra.ipynb) et exécutez les cellules pour récupérer un lot d’exemple depuis LAMOST DR5.
+Comme pour l'option Cloud, vous devez configurer vos accès.
+
+Vous devez renommer le fichier **`.env.example`** au nom de **`.env`** et y mettre vos informations de **[connexion Gaia](/docs/user-guides/connexion-gaia)**.
+
+:::danger  Important
+Ne committez **jamais** votre `.env` sur GitHub. Il contient vos mots de passe.
+:::
+
+<br />
+
+### Étape 4 : Installation terminée !
+
+Votre environnement local est maintenant prêt : votre environnement virtuel est activé, le projet est installé en mode éditable et le noyau est enregistré.
+
+**Et maintenant ?**
+Il est temps de tester votre installation ! Passez à la section suivante pour apprendre à utiliser le pipeline sur vos données.
+
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <a
+    className="button button--primary button--lg cta-button"
+    href="./first-run"
+    style={{textDecoration: 'none'}}
+  >
+    🚀 Guide de Démarrage : Lancer le Pipeline
+  </a>
+</div>
+
+<br />
 
 :::info 💡 En cas de problème
+- Si vous devez recommencer à zéro (nettoyage complet), vous pouvez utiliser nos scripts de nettoyage :
 
+  - Windows : *`.\scripts\clean.ps1`*
+  - Mac/Linux : *`scripts/clean.sh`*
 - Consultez la section [FAQ](https://phd-brown.github.io/AstroSpectro/docs/community/faq) dans la documentation.
 - Ouvrez une [issue GitHub](https://github.com/PhD-Brown/AstroSpectro/issues) pour obtenir de l’aide.
 :::
+
+<br />
 
 > **Félicitations, vous êtes prêt à explorer AstroSpectro !**

@@ -65,6 +65,7 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'user-guides/downloading-data',
+        'user-guides/connexion-gaia',
         'user-guides/preprocessing',
         'user-guides/feature-extraction',
         'user-guides/model-training',
