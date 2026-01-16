@@ -6,55 +6,178 @@ sidebar_position: 2
 <!-- Complet for v1.0.0 release -->
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faRocket, faDownload, faCogs, faPoll, faSpinner, faTrophy } from '@fortawesome/free-solid-svg-icons'
+import { faDownload, faCogs, faPoll, faSpinner, faTrophy, faBookOpen } from '@fortawesome/free-solid-svg-icons'
 import Admonition from '@theme/Admonition';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 
 # <FontAwesomeIcon icon={faSpinner} /> Premier Lancement : De A à Z
 
-Maintenant que votre environnement est configuré, nous allons lancer le pipeline complet en utilisant le notebook principal `00_master_pipeline.ipynb`. Ce notebook orchestre toutes les étapes, de la sélection des données à la génération d'un rapport de session complet.
+Maintenant que votre environnement est configuré, nous allons lancer le pipeline complet via le notebook principal `00_master_pipeline.ipynb`.
+Ce notebook orchestre toutes les étapes, de la sélection des données à la génération d’un rapport de session.
 
 <Admonition type="info" title="Utilisateurs de Codespaces">
   <p>
-    Si vous utilisez un Codespace, l'environnement est déjà prêt ! Vous pouvez directement ouvrir le dossier <code>notebooks/</code> et lancer <code>00_master_pipeline.ipynb</code>. Un petit jeu de données a même été téléchargé pour vous.
+    Si vous utilisez un Codespace, l’environnement est déjà prêt.
+    Ouvrez <code>notebooks/</code> et lancez <code>00_master_pipeline.ipynb</code>.
+    Un petit jeu de données de démonstration peut déjà être présent selon la configuration du Codespace.
   </p>
 </Admonition>
 
-### <FontAwesomeIcon icon={faDownload} /> Étape 1 : Acquérir des Données (si nécessaire)
+<Admonition type="tip" title="Checklist (30 secondes)">
+  <ul>
+    <li>Vous exécutez bien dans le kernel <b>AstroSpectro (Py3.11)</b> (ou équivalent).</li>
+    <li>Votre fichier <code>.env</code> est configuré si vous utilisez des accès (voir **[Connexion Gaia](/docs/user-guides/connexion-gaia)**).</li>
+    <li>En local : <code>data/raw/</code> contient des spectres (sinon faites l’étape 1).</li>
+  </ul>
+</Admonition>
 
-Si c'est votre toute première exécution en local, le dossier `data/raw/` est vide.
-1.  Ouvrez le notebook `notebooks/01_download_spectra.ipynb`.
-2.  Utilisez l'interface interactive pour télécharger un premier lot de spectres (quelques centaines suffisent pour un test).
+## <FontAwesomeIcon icon={faDownload} /> Étape 1 : Acquérir des Données (si nécessaire)
 
-### <FontAwesomeIcon icon={faCogs} /> Étape 2 : Lancer le Pipeline de Production
+Si c’est votre toute première exécution en local, le dossier `data/raw/` est vide :
 
-Une fois que vous avez des données, le processus est entièrement automatisé.
-1.  Ouvrez le notebook principal : `notebooks/00_master_pipeline.ipynb`.
-2.  **Exécutez toutes les cellules de haut en bas.**
+1. Ouvrez le notebook `notebooks/01_download_spectra.ipynb`.
+2. Utilisez l'interface ci-dessous pour lancer le téléchargement. Pour un test rapide, sélectionnez environ 1000 spectres.
 
-Le notebook va exécuter séquentiellement le `MasterPipeline` :
--   **Étape 2 : Sélection d'un lot** de spectres non traités.
--   **Étape 3 : Génération d'un catalogue local** pour ce lot.
--   **Étape 4 : Traitement & Extraction des Features** (plus de 20 *features* par spectre).
--   **Étape 5 : Entraînement & Évaluation** avec une interface interactive pour choisir entre `RandomForest` et `XGBoost` et configurer le nombre d'estimateurs.
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/01_download_spectra.png')}
+    alt="Figure 1 : L'interface interactive pour configurer et lancer l'acquisition des données."
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>Figure 1 : L'interface interactive pour configurer et lancer l'acquisition des données.</small>
+  </p>
+</div>
 
-### <FontAwesomeIcon icon={faPoll} /> Étape 3 : Examiner les Résultats
+> Besoin des options avancées (workers/scrapes/tqdm/auto-throttle/validation FITS/dry-run) ?
+> Elles sont documentées dans **[Guides d’utilisation → Téléchargement](/docs/user-guides/downloading-data)**.
 
-À la fin de l'exécution, plusieurs artefacts cruciaux auront été créés :
--   Un fichier **CSV** dans `data/processed/` avec vos *features* prêtes pour l'analyse.
--   Un modèle **`.pkl`** sauvegardé dans `data/models/`.
--   Un **rapport de session JSON** détaillé dans `data/reports/`.
--   Directement dans le notebook, vous verrez le **rapport de classification** et la **matrice de confusion** de votre modèle optimisé.
+## <FontAwesomeIcon icon={faCogs} /> Étape 2 : Lancer la pipeline complète
 
-### 🎉 Vous avez terminé le Démarrage Rapide !
+Une fois que vous avez des données :
 
-<div className="congrats-box">
-  <div className="congrats-icon">
-    <FontAwesomeIcon icon={faTrophy} size="4x" />
+1. Ouvrez le notebook principal : `notebooks/00_master_pipeline.ipynb`.
+2. **Exécutez toutes les cellules de haut en bas.**
+
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/master.png')}
+    alt="Figure 2 : L'orchestrateur principal (00_master_pipeline) prêt à l'emploi."
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>Figure 2 : L'orchestrateur principal (`00_master_pipeline`) prêt à l'emploi.</small>
+  </p>
+</div>
+
+Le notebook exécute séquentiellement le `MasterPipeline` :
+
+- **Initialise l'environnement**, l'accès à **Gaia**, ainsi que crée ou valide l'arborescence des répertoires nécessaires. (la première connection peut prendre quelques temps)
+- **Sélection d’un lot :** Définissez simplement le nombre de spectres souhaité (ex: `batch_size=1000`) et conservez la stratégie par défaut (`random`).
+- **Génération d’un catalogue local** pour ce lot.
+- **Traitement & Extraction des features** (plusieurs dizaines de features possibles selon la config).
+- **Entraînement & Évaluation** via une interface interactive.
+
+### Entraînement (premier run recommandé)
+Dans l’interface d’entraînement, vous pouvez choisir plusieurs modèles (ex. `XGBoost`, `RandomForest`, `SVM`, `ExtraTrees`, `KNN`, `MLP`, etc.) et ajuster des hyperparamètres.
+
+> **Objectif :** valider que la chaîne complète fonctionne (pas optimiser la performance).
+
+Pour une **première exécution**, privilégiez la simplicité :
+- Pour un premier run, on recommande **XGBoost** ou **RandomForest** (rapides, robustes), puis explorer les autres modèles ensuite.
+- Laissez les valeurs par défaut (ou un template/preset si disponible)
+- Lancez le batch / l’exécution
+
+<div style={{textAlign: 'center', margin: '2rem 0'}}>
+  <img
+    src={useBaseUrl('/img/getting-started/training.png')}
+    alt="Figure 3 : Le panneau de contrôle pour choisir votre modèle (XGBoost/RF) sans toucher au code."
+    style={{maxWidth: '900px', borderRadius: '12px'}}
+  />
+  <p style={{opacity: 0.8, marginTop: '0.5rem'}}>
+    <small>Figure 3 : Le panneau de contrôle pour choisir votre modèle (XGBoost/RF) sans toucher au code.</small>
+  </p>
+</div>
+
+> Toute la documentation “propre” sur : templates/préréglages, recherche HP, calibration, choix du modèle, etc. est dans **[Guides d’utilisation → Entraînement](/docs/user-guides/model-training)**.
+
+
+## <FontAwesomeIcon icon={faPoll} /> Étape 3 : Examiner les Résultats
+
+À la fin de l’exécution, plusieurs artefacts sont produits :
+
+- Un fichier **CSV** dans `data/processed/` (features prêtes pour analyse).
+- Un modèle **`.pkl`** dans `data/models/`.
+- Un **rapport de session JSON** dans `data/reports/`, ainsi que les graphiques d'analyse des résultats (`feature_importance`, `roc`, `confusion_matrix`, `precision_recal`, etc).
+
+<br />
+
+<br />
+
+<div className="shadow--md" style={{
+  border: '1px solid var(--ifm-color-primary)', 
+  borderRadius: '15px', 
+  padding: '2rem',
+  backgroundColor: 'var(--ifm-background-surface-color)' 
+}}>
+
+  {/* --- PARTIE HAUTE : FÉLICITATIONS --- */}
+  <div style={{display: 'flex', alignItems: 'center', marginBottom: '2rem'}}>
+    <div style={{marginRight: '1.5rem', color: 'var(--ifm-color-primary)'}}>
+      {/* Ton icône en couleur primaire (Bleu) */}
+      <FontAwesomeIcon icon={faTrophy} size="3x" />
+    </div>
+    <div>
+      <h2 style={{margin: 0}}>Félicitations !</h2>
+      <p style={{margin: 0, fontSize: '1.1rem', opacity: 0.9}}>
+        Vous avez exécuté le pipeline de bout en bout et obtenu vos premières classifications. <br/>
+        Vous êtes maintenant prêt à explorer le projet plus en profondeur !
+      </p>
+    </div>
   </div>
-  <div className="congrats-content">
-    <h3>Félicitations !</h3>
-    <p>
-      Vous avez exécuté le pipeline de bout en bout et obtenu vos premières classifications. Vous êtes maintenant prêt à explorer le projet plus en profondeur !
-    </p>
+
+  {/* LIGNE DE SÉPARATION DISCRÈTE */}
+  <hr style={{borderColor: 'var(--ifm-color-emphasis-200)', margin: '2rem 0'}} />
+
+  {/* --- PARTIE BASSE : LES CARTES --- */}
+  <h3 style={{textAlign: 'center', marginBottom: '1.5rem'}}>
+    🧭 Et maintenant ? Choisissez votre voie :
+  </h3>
+
+  <div className="row">
+    {/* CARTE SCIENCE */}
+    <div className="col col--6" style={{marginBottom: '1rem'}}>
+      <div className="card shadow--lw" style={{height: '100%'}}>
+        <div className="card__header">
+          <h3>🔭 Comprendre la Science</h3>
+        </div>
+        <div className="card__body">
+          <p>Découvrez les concepts astrophysiques derrière le code : classification spectrale, normalisation des flux et équations.</p>
+        </div>
+        <div className="card__footer">
+          <a href="../science" className="button button--primary button--block">
+            Explorer le Contexte →
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {/* CARTE EXPERT */}
+    <div className="col col--6" style={{marginBottom: '1rem'}}>
+      <div className="card shadow--lw" style={{height: '100%'}}>
+        <div className="card__header">
+          <h3>⚡ Devenir un Expert</h3>
+        </div>
+        <div className="card__body">
+          <p>Apprenez à configurer les <em>workers</em>, optimiser le téléchargement et créer vos propres presets d'entraînement.</p>
+        </div>
+        <div className="card__footer">
+          <a href="../user-guides/downloading-data" className="button button--primary button--block">
+            Consulter les Guides →
+          </a>
+        </div>
+      </div>
+    </div>
   </div>
+
 </div>
