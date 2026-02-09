@@ -1,48 +1,45 @@
-"""
-# dr5_downloader — Téléchargeur LAMOST DR5 (intelligent, reprenable, rapide)
+"""AstroSpectro — Smart, resumable LAMOST DR5 spectra downloader.
 
-Ce module fournit un téléchargeur *smart* pour les spectres LAMOST DR5. Il :
+This module provides a *smart* downloader for LAMOST DR5 spectra.  It:
 
-- lit une liste de plans valides depuis `data/catalog/valid_plan_urls.csv`,
-- exclut les plans déjà complétés (journal `data/catalog/downloaded_plans.csv`),
-- *scrape* les liens `.fits.gz` pour chaque plan et construit une file,
-- télécharge en **round‑robin** (équilibrage entre plans),
-- reprend proprement : fichiers présents ignorés; écriture atomique `.part` → `os.replace()`,
-- tient un **log de session** dans `logs/download_log_YYYYMMDDTHHMMSSZ.txt`,
-- marque les plans désormais complets en fin de session.
+- reads a list of valid plans from ``data/catalog/valid_plan_urls.csv``,
+- excludes plans already completed (ledger ``data/catalog/downloaded_plans.csv``),
+- scrapes ``.fits.gz`` links for each plan page and builds a download queue,
+- downloads in **round-robin** order (balancing across plans),
+- resumes cleanly: existing files are skipped; writes use an atomic
+  ``.part`` → ``os.replace()`` strategy,
+- maintains a **session log** under ``logs/download_log_YYYYMMDDTHHMMSSZ.txt``,
+- marks fully completed plans at the end of the session.
 
 Conventions
 -----------
-- Arborescence projet (résolue relativement à ce fichier) :
-  - `data/catalog/valid_plan_urls.csv`   → colonnes : `url`
-  - `data/catalog/downloaded_plans.csv`  → colonnes : `url`
-  - `data/raw/<plan>/<filename>.fits.gz` → destination de chaque fichier
-  - `logs/*.txt`                         → logs de session
-- Toutes les longueurs/tailles sont exprimées en unités SI habituelles.
+- Project tree (resolved relative to this file):
 
-Entrées / Sorties
+  - ``data/catalog/valid_plan_urls.csv``   → columns: ``url``
+  - ``data/catalog/downloaded_plans.csv``  → columns: ``url``
+  - ``data/raw/<plan>/<filename>.fits.gz`` → destination of each file
+  - ``logs/*.txt``                         → session logs
+
+- All lengths / sizes use standard SI units.
+
+Inputs / Outputs
 -----------------
-Entrées : CSV `valid_plan_urls.csv` et `downloaded_plans.csv` (facultatif).
-Sorties : fichiers `.fits.gz` sous `data/raw/` + un fichier de log de session.
+Inputs : ``valid_plan_urls.csv`` and ``downloaded_plans.csv`` (optional).
+Outputs : ``.fits.gz`` files under ``data/raw/`` + one session log file.
 
 Interface
 ---------
-- API Python : `SmartDownloader(limit_plans, max_spectra, ...)` → `.run()`
-- CLI : `python -m src.tools.dr5_downloader --limit 5 --max-spectres 200 --progress`
+- Python API: ``SmartDownloader(limit_plans, max_spectra, ...).run()``
+- CLI: ``python -m src.tools.dr5_downloader --limit 5 --max-spectres 200 --progress``
 
-Exemple minimal
----------------
->>> # Python
+Examples
+--------
 >>> dl = SmartDownloader(limit_plans=3, max_spectra=120, progress=True)
 >>> dl.run()
 
->>> # Ligne de commande
->>> # Dans la racine du projet (après activation du venv)
->>> python -m src.tools.dr5_downloader --limit 3 --max-spectres 120 --progress
-
-Dépendances
------------
-`requests`, `pandas`, `beautifulsoup4`, `tqdm`.
+Dependencies
+------------
+``requests``, ``pandas``, ``beautifulsoup4``, ``tqdm``.
 """
 
 from __future__ import annotations
@@ -76,10 +73,10 @@ __version__ = "3.1.0"
 
 @dataclass(slots=True)
 class _Paths:
-    """Conteneur des chemins utilisés par le téléchargeur.
+    """Container for paths used by the downloader.
 
-    Les chemins sont résolus relativement à l’emplacement de ce fichier,
-    pour permettre une exécution fiable depuis le notebook **ou** le terminal.
+    Paths are resolved relative to this file’s location so that execution
+    is reliable from both notebooks and the terminal.
     """
 
     catalog_dir: str
@@ -88,37 +85,38 @@ class _Paths:
 
 
 class SmartDownloader:
-    """Téléchargeur intelligent et reprenable pour les spectres LAMOST DR5.
+    """Smart, resumable downloader for LAMOST DR5 spectra.
 
     Phases
     ------
-    1. **Scrape** des pages de plan → collecte des liens `.fits.gz`.
-    2. **Téléchargement round‑robin** (équilibrage entre plans), barre `tqdm` optionnelle.
-    3. **Mise à jour de l’état** : marquage des plans désormais complets.
+    1. **Scrape** plan pages → collect ``.fits.gz`` links.
+    2. **Round-robin download** (balanced across plans), optional ``tqdm``
+       progress bar.
+    3. **State update**: mark newly completed plans.
 
-    Paramètres
+    Parameters
     ----------
-    limit_plans : int | None
-        Nombre maximal de **nouveaux** plans à traiter (None = illimité).
-    max_spectra : int | None
-        Arrêt anticipé après ce nombre total de spectres (None = illimité).
+    limit_plans : int or None
+        Maximum number of **new** plans to process (``None`` = unlimited).
+    max_spectra : int or None
+        Early stop after this total number of spectra (``None`` = unlimited).
     timeout : int, default=60
-        Délai (s) appliqué aux requêtes HTTP.
+        Timeout in seconds applied to HTTP requests.
     delay_between : float, default=0.2
-        Petit délai (s) entre deux téléchargements (mettre 0 pour accélérer).
+        Short delay in seconds between consecutive downloads (set 0 to go faster).
     retries : int, default=3
-        Nombre de tentatives réseau (backoff exponentiel 0.8).
+        Number of network retries (exponential backoff factor 0.8).
     progress : bool, default=True
-        Afficher une barre `tqdm` (Notebook : cocher/forcer si besoin).
-    log_to : str | None
-        Chemin du **log unique** de la session (généré si None).
+        Show a ``tqdm`` progress bar (force-enable in notebooks if needed).
+    log_to : str or None
+        Path to the session log file (auto-generated if ``None``).
     append : bool, default=False
-        Si `True`, on ajoute au log existant au lieu de l’écraser.
+        If ``True``, append to an existing log instead of overwriting it.
     chunk_size : int, default=65536
-        Taille des chunks écrits (octets). 65536=64kB, 131072=128kB, etc.
+        Write chunk size in bytes. 65 536 = 64 kB, 131 072 = 128 kB, etc.
     """
 
-    # --------------------------- initialisation & chemins ---------------------------
+    # --------------------------- initialisation & paths ----------------------------
 
     def __init__(
         self,
@@ -140,13 +138,13 @@ class SmartDownloader:
         auto_throttle: bool = False,
         min_workers: int | None = None,
         max_workers: int | None = None,
-        target_latency: float = 0.5,  # en secondes (médiane visée)
+        target_latency: float = 0.5,  # in seconds (target median)
         tune_step: int = 2,
         tune_err_lo: float = 0.02,
         tune_err_hi: float = 0.05,
         throttle_delay: float = 0.05,
     ) -> None:
-        # Résolution robuste des chemins (indépendant du CWD)
+        # Robust path resolution (independent of CWD)
         script_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(os.path.dirname(script_dir))
         self.catalog_dir = os.path.join(project_root, "data", "catalog")
@@ -159,16 +157,16 @@ class SmartDownloader:
 
         self.paths = _Paths(self.catalog_dir, self.raw_data_dir, self.logs_dir)
 
-        # Fichier de log (soit imposé par --log-to, soit généré)
+        # Session log file (either user-supplied via --log-to, or auto-generated)
         ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         self.session_log_path = log_to or os.path.join(
             self.logs_dir, f"download_log_{ts}.txt"
         )
         if log_to and not append:
-            # Écrase proprement si l’utilisateur demande un chemin fixe
+            # Clean overwrite when the user requests a fixed path
             open(self.session_log_path, "w", encoding="utf-8").close()
 
-        # D'abord les paramètres de session
+        # Session parameters
         self.progress = progress
         self.chunk_size = int(chunk_size)
         self.limit_plans = limit_plans
@@ -184,18 +182,18 @@ class SmartDownloader:
         self.retries = int(retries)
         self.plan_urls_in_queue: list[str] = []
         self.auto_throttle = bool(auto_throttle)
-        self.min_workers = int(min_workers or 4)  # (borne basse)
-        self.max_workers = int(max_workers or self.workers)  # (borne haute)
+        self.min_workers = int(min_workers or 4)  # (lower bound)
+        self.max_workers = int(max_workers or self.workers)  # (upper bound)
         self.target_latency = float(target_latency)  # (s)
-        self.tune_step = int(tune_step)  # (+2 par défaut)
-        self.tune_err_lo = float(tune_err_lo)  # (< 2% : on pousse)
-        self.tune_err_hi = float(tune_err_hi)  # (> 5% : on réduit)
-        self.throttle_delay = float(throttle_delay)  # (retard minimal si 429)
+        self.tune_step = int(tune_step)  # (+2 by default)
+        self.tune_err_lo = float(tune_err_lo)  # (< 2%: push harder)
+        self.tune_err_hi = float(tune_err_hi)  # (> 5%: scale down)
+        self.throttle_delay = float(throttle_delay)  # (minimum delay on 429)
 
         # HTTP session
         self.session = self._build_session(retries=retries, timeout=timeout)
 
-        # État courant
+        # Current state
         self.valid_urls_file = os.path.join(self.catalog_dir, "valid_plan_urls.csv")
         self.downloaded_log_file = os.path.join(
             self.catalog_dir, "downloaded_plans.csv"
@@ -204,44 +202,44 @@ class SmartDownloader:
         self.download_queue: list[list[str]] = []
         self._med_baseline: float | None = None
 
-        # En‑tête de session dans le log
-        self._log("--- Nouvelle session de téléchargement ---")
+        # Session header in the log
+        self._log("--- New download session ---")
         self._log(f"version={__version__}")
         self._log(
-            f"plans={self.limit_plans or 'all'}, max_spectres={self.max_spectra or '∞'}"
+            f"plans={self.limit_plans or 'all'}, max_spectra={self.max_spectra or '∞'}"
         )
 
-    # -------------------------------- utilitaires I/O --------------------------------
+    # -------------------------------- I/O utilities ----------------------------------
 
     def _log(self, msg: str) -> None:
-        """Ajoute une ligne au fichier de log de session (UTF‑8, no fail)."""
+        """Append a line to the session log file (UTF-8, no fail)."""
         try:
             with open(self.session_log_path, "a", encoding="utf-8") as fh:
                 fh.write(msg.rstrip() + "\n")
         except Exception:
-            # On ne casse jamais le run sur une erreur de log
+            # Never break the run because of a logging error
             pass
 
     def _say(self, msg: str) -> None:
-        """Affiche et écrit dans le log de session."""
+        """Print a message and write it to the session log."""
         print(msg)
         self._log(msg)
 
     def _say_tqdm(self, msg: str) -> None:
-        """Version sûre quand une barre `tqdm` est affichée."""
+        """Thread-safe variant when a ``tqdm`` progress bar is active."""
         tqdm.write(msg)
         self._log(msg)
 
-    # --------------------------- utilitaires HTTP & état ---------------------------
+    # --------------------------- HTTP & state utilities ----------------------------
 
     @staticmethod
     def _build_session(*, retries: int, timeout: int) -> requests.Session:
-        """Construit une `requests.Session` avec *retries* & backoff exponentiel.
+        """Build a ``requests.Session`` with retries and exponential backoff.
 
         Notes
         -----
-        - Un **User‑Agent** explicite est défini.
-        - Les timeouts sont passés à chaque `get()` via `timeout=...`.
+        - An explicit **User-Agent** header is set.
+        - Timeouts are passed to each ``get()`` call.
         """
         session = requests.Session()
         retry_cfg = Retry(
@@ -263,27 +261,27 @@ class SmartDownloader:
                 "Connection": "keep-alive",
             }
         )
-        # Timeout par défaut mémorisé (attribut interne simple)
+        # Memorise default timeout as a simple internal attribute
         session.request_timeout = timeout  # type: ignore[attr-defined]
         return session
 
     def _load_state(self) -> List[str]:
-        """Charge la liste des plans à traiter.
+        """Load the list of plans to process.
 
-        Lit `valid_plan_urls.csv`, puis enlève les `url` déjà présentes dans
-        `downloaded_plans.csv`. Applique `self.limit_plans` si défini.
+        Read ``valid_plan_urls.csv``, remove URLs already present in
+        ``downloaded_plans.csv``.  Apply ``self.limit_plans`` if set.
 
         Returns
         -------
         list[str]
-            URLs restantes, dans l’ordre d’apparition.
+            Remaining URLs, in their original order.
         """
         try:
             df_valid = pd.read_csv(self.valid_urls_file)
         except FileNotFoundError:
             print(
-                f"ERREUR : Fichier introuvable : '{self.valid_urls_file}'. "
-                "Génère-le d’abord (liste des plans valides)."
+                f"ERROR: File not found: '{self.valid_urls_file}'. "
+                "Generate it first (list of valid plan URLs)."
             )
             return []
 
@@ -292,7 +290,7 @@ class SmartDownloader:
             try:
                 df_completed = pd.read_csv(self.downloaded_log_file)
                 already_completed = set(df_completed["url"].astype(str).tolist())
-                print(f"  > {len(already_completed)} plan(s) déjà complété(s).")
+                print(f"  > {len(already_completed)} plan(s) already completed.")
             except Exception:
                 pass
 
@@ -302,9 +300,7 @@ class SmartDownloader:
         return remaining
 
     def _scrape_plan(self, plan_url: str):
-        """
-        Retourne (plan_name, urls .fits.gz) pour une page *plan* (thread‑safe).
-        """
+        """Return ``(plan_name, fits_gz_urls)`` for a plan page (thread-safe)."""
         session = self._build_session(retries=3, timeout=self.timeout)
         plan_name = plan_url.rstrip("/").split("/")[-1]
         urls: list[str] = []
@@ -323,10 +319,7 @@ class SmartDownloader:
 
     @staticmethod
     def _is_valid_fits_gz(path: str) -> bool:
-        """
-        Validation légère : header GZIP lisible et carte FITS 'SIMPLE' en tête.
-        Ne décompresse pas tout; lit seulement le début.
-        """
+        """Lightweight validation: readable GZIP header with FITS ``SIMPLE`` keyword."""
         try:
             with gzip.open(path, "rb") as fh:
                 head = fh.read(2880)  # 1 bloc FITS
@@ -334,44 +327,43 @@ class SmartDownloader:
         except Exception:
             return False
 
-    # -------------------------------- phase 1 : scrape --------------------------------
+    # -------------------------------- phase 1: scrape ---------------------------------
 
     def _build_download_queue(self) -> None:
-        """
-        Phase 1 — scrape des pages de plan et construction de `self.download_queue`.
+        """Phase 1 — scrape plan pages and build ``self.download_queue``.
 
-        • Séquentiel si `self.scrape_workers == 1` (comportement historique).
-        • Parallèle sinon, avec ORDRE STABLE (mappage par URL de plan).
-        • Renseigne aussi `self.plan_urls_in_queue` pour garder l'alignement Phase 2/3.
+        - Sequential when ``self.scrape_workers == 1`` (legacy behaviour).
+        - Parallel otherwise, with **stable order** (mapped by plan URL).
+        - Also populates ``self.plan_urls_in_queue`` for Phase 2/3 alignment.
         """
         if not self.plans_to_process:
-            self._say("\nAucun plan à traiter. (Liste vide)")
+            self._say("\nNo plans to process. (Empty list)")
             self.download_queue = []
             self.plan_urls_in_queue = []
             return
 
-        self._say("\n--- [Phase 1/3] Construction ... ---")
+        self._say("\n--- [Phase 1/3] Building download queue ... ---")
 
-        # Mode séquentiel (ordre d'origine garanti)
+        # Sequential mode (original order guaranteed)
         if self.scrape_workers == 1:
             selected: list[str] = []
             queue: list[list[str]] = []
             for i, plan_url in enumerate(self.plans_to_process, start=1):
                 plan_name, plan_urls = self._scrape_plan(plan_url)
                 self._say(
-                    f"  > [{i}/{len(self.plans_to_process)}] {plan_name}  ({len(plan_urls)} fichiers)"
+                    f"  > [{i}/{len(self.plans_to_process)}] {plan_name}  ({len(plan_urls)} files)"
                 )
                 if plan_urls:
                     queue.append(plan_urls)
                     selected.append(plan_url)
                 else:
-                    self._say("    -> Avertissement : aucun .fits.gz trouvé.")
+                    self._say("    -> Warning: no .fits.gz found.")
             self.download_queue = queue
             self.plan_urls_in_queue = selected
-            self._say("  > File construite.")
+            self._say("  > Queue built.")
             return
 
-        # Mode parallèle (on collecte d'abord dans un dict puis on reconstruit dans l'ordre d'origine)
+        # Parallel mode (collect into a dict, then rebuild in original order)
         results: dict[str, list[str]] = {}
         with ThreadPoolExecutor(max_workers=self.scrape_workers) as ex:
             futures = {
@@ -381,23 +373,23 @@ class SmartDownloader:
                 plan_url = futures[fut]
                 try:
                     plan_name, plan_urls = fut.result()
-                except Exception as e:  # en cas d'erreur réseau/parsing
-                    self._say(f"  > [{i}/{len(futures)}] ERREUR : {e}")
+                except Exception as e:  # network/parsing error
+                    self._say(f"  > [{i}/{len(futures)}] ERROR: {e}")
                     plan_urls = []
                 self._say(
-                    f"  > [{i}/{len(futures)}] {plan_url.rstrip('/').split('/')[-1]}  ({len(plan_urls)} fichiers)"
+                    f"  > [{i}/{len(futures)}] {plan_url.rstrip('/').split('/')[-1]}  ({len(plan_urls)} files)"
                 )
                 results[plan_url] = plan_urls
 
-        # Reconstitution dans l'ordre self.plans_to_process et exclusion des plans vides
+        # Reconstruct in self.plans_to_process order, excluding empty plans
         self.plan_urls_in_queue = [u for u in self.plans_to_process if results.get(u)]
         self.download_queue = [results[u] for u in self.plan_urls_in_queue]
         self._say("  > File construite.")
 
-    # ---------------------------- phase 2 : téléchargement ----------------------------
+    # ----------------------------- phase 2: download --------------------------------
 
     def _iter_missing_files(self) -> Iterable[str]:
-        """Itère toutes les URLs absentes en local (tous plans confondus)."""
+        """Iterate all URLs whose files are missing locally (across all plans)."""
         for plan_fits_urls in self.download_queue:
             for file_url in plan_fits_urls:
                 plan_name = file_url.split("/")[-2]
@@ -408,9 +400,9 @@ class SmartDownloader:
                     yield file_url
 
     def _download_one_threaded(self, url: str) -> bool:
-        """Télécharge `url` (nouvelle Session locale) → True si écrit.
+        """Download *url* using a fresh local Session → ``True`` if written.
 
-        Identique à `_stream_download`, mais calcule `dest_path` et évite de
+        Similar to ``_stream_download`` but computes ``dest_path`` internally and avoids
         partager `self.session` entre threads (Requests Session n'est pas thread‑safe).
         """
         plan_name = url.split("/")[-2]
@@ -420,13 +412,13 @@ class SmartDownloader:
         dest_path = os.path.join(dest_dir, filename)
         temp_path = f"{dest_path}.part"
 
-        # si déjà présent et pas de validation demandée → rien à faire
+        # already present and no validation requested → nothing to do
         if os.path.exists(dest_path) and not self.validate_downloads:
             return False
 
         session = self._build_session(retries=self.retries, timeout=self.timeout)
 
-        # Gestion reprise
+        # Resume support
         resume_from = 0
         headers = {}
         if os.path.exists(temp_path):
@@ -434,12 +426,12 @@ class SmartDownloader:
             if resume_from > 0:
                 headers["Range"] = f"bytes={resume_from}-"
 
-        # Boucle d'essais avec backoff+jitter applicatif (en plus de urllib3 Retry)
+        # Retry loop with application-level backoff+jitter (on top of urllib3 Retry)
         for attempt in range(self.retries + 1):
             try:
                 with session.get(url, stream=True, headers=headers, timeout=session.request_timeout) as r:  # type: ignore[attr-defined]
                     if resume_from and r.status_code == 200:
-                        # Le serveur n'a pas accepté Range → on repart de zéro
+                        # Server did not honour the Range header → restart from scratch
                         resume_from = 0
                     r.raise_for_status()
 
@@ -450,25 +442,23 @@ class SmartDownloader:
                                 f.write(chunk)
                 os.replace(temp_path, dest_path)
 
-                # Validation légère (si demandée)
+                # Lightweight validation (if requested)
                 if self.validate_downloads and not self._is_valid_fits_gz(dest_path):
-                    self._say_tqdm(
-                        f"    -> Validation échouée : {filename}. Nouvelle tentative…"
-                    )
+                    self._say_tqdm(f"    -> Validation failed: {filename}. Retrying…")
                     try:
                         os.remove(dest_path)
                     except Exception:
                         pass
                     resume_from = 0
                     headers.pop("Range", None)
-                    # retente
+                    # retry
                     raise requests.RequestException("validation failed")
 
                 self._log(f"OK {plan_name}/{filename}")
                 return True
 
             except requests.RequestException as e:
-                # petit backoff jitter en plus du Retry de l'adapter
+                # small backoff jitter on top of the adapter's Retry
                 if attempt < self.retries:
                     sleep_s = (0.5 * (2**attempt)) * (0.5 + random.random())
                     try:
@@ -479,19 +469,19 @@ class SmartDownloader:
                         pass
                     continue
                 else:
-                    # échec final → nettoyer le .part
+                    # final failure → clean up the .part
                     try:
                         if os.path.exists(temp_path):
                             os.remove(temp_path)
                     except Exception:
                         pass
-                    self._say_tqdm(f"    -> ERREUR : {filename} ({e})")
+                    self._say_tqdm(f"    -> ERROR: {filename} ({e})")
                     return False
 
     def _download_one_stats(self, url: str) -> tuple[bool, float, int]:
-        """
-        Comme `_download_one_threaded`, mais retourne (succès, durée_s, code).
-        code = 0 (ok/erreur générique), 429, 5xx (500–599).
+        """Like ``_download_one_threaded`` but return ``(success, duration_s, code)``.
+
+        ``code`` is 0 (ok/generic error), 429, or 5xx (500–599).
         """
         start = time.monotonic()
         plan_name = url.split("/")[-2]
@@ -528,9 +518,7 @@ class SmartDownloader:
                 os.replace(temp_path, dest_path)
 
                 if self.validate_downloads and not self._is_valid_fits_gz(dest_path):
-                    self._say_tqdm(
-                        f"    -> Validation échouée : {filename}. Nouvelle tentative…"
-                    )
+                    self._say_tqdm(f"    -> Validation failed: {filename}. Retrying…")
                     try:
                         os.remove(dest_path)
                     except Exception:
@@ -554,7 +542,7 @@ class SmartDownloader:
                         os.remove(temp_path)
                 except Exception:
                     pass
-                self._say_tqdm(f"    -> ERREUR HTTP {sc} : {filename}")
+                self._say_tqdm(f"    -> HTTP ERROR {sc}: {filename}")
                 return (False, time.monotonic() - start, code)
             except requests.RequestException:
                 if attempt < self.retries:
@@ -566,19 +554,19 @@ class SmartDownloader:
                         os.remove(temp_path)
                 except Exception:
                     pass
-                self._say_tqdm(f"    -> ERREUR : {filename}")
+                self._say_tqdm(f"    -> ERROR: {filename}")
                 return (False, time.monotonic() - start, code)
 
     def _stream_download(self, url: str, dest_path: str) -> bool:
-        """Télécharge `url` → `dest_path` avec écriture **atomique**.
+        """Download *url* to *dest_path* with **atomic** write.
 
-        Un fichier temporaire `dest_path + '.part'` est utilisé pendant l’écriture,
-        puis remplacé via `os.replace()` seulement en cas de succès.
+        A temporary ``dest_path + '.part'`` file is used during the write and
+        is replaced via ``os.replace()`` only on success.
 
         Returns
         -------
         bool
-            `True` si succès, `False` sinon (loggué via `_say_tqdm`).
+            ``True`` on success, ``False`` otherwise (logged via ``_say_tqdm``).
         """
         temp_path = f"{dest_path}.part"
         try:
@@ -592,27 +580,29 @@ class SmartDownloader:
             os.replace(temp_path, dest_path)
             return True
         except requests.RequestException as e:
-            # Nettoie le .part éventuel
+            # Clean up the .part file if present
             try:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
             except Exception:
                 pass
-            self._say_tqdm(f"    -> ERREUR : {os.path.basename(dest_path)} ({e})")
+            self._say_tqdm(f"    -> ERROR: {os.path.basename(dest_path)} ({e})")
             return False
 
     def run_download(self) -> None:
-        """Télécharge les fichiers manquants en **round‑robin**.
+        """Download missing files in **round-robin** order.
 
-        Respecte `self.max_spectra` si défini. Affiche une barre `tqdm` si
-        `self.progress` vaut `True` (ou si `--progress` a été passé en CLI).
-        • Parallèle si `self.workers > 1` (ThreadPoolExecutor + tqdm)
+        Respects ``self.max_spectra`` if set.  Shows a ``tqdm`` progress bar
+        when ``self.progress`` is ``True`` (or ``--progress`` was passed on
+        the CLI).
+
+        - Parallel when ``self.workers > 1`` (``ThreadPoolExecutor`` + tqdm).
         """
         if not self.download_queue:
-            self._say("\n[Phase 2/3] Rien à faire : file vide.")
+            self._say("\n[Phase 2/3] Nothing to do: queue is empty.")
             return
 
-        # 1) Construire la liste entrelacée entre plans
+        # 1) Build an interleaved list across plans
         missing_by_plan: list[list[str]] = []
         for plan_urls in self.download_queue:
             plan_missing: list[str] = []
@@ -627,7 +617,9 @@ class SmartDownloader:
                 missing_by_plan.append(plan_missing)
 
         if not missing_by_plan:
-            self._say("\n--- [Phase 2/3] Rien à télécharger (tout est déjà présent).")
+            self._say(
+                "\n--- [Phase 2/3] Nothing to download (everything already present)."
+            )
             return
 
         n_active = len(missing_by_plan)
@@ -643,12 +635,12 @@ class SmartDownloader:
         if limit_per_plan is not None:
             missing_by_plan = [urls[: int(limit_per_plan)] for urls in missing_by_plan]
 
-        self._say("\nRésumé des manquants (après anti-doublon et per-plan) :")
+        self._say("\nMissing file summary (after deduplication and per-plan cap):")
         for plan in missing_by_plan:
             if not plan:
                 continue
             plan_name = plan[0].split("/")[-2]
-            self._say(f"  - {plan_name}: {len(plan)} fichiers à télécharger")
+            self._say(f"  - {plan_name}: {len(plan)} files to download")
 
         interleaved: list[str] = []
         for batch in zip_longest(*missing_by_plan):
@@ -667,28 +659,28 @@ class SmartDownloader:
 
         total = len(interleaved)
 
-        # 2) Mode DRY‑RUN : on montre l'aperçu et on s'arrête ici
+        # 2) Dry-run mode: show preview and stop here
         if self.dry_run:
-            self._say("\n[Dry‑run] Aperçu de la session (aucune écriture disque):")
+            self._say("\n[Dry-run] Session preview (no disk writes):")
             self._say(
-                f"  > {len(missing_by_plan)} plan(s), {total} fichier(s) à traiter (après max_spectres)"
+                f"  > {len(missing_by_plan)} plan(s), {total} file(s) to process (after max_spectra cap)"
             )
             return
 
-        # 3) Téléchargements
+        # 3) Downloads
         self._say(
-            f"\n--- [Phase 2/3] {total} nouveaux spectres à télécharger (workers={self.workers}) ---"
+            f"\n--- [Phase 2/3] {total} new spectra to download (workers={self.workers}) ---"
         )
         disable_progress = not bool(self.progress)
 
         if self.workers <= 1:
-            # Chemin historique (séquentiel)
+            # Legacy sequential path
             from time import sleep as _sl
 
             with tqdm(
                 total=total,
-                desc="Téléchargement",
-                unit="spectre",
+                desc="Downloading",
+                unit="spectrum",
                 leave=False,
                 mininterval=0.4,
                 disable=disable_progress,
@@ -708,7 +700,7 @@ class SmartDownloader:
                         and self.total_downloaded_this_session >= self.max_spectra
                     ):
                         self._say_tqdm(
-                            f"Limite atteinte ({self.max_spectra}). Arrêt du téléchargement."
+                            f"Limit reached ({self.max_spectra}). Stopping download."
                         )
                         return
 
@@ -721,12 +713,12 @@ class SmartDownloader:
                         _sl(self.delay_between)
             return
 
-        # Parallèle
+        # Parallel
         if self.workers > 1:
             if not self.auto_throttle:
                 with tqdm(
                     total=total,
-                    desc="Téléchargement",
+                    desc="Downloading",
                     unit="spectre",
                     leave=False,
                     mininterval=0.4,
@@ -746,11 +738,11 @@ class SmartDownloader:
                                 pass
                             pbar.update(1)
             else:
-                # Auto‑throttle : on traite en lots de `self.workers` et on ajuste
+                # Auto-throttle: process in batches of self.workers and adjust
                 i = 0
                 with tqdm(
                     total=total,
-                    desc="Téléchargement",
+                    desc="Downloading",
                     unit="spectre",
                     leave=False,
                     mininterval=0.4,
@@ -781,20 +773,20 @@ class SmartDownloader:
                                 total_b += 1
                                 pbar.update(1)
 
-                        # --- Ajustement UNE fois par lot ---
+                        # --- Adjust ONCE per batch ---
                         err_rate = (err429 + err5xx) / max(1, total_b)
                         med = statistics.median(latencies) if latencies else 0.0
 
-                        # compteur mis à jour une seule fois par lot
+                        # counter updated once per batch
                         self.total_downloaded_this_session += succ
 
-                        # Baseline EMA de la latence médiane
+                        # EMA baseline of the median latency
                         if self._med_baseline is None:
                             self._med_baseline = med or self.target_latency
                         elif med:
                             self._med_baseline = 0.2 * med + 0.8 * self._med_baseline
 
-                        # Seuils dynamiques vs baseline
+                        # Dynamic thresholds vs baseline
                         hi_thresh = max(
                             self.target_latency, (self._med_baseline or 0) * 1.5
                         )
@@ -826,19 +818,18 @@ class SmartDownloader:
                             self.workers = new_workers
 
                         i += len(batch)
-                # fin auto‑throttle
+                # end auto-throttle
             return
 
-    # ------------------------------ phase 3 : marquage ------------------------------
+    # ------------------------------ phase 3: bookkeeping ----------------------------
 
     def _update_state(self) -> None:
-        """
-        Vérifie quels plans sont désormais **complets**, puis journalise.
+        """Check which plans are now fully downloaded and update the ledger.
 
-        Un plan est « complet » si **tous** les fichiers attendus (liens trouvés
-        en phase 1) existent sous `data/raw/<plan>/`.
+        A plan is considered *complete* when **all** expected files (links found
+        in Phase 1) exist under ``data/raw/<plan>/``.
         """
-        self._say("\n--- [Phase 3/3] Mise à jour de l'état des plans ---")
+        self._say("\n--- [Phase 3/3] Updating plan state ---")
 
         newly_completed: List[str] = []
         for plan_url, fits_list in zip(self.plan_urls_in_queue, self.download_queue):
@@ -853,10 +844,10 @@ class SmartDownloader:
             )
             if total > 0 and present == total:
                 newly_completed.append(plan_url)
-                self._say(f"  > Plan complété : {plan_name}")
+                self._say(f"  > Plan completed: {plan_name}")
 
         if not newly_completed:
-            self._say("  > Aucun nouveau plan complété.")
+            self._say("  > No new plans completed.")
             return
 
         df_new = pd.DataFrame({"url": newly_completed})
@@ -867,140 +858,140 @@ class SmartDownloader:
             header=not os.path.exists(self.downloaded_log_file),
         )
         self._say(
-            f"  > {len(newly_completed)} plan(s) ajouté(s) à '{self.downloaded_log_file}'."
+            f"  > {len(newly_completed)} plan(s) added to '{self.downloaded_log_file}'."
         )
 
-    # --------------------------------- façade simple ---------------------------------
+    # --------------------------------- simple facade ---------------------------------
 
     def run(self) -> None:
-        """Enchaîne les 3 phases (scrape → download → update) et résume la session."""
+        """Run all 3 phases (scrape → download → update) and summarise the session."""
         self._build_download_queue()
         self.run_download()
 
-        # En dry‑run : **ne pas** modifier l'état
+        # In dry-run mode: do **not** modify state
         if self.dry_run:
-            self._say("\n[Dry‑run] État non modifié (aucun plan marqué complété).")
+            self._say("\n[Dry-run] State not modified (no plan marked completed).")
             self._log("SUMMARY dry_run=True")
-            self._say(f"\nLog de session écrit : {self.session_log_path}")
+            self._say(f"\nSession log written: {self.session_log_path}")
             return
 
         self._update_state()
         self._log(f"SUMMARY total_downloaded={self.total_downloaded_this_session}")
-        self._say(f"\nLog de session écrit : {self.session_log_path}")
+        self._say(f"\nSession log written: {self.session_log_path}")
 
 
 # ----------------------------------- CLI -----------------------------------
 
 
 def _parse_args() -> argparse.Namespace:
-    """Arguments de la ligne de commande.
+    """Parse command-line arguments.
 
-    - `--limit` : nombre max de **nouveaux** plans à traiter.
-    - `--max-spectres` : plafond de spectres pour cette session.
-    - `--progress` : forcer l’affichage de la barre `tqdm` (utile en notebook).
-    - `--delay` : délai (s) entre deux téléchargements.
-    - `--chunk` : taille d’écriture par bloc (octets).
-    - `--log-to` + `--append` : contrôle du fichier de log.
+    - ``--limit`` : max number of **new** plans to process.
+    - ``--max-spectres`` : spectra cap for this session.
+    - ``--progress`` : force ``tqdm`` progress bar (useful in notebooks).
+    - ``--delay`` : delay (s) between downloads.
+    - ``--chunk`` : write chunk size (bytes).
+    - ``--log-to`` + ``--append`` : log file control.
     """
     parser = argparse.ArgumentParser(
-        description="Smart Downloader pour spectres LAMOST DR5"
+        description="Smart downloader for LAMOST DR5 spectra"
     )
     parser.add_argument(
         "--limit",
         type=int,
         default=None,
-        help="Nombre maximal de NOUVEAUX plans à traiter (ex: 5).",
+        help="Maximum number of NEW plans to process (e.g. 5).",
     )
     parser.add_argument(
         "--max-spectres",
         type=int,
         default=None,
-        help="Arrêt après ce nombre total de spectres téléchargés (ex: 200).",
+        help="Stop after this total number of downloaded spectra (e.g. 200).",
     )
     parser.add_argument(
         "--log-to",
         type=str,
         default=None,
-        help="Chemin du fichier log unique à utiliser (généré si absent).",
+        help="Path to the session log file (auto-generated if omitted).",
     )
     parser.add_argument(
         "--append",
         action="store_true",
-        help="Ajouter au log existant au lieu de l'écraser.",
+        help="Append to existing log instead of overwriting.",
     )
     parser.add_argument(
         "--progress",
         action="store_true",
-        help="Forcer l’affichage de la barre tqdm même si stdout n’est pas un TTY (ex: Notebook).",
+        help="Force tqdm progress bar even when stdout is not a TTY (e.g. notebook).",
     )
     parser.add_argument(
         "--delay",
         type=float,
         default=0.2,
-        help="Délai (s) entre deux téléchargements. 0 = le plus rapide.",
+        help="Delay (s) between downloads. 0 = fastest.",
     )
     parser.add_argument(
         "--chunk",
         type=int,
         default=65536,
-        help="Taille des chunks de téléchargement (octets). 65536=64KB, 131072=128KB, etc.",
+        help="Download chunk size (bytes). 65536=64KB, 131072=128KB, etc.",
     )
     parser.add_argument(
         "--workers",
         type=int,
         default=1,
-        help="Téléchargements parallèles (1 = séquentiel).",
+        help="Parallel downloads (1 = sequential).",
     )
     parser.add_argument(
         "--scrape-workers",
         type=int,
         default=1,
-        help="Parallélisme pour le scrape des pages plan.",
+        help="Parallelism for plan page scraping.",
     )
     parser.add_argument(
         "--per-plan",
         type=int,
         default=None,
-        help="Plafond de fichiers par plan (après anti‑doublon).",
+        help="Per-plan file cap (after deduplication).",
     )
     parser.add_argument(
         "--validate",
         action="store_true",
-        help="Valider rapidement les .fits.gz téléchargés (header FITS).",
+        help="Quickly validate downloaded .fits.gz files (FITS header check).",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Ne rien écrire : montre seulement ce qui serait fait.",
+        help="Write nothing: only show what would be done.",
     )
     parser.add_argument(
         "--auto-throttle",
         action="store_true",
-        help="Ajuster automatiquement le nombre de workers en fonction du réseau/serveur.",
+        help="Automatically adjust the number of workers based on network/server conditions.",
     )
     parser.add_argument(
         "--min-workers",
         type=int,
         default=None,
-        help="Borne basse pour l’auto-throttle (défaut: 4).",
+        help="Lower bound for auto-throttle (default: 4).",
     )
     parser.add_argument(
         "--max-workers",
         type=int,
         default=None,
-        help="Borne haute pour l’auto-throttle (défaut: =workers).",
+        help="Upper bound for auto-throttle (default: =workers).",
     )
     parser.add_argument(
         "--target-lat",
         type=float,
         default=0.5,
-        help="Latence médiane visée (s). Si au‑dessus → on réduit.",
+        help="Target median latency (s). Above this → scale down.",
     )
     return parser.parse_args()
 
 
 def main(argv: Optional[list[str]] = None) -> int:
-    """Point d’entrée *programmable* (utile pour tests/CI)."""
+    """Programmatic entry point (useful for tests / CI)."""
     args = _parse_args() if argv is None else _parse_args()
     dl = SmartDownloader(
         limit_plans=args.limit,
@@ -1024,8 +1015,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     )
     dl.run()
     dl._say(
-        f"\n--- Session terminée : {dl.total_downloaded_this_session} spectre(s) "
-        f"téléchargé(s) sur {len(dl.plans_to_process)} plan(s). ---"
+        f"\n--- Session finished: {dl.total_downloaded_this_session} spectrum/spectra "
+        f"downloaded across {len(dl.plans_to_process)} plan(s). ---"
     )
     return 0
 

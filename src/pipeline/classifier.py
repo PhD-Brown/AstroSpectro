@@ -1,33 +1,34 @@
-"""
-AstroSpectro — Outils d’entraînement et d’évaluation du classifieur spectral.
+"""AstroSpectro — Spectral classifier training and evaluation tools.
 
-Ce module encapsule le pipeline ML complet (imputation, scaling, SMOTE,
-sélection de variables optionnelle, tuning par GridSearchCV), l’entraînement,
-l’évaluation et la persistance (pickle + méta-données JSON).
+This module encapsulates the full ML pipeline (imputation, scaling, SMOTE,
+optional feature selection, hyperparameter tuning via GridSearchCV), model
+training, evaluation, and persistence (pickle + JSON metadata).
 
 Conventions
 -----------
-- Les longueurs/largeurs sont en unités natives de scikit-learn / xgboost.
-- `feature_names_used` conserve l’ordre des colonnes après préparation (stable).
+- Lengths and widths are in native scikit-learn / xgboost units.
+- ``feature_names_used`` preserves column order after preparation (stable).
 
-Entrées / Sorties attendues
----------------------------
-- Entrée : DataFrame de features (colonnes numériques + méta), incluant
-  au minimum `subclass` pour dériver la cible; autres colonnes sont
-  auto-filtrées par `_prepare_features_and_labels`.
-- Sortie : modèle entraîné (pipeline sklearn/imb), rapports d’évaluation,
-  artefacts persistés (.pkl/.json) via `save_model()`.
+Inputs / Outputs
+----------------
+Input :
+    A features DataFrame (numeric + meta columns) containing at least
+    ``subclass`` to derive the target; other columns are auto-filtered
+    by ``_prepare_features_and_labels``.
+Output :
+    Trained model (sklearn / imblearn pipeline), evaluation reports,
+    persisted artifacts (``.pkl`` / ``.json``) via ``save_model()``.
 
-API publique (principales méthodes)
------------------------------------
-- clean/filter : `_clean_and_filter_data(df)` → DataFrame prêt à l’entraînement
-- features/labels : `_prepare_features_and_labels(df)` → (X, y)
-- train : `train_and_evaluate(features_df, ...)` → (self, cols, X, y)
-- eval : `evaluate(X_test, y_test)` → affiche rapport + matrice de confusion
-- IO : `save_model(path)`, `load_model(path)`
+Public API (main methods)
+-------------------------
+- clean / filter : ``_clean_and_filter_data(df)`` → training-ready DataFrame
+- features / labels : ``_prepare_features_and_labels(df)`` → (X, y)
+- train : ``train_and_evaluate(features_df, ...)`` → (self, cols, X, y)
+- eval : ``evaluate(X_test, y_test)`` → prints report + confusion matrix
+- IO : ``save_model(path)``, ``load_model(path)``
 
-Exemple minimal
----------------
+Examples
+--------
 >>> clf = SpectralClassifier(model_type="XGBoost", prediction_target="main_class")
 >>> clf.train_and_evaluate(features_df)
 >>> clf.save_model("data/models/spectral_classifier_xgboost.pkl")
@@ -136,25 +137,31 @@ try:
 except Exception:
     _PIPE_TYPES = (SkPipeline,)
 
-# ---------- utilitaires ----------
+# ---------- utilities ----------
 
 
 def _ece_score(y_true: np.ndarray, proba: np.ndarray, n_bins: int = 15) -> float:
     """
-    Calcule l'erreur de calibration attendue (ECE) pour un problème multi‑classe.
+    Compute the Expected Calibration Error (ECE) for a multi-class problem.
 
-    Cette fonction estime l'erreur de calibration attendue en comparant les
-    probabilités prédites à l'accuracy observée dans des intervalles de confiance.
+    Compare predicted probabilities to observed accuracy within confidence
+    bins to estimate the calibration error.
 
-    Args:
-        y_true (np.ndarray): Vecteur des labels vrais.
-        proba (np.ndarray): Matrice des probabilités prédites (n_samples × n_classes).
-        n_bins (int): Nombre de bins de confiance à utiliser pour le calcul.
+    Parameters
+    ----------
+    y_true : np.ndarray
+        True label vector.
+    proba : np.ndarray
+        Predicted probability matrix (n_samples x n_classes).
+    n_bins : int
+        Number of confidence bins used for the computation.
 
-    Returns:
-        float: Valeur de l'ECE (plus petit est meilleur).
+    Returns
+    -------
+    float
+        ECE value (lower is better).
     """
-    # confiance = max proba ; correct = 1 si argmax proba == y_true
+    # confidence = max proba; correct = 1 if argmax proba == y_true
     conf = np.max(proba, axis=1)
     pred = np.argmax(proba, axis=1)
     correct = (pred == y_true).astype(float)
@@ -174,12 +181,11 @@ def _ece_score(y_true: np.ndarray, proba: np.ndarray, n_bins: int = 15) -> float
 
 class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
     """
-    Enveloppe un estimateur de classification pour forcer ``predict_proba`` en ``float64``.
+    Wrap a classifier to force ``predict_proba`` output to ``float64``.
 
-    Cette classe délègue tous les attributs et méthodes à l'estimateur de base et
-    veille à ce que la méthode ``predict_proba`` retourne un tableau de type
-    ``float64``. Elle ne fournit pas de ``decision_function`` si l'estimateur de base
-    n'en dispose pas.
+    This class delegates all attributes and methods to the base estimator and
+    ensures that ``predict_proba`` returns a ``float64`` array.  It does not
+    expose ``decision_function`` unless the base estimator provides one.
     """
 
     _estimator_type = "classifier"
@@ -192,7 +198,7 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
             raise AttributeError
         return getattr(self.base, name)
 
-    # --- API sklearn ---
+    # --- sklearn API ---
     def get_params(self, deep=True):
         return {"base": self.base}
 
@@ -202,7 +208,7 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
         return self
 
     def fit(self, X, y=None, **fit_params):
-        # on fit le modèle de base tel quel
+        # fit the base model as-is
         self.base.fit(X, y, **fit_params)
         return self
 
@@ -220,7 +226,7 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
         return getattr(self.base, "classes_", None)
 
     def __sklearn_is_fitted__(self):
-        # utilitaire de compatibilité
+        # compatibility utility
         return (
             hasattr(self.base, "__sklearn_is_fitted__")
             and self.base.__sklearn_is_fitted__()
@@ -229,21 +235,26 @@ class _Float64ProbaWrapper(ClassifierMixin, BaseEstimator):
 
 class CollinearityFilter(TransformerMixin, BaseEstimator):
     """
-    Filtre de colinéarité et de faible variance pour DataFrame.
+    Collinearity and low-variance filter for DataFrames.
 
-    Ce transformateur identifie et supprime les colonnes numériques présentant une
-    variance inférieure à un seuil ou une corrélation absolue supérieure à un
-    seuil donné. Il peut être utilisé dans un pipeline scikit‑learn pour
-    réduire la redondance des données.
+    Identify and remove numeric columns whose variance is below a threshold
+    or whose absolute correlation with another column exceeds a given
+    threshold.  Can be used inside a scikit-learn pipeline to reduce
+    feature redundancy.
 
-    Args:
-        var_threshold (float): Seuil minimum de variance en dessous duquel une colonne
-            est supprimée. Utiliser ``0.0`` pour désactiver le filtrage de variance.
-        corr_threshold (float): Seuil de corrélation absolue au-dessus duquel une colonne
-            redondante est supprimée. Doit être dans l'intervalle [0, 1].
+    Parameters
+    ----------
+    var_threshold : float
+        Minimum variance below which a column is dropped.
+        Use ``0.0`` to disable variance filtering.
+    corr_threshold : float
+        Absolute correlation threshold above which a redundant column is
+        dropped.  Must be in [0, 1].
 
-    Attributes:
-        keep_columns_ (List[str] | None): Liste des colonnes conservées après appel de ``fit``.
+    Attributes
+    ----------
+    keep_columns_ : list[str] or None
+        Columns retained after ``fit`` has been called.
     """
 
     def __init__(self, var_threshold: float = 0.0, corr_threshold: float = 0.98):
@@ -253,18 +264,24 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
 
     def fit(self, X: pd.DataFrame, y=None, **fit_params):
         """
-        Apprend quelles colonnes conserver selon la variance et la corrélation.
+        Learn which columns to keep based on variance and correlation.
 
-        Args:
-            X (pd.DataFrame): Données d'entrée comportant des colonnes numériques.
-            y: Ignoré, présent pour compatibilité avec l'API sklearn.
-            **fit_params: Paramètres supplémentaires ignorés.
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Input data with numeric columns.
+        y : ignored
+            Present for sklearn API compatibility.
+        **fit_params : dict
+            Additional parameters (ignored).
 
-        Returns:
-            CollinearityFilter: L'instance elle‑même.
+        Returns
+        -------
+        CollinearityFilter
+            The fitted instance.
         """
         if not isinstance(X, pd.DataFrame):
-            # tenter de reconstruire un DataFrame si possible
+            # attempt to reconstruct a DataFrame if possible
             X = pd.DataFrame(X)
         df = X.copy()
         # Variance threshold
@@ -272,12 +289,12 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
             vt = VarianceThreshold(self.var_threshold)
             vt.fit(df)
             df = df.loc[:, vt.get_support()]
-        # Remplir les NaN par médiane (sur train)
+        # Fill NaN with median (on the training set)
         df = df.copy()
         for c in df.columns:
             if df[c].isna().any():
                 df[c] = df[c].fillna(df[c].median())
-        # Corrélation
+        # Correlation
         if self.corr_threshold and self.corr_threshold < 1.0:
             corr = df.corr(numeric_only=True).abs()
             upper = corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
@@ -291,15 +308,19 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
-        """Transforme les données en conservant uniquement les colonnes sélectionnées.
+        """Transform data by keeping only the selected columns.
 
-        Args:
-            X: Tableau ou DataFrame à transformer.
+        Parameters
+        ----------
+        X : array-like or pd.DataFrame
+            Data to transform.
 
-        Returns:
-            pd.DataFrame | np.ndarray: Sous‑ensemble de ``X`` contenant uniquement les colonnes
-            sélectionnées lors de ``fit``. Si aucune colonne n'a été apprise,
-            les valeurs brutes sont retournées.
+        Returns
+        -------
+        pd.DataFrame or np.ndarray
+            Subset of *X* containing only the columns selected during
+            ``fit``.  If no columns have been learned, raw values are
+            returned.
         """
         df = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
         if self.keep_columns_ is None:
@@ -308,24 +329,34 @@ class CollinearityFilter(TransformerMixin, BaseEstimator):
 
 
 class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
-    """Ajoute un ajustement de seuils par classe à un estimateur de classification.
+    """Add per-class threshold tuning to a classification estimator.
 
-    Ce wrapper applique un vecteur de seuils spécifiques à chaque classe aux
-    probabilités retournées par l'estimateur de base. L'entraînement (``fit``)
-    peut, si ``tune`` est ``True``, rechercher des seuils optimaux sur un
-    sous‑ensemble de validation interne avant de ré‑entraîner le modèle sur
-    l'ensemble complet. La prédiction se fait via ``argmax(proba - thresholds)``.
+    This wrapper applies a class-specific threshold vector to the
+    probabilities returned by the base estimator.  During ``fit``, if
+    ``tune`` is ``True``, it searches for optimal thresholds on an internal
+    validation subset before re-fitting the model on the full training set.
+    Prediction is computed via ``argmax(proba - thresholds)``.
 
-    Args:
-        base_estimator: Estimateur de base supportant ``predict_proba``.
-        tune (bool): Si ``True``, ajuste les seuils sur un sous‑ensemble de validation.
-        metric (str): Métrique utilisée pour optimiser les seuils (`'f1_macro'` ou `'balanced_accuracy'`).
-        grid (np.ndarray | None): Grille de seuils à explorer. Si ``None``, une grille linéaire est utilisée.
-        random_state (int): Graine de reproductibilité pour le split interne.
+    Parameters
+    ----------
+    base_estimator : estimator
+        Base estimator supporting ``predict_proba``.
+    tune : bool
+        If ``True``, tune thresholds on a validation subset.
+    metric : str
+        Metric used to optimise thresholds (``'f1_macro'`` or
+        ``'balanced_accuracy'``).
+    grid : np.ndarray or None
+        Threshold grid to explore.  If ``None``, a linear grid is used.
+    random_state : int
+        Reproducibility seed for the internal split.
 
-    Attributes:
-        thresholds_ (np.ndarray | None): Seuils appris par classe.
-        classes_ (np.ndarray | None): Tableau des étiquettes de classe.
+    Attributes
+    ----------
+    thresholds_ : np.ndarray or None
+        Per-class thresholds learned during tuning.
+    classes_ : np.ndarray or None
+        Class label array.
     """
 
     _estimator_type = "classifier"
@@ -349,16 +380,16 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
         fit_params = dict(fit_params or {})
         supported = set(inspect.signature(estimator.fit).parameters.keys())
 
-        # Ne garder que les kwargs réellement supportés
+        # Keep only kwargs actually supported
         clean = {k: v for k, v in fit_params.items() if k in supported}
 
-        # Ajouter sample_weight seulement si supporté
+        # Add sample_weight only if supported
         if sample_weight is not None and "sample_weight" in supported:
             clean["sample_weight"] = sample_weight
         elif sample_weight is not None:
             warnings.warn(
                 f"{estimator.__class__.__name__} ne supporte pas sample_weight ; "
-                "les poids seront ignorés pour ce modèle."
+                "weights will be ignored for this model."
             )
         if "sample_weight" in clean and clean["sample_weight"] is not None:
             try:
@@ -371,7 +402,7 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
         return estimator.fit(X, y, **clean)
 
     def fit(self, X, y, **fit_params):
-        # récupère/forwarde les params utiles
+        # retrieve/forward useful params
         sw = fit_params.pop("sample_weight", None)
         if sw is not None:
             sw = np.asarray(sw, dtype=np.float32)
@@ -385,7 +416,7 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
         )
 
         if self.tune and hasattr(self.base_estimator, "predict_proba"):
-            # split interne pour tuner les seuils
+            # internal split to tune thresholds
             if sw is None:
                 X_tr, X_val, y_tr, y_val = train_test_split(
                     X, y, test_size=0.20, stratify=y, random_state=self.random_state
@@ -409,7 +440,7 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
             best = np.zeros(n_classes)
             best_score = -1.0
 
-            # grille commune puis affinement par classe
+            # common grid then per-class refinement
             for t in grid_arr:
                 s = self._score_with_thresholds(proba, y_val, np.full(n_classes, t))
                 if s > best_score:
@@ -423,7 +454,7 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
                         best_score, best = s, cand
             self.thresholds_ = best
 
-            # 2) refit final sur toutes les données avec les params transmis
+            # 2) final refit on all data with forwarded params
             extra = {}
             if eval_set is not None:
                 extra["eval_set"] = eval_set
@@ -440,7 +471,7 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
                 self.base_estimator, X, y, sample_weight=sw, fit_params=final_fit_params
             )
         else:
-            # pas de tuning → fit direct avec les params transmis
+            # no tuning -> direct fit with forwarded params
             if eval_set is not None:
                 fit_params["eval_set"] = eval_set
             if callbacks is not None:
@@ -482,31 +513,47 @@ class ThresholdTunedClassifier(ClassifierMixin, BaseEstimator):
 
 
 class SpectralClassifier:
-    """Classifieur spectral pour la classification de spectres de type stellaire.
+    """Spectral classifier for stellar spectral type classification.
 
-    Cette classe encapsule l'intégralité du pipeline de préparation des données,
-    la sélection de caractéristiques, la gestion du déséquilibre des classes,
-    l'entraînement de plusieurs modèles, la recherche d'hyperparamètres via
-    ``GridSearchCV`` ou ``RandomizedSearchCV``, l'évaluation et la persistance.
-    Elle supporte plusieurs modèles (RandomForest, XGBoost, SVM, etc.) et
-    sélectionne dynamiquement les caractéristiques numériques pertinentes.
+    This class encapsulates the full data-preparation pipeline, feature
+    selection, class-imbalance handling, multi-model training,
+    hyperparameter search via ``GridSearchCV`` or ``RandomizedSearchCV``,
+    evaluation, and persistence.  It supports several models (RandomForest,
+    XGBoost, SVM, etc.) and dynamically selects relevant numeric features.
 
-    Args:
-        model_type (str): Nom du modèle final à entraîner (ex. 'XGBoost', 'RandomForest').
-        prediction_target (str): Cible de prédiction (ex. 'main_class', 'sub_class_top25', 'sub_class_bins').
-        use_feature_selection (bool): Active ou non la sélection de variables via ``SelectFromModel``.
-        selector_threshold (str): Seuil pour la sélection (ex. 'median', 'mean', '0.5*mean').
-        selector_model (str): Estimateur utilisé pour la sélection des features ('xgb' ou 'rf').
-        selector_n_estimators (int): Nombre d'arbres/itérations pour l'estimateur de sélection.
-        random_state (int): Graine de reproductibilité pour tous les générateurs aléatoires.
+    Parameters
+    ----------
+    model_type : str
+        Final model to train (e.g. ``'XGBoost'``, ``'RandomForest'``).
+    prediction_target : str
+        Prediction target (e.g. ``'main_class'``, ``'sub_class_top25'``,
+        ``'sub_class_bins'``).
+    use_feature_selection : bool
+        Enable feature selection via ``SelectFromModel``.
+    selector_threshold : str
+        Threshold for selection (e.g. ``'median'``, ``'mean'``,
+        ``'0.5*mean'``).
+    selector_model : str
+        Estimator used for feature selection (``'xgb'`` or ``'rf'``).
+    selector_n_estimators : int
+        Number of trees / iterations for the selector estimator.
+        random_state : int
+        Reproducibility seed for all random generators.
 
-    Attributes:
-        feature_names_used (List[str]): Noms des variables candidates détectées lors de la préparation.
-        selected_features_ (List[str] | None): Sous‑ensemble retenu après sélection, ou ``None`` si la sélection n'a pas été appliquée.
-        best_estimator_: Pipeline final issu de la recherche d'hyperparamètres.
-        model_pipeline: Pipeline complet (préprocesseur + estimateur) entraîné.
-        label_encoder (LabelEncoder | None): Encodeur pour les labels, utilisé pour certains modèles comme XGBoost.
-        class_labels (List[str]): Liste des étiquettes de classes dans l'ordre utilisé par l'encodeur.
+    Attributes
+    ----------
+    feature_names_used : list[str]
+        Candidate feature names detected during preparation.
+    selected_features_ : list[str] or None
+        Subset retained after selection, or ``None`` if not applied.
+    best_estimator_
+        Final pipeline from hyperparameter search.
+    model_pipeline
+        Full pipeline (preprocessor + estimator) after training.
+    label_encoder : LabelEncoder or None
+        Label encoder used for models like XGBoost.
+    class_labels : list[str]
+        Class labels in the order used by the encoder.
     """
 
     def __init__(
@@ -518,7 +565,7 @@ class SpectralClassifier:
         selector_model="xgb",
         selector_n_estimators=200,
         random_state=42,
-        # pré-pro
+        # preprocessing
         imputer_strategy: str = "median",
         scaler_type: str = "standard",
         var_threshold: float = 0.0,
@@ -532,25 +579,40 @@ class SpectralClassifier:
         threshold_metric: str = "f1_macro",
     ):
         """
-        Initialise la configuration du pipeline de classification.
+        Initialise the classification pipeline configuration.
 
-        Args:
-            model_type: Modèle final à entraîner. {"XGBoost", "RandomForest"}.
-            prediction_target: Cible de prédiction (ex. "main_class", "sub_class_top25",
-                "sub_class_bins").
-                NOTE : sub_class_bins fait référence à des classes regroupées en bins donc
-                les sous-classes sont classées par ordre de fréquence.
-            use_feature_selection: Active la sélection de variables via SelectFromModel.
-            selector_threshold: Seuil de sélection (ex. "median", "mean", "0.5*mean").
-            selector_model: Estimateur utilisé pour la sélection des features
-                {"xgb", "rf"}.
-            selector_n_estimators: Nombre d’arbres/boosting rounds pour le sélecteur.
-            random_state: Graine de reproductibilité.
+        Parameters
+        ----------
+        model_type : str
+            Final model to train.  One of ``{"XGBoost", "RandomForest"}``.
+        prediction_target : str
+            Prediction target (e.g. ``"main_class"``, ``"sub_class_top25"``,
+            ``"sub_class_bins"``).
 
-        Attributes:
-            feature_names_used (list[str]): Noms des variables candidates détectées.
-            selected_features_ (list[str] | None): Sous-ensemble retenu après sélection.
-            best_estimator_: Pipeline final issu de GridSearchCV (une fois entraîné).
+            .. note::
+
+               ``sub_class_bins`` refers to classes grouped into bins;
+               sub-classes are ordered by frequency.
+        use_feature_selection : bool
+            Enable feature selection via ``SelectFromModel``.
+        selector_threshold : str
+            Selection threshold (e.g. ``"median"``, ``"mean"``,
+            ``"0.5*mean"``).
+        selector_model : str
+            Estimator used for feature selection (``"xgb"`` or ``"rf"``).
+        selector_n_estimators : int
+            Number of trees / boosting rounds for the selector.
+        random_state : int
+            Reproducibility seed.
+
+        Attributes
+        ----------
+        feature_names_used : list[str]
+            Candidate feature names detected.
+        selected_features_ : list[str] or None
+            Subset retained after selection.
+        best_estimator_
+            Final pipeline from GridSearchCV (once trained).
         """
         self.model_type = model_type
         self.prediction_target = prediction_target
@@ -560,7 +622,7 @@ class SpectralClassifier:
         self.selector_n_estimators = selector_n_estimators
         self.random_state = random_state
 
-        # Préférences de pré-traitement par défaut
+        # Default preprocessing preferences
         self.imputer_strategy = imputer_strategy
         self.scaler_type = scaler_type
         self.knn_imputer_k = 5
@@ -584,84 +646,87 @@ class SpectralClassifier:
         self.class_labels: List[str] = []
 
     # ---------------------------------------------------------------------
-    # Préparation des données (construction des labels + nettoyage)
+    # Data preparation (label construction + cleaning)
     # ---------------------------------------------------------------------
 
     def _clean_and_filter_data(self, df: pd.DataFrame) -> pd.DataFrame | None:
-        """Construit la colonne de label et filtre les exemples.
+        """Build the label column and filter examples.
 
-        En fonction de l'attribut ``prediction_target``, cette méthode crée une
-        colonne ``label`` à partir de la colonne ``subclass``, supprime les lignes
-        aux labels invalides et retire les classes trop rares. Le DataFrame
-        d'origine n'est pas modifié : un nouvel objet est renvoyé.
+        Depending on ``prediction_target``, create a ``label`` column from
+        ``subclass``, remove rows with invalid labels, and discard classes
+        with too few examples.  The original DataFrame is not modified;
+        a new object is returned.
 
-        Args:
-            df (pd.DataFrame): DataFrame contenant les colonnes de features et la colonne
-                ``subclass`` servant à dériver la cible.
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame containing feature columns and a ``subclass`` column
+            from which the target is derived.
 
-        Returns:
-            pd.DataFrame | None: DataFrame prêt pour l'entraînement avec une colonne ``label``,
-            ou ``None`` si le nettoyage conduit à un jeu de données trop petit.
+        Returns
+        -------
+        pd.DataFrame or None
+            Training-ready DataFrame with a ``label`` column, or ``None``
+            if cleaning reduces the dataset below a usable size.
 
-        Notes:
-            - Les labels invalides ('U', 'n', 'N', 'O', 'OTHER') sont supprimés.
-            - Les classes ayant moins de 10 exemples sont retirées pour assurer un
-              minimum de support pendant l'entraînement.
+        Notes
+        -----
+        - Invalid labels (``'U'``, ``'n'``, ``'N'``, ``'O'``, ``'OTHER'``)
+          are removed.
+        - Classes with fewer than 10 examples are dropped to ensure
+          minimum support during training.
         """
         if "subclass" not in df.columns:
-            print(
-                "AVERTISSEMENT: Colonne 'subclass' non trouvée. Impossible de créer des labels."
-            )
+            print("WARNING: 'subclass' column not found. Cannot create labels.")
             return None
 
         df_copy = df.copy()
 
         if self.prediction_target == "main_class":
-            print(
-                "  > Stratégie : Classification des classes principales (A, F, G...)."
-            )
+            print("  > Strategy: Main-class classification (A, F, G...).")
             df_copy["label"] = df_copy["subclass"].astype(str).str[0]
 
         elif self.prediction_target == "sub_class_top25":
             print(
-                "  > Stratégie : Classification fine sur les 25 sous-classes les plus fréquentes."
+                "  > Strategy: Fine classification on the 25 most frequent sub-classes."
             )
             df_valid = df_copy[
                 df_copy["subclass"].notnull() & (df_copy["subclass"] != "Non")
             ].copy()
-            # On trouve les 25 sous-classes les plus communes
+            # # Find the 25 most common sub-classes
             top_n_subclasses = (
                 df_valid["subclass"].value_counts().nlargest(25).index.tolist()
             )
             df_copy = df_valid[df_valid["subclass"].isin(top_n_subclasses)].copy()
             df_copy["label"] = df_copy["subclass"]
-            print(
-                f"  > Sélection de {len(top_n_subclasses)} sous-classes pour l'entraînement."
-            )
-            # Pourquoi: limite la granularité aux classes “fréquentes” pour éviter
-            # les splits train/test dégénérés et des métriques non parlantes.
+            print(f"  > Selected {len(top_n_subclasses)} sub-classes for training.")
+            # Why: limit granularity to "frequent" classes to avoid
+            # degenerate train/test splits and uninformative metrics.
         elif self.prediction_target == "sub_class_bins":
-            print(
-                "  > Stratégie : Classification fine par 'bacs' (ex: G_early, G_late)."
-            )
+            print("  > Strategy: Fine classification by bins (e.g. G_early, G_late).")
 
             def map_to_bin(subclass: str) -> str:
                 """
-                Regroupe une sous-classe spectrale fine en bin large de type
-                « X_early » ou « X_late ».
+                Group a fine spectral sub-class into a broad bin of type
+                ``X_early`` or ``X_late``.
 
-                Règles:
-                    - On ne traite que les formats classiques commençant par une
-                    lettre parmi {A,F,G,K,M} suivie d’un chiffre (ex.: "G2", "F5V", "K7III").
-                    - Si le chiffre < 5  -> "<TYPE>_early"  (ex.: G0–G4 -> "G_early")
-                    - Sinon             -> "<TYPE>_late"   (ex.: G5–G9 -> "G_late")
-                    - Pour tout autre format non reconnu -> "OTHER"
+                Rules
+                -----
+                - Only classic formats starting with a letter in {A,F,G,K,M}
+                  followed by a digit are handled (e.g. ``"G2"``, ``"F5V"``).
+                - digit < 5 -> ``"<TYPE>_early"`` (e.g. G0-G4 -> ``"G_early"``).
+                - digit >= 5 -> ``"<TYPE>_late"`` (e.g. G5-G9 -> ``"G_late"``).
+                - Unrecognised format -> ``"OTHER"``.
 
-                Args:
-                    subclass: Libellé de sous-classe d’origine (ex.: "G2", "K7III", "WD").
+                Parameters
+                ----------
+                subclass : str
+                    Original sub-class label (e.g. ``"G2"``, ``"K7III"``).
 
-                Returns:
-                    str: Bin large ("G_early", "G_late", …) ou "OTHER" si non reconnu.
+                Returns
+                -------
+                str
+                    Broad bin (``"G_early"``, ``"G_late"``, ...) or ``"OTHER"``.
                 """
                 s = str(subclass).strip()
                 if s and s[0] in "AFGKM" and len(s) > 1 and s[1].isdigit():
@@ -678,7 +743,7 @@ class SpectralClassifier:
 
         else:
             raise ValueError(
-                f"prediction_target '{self.prediction_target}' invalide. Choix possibles : 'main_class', 'sub_class_top25', 'sub_class_bins'."
+                f"Invalid prediction_target '{self.prediction_target}'. Valid choices: 'main_class', 'sub_class_top25', 'sub_class_bins'."
             )
 
         initial_count = len(df_copy)
@@ -687,54 +752,54 @@ class SpectralClassifier:
             df_copy["label"].notnull() & ~df_copy["label"].isin(invalid_labels)
         ].copy()
         print(
-            f"  > {initial_count - len(df_trainable)} lignes avec des labels invalides ou nuls supprimées."
+            f"  > {initial_count - len(df_trainable)} rows with invalid or null labels removed."
         )
 
         label_counts = df_trainable["label"].value_counts()
         rare_labels = label_counts[label_counts < 10].index.tolist()
         if rare_labels:
-            # Attention: seuil 10 choisi pour la robustesse des splits + SMOTE.
-            print(
-                f"  > Suppression des classes trop rares (moins de 10 échantillons) : {rare_labels}"
-            )
+            # Note: threshold 10 chosen for split robustness + SMOTE.
+            print(f"  > Dropping rare classes (fewer than 10 samples): {rare_labels}")
             df_trainable = df_trainable[~df_trainable["label"].isin(rare_labels)]
 
         if len(df_trainable) < 20:
-            print(
-                "\nERREUR : Pas assez de données valides après nettoyage pour entraîner un modèle."
-            )
+            print("\nERROR: Not enough valid data after cleaning to train a model.")
             return None
 
         print(
-            f"  > {len(df_trainable)} échantillons finaux avec {len(df_trainable['label'].unique())} classes pour l'entraînement."
+            f"  > {len(df_trainable)} final samples with {len(df_trainable['label'].unique())} classes for training."
         )
         return df_trainable
 
     # ---------------------------------------------------------------------
-    # Sélection dynamique des features & fabrication de X/y
+    # Dynamic feature selection & X/y construction
     # ---------------------------------------------------------------------
 
     def _prepare_features_and_labels(
         self, df_trainable: pd.DataFrame
     ) -> tuple[pd.DataFrame, np.ndarray]:
         """
-        Sélectionne dynamiquement les colonnes numériques pour constituer X et y.
+        Dynamically select numeric columns to build X and y.
 
-        Cette méthode élimine les colonnes non numériques, remplace les valeurs non
-        numériques ou infinies par ``NaN``, supprime les colonnes vides ou constantes,
-        trie les colonnes et retourne la matrice des features et le vecteur des
-        labels. L'ordre des colonnes est conservé dans ``feature_names_used``.
+        Remove non-numeric columns, replace non-numeric / infinite values
+        with ``NaN``, drop empty or constant columns, sort columns, and
+        return the feature matrix and label vector.  Column order is stored
+        in ``feature_names_used``.
 
-        Args:
-            df_trainable (pd.DataFrame): DataFrame nettoyé contenant au moins la colonne ``label``.
+        Parameters
+        ----------
+        df_trainable : pd.DataFrame
+            Cleaned DataFrame containing at least a ``label`` column.
 
-        Returns:
-            Tuple[pd.DataFrame, np.ndarray]: Un tuple ``(X, y)`` où ``X`` est un DataFrame
-            de features numériques et ``y`` est un tableau des labels.
+        Returns
+        -------
+        tuple[pd.DataFrame, np.ndarray]
+            ``(X, y)`` where *X* is a numeric feature DataFrame and *y*
+            is the label array.
 
-        Side Effects:
-            Met à jour l'attribut ``feature_names_used`` avec l'ordre final des colonnes
-            sélectionnées.
+        Side Effects
+        ------------
+        Update ``feature_names_used`` with the final column order.
         """
         cols_to_exclude = [
             "file_path",
@@ -791,8 +856,8 @@ class SpectralClassifier:
         const_cols = df_num.nunique(dropna=True)
         const_cols = const_cols[const_cols <= 1].index.tolist()
         if const_cols:
-            # Supprimer les colonnes constantes évite du bruit pour la
-            # sélection de features et accélère le fit.
+            # Dropping constant columns avoids noise for
+            # feature selection and speeds up fitting.
             df_num.drop(columns=const_cols, inplace=True)
 
         df_num = df_num.reindex(sorted(df_num.columns), axis=1)
@@ -801,11 +866,9 @@ class SpectralClassifier:
         X = df_num
         y = df_trainable["label"].values
 
+        print("\n--- Training Preparation (Dynamic Feature Detection) ---")
         print(
-            "\n--- Préparation pour l'entraînement (Détection Dynamique des Features) ---"
-        )
-        print(
-            f"Features utilisées ({len(self.feature_names_used)}) : {self.feature_names_used}"
+            f"Features used ({len(self.feature_names_used)}): {self.feature_names_used}"
         )
 
         return X, y
@@ -814,29 +877,37 @@ class SpectralClassifier:
         self, X_train: pd.DataFrame, model_type: str
     ) -> ColumnTransformer:
         """
-        Construit le préprocesseur pour le pipeline.
+        Build the preprocessor for the pipeline.
 
-        Le préprocesseur effectue l'imputation des valeurs manquantes et la
-        normalisation/standardisation des colonnes numériques selon le type de modèle
-        choisi. Pour les modèles qui n'exigent pas de scaling, seules les imputations
-        sont appliquées.
+        The preprocessor performs missing-value imputation and
+        normalisation / standardisation of numeric columns according to
+        the chosen model type.  For models that do not require scaling,
+        only imputation is applied.
 
-        Args:
-            X_train (pd.DataFrame): Matrice de features d'entraînement.
-            model_type (str): Type du modèle final (ex. 'RandomForest', 'XGBoost', 'SVM').
+        Parameters
+        ----------
+        X_train : pd.DataFrame
+            Training feature matrix.
+        model_type : str
+            Final model type (e.g. ``'RandomForest'``, ``'XGBoost'``,
+            ``'SVM'``).
 
-        Returns:
-            ColumnTransformer: Un transformateur appliquant les étapes d'imputation et
-            de scaling sur les colonnes numériques.
+        Returns
+        -------
+        ColumnTransformer
+            Transformer applying imputation and scaling steps on numeric
+            columns.
 
-        Raises:
-            ValueError: Si aucune colonne numérique n'est disponible dans ``X_train``.
+        Raises
+        ------
+        ValueError
+            If no numeric columns are available in *X_train*.
         """
         num_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
         if not num_cols:
-            raise ValueError("Aucune colonne numérique disponible pour l'entraînement.")
+            raise ValueError("No numeric columns available for training.")
 
-        # Sélection de l'imputation en fonction de self.imputer_strategy
+        # Select imputation based on self.imputer_strategy
         imp_strategy = getattr(self, "imputer_strategy", "median")
         if imp_strategy == "none" or imp_strategy is None:
             imputer = None
@@ -847,13 +918,13 @@ class SpectralClassifier:
         elif imp_strategy == "most_frequent":
             imputer = SimpleImputer(strategy="most_frequent")
         elif imp_strategy == "knn":
-            # KNNImputer plus lent mais parfois plus précis
+            # KNNImputer slower but sometimes more accurate
             n_neighbors = getattr(self, "knn_imputer_k", 5)
             imputer = KNNImputer(n_neighbors=int(n_neighbors))
         else:
             imputer = SimpleImputer(strategy="median")
 
-        # Sélection du scaler en fonction de self.scaler_type
+        # Select scaler based on self.scaler_type
         scaler_type = getattr(self, "scaler_type", "standard")
         if scaler_type == "none" or scaler_type is None:
             scaler = None
@@ -864,7 +935,7 @@ class SpectralClassifier:
         else:
             scaler = StandardScaler()
 
-        # Construction du pipeline de prétraitement pour les colonnes numériques
+        # Build the preprocessing pipeline for numeric columns
         steps = []
         if imputer is not None:
             steps.append(("imp", imputer))
@@ -876,7 +947,7 @@ class SpectralClassifier:
 
         transformer = Pipeline(steps) if steps else "passthrough"
 
-        # Sélection dynamique des colonnes numériques (compatible avec colfilter en amont)
+        # Dynamic numeric column selection (compatible with upstream colfilter)
         return ColumnTransformer(
             [("num", transformer, make_column_selector(dtype_include=np.number))],
             remainder="drop",
@@ -886,21 +957,31 @@ class SpectralClassifier:
         self, model_type: str, n_estimators: int, n_classes: int, random_state: int
     ):
         """
-        Construit l'estimateur de base selon le type de modèle.
+        Build the base estimator according to the model type.
 
-        Args:
-            model_type (str): Choix du modèle ('RandomForest', 'XGBoost', 'SVM',
-                'ExtraTrees', 'LogRegOVR', 'KNN', 'MLP', 'NaiveBayes', 'LDA', 'QDA',
-                'CatBoost', 'LightGBM', 'SoftVoting').
-            n_estimators (int): Nombre d'arbres ou d'itérations, selon le modèle.
-            n_classes (int): Nombre de classes cibles.
-            random_state (int): Graine de reproductibilité.
+        Parameters
+        ----------
+        model_type : str
+            Model choice (``'RandomForest'``, ``'XGBoost'``, ``'SVM'``,
+            ``'ExtraTrees'``, ``'LogRegOVR'``, ``'KNN'``, ``'MLP'``,
+            ``'NaiveBayes'``, ``'LDA'``, ``'QDA'``, ``'CatBoost'``,
+            ``'LightGBM'``, ``'SoftVoting'``).
+        n_estimators : int
+            Number of trees or iterations, depending on the model.
+        n_classes : int
+            Number of target classes.
+        random_state : int
+            Reproducibility seed.
 
-        Returns:
-            Estimator: Un estimateur scikit‑learn ou compatible.
+        Returns
+        -------
+        estimator
+            A scikit-learn-compatible estimator.
 
-        Raises:
-            ImportError: Si le modèle choisi nécessite un paquet non installé.
+        Raises
+        ------
+        ImportError
+            If the chosen model requires a package that is not installed.
             ValueError: Si ``model_type`` n'est pas reconnu.
         """
 
@@ -920,7 +1001,7 @@ class SpectralClassifier:
                 import xgboost as xgb
             except Exception as e:
                 raise RuntimeError(
-                    "XGBoost n'est pas installé dans cet environnement."
+                    "XGBoost is not installed in this environment."
                 ) from e
             return xgb.XGBClassifier(
                 n_estimators=n_estimators,
@@ -931,7 +1012,7 @@ class SpectralClassifier:
                 objective="multi:softprob",
                 eval_metric="mlogloss",
                 num_class=n_classes,
-                tree_method="hist",  # rapide et CPU-friendly
+                tree_method="hist",  # fast and CPU-friendly
                 n_jobs=self.n_jobs if hasattr(self, "n_jobs") else -1,
                 random_state=random_state,
             )
@@ -1005,7 +1086,7 @@ class SpectralClassifier:
         # CatBoost
         if model_type == "CatBoost":
             if not _HAS_CATBOOST:
-                raise ImportError("catboost n'est pas installé. `pip install catboost`")
+                raise ImportError("catboost is not installed. `pip install catboost`")
             params = dict(
                 loss_function="MultiClass",
                 iterations=n_estimators,
@@ -1024,7 +1105,7 @@ class SpectralClassifier:
         # LightGBM
         if model_type == "LightGBM":
             if not _HAS_LGBM:
-                raise ImportError("lightgbm n'est pas installé. `pip install lightgbm`")
+                raise ImportError("lightgbm is not installed. `pip install lightgbm`")
             return LGBMClassifier(
                 objective="multiclass",
                 class_weight="balanced",
@@ -1071,15 +1152,15 @@ class SpectralClassifier:
                     )
                 )
             if not ests:
-                raise RuntimeError("Aucun learner dispo pour SoftVoting.")
+                raise RuntimeError("No learner available for SoftVoting.")
             return VotingClassifier(estimators=ests, voting="soft", n_jobs=self.n_jobs)
 
         raise ValueError(
-            f"Modèle inconnu: {model_type} (attendu: RandomForest | XGBoost | SVM | ExtraTrees | LogRegOVR | KNN | MLP | NaiveBayes | LDA | QDA | CatBoost | LightGBM)"
+            f"Unknown model: {model_type} (expected: RandomForest | XGBoost | SVM | ExtraTrees | LogRegOVR | KNN | MLP | NaiveBayes | LDA | QDA | CatBoost | LightGBM)"
         )
 
     # ---------------------------------------------------------------------
-    # Entraînement + tuning + (optionnel) sélection de variables
+    # Training + tuning + (optional) feature selection
     # ---------------------------------------------------------------------
 
     def train_and_evaluate(
@@ -1115,10 +1196,10 @@ class SpectralClassifier:
         calibration_method: str = "sigmoid",
         calibrate_cv: int = 3,
         calibrate_holdout_size: float = 0.0,
-        # répétitions de CV
+        # CV repetitions
         repeated_cv: bool = False,
         cv_repeats: int = 1,
-        # filtres/sélection
+        # filters / selection
         imputer_strategy: str | None = None,
         knn_imputer_k: int = 5,
         scaler_type: str | None = None,
@@ -1137,85 +1218,130 @@ class SpectralClassifier:
     ) -> tuple[
         "SpectralClassifier", list[str], pd.DataFrame, np.ndarray, np.ndarray | None
     ]:
-        """Entraîne le classifieur spectral et effectue une évaluation initiale.
+        """Train the spectral classifier and perform an initial evaluation.
 
-        Cette méthode exécute le pipeline complet : nettoyage des données,
-        préparation de ``X`` et ``y``, éventuelle sélection de variables,
-        recherche d'hyperparamètres via ``GridSearchCV`` ou ``RandomizedSearchCV``,
-        entraînement du modèle final, et affichage d'un rapport d'évaluation
-        sur le jeu de test. De nombreux paramètres permettent de contrôler
-        l'équilibrage des classes, l'imputation, le scaling, la sélection des features,
-        la réduction de dimension, le sur‑échantillonnage, l'arrêt précoce et la
-        calibration des probabilités.
+        Execute the full pipeline: data cleaning, ``X`` / ``y``
+        preparation, optional feature selection, hyperparameter search via
+        ``GridSearchCV`` or ``RandomizedSearchCV``, final model training,
+        and evaluation report on the test set.  Many parameters control
+        class balancing, imputation, scaling, feature selection,
+        dimensionality reduction, oversampling, early stopping, and
+        probability calibration.
 
-        Args:
-            features_df (pd.DataFrame): DataFrame complet (features + colonnes méta) avant nettoyage.
-            test_size (float, optional): Proportion du jeu de données affectée au test. Defaults to 0.21.
-            n_estimators (int, optional): Nombre d'arbres ou d'itérations pour l'estimateur de base. Defaults to 300.
-            search (str | None, optional): Type de recherche d'hyperparamètres ('grid' ou 'random').
-            cv_folds (int, optional): Nombre de plis pour la validation croisée. Defaults to 5.
-            scoring (str, optional): Métrique optimisée par la recherche. Defaults to 'accuracy'.
-            use_feature_selection (bool | None, optional): Force l'activation ou la désactivation de la sélection de features.
-            selector_model (str | None, optional): Modèle utilisé pour la sélection de features.
-            selector_threshold (str | None, optional): Seuil utilisé pour la sélection de features.
-            early_stopping (bool, optional): Active l'arrêt précoce pour certains estimateurs. Defaults to False.
-            early_stopping_rounds (int, optional): Nombre d'itérations sans amélioration avant arrêt. Defaults to 50.
-            val_size (float, optional): Proportion réservée pour la validation dans l'arrêt précoce. Defaults to 0.15.
-            use_groups (bool, optional): Si True, utilise une colonne de groupes pour stratifier le split. Defaults to False.
-            group_col (str | None, optional): Nom de la colonne contenant les groupes pour le split. Defaults to None.
-            param_grid (Dict[str, Any] | None, optional): Grille d'hyperparamètres pour ``GridSearchCV``.
-            param_distributions (Dict[str, Any] | None, optional): Distributions pour ``RandomizedSearchCV``.
-            n_iter (int, optional): Nombre d'itérations pour ``RandomizedSearchCV``. Defaults to 80.
-            random_state (int, optional): Graine aléatoire. Defaults to 42.
-            param_overrides (dict | None, optional): Dictionnaire de paramètres supplémentaires à forcer dans l'estimateur.
-            use_balanced_weights (bool, optional): Active le calcul de poids d'équilibrage des classes. Defaults to True.
-            class_weight_mode (str | None, optional): Méthode pour déterminer les poids ('inv_freq' ou None).
-            class_weight_alpha (float, optional): Coefficient pour ajuster les poids inverses. Defaults to 1.0.
-            weight_col (str | None, optional): Nom d'une colonne contenant des poids personnalisés. Defaults to None.
-            weight_norm (str, optional): Normalisation des poids ('minmax', etc.). Defaults to 'minmax'.
-            weight_gamma (float, optional): Exposant pour pondérer la distribution des poids. Defaults to 1.0.
-            calibrate_probs (bool, optional): Si True, applique une calibration des probabilités a posteriori. Defaults to False.
-            calibration_method (str, optional): Méthode de calibration ('sigmoid' ou 'isotonic'). Defaults to 'sigmoid'.
-            calibrate_cv (int, optional): Nombre de plis pour la calibration. Defaults to 3.
-            calibrate_holdout_size (float, optional): Taille de l'ensemble de validation pour la calibration. Defaults to 0.0.
-            repeated_cv (bool, optional): Active la validation croisée répétée. Defaults to False.
-            cv_repeats (int, optional): Nombre de répétitions de la validation croisée. Defaults to 1.
-            imputer_strategy (str | None, optional): Stratégie d'imputation ('median', 'mean', etc.) écrasant la valeur de l'instance.
-            knn_imputer_k (int, optional): Nombre de voisins pour ``KNNImputer``. Defaults to 5.
-            scaler_type (str | None, optional): Type de scaler ('standard', 'robust', etc.).
-            selector_method (str | None, optional): Méthode de sélection ('rfecv' par exemple).
-            mi_top_k (int | None, optional): Nombre de features à conserver en fonction de l'information mutuelle.
-            sampler (str | None, optional): Méthode de sur‑échantillonnage ('smote', 'adasyn', etc.).
-            var_threshold (float | None, optional): Seuil de variance pour supprimer les colonnes. Defaults to None.
-            corr_threshold (float | None, optional): Seuil de corrélation pour supprimer les colonnes. Defaults to None.
-            use_pca (bool | None, optional): Si True, applique une réduction de dimension par PCA. Defaults to None.
-            pca_components (float | int | None, optional): Nombre ou fraction de composantes conservées par PCA. Defaults to None.
-            tune_thresholds (bool | None, optional): Active l'ajustement des seuils via ``ThresholdTunedClassifier``. Defaults to None.
-            threshold_metric (str | None, optional): Métrique pour optimiser les seuils. Defaults to None.
+        Parameters
+        ----------
+            features_df : pd.DataFrame
+            Full DataFrame (features + metadata columns) before cleaning.
+            test_size : float, default 0.21
+            Proportion of the dataset held out for testing. Defaults to 0.21.
+            n_estimators : int, default 300
+            Number of trees / iterations for the base estimator.
+            search : str or None, default None
+            Hyperparameter search type (``'grid'`` or ``'random'``).
+            cv_folds : int, default 5
+            Number of cross-validation folds. Defaults to 5.
+            scoring : str, default 'accuracy'
+            Metric optimised by the search. Defaults to 'accuracy'.
+            use_feature_selection : bool or None
+            Force feature selection on or off.
+            selector_model : str or None
+            Model used for feature selection.
+            selector_threshold : str or None
+            Threshold used for feature selection.
+            early_stopping : bool, default False
+            Enable early stopping for compatible estimators.
+            early_stopping_rounds : int, default 50
+            Iterations without improvement before stopping.
+            val_size : float, default 0.15
+            Validation proportion for early stopping.
+            use_groups : bool, default False
+            Use a group column to stratify the split. Defaults to False.
+            group_col : str or None
+            Column containing group labels for the split. Defaults to None.
+            param_grid : dict or None
+            Hyperparameter grid for ``GridSearchCV``.
+            param_distributions : dict or None
+            Distributions for ``RandomizedSearchCV``.
+            n_iter : int, default 80
+            Iterations for ``RandomizedSearchCV``.
+            random_state : int, default 42
+            Random seed. Defaults to 42.
+            param_overrides : dict or None
+            Extra parameters forced on the estimator.
+            use_balanced_weights : bool, default True
+            Compute class-balancing sample weights.
+            class_weight_mode : str or None
+            Weight method (``'inv_freq'`` or ``None``).
+            class_weight_alpha : float, default 1.0
+            Exponent for inverse-frequency weights. Defaults to 1.0.
+            weight_col : str or None
+            Column containing custom sample weights.
+            weight_norm : str, default 'minmax'
+            Weight normalisation method.
+            weight_gamma : float, default 1.0
+            Exponent applied to the weight distribution. Defaults to 1.0.
+            calibrate_probs : bool, default False
+            Apply post-hoc probability calibration. Defaults to False.
+            calibration_method : str, default 'sigmoid'
+            Calibration method (``'sigmoid'`` or ``'isotonic'``).
+            calibrate_cv : int, default 3
+            Folds for calibration cross-validation. Defaults to 3.
+            calibrate_holdout_size : float, default 0.0
+            Holdout size for calibration.
+            repeated_cv : bool, default False
+            Enable repeated cross-validation. Defaults to False.
+            cv_repeats : int, default 1
+            Number of CV repetitions. Defaults to 1.
+            imputer_strategy : str or None
+            Imputation strategy overriding the instance value.
+            knn_imputer_k : int, default 5
+            Neighbours for ``KNNImputer``. Defaults to 5.
+            scaler_type : str or None
+            Scaler type (``'standard'``, ``'robust'``, etc.).
+            selector_method : str or None
+            Selection method (e.g. ``'rfecv'``).
+            mi_top_k : int or None
+            Number of features to keep based on mutual information.
+            sampler : str or None
+            Oversampling method (``'smote'``, ``'adasyn'``, etc.).
+            var_threshold : float or None
+            Variance threshold for column dropping. Defaults to None.
+            corr_threshold : float or None
+            Correlation threshold for column dropping. Defaults to None.
+            use_pca : bool or None
+            Apply PCA dimensionality reduction. Defaults to None.
+            pca_components : float, int, or None
+            Number or fraction of PCA components to keep. Defaults to None.
+            tune_thresholds : bool or None
+            Enable threshold tuning via ``ThresholdTunedClassifier``.
+            threshold_metric : str or None
+            Metric for threshold optimisation. Defaults to None.
 
         Returns:
             Tuple[SpectralClassifier, List[str], pd.DataFrame, np.ndarray, np.ndarray | None]:
-                - ``self`` : L'instance entraînée, permettant le chaînage.
-                - ``cols_for_report`` : Liste des colonnes finalement utilisées pour l'entraînement.
-                - ``X`` (pd.DataFrame) : Matrice des features utilisée avant le split.
-                - ``y`` (np.ndarray) : Vecteur des labels.
-                - ``np.ndarray | None`` : Tableau des indices de validation ou ``None`` si non applicable.
+                - ``self`` : The trained instance (allows chaining).
+                - ``cols_for_report`` : Columns actually used for training.
+                - ``X`` (pd.DataFrame) : Feature matrix before the split.
+                - ``y`` (np.ndarray) : Label vector.
+                - ``np.ndarray | None`` : Group array or ``None``.
 
         Raises:
-            ValueError: Si la recherche d'hyperparamètres échoue ou si un estimateur requis est manquant.
+            ValueError
+            If the hyperparameter search fails or a required estimator
+            is missing.
         """
         print(
-            f"\n=== ÉTAPE 4 : SESSION D'ENTRAÎNEMENT (Modèle: {self.model_type}, Cible: {self.prediction_target}) ==="
+            f"\n=== STEP 4: TRAINING SESSION (Model: {self.model_type}, Target: {self.prediction_target}) ==="
         )
 
-        # 0) Nettoyage + label
+        # 0) Cleaning + label
         df_trainable = self._clean_and_filter_data(features_df)
         if df_trainable is None:
-            print("> Aucune donnée exploitable après nettoyage ; arrêt.")
+            print("> No usable data after cleaning; stopping.")
             return False
 
-        # Appliquer les réglages du pré-processeur pour cette session
-        # On sauvegarde les valeurs existantes pour les restaurer ensuite
+        # Apply preprocessor settings for this session
+        # Save existing values to restore them later
         orig_imp = getattr(self, "imputer_strategy", None)
         orig_knn = getattr(self, "knn_imputer_k", None)
         orig_scal = getattr(self, "scaler_type", None)
@@ -1238,38 +1364,38 @@ class SpectralClassifier:
             self.tune_thresholds = bool(tune_thresholds)
         if threshold_metric is not None:
             self.threshold_metric = str(threshold_metric)
-        # Groupes (optionnel)
+        # Groups (optional)
         groups_full = None
         if use_groups and group_col and group_col in df_trainable.columns:
             groups_full = df_trainable[group_col].values
 
-        # 1) X/y + encodage XGB
+        # 1) X/y + XGBoost encoding
         X_all, y_all = self._prepare_features_and_labels(df_trainable)
         feature_cols_before_fs = list(self.feature_names_used)
         y_all = y_all.astype(str)
 
-        # Mutual information filter (sélection des top-K features avant tout)
+        # Mutual information filter (select top-K features upfront)
         if mi_top_k is not None and mi_top_k > 0:
             try:
-                # On calcule la MI sur un sous-échantillon pour la vitesse
-                # S'il y a trop de colonnes catégorielles, mutual_info_classif les gère automatiquement
+                # Compute MI on a subsample for speed
+                # mutual_info_classif handles categorical columns automatically
                 mi_scores = mutual_info_classif(
                     X_all.fillna(0), y_all, discrete_features=False
                 )
-                # Sélection des indices des top-K scores
+                # Select indices of top-K scores
                 idx_sorted = np.argsort(mi_scores)[::-1]
                 top_idx = idx_sorted[: int(mi_top_k)]
                 top_cols = X_all.columns[top_idx]
                 X_all = X_all[top_cols].copy()
                 self.feature_names_used = list(X_all.columns)
                 print(
-                    f"  > Mutual information filter : {len(top_cols)} features conservées (top-{mi_top_k})."
+                    f"  > Mutual information filter: {len(top_cols)} features retained (top-{mi_top_k})."
                 )
             except Exception as _mi_e:
-                # Si la MI échoue (par ex. données non numériques), on ignore la sélection MI
+                # If MI fails (e.g. non-numeric data), skip MI selection
                 pass
 
-        # Encodage pour XGBoost + mémorisation de l’encodeur et des labels
+        # Encode for XGBoost + store encoder and labels
         label_encoder: Optional[LabelEncoder] = None
         y_enc = y_all
 
@@ -1280,14 +1406,14 @@ class SpectralClassifier:
         else:
             y_enc = y_all
 
-        # Sauvegarde pour évaluation / décodage et ordre des classes
+        # Store for evaluation / decoding and class order
         self.label_encoder = label_encoder
         self.class_labels = (
             label_encoder.classes_.tolist()
             if label_encoder is not None
             else sorted(pd.Series(y_all).astype(str).unique().tolist())
         )
-        # 2) Split train/test (stratifié ou par groupes)
+        # 2) Train/test split (stratified or group-based)
         if use_groups and (groups_full is not None):
             try:
                 from sklearn.model_selection import StratifiedGroupKFold
@@ -1317,12 +1443,12 @@ class SpectralClassifier:
             "n_test": int(len(te_idx)),
             "test_size": test_size,
             "random_state": random_state,
-        }  # pour le rapport
+        }  # for the report
 
         X_train = X_all.iloc[tr_idx]
         y_train = y_enc[tr_idx]
 
-        # 3) Préprocesseur + estimateur + (optionnel) SelectFromModel
+        # 3) Preprocessor + estimator + (optional) SelectFromModel
         n_classes = int(np.unique(y_enc).shape[0])
         preproc = self._build_preprocessor(X_train, self.model_type)
         base_est = self._build_estimator(
@@ -1336,8 +1462,8 @@ class SpectralClassifier:
             if use_feature_selection is None
             else use_feature_selection
         )
-        # Choix du modèle pour la sélection guidée
-        # Priorité : argument selector_method > argument selector_model > attribut self.selector_model
+        # Choose model for guided selection
+        # Priority: selector_method arg > selector_model arg > self.selector_model attr
         if selector_method is not None:
             sel_model = selector_method
         elif selector_model is None:
@@ -1350,7 +1476,7 @@ class SpectralClassifier:
             else selector_threshold
         )
 
-        # pipeline (imblearn si sampler actif)
+        # pipeline (imblearn if sampler active)
         Pipe = (
             ImbPipeline
             if (_HAS_IMBLEARN and (self.sampler not in ("none", None)))
@@ -1362,7 +1488,7 @@ class SpectralClassifier:
             ("prep", preproc),
         ]
         if fs_enabled:
-            # Modèle pour sélectionner les variables
+            # Model for feature selection
             if sel_model == "xgb":
                 import xgboost as xgb
 
@@ -1387,7 +1513,7 @@ class SpectralClassifier:
                     class_weight="balanced_subsample",
                 )
             elif sel_model == "l1":
-                # Sélection via régression logistique L1 (sparse)
+                # Selection via L1 logistic regression (sparse)
                 selector_est = LogisticRegression(
                     penalty="l1",
                     solver="liblinear",
@@ -1396,7 +1522,7 @@ class SpectralClassifier:
                     random_state=random_state,
                 )
             else:
-                # Par défaut : RandomForest
+                # Default: RandomForest
                 selector_est = RandomForestClassifier(
                     n_estimators=self.selector_n_estimators,
                     n_jobs=-1,
@@ -1410,14 +1536,14 @@ class SpectralClassifier:
             if fs_kind == "rfecv":
                 from sklearn.feature_selection import RFECV
 
-                min_feats = max(5, int(0.05 * X_train.shape[1]))  # garde-fou
+                min_feats = max(5, int(0.05 * X_train.shape[1]))  # safeguard
                 steps.append(
                     (
                         "fs",
                         RFECV(
                             estimator=selector_est,
                             step=1,
-                            cv=5,  # simple et robuste; ok aussi sans groupes
+                            cv=5,  # simple and robust; works without groups too
                             scoring=scoring,
                             n_jobs=-1,
                             min_features_to_select=min_feats,
@@ -1425,7 +1551,7 @@ class SpectralClassifier:
                     )
                 )
             else:
-                # chemin par défaut: SelectFromModel
+                # default path: SelectFromModel
                 steps.append(
                     ("fs", SelectFromModel(selector_est, threshold=sel_threshold))
                 )
@@ -1435,7 +1561,7 @@ class SpectralClassifier:
                 ("pca", PCA(n_components=self.pca_components, svd_solver="full"))
             )
 
-        # sampler (dans les folds)
+        # sampler (applied within folds)
         sampler_name = (sampler or self.sampler or "none").lower()
         if _HAS_IMBLEARN and sampler_name not in ("none", None):
             if sampler_name == "smote":
@@ -1447,9 +1573,9 @@ class SpectralClassifier:
             elif sampler_name == "adasyn":
                 steps.append(("sampler", ADASYN(random_state=random_state)))
             else:
-                print(f"(info) sampler inconnu '{sampler_name}', désactivé.")
+                print(f"(info) unknown sampler '{sampler_name}', disabled.")
 
-        # wrap seuils
+        # threshold wrapper
         final_est = ThresholdTunedClassifier(
             base_est,
             tune=self.tune_thresholds,
@@ -1460,46 +1586,46 @@ class SpectralClassifier:
         steps.append(("clf", final_est))
         pipe = Pipe(steps)
 
-        # 4) Fit params : weights + early stopping (XGB)
+        # 4) Fit params: weights + early stopping (XGB)
         fit_params: Dict[str, Any] = {}
-        # --- Calcul des poids d'échantillons ---
-        # On combine (si applicable) plusieurs sources de poids :
-        # 1) Poids de classe avancés (inverse des fréquences)
-        # 2) Poids équilibrés standards (balanced)
-        # 3) Poids provenant d'une colonne du DataFrame (S/N, etc.)
+        # --- Sample weight computation ---
+        # Combine (when applicable) several weight sources:
+        # 1) Advanced class weights (inverse frequencies)
+        # 2) Standard balanced weights
+        # 3) Weights from a DataFrame column (S/N, etc.)
 
         sample_weight: Optional[np.ndarray] = None
 
-        # 1) Poids de classe avancés
+        # 1) Advanced class weights
         if class_weight_mode and str(class_weight_mode).lower() != "none":
-            # Fréquence de chaque classe dans y_train
+            # Frequency of each class in y_train
             unique, counts = np.unique(y_train, return_counts=True)
             freq_map = {cls: cnt for cls, cnt in zip(unique, counts)}
-            # Poids proportionnels à l'inverse de la fréquence à la puissance alpha
+            # Weights proportional to inverse frequency raised to alpha
             class_weights = {
                 cls: (1.0 / freq_map[cls]) ** float(class_weight_alpha)
                 for cls in unique
             }
             sample_weight = np.array([class_weights[cls] for cls in y_train])
         elif use_balanced_weights:
-            # Poids balanced fourni par scikit-learn
+            # Balanced weights provided by scikit-learn
             sample_weight = compute_sample_weight("balanced", y_train)
 
-        # 2) Poids depuis une colonne du DataFrame (ex: rapport S/N)
+        # 2) Weights from a DataFrame column (e.g. S/N ratio)
         if weight_col and weight_col in df_trainable.columns:
             try:
-                # Les indices de X_train correspondent aux index de df_trainable
+                # X_train indices correspond to df_trainable index
                 weight_vals = df_trainable.loc[X_train.index, weight_col].values.astype(
                     float
                 )
                 # Normalisation
                 w = weight_vals.copy()
-                # Remplace les NaN par la médiane
+                # Replace NaN with median
                 if np.any(pd.isna(w)):
                     med = np.nanmedian(w)
                     w = np.nan_to_num(w, nan=med)
                 if weight_norm == "log":
-                    # log1p après déplacement pour éviter log(0)
+                    # log1p after shifting to avoid log(0)
                     w = np.log1p(w - np.min(w) + 1e-6)
                 # Min-max scaling
                 mn, mx = np.min(w), np.max(w)
@@ -1507,7 +1633,7 @@ class SpectralClassifier:
                     w = (w - mn) / (mx - mn)
                 else:
                     w = np.ones_like(w)
-                # puissance gamma
+                # gamma power
                 try:
                     w = np.power(w, float(weight_gamma))
                 except Exception:
@@ -1517,20 +1643,20 @@ class SpectralClassifier:
                 else:
                     sample_weight = sample_weight * w
             except Exception:
-                # en cas d'erreur, on ignore les poids par colonne
+                # on error, ignore column-based weights
                 pass
 
-        # Ajout aux paramètres de fit si présent
+        # Add to fit params if present
         if sample_weight is not None:
             sample_weight = np.asarray(sample_weight, dtype=np.float32)
             fit_params["clf__sample_weight"] = sample_weight
 
-        # ES uniquement hors recherche (sinon masque FS instable entre folds)
+        # ES only outside search (otherwise masks unstable FS across folds)
         es_active = (
             (self.model_type == "XGBoost") and early_stopping and (search is None)
         )
         if es_active:
-            # split interne pour l'ES
+            # internal split for ES
             X_tr_in, X_val_in, y_tr_in, y_val_in = train_test_split(
                 X_train,
                 y_train,
@@ -1539,7 +1665,7 @@ class SpectralClassifier:
                 random_state=random_state,
             )
 
-            # pipeline "prep + fs" clonée et FIT sur TOUT X_train (même data que le fit final)
+            # clone "prep + fs" pipeline and FIT on ALL X_train (same data as final fit)
             pre_fs_steps = steps[
                 :-1
             ]  # ['prep', ('fs', ...)] si FS actif, sinon juste 'prep'
@@ -1548,9 +1674,9 @@ class SpectralClassifier:
                 prep_for_es.fit(X_train, y_train)
                 X_val_es = prep_for_es.transform(X_val_in)
             else:
-                X_val_es = X_val_in  # (cas sans préproc/FS)
+                X_val_es = X_val_in  # (case without preproc/FS)
 
-            # compat XGB 1.x / 2.x : choisir l'API supportée
+            # XGB 1.x / 2.x compat: pick the supported API
             fit_sig = set(inspect.signature(base_est.fit).parameters.keys())
             fit_params["clf__eval_set"] = [(X_val_es, y_val_in)]
             if "callbacks" in fit_sig:
@@ -1564,10 +1690,10 @@ class SpectralClassifier:
             if "verbose" in fit_sig:
                 fit_params["clf__verbose"] = False
 
-        # 5) Stratégie de validation croisée (CV)
-        # Si des groupes sont fournis, on privilégie StratifiedGroupKFold (si dispo).
-        # Sinon, en mode répétition activé, on utilise RepeatedStratifiedKFold pour
-        # stabiliser les scores. À défaut, on reste sur StratifiedKFold classique.
+        # 5) Cross-validation strategy (CV)
+        # If groups are provided, prefer StratifiedGroupKFold (if available).
+        # Otherwise, if repeated mode is on, use RepeatedStratifiedKFold to
+        # stabilise scores.  Otherwise, fall back to standard StratifiedKFold.
         if use_groups and groups_train is not None:
             try:
                 from sklearn.model_selection import StratifiedGroupKFold
@@ -1579,7 +1705,7 @@ class SpectralClassifier:
                 cv = GroupKFold(n_splits=cv_folds)
         else:
             if repeated_cv:
-                # Validation croisée répétée (k-fold × repeats) pour plus de robustesse
+                # Repeated cross-validation (k-fold x repeats) for added robustness
                 cv = RepeatedStratifiedKFold(
                     n_splits=cv_folds,
                     n_repeats=cv_repeats,
@@ -1624,9 +1750,9 @@ class SpectralClassifier:
             best = pipe
             self.best_params_ = getattr(best[-1], "get_params", lambda: {})()
 
-        # 7) Si calibration demandée ---
+        # 7) If calibration requested ---
         if calibrate_probs:
-            # 7.1) éventuel split holdout dédié à la calibration
+            # 7.1) optional holdout split dedicated to calibration
             X_tr, y_tr = X_train, y_train
             X_cal = y_cal = None
             sw_tr = None
@@ -1650,13 +1776,13 @@ class SpectralClassifier:
                         random_state=random_state,
                     )
 
-            # 7.2) refit sur le sous-ensemble d’entraînement (utile si holdout)
+            # 7.2) refit on training subset (useful if holdout)
             fit_params_tr = dict(fit_params)
             if sw_tr is not None:
                 fit_params_tr["clf__sample_weight"] = sw_tr
             best.fit(X_tr, y_tr, **fit_params_tr)
 
-            # 7.3) séparer pré-proc/fs et step final
+            # 7.3) separate preproc/fs from final step
             if isinstance(best, _PIPE_TYPES):
                 preproc_fs = best[:-1]
                 final_step = best.steps[-1][1]
@@ -1664,7 +1790,7 @@ class SpectralClassifier:
                 preproc_fs = None
                 final_step = best
 
-            # 7.4) estimateur VRAIMENT calibré = base_estimator s’il y a un wrapper
+            # 7.4) actually calibrated estimator = base_estimator if wrapped
             est_to_cal = getattr(final_step, "base_estimator", final_step)
             if not is_classifier(est_to_cal):
                 raise TypeError(
@@ -1672,7 +1798,7 @@ class SpectralClassifier:
                 )
 
             if X_cal is not None:
-                # ---- mode prefit sur holdout ----
+                # ---- prefit mode on holdout ----
                 X_cal_trans = (
                     preproc_fs.transform(X_cal) if preproc_fs is not None else X_cal
                 )
@@ -1685,7 +1811,7 @@ class SpectralClassifier:
                     y_cal,
                     sample_weight=np.asarray(sw_cal, dtype=np.float32),
                 )
-                # ré-injecter le calibrateur
+                # re-inject the calibrator
                 if hasattr(final_step, "base_estimator"):
                     final_step.base_estimator = cal
                 else:
@@ -1694,7 +1820,7 @@ class SpectralClassifier:
                     else:
                         best = cal
             else:
-                # ---- calibration par CV (pas de holdout) : on met le calibrateur comme step final ----
+                # ---- CV calibration (no holdout): set calibrator as final step ----
                 est_for_cal = _Float64ProbaWrapper(est_to_cal)
                 cal = CalibratedClassifierCV(
                     estimator=est_for_cal,
@@ -1712,13 +1838,13 @@ class SpectralClassifier:
                         best = cal
                         best.fit(X_train, y_train, **fit_params)
 
-        # 8) Expose artefacts
+        # 8) Expose artifacts
         self.model_pipeline = best
 
-        # Pour introspection, on récupère le pipeline sans l'enrobage de calibration
+        # For introspection, retrieve the pipeline without calibration wrapper
         pipe_for_fs = getattr(best, "base_estimator", best)
 
-        # 9) Features sélectionnées (si FS actif)
+        # 9) Selected features (if FS active)
         self.selected_features_ = None
         if (
             fs_enabled
@@ -1726,7 +1852,7 @@ class SpectralClassifier:
             and "fs" in pipe_for_fs.named_steps
         ):
             try:
-                # Nommer les colonnes après le préproc
+                # Name columns after preprocessing
                 out_names = pipe_for_fs.named_steps["prep"].get_feature_names_out()
                 out_names = [n.split("__", 1)[-1] for n in out_names]
             except Exception:
@@ -1737,10 +1863,10 @@ class SpectralClassifier:
                     n for n, keep in zip(out_names, mask) if keep
                 ]
             except Exception:
-                # garde-fou
+                # safeguard
                 self.selected_features_ = out_names
 
-        # --- Rétablit les options de pré-processeur si elles ont été surchargées pour cette session ---
+        # --- Restore preprocessor options if they were overridden for this session ---
         if imputer_strategy is not None:
             self.imputer_strategy = orig_imp
             self.knn_imputer_k = orig_knn
@@ -1750,24 +1876,25 @@ class SpectralClassifier:
         return (self, feature_cols_before_fs, X_all, y_all, groups_full)
 
     # ---------------------------------------------------------------------
-    # Évaluation & persistance
+    # Evaluation & persistence
     # ---------------------------------------------------------------------
 
     def evaluate(self, X_test: pd.DataFrame | np.ndarray, y_test: np.ndarray) -> None:
         """
-        Évalue le modèle entraîné sur le jeu de test et affiche le rapport
-        de classification ainsi que la matrice de confusion.
+        Evaluate the trained model on the test set.
 
-        Args:
-            X_test: Jeu de test transformé comme à l’entraînement (mêmes features).
-            y_test: Labels du jeu de test (encodés si le modèle est XGBoost).
+        Print the classification report and display the confusion matrix.
 
-        Returns:
-            None. Affiche les métriques et la matrice de confusion.
+        Parameters
+        ----------
+        X_test : pd.DataFrame or np.ndarray
+            Test set transformed like the training set (same features).
+        y_test : np.ndarray
+            Test labels (encoded if the model is XGBoost).
         """
         predictions = self.model_pipeline.predict(X_test)
 
-        # Décodage si XGBoost
+        # Decode if XGBoost
         if self.label_encoder is not None:
             if np.issubdtype(np.asarray(y_test).dtype, np.integer):
                 y_test_dec = self.label_encoder.inverse_transform(y_test)
@@ -1779,7 +1906,7 @@ class SpectralClassifier:
 
         proba = getattr(self.model_pipeline, "predict_proba", lambda X: None)(X_test)
         if proba is not None:
-            # indices numériques des vraies classes
+            # numeric indices of true classes
             if (self.label_encoder is not None) and np.issubdtype(
                 np.asarray(y_test).dtype, np.integer
             ):
@@ -1796,7 +1923,7 @@ class SpectralClassifier:
             top2 = (y_idx == np.argsort(proba, axis=1)[:, -2:]).any(axis=1).mean()
             print(f"ECE={ece:.3f} | Top-2 acc={top2:.3f}")
 
-        print("\n--- Rapport d'Évaluation ---")
+        print("\n--- Evaluation Report ---")
         report = classification_report(y_test_dec, y_pred_dec, zero_division=0)
         cm = confusion_matrix(y_test_dec, y_pred_dec, labels=self.class_labels)
         print(report)
@@ -1809,9 +1936,9 @@ class SpectralClassifier:
             xticklabels=self.class_labels,
             yticklabels=self.class_labels,
         )
-        plt.xlabel("Prédiction")
-        plt.ylabel("Vraie Valeur")
-        plt.title(f"Matrice de Confusion du Modèle {self.model_type} Optimisé")
+        plt.xlabel("Prediction")
+        plt.ylabel("True Value")
+        plt.title(f"Confusion Matrix — Optimised {self.model_type} Model")
         plt.show()
 
     def save_model(
@@ -1821,20 +1948,23 @@ class SpectralClassifier:
         extra_info: dict | None = None,
     ) -> None:
         """
-        Sauvegarde l’objet `SpectralClassifier` (pickle) et un fichier JSON de
-        métadonnées à côté du modèle.
+        Save the ``SpectralClassifier`` object (pickle) and a JSON metadata
+        file alongside the model.
 
-        Args:
-            path: Chemin du fichier .pkl à créer.
-            trained_on_file: Nom/chemin du dataset de features utilisé pour l’entraînement.
-            extra_info: Métadonnées supplémentaires à fusionner dans le JSON.
+        Parameters
+        ----------
+        path : str
+            Path of the ``.pkl`` file to create.
+        trained_on_file : str or None
+            Name / path of the features dataset used for training.
+        extra_info : dict or None
+            Additional metadata to merge into the JSON.
 
-        Returns:
-            None. Écrit `<path>` et `<path>_meta.json`.
-
-        Contenu des métadonnées:
-            Versions (Python, numpy, scikit-learn, xgboost), type de modèle,
-            cible, meilleurs hyperparamètres, labels, features utilisées, etc.
+        Notes
+        -----
+        Writes ``<path>`` and ``<path>_meta.json``.  The metadata contains
+        versions (Python, numpy, scikit-learn, xgboost), model type,
+        target, best hyperparameters, labels, features used, etc.
         """
         try:
             import xgboost
@@ -1865,27 +1995,32 @@ class SpectralClassifier:
         with open(meta_path, "w", encoding="utf-8") as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
-        print(f"  > Modèle sauvegardé dans : {path}")
-        print(f"  > Métadonnées sauvegardées dans : {meta_path}")
+        print(f"  > Model saved to: {path}")
+        print(f"  > Metadata saved to: {meta_path}")
 
     @staticmethod
     def load_model(path: str = "model.pkl") -> "SpectralClassifier":
         """
-        Charge un modèle `SpectralClassifier` sauvegardé via `save_model`.
+        Load a ``SpectralClassifier`` saved via ``save_model``.
 
-        Args:
-            path: Chemin du .pkl à charger.
+        Parameters
+        ----------
+        path : str
+            Path of the ``.pkl`` to load.
 
-        Returns:
-            SpectralClassifier: L’objet chargé (pipeline + attributs).
+        Returns
+        -------
+        SpectralClassifier
+            The loaded object (pipeline + attributes).
 
-        Notes:
-            Si un fichier `<path>_meta.json` est présent, son chemin est affiché
-            à titre informatif.
+        Notes
+        -----
+        If a ``<path>_meta.json`` file is present, its path is printed
+        for reference.
         """
         model = joblib.load(path)
-        print(f"  > Modèle chargé depuis : {path}")
+        print(f"  > Model loaded from: {path}")
         meta_path = os.path.splitext(path)[0] + "_meta.json"
         if os.path.exists(meta_path):
-            print(f"  > Métadonnées disponibles : {meta_path}")
+            print(f"  > Metadata available: {meta_path}")
         return model

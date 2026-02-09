@@ -1,26 +1,26 @@
 """
-AstroSpectro — Visualizer
+AstroSpectro -- Visualizer
 =========================
 
-Suite d’outils pour **explorer, analyser et interpréter** les spectres LAMOST
-dans un notebook Jupyter ou via une mini-app Streamlit.
+Interactive toolkit for **exploring, analysing, and interpreting** LAMOST spectra
+inside a Jupyter notebook or via a lightweight Streamlit application.
 
-Fonctions principales
+Main capabilities
 ---------------------
-- Exploration des headers FITS et affichage propre (Markdown/Streamlit)
-- Analyse de spectres (détection de pics, association aux raies, métriques)
-- Comparaison multi-spectres (normalisation + décalage visuel)
-- Tableaux de bord dataset (zéros, sous-classes, couverture céleste)
-- Inspection de modèles entraînés et **interprétabilité SHAP**
+- FITS header exploration with Markdown / Streamlit rendering
+- Spectrum analysis (peak detection, line matching, quantitative metrics)
+- Multi-spectrum comparison (normalisation + vertical offset)
+- Dataset dashboards (zero rates, sub-class balance, sky coverage)
+- Trained-model inspection and **SHAP interpretability**
 
 Conventions
 -----------
-- Tous les chemins proviennent de `paths = setup_project_env()` (voir utils.py)
-- FITS compressés `.fits.gz` lus en streaming (pas d’extraction sur disque)
-- Les avertissements numpy/astropy liés à `sqrt(invvar)` sont neutralisés
+- All paths come from `paths = setup_project_env()` (see utils.py)
+- Compressed FITS `.fits.gz` read in streaming mode (no on-disk extraction)
+- Numpy / Astropy warnings related to `sqrt(invvar)` are silenced
   via `utils.make_stddev_uncertainty_from_invvar`.
 
-Dépendances projet
+Project dependencies
 ------------------
 - pipeline.preprocessor.SpectraPreprocessor
 - pipeline.classifier.SpectralClassifier
@@ -73,7 +73,7 @@ from utils import (
     latest_file,
 )
 
-# --- Constantes (couleurs & limites par défaut) -------------------------------
+# --- Constants (colours & default limits) -------------------------------
 
 LINE_COLORS: Dict[str, str] = {
     "Hα": "#FF6B6B",
@@ -90,60 +90,58 @@ DEFAULT_YLIM: Tuple[float, float] = (-1.0, 2.5)
 
 class AstroVisualizer:
     """
-    Outils interactifs pour visualiser et analyser les spectres LAMOST.
+    Interactive tools for visualising and analysing LAMOST spectra.
 
-    Paramètres
+    Parameters
     ----------
     paths : dict
-        Dictionnaire de chemins absolus produit par `setup_project_env()`.
-        Doit inclure au minimum : RAW_DATA_DIR, CATALOG_DIR, PROCESSED_DIR,
+        Dictionary of absolute paths produced by `setup_project_env()`.
+        Must include at least: RAW_DATA_DIR, CATALOG_DIR, PROCESSED_DIR,
         MODELS_DIR, PROJECT_ROOT.
 
     Notes
     -----
-    - Les méthodes `interactive_*` sont pensées pour un usage **notebook**.
-    - L’appli `app()` s’utilise côté **Streamlit**.
+    - The `interactive_*` methods are designed for **notebook** use.
+    - The `app()` entry point targets **Streamlit**.
     """
 
     def __init__(self, paths: dict) -> None:
         """
-        Initialise le visualiseur avec les chemins du projet.
+        Initialise the visualiser with the project paths.
 
         Parameters
         ----------
         paths : dict
-            Dictionnaire produit par `setup_project_env()`. Doit contenir
-            au minimum RAW_DATA_DIR, CATALOG_DIR et PROJECT_ROOT.
+            Dictionary produced by `setup_project_env()`.  Must contain
+            at least RAW_DATA_DIR, CATALOG_DIR, and PROJECT_ROOT.
         """
         self.paths = paths
 
-        # Scan des .fits.gz disponibles (retours relatifs à RAW_DATA_DIR)
+        # Scan available .fits.gz (paths relative to RAW_DATA_DIR)
         self.available_spectra: list[str] = self._scan_for_spectra()
 
-        # Modèle non chargé tant qu’on n’en a pas besoin
+        # Model not loaded until actually needed
         self.classifier = None
 
-        # (Optionnel) si tu veux être sûr de rescanner à chaud :
+        # (Optional) rescan on the fly:
         # self.refresh_available_spectra()
 
-        print("AstroVisualizer initialisé. Les modèles seront chargés à la demande.")
-        # Pré-charge (optionnel) du catalogue des labels
+        print("AstroVisualizer initialised.  Models will be loaded on demand.")
+        # (Optional) pre-load the labels catalogue
         self.labels_catalog: dict[str, str] = self._load_labels_catalog()
         if self.labels_catalog:
-            print(
-                f"  > Catalogue de {len(self.labels_catalog)} labels chargé pour l'affichage."
-            )
+            print(f"  > Labels catalogue loaded ({len(self.labels_catalog)} entries).")
 
     def _load_labels_catalog(self) -> dict[str, str]:
         """
-        Charge un mapping {nom_fichier_fits_sans_ext: subclass} à partir du
-        catalogue temporaire généré par le pipeline.
+        Load a mapping {fits_filename_without_ext: subclass} from the
+        temporary catalogue generated by the pipeline.
 
         Returns
         -------
         dict[str, str]
-            Dictionnaire (clé = 'spec.../nom_fichier' sans '.fits.gz', valeur = subclass).
-            Retourne {} si le fichier n'existe pas ou en cas d'erreur.
+            Dictionary (key = 'spec.../filename' without '.fits.gz', value = subclass).
+            Return an empty dict if the file does not exist or on error.
         """
         try:
             catalog_path = os.path.join(
@@ -155,36 +153,34 @@ class AstroVisualizer:
             df_cat = pd.read_csv(catalog_path, sep="|")
 
             if "fits_name" not in df_cat.columns or "subclass" not in df_cat.columns:
-                # Catalogue pas au format attendu
+                # Catalogue not in expected format
                 return {}
 
-            # Normalise la clé côté catalogue (on retire l’extension .fits.gz)
+            # Normalise the catalogue key (strip .fits.gz extension)
             # Exemple: 'M5901/spec-...-000.fits.gz' -> 'M5901/spec-...-000'
             key_series = (
                 df_cat["fits_name"]
                 .astype(str)
                 .str.replace(".fits.gz", "", regex=False)
-                .str.replace("\\", "/", regex=False)  # robustesse Windows
+                .str.replace("\\", "/", regex=False)  # Windows robustness
             )
 
             labels = pd.Series(df_cat["subclass"].values, index=key_series).to_dict()
             return labels
 
         except Exception as e:
-            print(
-                f"  > Avertissement : impossible de charger le catalogue de labels ({e})."
-            )
+            print(f"  > Warning: unable to load the labels catalogue ({e}).")
             return {}
 
     def _scan_for_spectra(self) -> list[str]:
         """
-        Parcourt récursivement RAW_DATA_DIR et retourne la liste triée des fichiers
-        '.fits.gz' **relatifs** à ce répertoire.
+        Recursively walk RAW_DATA_DIR and return a sorted list of
+        '.fits.gz' files **relative** to that directory.
 
         Returns
         -------
         list[str]
-            Chemins relatifs sous RAW_DATA_DIR, séparateur '/' (indépendant OS).
+            Relative paths under RAW_DATA_DIR, using '/' as separator (OS-independent).
             Exemple: 'M5901/spec-55859-...-000.fits.gz'
         """
         spectra: list[str] = []
@@ -197,34 +193,34 @@ class AstroVisualizer:
             for fname in files:
                 if fname.endswith(".fits.gz"):
                     rel = os.path.relpath(os.path.join(root, fname), raw_dir)
-                    # uniformise Windows -> POSIX pour l’affichage/UI
+                    # Convert Windows backslashes to POSIX for display / UI
                     spectra.append(rel.replace("\\", "/"))
 
         return sorted(spectra)
 
     # ==============================================================================
-    # Outil 1 : Affichage des Headers FITS
+    # Tool 1: FITS Header Display
     # ==============================================================================
 
     def _format_header_line(self, header, label, key, unit=""):
         """
-        Formate proprement une ligne d'en-tête FITS pour affichage Markdown.
+        Format a single FITS header entry as a Markdown line.
 
         Parameters
         ----------
         header : astropy.io.fits.Header
-            En-tête FITS.
+            FITS header object.
         label : str
-            Intitulé lisible à afficher (en gras).
+            Human-readable label displayed in bold.
         key : str
-            Clé du header à extraire.
+            Header keyword to extract.
         unit : str, optional
-            Unité à afficher après la valeur (ex.: 'Å').
+            Unit string appended to the value (e.g. 'Å').
 
         Returns
         -------
         str
-            Ligne Markdown (avec valeur ou 'N/A' si absente).
+            Markdown string (value or 'N/A' when absent).
         """
         value = header.get(key, "N/A")
         unit_str = f" {unit}" if unit else ""
@@ -232,24 +228,22 @@ class AstroVisualizer:
 
     def _display_formatted_header(self, fits_relative_path):
         """
-        Ouvre un FITS compressé (.fits.gz), lit l'en-tête primaire (HDU 0) et
-        l'affiche en sections Markdown.
+        Open a compressed FITS (.fits.gz), read the primary header (HDU 0),
+        and render it as sectioned Markdown.
 
         Parameters
         ----------
         fits_relative_path : str
-            Chemin relatif sous RAW_DATA_DIR vers le fichier .fits.gz sélectionné.
+            Relative path under RAW_DATA_DIR to the selected .fits.gz file.
         """
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], fits_relative_path)
         try:
             with gzip.open(full_path, "rb") as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     header = hdul[0].header
-            md_output = (
-                f"### En-tête du fichier : `{os.path.basename(full_path)}`\n---\n"
-            )
+            md_output = f"### File header : `{os.path.basename(full_path)}`\n---\n"
             sections = {}
-            current_section = "Informations Générales"
+            current_section = "General Information"
             sections[current_section] = ""
             for key, value in header.items():
                 if key == "COMMENT" and "--------" in str(value):
@@ -266,96 +260,94 @@ class AstroVisualizer:
                     md_output += f"\n#### {title}\n{content}"
             display(Markdown(md_output))
         except Exception as e:
-            display(
-                Markdown(f"### Erreur\n**Fichier :** `{full_path}`\n\n**Détail :** {e}")
-            )
+            display(Markdown(f"### Error\n**File:** `{full_path}`\n\n**Detail:** {e}"))
 
     def interactive_header_explorer(self):
         """
-        Widget notebook pour parcourir les en-têtes FITS d'un clic.
+        Notebook widget for browsing FITS headers with a single click.
 
-        Affiche un `Dropdown` listant tous les spectres trouvés puis rend un
-        Markdown joliment structuré pour l'en-tête du fichier sélectionné.
+        Display a `Dropdown` listing every discovered spectrum and render a
+        neatly structured Markdown view of the selected file header.
         """
-        display(Markdown("## Explorateur de Header FITS"))
+        display(Markdown("## FITS Header Explorer"))
         display(
             Markdown(
-                "Utilisez le menu déroulant pour sélectionner un spectre et afficher ses métadonnées complètes."
+                "Use the drop-down menu to select a spectrum and display its full metadata."
             )
         )
         if not self.available_spectra:
-            print("Aucun spectre trouvé à visualiser.")
+            print("No spectra found to display.")
             return
         interact(
             self._display_formatted_header, fits_relative_path=self.available_spectra
         )
 
     # ==============================================================================
-    # Outil Notebook 2: Analyseur de Spectre Interactif
+    # Notebook Tool 2: Interactive Spectrum Analyser
     # ==============================================================================
 
     def _plot_spectrum_analysis(
         self, file_path, prominence, window, xlim, ylim
     ) -> None:
         """
-        Charge, normalise et analyse un spectre puis l'affiche (Matplotlib).
+        Load, normalise, and analyse a single spectrum, then plot it (Matplotlib).
 
         Parameters
         ----------
         file_path : str
-            Chemin RELATIF (sous RAW_DATA_DIR) du fichier `.fits.gz` à analyser.
+            Relative path (under RAW_DATA_DIR) of the `.fits.gz` file to analyse.
         prominence : float
-            Seuil de proéminence pour la détection de pics.
+            Prominence threshold for peak detection.
         window : int
-            Demi-fenêtre (en Å) utilisée pour les mesures locales autour d’une raie.
+            Half-window (Å) used for local measurements around a line.
         xlim : tuple[float, float]
-            Limites X (Å) à appliquer au graphe (peuvent arriver inversées).
+            X limits (Å) for the plot (may be inverted).
         ylim : tuple[float, float]
-            Limites Y (flux) à appliquer au graphe (peuvent arriver inversées).
+            Y limits (flux) for the plot (may be inverted).
 
         Notes
         -----
-        - Cette fonction trace le spectre normalisé, marque les pics détectés et
-        surligne les raies cibles (Balmer, Ca II, Mg_b, Na_D).
-        - Aucune métrique locale (FWHM/EW) n’est calculée ici : cela reste du ressort
-        de l’outil #3 “Analyseur & Tuner”.
+        - Plot the normalised spectrum, mark detected peaks, and
+        highlight target lines (Balmer, Ca II, Mg_b, Na_D).
+        - No local metrics (FWHM / EW) are computed here; that is handled by
+        tool #3 (Analyser & Tuner).
         """
         preprocessor = SpectraPreprocessor()
         peak_detector = PeakDetector(prominence=prominence, window=window)
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
 
         try:
-            # --- Lecture sûre du FITS compressé ---
+            # --- Safe read of compressed FITS ---
             with gzip.open(full_path, "rb") as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
                     header = hdul[0].header
 
-            # --- Numpy + normalisation ---
+            # --- Numpy arrays + normalisation ---
             wavelength = np.asarray(wavelength, dtype=np.float64)
             flux = np.asarray(flux, dtype=np.float64)
             flux_norm = preprocessor.normalize_spectrum(flux)
 
-            # --- Détection des pics & matching aux raies cibles ---
+            # --- Peak detection & target-line matching ---
             peak_idx, props = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wl = wavelength[peak_idx]
             matched = peak_detector.match_known_lines(peak_idx, peak_wl, props)
             matched_wl = [data[0] for data in matched.values() if data is not None]
 
-            # --- Tracé ---
+            # --- Plot ---
             plt.style.use("dark_background")
             fig, ax = plt.subplots(figsize=(18, 7))
 
-            # Spectre normalisé
+            # Normalised spectrum
             ax.plot(
                 wavelength,
                 flux_norm,
                 color="gray",
                 alpha=0.75,
-                label="Spectre normalisé",
+                label="Normalised spectrum",
             )
 
-            # Tous les pics détectés
+            # All detected peaks
             if peak_idx.size:
                 ax.scatter(
                     peak_wl,
@@ -363,10 +355,10 @@ class AstroVisualizer:
                     s=40,
                     marker="v",
                     color="red",
-                    label="Pics détectés",
+                    label="Detected peaks",
                 )
 
-            # Pics associés aux raies cibles (cercles verts)
+            # Peaks matched to target lines (green circles)
             if matched_wl:
                 j_idx = [np.abs(wavelength - wl).argmin() for wl in matched_wl]
                 ax.scatter(
@@ -376,10 +368,10 @@ class AstroVisualizer:
                     facecolors="none",
                     edgecolors="lime",
                     linewidth=2,
-                    label="Pics associés",
+                    label="Matched peaks",
                 )
 
-            # Lignes verticales aux positions théoriques des raies
+            # Vertical lines at theoretical line positions
             for name, wl in peak_detector.target_lines.items():
                 ax.axvline(
                     wl,
@@ -393,13 +385,13 @@ class AstroVisualizer:
             true_subclass = header.get("SUBCLASS", "N/A")
             title_obj = header.get("DESIG", os.path.basename(file_path))
             ax.set_title(
-                f"Analyse : {title_obj} (Vraie classe : {true_subclass})", fontsize=16
+                f"Analysis: {title_obj} (True class: {true_subclass})", fontsize=16
             )
             ax.set_xlabel("Longueur d'onde (Å)")
-            ax.set_ylabel("Flux normalisé")
+            ax.set_ylabel("Normalised flux")
             ax.grid(True, linestyle=":")
 
-            # Limites robustes (on accepte des sliders inversés)
+            # Robust limits (accept inverted sliders)
             def _sorted_pair(p, default):
                 if not p:
                     return default
@@ -411,7 +403,7 @@ class AstroVisualizer:
             ax.set_xlim(x0, x1)
             ax.set_ylim(y0, y1)
 
-            # Légende sans doublons
+            # Legend without duplicates
             handles, labels = ax.get_legend_handles_labels()
             uniq = dict(zip(labels, handles))
             ax.legend(uniq.values(), uniq.keys())
@@ -419,39 +411,39 @@ class AstroVisualizer:
             plt.show()
 
         except Exception as e:
-            print(f"Erreur : {e}")
+            print(f"Error: {e}")
 
     def interactive_spectrum_analyzer(self) -> None:
         """
-        Notebook: mini-UI pour explorer un spectre et jouer avec la détection.
+        Notebook mini-UI for exploring a spectrum and tuning peak detection.
 
-        Affiche un petit panneau de contrôle (sélecteur de fichier + sliders) et
-        redessine la figure à chaque changement via `_plot_spectrum_analysis`.
+        Display a small control panel (file selector + sliders) and
+        redraw the figure on every change via `_plot_spectrum_analysis`.
 
-        Contrôles
+        Controls
         ---------
-        - Spectre : dropdown des fichiers `.fits.gz` disponibles (chemin relatif).
-        - Prominence : seuil de proéminence pour la détection de pics.
-        - Fenêtre (Å) : demi-fenêtre pour les mesures locales.
-        - Zoom X (Å) : plage X demandée (Å).
-        - Zoom Y (Flux) : plage Y demandée (flux normalisé).
-        - Bouton *Réinitialiser* : remet tous les contrôles aux valeurs par défaut.
+        - Spectrum: drop-down of available `.fits.gz` files (relative path).
+        - Prominence: peak-detection prominence threshold.
+        - Window (Å): half-window for local measurements.
+        - Zoom X (Å): requested X range (Å).
+        - Zoom Y (Flux): requested Y range (normalised flux).
+        - *Reset* button: restore all controls to their default values.
 
         Notes
         -----
-        - Les sliders de plage (X/Y) sont en `continuous_update=False` pour éviter
-        de redessiner à chaque pixel pendant le drag (plus fluide et moins coûteux).
-        - Les limites X/Y acceptent les valeurs inversées ; `_plot_spectrum_analysis`
-        trie toujours avant d’appliquer.
+        - The range sliders (X / Y) use `continuous_update=False` to avoid
+        redrawing on every pixel during drag (smoother and cheaper).
+        - Inverted X/Y limits are accepted; `_plot_spectrum_analysis`
+        always sorts before applying.
         """
         if not self.available_spectra:
-            print("Aucun spectre trouvé à analyser.")
+            print("No spectra found to analyse.")
             return
 
         # --- Widgets -------------------------------------------------------------
         file_path_widget = widgets.Dropdown(
             options=sorted(self.available_spectra),
-            description="Spectre :",
+            description="Spectrum:",
             layout={"width": "max-content"},
         )
 
@@ -460,7 +452,7 @@ class AstroVisualizer:
         )
 
         window_widget = widgets.IntSlider(
-            min=1, max=50, step=1, value=15, description="Fenêtre (Å):"
+            min=1, max=50, step=1, value=15, description="Window (Å):"
         )
 
         xlim_widget = widgets.FloatRangeSlider(
@@ -484,10 +476,10 @@ class AstroVisualizer:
         )
 
         reset_btn = widgets.Button(
-            description="Réinitialiser",
+            description="Reset",
             button_style="warning",
             icon="refresh",
-            tooltip="Remettre tous les contrôles aux valeurs par défaut",
+            tooltip="Reset all controls to their default values",
             layout={"width": "150px"},
         )
 
@@ -499,7 +491,7 @@ class AstroVisualizer:
 
         reset_btn.on_click(_on_reset)
 
-        # --- Liaison contrôles -> tracé -----------------------------------------
+        # --- Control -> plot bindings -----------------------------------------
         out = widgets.interactive_output(
             self._plot_spectrum_analysis,
             {
@@ -524,7 +516,7 @@ class AstroVisualizer:
         display(widgets.VBox([controls, out]))
 
     # ==============================================================================
-    # Outil 3 : Analyseur & Tuner de Spectre Interactif (pour Notebook)
+    # Tool 3: Interactive Spectrum Analyser & Tuner (Notebook)
     # ==============================================================================
 
     def _plot_peak_detection_notebook(
@@ -537,34 +529,34 @@ class AstroVisualizer:
         model_path: str,
     ) -> None:
         """
-        Analyse *interactive* d’un spectre dans le notebook.
+        Interactive spectrum analysis inside the notebook.
 
-        - Charge un FITS compressé (.fits.gz), normalise le flux et détecte les pics.
-        - Associe les pics aux raies cibles (Balmer, Ca II, Mg_b, Na_D).
-        - Trace le spectre annoté (Matplotlib) + lien d’export PNG.
-        - Calcule un tableau de métriques locales pour les pics associés
-        (centroïde, FWHM, EW, prominence) et propose l’export CSV/LaTeX.
-        - (Optionnel) Charge un modèle .pkl et affiche la **classe prédite**.
-        - Tient un **journal de session** et permet l’export d’un **rapport HTML**.
+        - Load a compressed FITS (.fits.gz), normalise the flux, and detect peaks.
+        - Match peaks to target lines (Balmer, Ca II, Mg_b, Na_D).
+        - Plot the annotated spectrum (Matplotlib) with a PNG export link.
+        - Compute a table of local metrics for matched peaks
+        (centroid, FWHM, EW, prominence) and offer CSV / LaTeX export.
+        - (Optional) Load a .pkl model and display the **predicted class**.
+        - Maintain a **session log** and allow export of an **HTML report**.
 
         Parameters
         ----------
         file_path : str
-            Chemin *relatif sous* RAW_DATA_DIR du spectre à analyser.
+            Path *relative to* RAW_DATA_DIR of the spectrum to analyse.
         prominence : float
-            Seuil de proéminence (détection de pics).
+            Prominence threshold (peak detection).
         window : int
-            Demi-fenêtre (en Å) pour les métriques locales autour de chaque raie.
+            Half-window (Å) for local metrics around each line.
         xlim, ylim : tuple[float, float]
-            Limites X (Å) et Y (flux) demandées par les sliders.
+            X (Å) and Y (flux) limits requested by the sliders.
         model_path : str
-            Chemin absolu du modèle .pkl sélectionné (ou "Aucun").
+            Absolute path of the selected .pkl model (ou "None").
 
         Notes
         -----
-        - Les warnings `invalid value encountered in sqrt` (Astropy) sont neutralisés
-        par usage de `utils.safe_sigma_from_invvar` et d’un `catch_warnings`.
-        - Les colonnes attendues par le modèle sont **alignées** automatiquement.
+        - Astropy `invalid value encountered in sqrt` warnings are silenced
+        via `utils.safe_sigma_from_invvar` and a `catch_warnings` block.
+        - Columns expected by the model are **aligned** automatically.
         """
         import builtins
 
@@ -573,13 +565,13 @@ class AstroVisualizer:
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], file_path)
 
         try:
-            # --- Lecture du FITS .gz ---
+            # --- Read compressed FITS ---
             with gzip.open(full_path, "rb") as f_gz:
                 with fits.open(f_gz, memmap=False) as hdul:
                     wavelength, flux, invvar = preprocessor.load_spectrum(hdul)
                     header = hdul[0].header
 
-            true_subclass = header.get("SUBCLASS", "Inconnu")
+            true_subclass = header.get("SUBCLASS", "Unknown")
 
             # --- Numpy arrays + normalisation ---
             wavelength, flux, invvar = (
@@ -589,28 +581,28 @@ class AstroVisualizer:
             )
             flux_norm = preprocessor.normalize_spectrum(flux)
 
-            # --- Détection de pics & matching aux raies cibles ---
+            # --- Peak detection & target-line matching ---
             peak_idx, props = peak_detector.detect_peaks(wavelength, flux_norm)
             peak_wl = wavelength[peak_idx]
             matched = peak_detector.match_known_lines(peak_idx, peak_wl, props)
 
-            # --- Préparation features (pour modèle) ---
+            # --- Feature preparation (for model) ---
             fe = FeatureEngineer()
             vec = fe.extract_features(
                 matched, wavelength, flux_norm, invvar
-            )  # calcul côté IA
+            )  # ML-side computation
 
-            # --- Prédiction IA (optionnelle) ---
-            predicted_label = "Aucun modèle sélectionné"
-            if model_path != "Aucun":
+            # --- ML prediction (optional) ---
+            predicted_label = "No model selected"
+            if model_path != "None":
                 try:
                     clf = SpectralClassifier.load_model(model_path)
                     clf.prediction_target = "main_class"
 
-                    # Map features -> DataFrame aligné sur le modèle
+                    # Map features -> DataFrame aligned with the model
                     current = {name: val for name, val in zip(fe.feature_names, vec)}
 
-                    # Métadonnées éventuelles attendues par le modèle
+                    # Optional metadata expected by the model
                     for m in ("redshift", "snr_g", "snr_r", "snr_i", "seeing"):
                         if m in getattr(clf, "feature_names_used", []):
                             try:
@@ -630,7 +622,7 @@ class AstroVisualizer:
                         clf.class_labels[yhat] if clf.model_type == "XGBoost" else yhat
                     )
                 except Exception as e:
-                    predicted_label = f"Erreur prédiction : {e}"
+                    predicted_label = f"Prediction error: {e}"
 
             # --- Figure Matplotlib ---
             plt.style.use("dark_background")
@@ -640,7 +632,7 @@ class AstroVisualizer:
                 flux_norm,
                 color="gray",
                 alpha=0.7,
-                label="Spectre normalisé",
+                label="Normalised spectrum",
             )
 
             if len(peak_idx) > 0:
@@ -650,7 +642,7 @@ class AstroVisualizer:
                     color="red",
                     marker="v",
                     s=40,
-                    label="Pics détectés",
+                    label="Detected peaks",
                 )
 
             matched_wl, matched_flux = [], []
@@ -679,7 +671,7 @@ class AstroVisualizer:
                     facecolors="none",
                     edgecolors="lime",
                     linewidth=2,
-                    label="Pics associés",
+                    label="Matched peaks",
                 )
 
             for name, wl in peak_detector.target_lines.items():
@@ -691,7 +683,7 @@ class AstroVisualizer:
                     label=f"Raie {name}",
                 )
 
-            # Limites robustes et triées
+            # Robust, sorted limits
             def _sorted_pair(p, default):
                 if not p:
                     return default
@@ -707,12 +699,12 @@ class AstroVisualizer:
                 fontsize=16,
             )
             plt.xlabel("Longueur d'onde (Å)")
-            plt.ylabel("Flux normalisé")
+            plt.ylabel("Normalised flux")
             plt.xlim((x0, x1))
             plt.ylim((y0, y1))
             plt.grid(True, linestyle=":")
 
-            # Légende sans doublons
+            # Legend without duplicates
             handles, labels = plt.gca().get_legend_handles_labels()
             by = dict(zip(labels, handles))
             plt.legend(by.values(), by.keys())
@@ -729,8 +721,8 @@ class AstroVisualizer:
             )
             plt.show()
 
-            # --- Tableau de métriques sur les raies associées ---
-            #  -> construit un Spectrum plein cadre avec incertitudes sûres
+            # --- Metrics table for matched lines ---
+            #  -> build a full-frame Spectrum with safe uncertainties
             sigma = safe_sigma_from_invvar(invvar)  # helper utils.py
             spec_full = Spectrum(
                 spectral_axis=wavelength * u.AA,
@@ -761,17 +753,17 @@ class AstroVisualizer:
                         )
 
                     results[name] = {
-                        "Centroïde (Å)": f"{c:.2f}",
+                        "Centroid (Å)": f"{c:.2f}",
                         "Largeur FWHM (Å)": f"{w:.2f}",
-                        "Prominence (Force)": f"{prom:.3f}",
-                        "Largeur Équiv. (Å)": f"{ew:.3f}",
+                        "Prominence": f"{prom:.3f}",
+                        "Equiv. width (Å)": f"{ew:.3f}",
                     }
                 except Exception as e:
-                    results[name] = {"Erreur": "Analyse impossible", "Détail": str(e)}
+                    results[name] = {"Error": "Analysis failed", "Detail": str(e)}
 
             df_an = None
             if results:
-                display(Markdown("#### Analyse quantitative des raies associées"))
+                display(Markdown("#### Quantitative analysis of matched lines"))
                 df_an = pd.DataFrame.from_dict(results, orient="index")
 
                 def _hl(row):
@@ -788,32 +780,30 @@ class AstroVisualizer:
                 df_an.to_csv(csv)
                 b64_csv = base64.b64encode(csv.getvalue().encode()).decode()
                 tex = df_an.to_latex(
-                    index=True, caption="Analyse quantitative des raies associées"
+                    index=True, caption="Quantitative analysis of matched lines"
                 )
                 b64_tex = base64.b64encode(tex.encode()).decode()
                 display(
                     HTML(
-                        f"<div style='margin:8px 0'><a download='analyse_raies.csv' "
+                        f"<div style='margin:8px 0'><a download='line_analysis.csv' "
                         f"href='data:text/csv;base64,{b64_csv}'>⬇️ CSV</a>"
                         " &nbsp;|&nbsp; "
-                        f"<a download='analyse_raies.tex' href='data:text/plain;base64,{b64_tex}'>⬇️ LaTeX</a></div>"
+                        f"<a download='line_analysis.tex' href='data:text/plain;base64,{b64_tex}'>⬇️ LaTeX</a></div>"
                     )
                 )
 
-            # --- Synthèse : classe prédite ---
-            display(
-                Markdown(f"**Classe spectrale prédite (IA) :** `{predicted_label}`")
-            )
+            # --- Summary: predicted class ---
+            display(Markdown(f"**Predicted spectral class (ML):** `{predicted_label}`"))
 
             # --- Historique de session + export rapport HTML ---
             if not hasattr(builtins, "log_analyses"):
                 builtins.log_analyses = pd.DataFrame(
                     columns=[
-                        "Fichier",
-                        "Paramètres",
+                        "File",
+                        "Parameters",
                         "Tableau",
                         "Timestamp",
-                        "Classe prédite",
+                        "Predicted class",
                     ]
                 )
 
@@ -830,8 +820,8 @@ class AstroVisualizer:
                     pd.DataFrame(
                         [
                             {
-                                "Fichier": file_path,
-                                "Paramètres": params,
+                                "File": file_path,
+                                "Parameters": params,
                                 "Tableau": (
                                     df_an.to_dict()
                                     if isinstance(df_an, pd.DataFrame)
@@ -840,7 +830,7 @@ class AstroVisualizer:
                                 "Timestamp": datetime.now().strftime(
                                     "%Y-%m-%d %H:%M:%S"
                                 ),
-                                "Classe prédite": predicted_label,
+                                "Predicted class": predicted_label,
                             }
                         ]
                     ),
@@ -849,26 +839,26 @@ class AstroVisualizer:
             )
 
             if len(builtins.log_analyses) > 0:
-                display(Markdown("#### Historique des analyses (session)"))
+                display(Markdown("#### Analysis history (session)"))
                 display(
                     builtins.log_analyses[
-                        ["Fichier", "Classe prédite", "Paramètres", "Timestamp"]
+                        ["File", "Predicted class", "Parameters", "Timestamp"]
                     ]
                 )
 
             from ipywidgets import Button
 
             def _report(_=None):
-                html = "<h1>Rapport d'Analyse Spectroscopique</h1>"
+                html = "<h1>Spectroscopic Analysis Report</h1>"
                 for i, row in builtins.log_analyses.iterrows():
-                    html += f"<h2>Analyse #{i+1} — {row['Fichier']}</h2>"
-                    if row.get("Classe prédite") is not None:
-                        html += f"<p><b>Classe spectrale prédite :</b> {row['Classe prédite']}</p>"
-                    html += f"<pre>{row['Paramètres']}</pre>"
+                    html += f"<h2>Analysis #{i+1} -- {row['File']}</h2>"
+                    if row.get("Predicted class") is not None:
+                        html += f"<p><b>Predicted spectral class:</b> {row['Predicted class']}</p>"
+                    html += f"<pre>{row['Parameters']}</pre>"
                     try:
                         html += pd.DataFrame.from_dict(row["Tableau"]).to_html()
                     except Exception:
-                        html += "<p><i>Tableau indisponible.</i></p>"
+                        html += "<p><i>Table unavailable.</i></p>"
                     html += f"<p><i>Timestamp : {row['Timestamp']}</i></p><hr>"
 
                 b = io.BytesIO()
@@ -877,36 +867,36 @@ class AstroVisualizer:
                 b64 = base64.b64encode(b.read()).decode()
                 display(
                     HTML(
-                        f'<a download="rapport_astro.html" href="data:text/html;base64,{b64}">⬇️ Télécharger le rapport HTML</a>'
+                        f'<a download="astro_report.html" href="data:text/html;base64,{b64}">⬇️ Download HTML report</a>'
                     )
                 )
 
             btn = Button(
-                description="Générer le rapport HTML de la session",
+                description="Generate session HTML report",
                 button_style="success",
             )
             btn.on_click(_report)
             display(btn)
 
         except Exception as e:
-            print(f"Erreur lors du traitement du spectre : {e}")
+            print(f"Error while processing the spectrum : {e}")
 
     def interactive_peak_tuner(self):
-        """UI ipywidgets pour tuner la détection et (optionnel) prédire avec un modèle .pkl."""
-        display(Markdown("--- \n## Analyseur de Spectre Augmenté"))
+        """ipywidgets UI for tuning peak detection and (optionally) predicting with a .pkl model."""
+        display(Markdown("--- \n## Augmented Spectrum Analyser"))
         display(
             Markdown(
                 "Cet outil tout-en-un vous permet de visualiser un spectre, d'ajuster les "
-                "paramètres de détection de pics en temps réel, et d'évaluer la qualité "
-                "des données et de l'analyse."
+                "peak-detection parameters in real time, and assess data and analysis "
+                "quality."
             )
         )
         if not self.available_spectra:
-            print("Aucun spectre trouvé.")
+            print("No spectra found.")
             return
 
         models_dir = self.paths.get("MODELS_DIR", "../data/models/")
-        saved = ["Aucun"]
+        saved = ["None"]
         if os.path.isdir(models_dir):
             files = [
                 os.path.join(models_dir, f)
@@ -919,14 +909,14 @@ class AstroVisualizer:
             self._plot_peak_detection_notebook,
             file_path=widgets.Dropdown(
                 options=self.available_spectra,
-                description="Spectre :",
+                description="Spectrum:",
                 layout={"width": "max-content"},
             ),
             prominence=widgets.FloatSlider(
                 min=0.01, max=1.0, step=0.01, value=0.2, description="Prominence:"
             ),
             window=widgets.IntSlider(
-                min=1, max=50, step=1, value=15, description="Fenêtre (Å):"
+                min=1, max=50, step=1, value=15, description="Window (Å):"
             ),
             xlim=widgets.FloatRangeSlider(
                 value=list(DEFAULT_XLIM),
@@ -948,14 +938,14 @@ class AstroVisualizer:
             ),
             model_path=widgets.Dropdown(
                 options=saved,
-                description="Modèle IA :",
+                description="ML model:",
                 layout={"width": "max-content"},
             ),
         )
         display(ui)
 
     # ==============================================================================
-    # Outil 4 : Analyse des Zéros dans les Features ---
+    # Tool 4: Feature Zero Analysis ---
     # ==============================================================================
 
     def analyze_feature_zeros(
@@ -970,54 +960,54 @@ class AstroVisualizer:
         show_plot: bool = False,
     ) -> pd.DataFrame:
         """
-        Analyse la *sparsité* des features (valeurs nulles/constantes) sur un échantillon de spectres.
+        Analyse feature *sparsity* (null / constant values) on a sample of spectra.
 
-        Cette routine prend un sous-ensemble de fichiers disponibles dans `data/raw/`,
-        calcule les features via :class:`FeatureEngineer`, puis mesure :
-        - le **nombre** et le **taux** de zéros (|x| <= eps) par feature,
-        - si une feature est **constante** (écart-type ~ 0 ou nombre de valeurs uniques <= 1),
-        - quelques stats rapides (min, max, moyenne, écart-type).
+        This routine takes a subset of files available under `data/raw/`,
+        computes features via :class:`FeatureEngineer`, then measures :
+        - the **count** and **rate** of zeros (|x| <= eps) per feature,
+        - whether a feature is **constant** (std ~ 0 or unique values <= 1),
+        - quick stats (min, max, mean, std).
 
-        Résultats affichés dans le notebook + export CSV/LaTeX optionnel.
+        Results displayed in the notebook with optional CSV / LaTeX export.
 
         Parameters
         ----------
         n_files : int, default 100
-            Taille de l’échantillon de spectres à analyser (borné par le nombre disponible).
+            Number of spectra to sample (capped by the number available).
         prominence : float, default 0.2
-            Paramètre de proéminence pour la détection de pics (cohérent avec l’outil interactif).
+            Prominence parameter for peak detection (consistent with the interactive tool).
         window : int, default 15
-            Demi-fenêtre en Å pour l’analyse de raies (cohérent avec l’outil interactif).
+            Half-window in Å for line analysis (consistent with the interactive tool).
         eps : float, default 1e-12
-            Seuil de « quasi zéro » : on considère |x| <= eps comme nul.
+            Near-zero threshold: |x| <= eps is treated as zero.
         random_state : int, default 42
-            Graine pour l’échantillonnage aléatoire des fichiers.
+            Random seed for file sampling.
         export : bool, default True
-            Si True, propose l’export CSV et LaTeX du résumé.
+            If True, offer CSV and LaTeX export of the summary.
 
         Returns
         -------
         pandas.DataFrame
-            Tableau synthétique par feature : `zero_count`, `zero_rate`, `is_constant`,
-            `min`, `max`, `mean`, `std`. Trié par `zero_rate` décroissant.
+            Summary table per feature : `zero_count`, `zero_rate`, `is_constant`,
+            `min`, `max`, `mean`, `std`. Sorted by `zero_rate` descending.
 
         Notes
         -----
-        - Plus `n_files` est grand, plus la mesure de sparsité est fiable (coût CPU en conséquence).
-        - Les warnings numériques de `astropy` sont déjà neutralisés dans les helpers
-        utilisés par la chaîne d’extraction (voir `FeatureEngineer.extract_features`).
+        - A larger `n_files` gives a more reliable sparsity estimate (at higher CPU cost).
+        - Numerical warnings from `astropy` are already silenced in the helpers
+        used by the feature-extraction chain (voir `FeatureEngineer.extract_features`).
         """
-        display(Markdown("--- \n## Analyse de la Qualité des Features"))
+        display(Markdown("--- \n## Feature Quality Analysis"))
         display(
             Markdown(
-                "Cet outil analyse le dernier fichier de features généré et montre le pourcentage de valeurs nulles pour chaque feature. C'est essentiel pour identifier les features peu informatives."
+                "This tool analyses the last generated feature file and shows the percentage of null values for each feature.  This is essential for identifying uninformative features."
             )
         )
 
-        # Récupère et échantillonne la liste des spectres disponibles
+        # Retrieve and sample the list of available spectra
         files = list(self.available_spectra)
         if not files:
-            display(Markdown("> Aucun spectre trouvé dans `data/raw/`."))
+            display(Markdown("> No spectra found in `data/raw/`."))
             return pd.DataFrame()
 
         random.seed(random_state)
@@ -1051,25 +1041,23 @@ class AstroVisualizer:
                 rows.append(vec)
                 processed += 1
             except Exception:
-                # On continue (certains spectres peuvent être corrompus ou atypiques)
+                # Continue (some spectra may be corrupt or atypical)
                 errors += 1
                 continue
 
         if not rows:
-            display(
-                Markdown("> Impossible de calculer des features sur l’échantillon.")
-            )
+            display(Markdown("> Unable to compute features on the sample."))
             return pd.DataFrame()
 
         X = np.vstack(rows)
         df = pd.DataFrame(X, columns=fe.feature_names)
 
-        # Masque de (quasi) zéros
+        # Near-zero mask
         zero_mask = df.abs() <= eps
         zero_count = zero_mask.sum(axis=0)
         zero_rate = (zero_count / len(df)).astype(float)
 
-        # Constantes (std ~ 0 ou une seule valeur distincte)
+        # Constants (std ~ 0 or a single distinct value)
         std = df.std(ddof=0)
         nunique = df.nunique(dropna=False)
         is_constant = (std <= eps) | (nunique <= 1)
@@ -1086,29 +1074,29 @@ class AstroVisualizer:
             }
         ).sort_values(["zero_rate", "is_constant"], ascending=[False, False])
 
-        # Affichage
+        # Display
         display(
             Markdown(
-                f"**Échantillon analysé :** {processed} spectre(s)"
+                f"**Sample analysed:** {processed} spectrum(a)"
                 + (f" &nbsp;•&nbsp; **erreurs** : {errors}" if errors else "")
             )
         )
         display(
             Markdown(
-                f"- **Features 100% nulles** : {int((summary['zero_rate'] == 1.0).sum())}  \n"
-                f"- **Features constantes** : {int(summary['is_constant'].sum())}"
+                f"- **100 % null features** : {int((summary['zero_rate'] == 1.0).sum())}  \n"
+                f"- **Constant features** : {int(summary['is_constant'].sum())}"
             )
         )
 
         def _row_style(row):
-            # Mise en évidence : tout zéro -> fond rouge, sinon dégradé sur zero_rate
+            # Highlight: all-zero -> red background, otherwise gradient on zero_rate
             if row["zero_rate"] == 1.0:
                 return ["background-color:#5a1a1a;color:#fff"] * len(row)
             return [
                 "background-color:rgba(0,150,255,{:.2f})".format(row["zero_rate"])
             ] + [""] * (len(row) - 1)
 
-        display(Markdown("#### Sparsité des features (tri `zero_rate` ↓)"))
+        display(Markdown("#### Feature sparsity (sorted by `zero_rate` ↓)"))
         try:
             display(
                 summary.style.apply(_row_style, axis=1).format(
@@ -1122,19 +1110,17 @@ class AstroVisualizer:
                 )
             )
         except Exception:
-            # fallback sans style si l’environnement ne supporte pas .style
+            # Fallback without styling if the environment does not support .style
             display(summary)
 
-        # Export (optionnel)
+        # Export (optional)
         if export:
             ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
             csv = io.StringIO()
             summary.to_csv(csv)
             b64_csv = base64.b64encode(csv.getvalue().encode()).decode()
 
-            tex = summary.to_latex(
-                index=True, caption="Sparsité des features (échantillon)"
-            )
+            tex = summary.to_latex(index=True, caption="Feature sparsity (sample)")
             b64_tex = base64.b64encode(tex.encode()).decode()
 
             display(
@@ -1149,27 +1135,27 @@ class AstroVisualizer:
         return summary
 
     # ==============================================================================
-    # Outil 5 : Carte de Couverture Céleste ---
+    # Tool 5: Sky Coverage Map ---
     # ==============================================================================
 
     def _generate_position_catalog(
         self, force_regenerate: bool = False
     ) -> pd.DataFrame:
         """
-        Construit (ou recharge) un petit catalogue de positions célestes **par plan**
-        à partir des headers FITS (.fits.gz). Les positions retournées sont les
-        moyennes RA/Dec par `PLANID`.
+        Build (or reload) a small catalogue of sky positions **per plan**
+        from FITS headers (.fits.gz).  The returned positions are the
+        mean RA / Dec per `PLANID`.
 
-        Paramètres
+        Parameters
         ----------
         force_regenerate : bool, default False
-            Si False et si le fichier CSV existe déjà, on le recharge directement.
-            Si True, on rescane les FITS et on régénère le CSV.
+            If False and the CSV cache already exists, reload it directly.
+            If True, rescan the FITS files and regenerate the CSV.
 
         Returns
         -------
         pandas.DataFrame
-            DataFrame trié par `plan_id` contenant :
+            DataFrame sorted by `plan_id` containing:
             - `plan_id` : identifiant de plan (header `PLANID`)
             - `ra`      : moyenne (deg) des RA des spectres du plan (0..360)
             - `dec`     : moyenne (deg) des Dec des spectres du plan (-90..+90)
@@ -1177,11 +1163,11 @@ class AstroVisualizer:
 
         Notes
         -----
-        - Headers requis : `RA`, `DEC`, `PLANID`. Les entrées sans ces
-        informations ou avec coordonnées invalides sont ignorées.
-        - Le résultat est mis en cache dans
+        - Required headers: `RA`, `DEC`, `PLANID`.  Entries missing these
+        fields or with invalid coordinates are ignored.
+        - The result is cached in
         `<CATALOG_DIR>/spectra_position_catalog.csv`.
-        - Utilisé par `plot_sky_coverage()`.
+        - Used by `plot_sky_coverage()`.
         """
         catalog_path = os.path.join(
             self.paths["CATALOG_DIR"], "spectra_position_catalog.csv"
@@ -1201,40 +1187,40 @@ class AstroVisualizer:
                                 continue
             return latest
 
-        # 1) Cache sur disque — on ne s'y fie que s'il est non-vide, valide, et à jour.
+        # 1) On-disk cache -- trust only if non-empty, valid, and up to date.
         if os.path.exists(catalog_path) and not force_regenerate:
             try:
                 df_cached = pd.read_csv(catalog_path)
                 expected = {"plan_id", "ra", "dec"}
                 cache_ok = expected.issubset(df_cached.columns) and (len(df_cached) > 0)
 
-                # Rebuild si cache vide/invalide
+                # Rebuild if cache is empty / invalid
                 if not cache_ok:
-                    print("  > Cache présent mais vide/invalide — rescannage des FITS…")
+                    print("  > Cache present but empty/invalid -- rescanning FITS...")
                 else:
-                    # Rebuild si les FITS sont plus récents que le CSV
+                    # Rebuild if FITS are newer than the CSV
                     cache_mtime = os.path.getmtime(catalog_path)
                     latest_fits_mtime = _fits_latest_mtime(
                         self.paths.get("RAW_DATA_DIR", "../data/raw")
                     )
                     if latest_fits_mtime > cache_mtime:
-                        print("  > Des FITS plus récents que le cache — régénération…")
+                        print("  > FITS newer than cache -- regenerating...")
                     else:
-                        print("  > Catalogue de position existant chargé.")
+                        print("  > Existing position catalogue loaded.")
                         return df_cached.sort_values("plan_id").reset_index(drop=True)
             except Exception:
-                print("  > Avertissement: cache illisible — rescannage des FITS…")
+                print("  > Warning: unreadable cache -- rescanning FITS...")
 
         # 2) Scan des FITS
-        print("  > Scan des fichiers FITS pour générer le catalogue de position…")
+        print("  > Scanning FITS files to generate position catalogue...")
         if not self.available_spectra:
-            print("  > Aucun fichier FITS trouvé.")
+            print("  > No FITS files found.")
             return pd.DataFrame(columns=["plan_id", "ra", "dec", "spectra_count"])
 
         rows: list[dict] = []
         invalid = 0
 
-        for rel_path in tqdm(self.available_spectra, desc="Lecture des headers"):
+        for rel_path in tqdm(self.available_spectra, desc="Reading headers"):
             file_path = os.path.join(self.paths["RAW_DATA_DIR"], rel_path)
             try:
                 with gzip.open(file_path, "rb") as f_gz:
@@ -1267,12 +1253,12 @@ class AstroVisualizer:
                 continue
 
         if not rows:
-            print("  > Aucune coordonnée exploitable n'a été extraite.")
+            print("  > No usable coordinates were extracted.")
             return pd.DataFrame(columns=["plan_id", "ra", "dec", "spectra_count"])
 
         df_positions = pd.DataFrame(rows)
 
-        # 3) Agrégation par plan
+        # 3) Aggregate by plan
         df_plan = (
             df_positions.groupby("plan_id")
             .agg(ra=("ra", "mean"), dec=("dec", "mean"), spectra_count=("ra", "size"))
@@ -1281,16 +1267,16 @@ class AstroVisualizer:
             .reset_index(drop=True)
         )
 
-        # 4) Sauvegarde cache
+        # 4) Save cache
         try:
             os.makedirs(self.paths["CATALOG_DIR"], exist_ok=True)
             df_plan.to_csv(catalog_path, index=False)
         except Exception as e:
-            print(f"  > Avertissement: impossible d'écrire le CSV de cache ({e}).")
+            print(f"  > Warning: unable to write cache CSV ({e}).")
 
         print(
-            f"  > Catalogue de position créé avec {len(df_plan)} plan(s) unique(s)."
-            + (f"  [{invalid} entrée(s) ignorée(s)]" if invalid else "")
+            f"  > Position catalogue created with {len(df_plan)} unique plan(s)."
+            + (f"  [{invalid} entry(ies) ignored]" if invalid else "")
         )
         return df_plan
 
@@ -1298,43 +1284,43 @@ class AstroVisualizer:
         self, save_path: str | None = None
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """
-        Affiche la carte Mollweide de la couverture du ciel (centroïdes RA/Dec par plan).
+        Display a Mollweide projection map of sky coverage (RA / Dec centroids per plan).
 
-        Paramètres
+        Parameters
         ----------
         save_path : str | None, default None
-            Chemin de sauvegarde (PNG). Si None, un fichier timestampé est
-            écrit dans `paths['LOGS_DIR']`. Si False/"" est passé, aucune sauvegarde.
+            Save path (PNG).  If None, a timestamped file is written to
+            `paths['LOGS_DIR']`.  If False / "", no file is saved.
 
         Returns
         -------
         (fig, ax) | None
-            La figure et l'axe Matplotlib si des données sont disponibles, sinon None.
+            The Matplotlib figure and axis if data are available, else None.
 
         Notes
         -----
-        - Utilise le CSV de cache généré par `_generate_position_catalog`.
-        - Les longitudes sont converties en système Mollweide
+        - Uses the cache CSV generated by `_generate_position_catalog`.
+        - Longitudes are converted to Mollweide coordinates
         (RA vers la gauche, centre 0h/24h).
-        - La couleur et la taille traduisent `spectra_count` (nombre de spectres par plan).
+        - Colour and size encode `spectra_count` (number of spectra per plan).
         """
-        display(Markdown("--- \n## Carte de Couverture Céleste"))
+        display(Markdown("--- \n## Sky Coverage Map"))
         display(
             Markdown(
-                "Cette carte montre la position des plans d'observation que tu as téléchargés. La taille et la couleur des points indiquent le nombre de spectres par plan."
+                "This map shows the positions of downloaded observation plans.  Point size and colour indicate the number of spectra per plan."
             )
         )
 
-        # -- 1) Récupération / construction du petit catalogue de positions
+        # -- 1) Retrieve / build the small position catalogue
         df = self._generate_position_catalog()
         if df.empty:
-            print("  > Cache vide — rescannage forcé…")
+            print("  > Empty cache -- forced rescan...")
             df = self._generate_position_catalog(force_regenerate=True)
             if df.empty:
-                print("  > Aucune donnée de position pour la carte de couverture.")
+                print("  > No position data available for the coverage map.")
                 return None
 
-        # -- 2) Optionnel : image d'arrière-plan (Voie Lactée en projection Mollweide)
+        # -- 2) Optional: background image (Milky Way in Mollweide projection)
         bg_image = None
         try:
             from PIL import Image
@@ -1350,7 +1336,7 @@ class AstroVisualizer:
         except Exception:
             bg_image = None  # pas bloquant
 
-        # -- 3) Préparation coordonnées -> Mollweide
+        # -- 3) Coordinate preparation -> Mollweide
         ra_deg = df["ra"].to_numpy(dtype=float)
         dec_deg = df["dec"].to_numpy(dtype=float)
 
@@ -1364,14 +1350,14 @@ class AstroVisualizer:
             dtype=float
         )
         cmax = float(np.nanmax(counts)) if np.isfinite(counts).any() else 1.0
-        sizes = 14.0 + 60.0 * (counts / cmax)  # taille ~ densité
+        sizes = 14.0 + 60.0 * (counts / cmax)  # size ~ density
 
         # -- 4) Figure
         plt.style.use("dark_background")
         fig = plt.figure(figsize=(20, 10))
         ax = fig.add_subplot(111, projection="mollweide")
 
-        # Fond Voie Lactée si dispo
+        # Milky Way background if available
         if bg_image is not None:
             ax.imshow(
                 bg_image,
@@ -1397,8 +1383,8 @@ class AstroVisualizer:
         # Grille & habillage
         ax.grid(True, color="w", alpha=0.2, lw=0.5)
 
-        # Ticks RA (en heures) : 150..-150 step 30°
-        lon_labels_deg = np.arange(150, -181, -30)  # affichage à gauche
+        # RA ticks (hours): 150..-150 step 30 deg°
+        lon_labels_deg = np.arange(150, -181, -30)  # display leftward
         lon_ticks = np.radians(lon_labels_deg)
         ax.set_xticks(lon_ticks)
         tick_labels = [f"{((L % 360) / 15):.0f}h" for L in (lon_labels_deg % 360)]
@@ -1407,15 +1393,13 @@ class AstroVisualizer:
         ax.set_yticks(np.radians(np.arange(-75, 76, 15)))
         ax.set_yticklabels([f"{d}°" for d in np.arange(-75, 76, 15)])
 
-        ax.set_title(
-            "Carte de Couverture Céleste (plans DRS — centroïdes RA/Dec)", pad=16
-        )
+        ax.set_title("Sky Coverage Map (DRS plans -- RA / Dec centroids)", pad=16)
 
-        # Barre de couleurs
+        # Colour bar
         cbar = fig.colorbar(
             sc, ax=ax, orientation="horizontal", pad=0.06, fraction=0.05
         )
-        cbar.set_label("Nombre de spectres par plan")
+        cbar.set_label("Spectra per plan")
 
         fig.tight_layout()
 
@@ -1429,44 +1413,44 @@ class AstroVisualizer:
                 )
             try:
                 fig.savefig(save_path, dpi=150, bbox_inches="tight")
-                print(f"  > Carte de couverture sauvegardée : {save_path}")
+                print(f"  > Coverage map saved : {save_path}")
             except Exception as e:
-                print(f"  > Avertissement : échec de la sauvegarde ({e}).")
+                print(f"  > Warning: failed to save ({e}).")
 
         return fig, ax
 
     # ==============================================================================
-    # Outil 6 : Inspecteur de Modèles Entraînés ---
+    # Tool 6: Trained Model Inspector ---
     # ==============================================================================
 
     def _analyze_saved_model(self, model_path: str) -> None:
         """
-        Inspecte un classifieur sauvegardé (.pkl) et affiche :
-        - un résumé Markdown (type de modèle, meilleures hyperparams, classes),
-        - les colonnes utilisées à l'entraînement (+ celles retenues après sélection),
+        Inspect a saved classifier (.pkl) and display:
+        - a Markdown summary (model type, best hyper-parameters, classes),
+        - training columns (plus those retained after selection),
         - un graphique d'importance des features si disponible.
 
         Parameters
         ----------
         model_path : str
-            Chemin ABSOLU vers le fichier `.pkl` du classifieur sauvegardé.
+            Absolute path to the saved classifier `.pkl` file.
 
         Notes
         -----
-        - Le classifieur est chargé via `SpectralClassifier.load_model()`.
-        - Si une étape `SelectFromModel` est présente dans le pipeline, les importances
-        affichées utilisent les *noms de features retenues* (`selected_features_`)
-        lorsqu’ils sont disponibles; sinon on retombe sur `feature_names_used`.
-        - Compatible RandomForest / XGBoost (les deux exposent `feature_importances_`).
+        - The classifier is loaded via `SpectralClassifier.load_model()`.
+        - If a `SelectFromModel` step is present in the pipeline, the displayed
+        importances use the *selected feature names* (`selected_features_`)
+        lorsqu'ils sont disponibles; otherwise fall back to `feature_names_used`.
+        - Compatible with RandomForest / XGBoost (both expose `feature_importances_`).
         """
         try:
-            # --- Chargement du modèle complet (objet SpectralClassifier) ------------
+            # --- Load the full model (SpectralClassifier object) ------------
             clf_wrapper = SpectralClassifier.load_model(model_path)
 
             if not hasattr(clf_wrapper, "model_pipeline"):
                 display(
                     Markdown(
-                        "### Erreur\nLe fichier chargé **ne** contient pas `model_pipeline`."
+                        "### Erreur\nThe loaded file does **not** contain `model_pipeline`."
                     )
                 )
                 return
@@ -1475,66 +1459,66 @@ class AstroVisualizer:
             model = pipe.named_steps.get("clf", None)
             model_type = getattr(clf_wrapper, "model_type", type(model).__name__)
 
-            # --- Résumé Markdown -----------------------------------------------------
+            # --- Markdown summary -----------------------------------------------------
             md = []
-            md.append(f"### Analyse du Modèle : `{os.path.basename(model_path)}`")
-            md.append(f"- **Type de Modèle :** `{model_type}`")
+            md.append(f"### Model Analysis : `{os.path.basename(model_path)}`")
+            md.append(f"- **Model Type :** `{model_type}`")
 
-            # Meilleurs hyperparamètres CV (s’ils ont été conservés)
+            # Best CV hyper-parameters (if preserved)
             best_params = getattr(clf_wrapper, "best_params_", None)
             if best_params:
-                md.append("\n#### Meilleurs Hyperparamètres (GridSearchCV)")
+                md.append("\n#### Best Hyper-parameters (GridSearchCV)")
                 for k, v in best_params.items():
                     md.append(f"- **{k.replace('clf__', '')} :** `{v}`")
             else:
                 md.append(
-                    "\n*Pas d’hyperparamètres de recherche enregistrés (ou entraînement sans GridSearchCV).*"
+                    "\n*No search hyper-parameters recorded (or training without GridSearchCV).*"
                 )
 
-            # Classes connues (ordre d'entraînement)
+            # Known classes (training order)
             class_labels = getattr(clf_wrapper, "class_labels", None)
             if class_labels is not None:
-                md.append(f"\n- **Nombre de classes :** `{len(class_labels)}`")
+                md.append(f"\n- **Number of classes :** `{len(class_labels)}`")
                 md.append(f"- **Classes :** `{', '.join(map(str, class_labels))}`")
 
-            # Colonnes d’entraînement & sélection éventuelle
+            # Training columns & optional selection
             used_cols = getattr(clf_wrapper, "feature_names_used", None) or []
             selected_cols = getattr(clf_wrapper, "selected_features_", None)
 
-            md.append(f"\n- **Colonnes d'entraînement :** `{len(used_cols)}`")
+            md.append(f"\n- **Training columns :** `{len(used_cols)}`")
             if selected_cols:
                 md.append(
-                    f"- **Colonnes retenues après sélection :** `{len(selected_cols)}`"
+                    f"- **Columns retained after selection :** `{len(selected_cols)}`"
                 )
             display(Markdown("\n".join(md)))
 
             # --- Importance des features -------------------------------------------
-            # Préfère les noms des features *retenues* si la sélection existe,
-            # car le classifieur a été entraîné sur l'espace transformé.
+            # Prefer *selected* feature names if selection exists,
+            # since the classifier was trained on the transformed feature space.
             feature_names_for_plot = selected_cols or used_cols
 
             if hasattr(model, "feature_importances_") and feature_names_for_plot:
                 importances = np.asarray(model.feature_importances_, dtype=float)
 
-                # Sécurise l’alignement (longueurs peuvent différer si l’artefact n’a
-                # pas conservé les noms de features retenues).
+                # Safeguard alignment (lengths may differ if the artefact did not
+                # preserve the selected feature names).
                 if importances.shape[0] != len(feature_names_for_plot):
-                    # Fallback : on tente malgré tout avec les colonnes d’entraînement.
+                    # Fallback: try with training columns anyway.
                     feature_names_for_plot = used_cols[: importances.shape[0]]
 
-                # Trie du plus faible au plus fort pour un barh lisible
+                # Sort weakest-to-strongest for a readable horizontal bar chart
                 order = np.argsort(importances)
                 names_sorted = np.array(feature_names_for_plot)[order]
                 imps_sorted = importances[order]
 
-                # Limite l’affichage à 40 features pour garder un graphe lisible
+                # Limit display to 40 features for readability
                 top_n = min(40, len(imps_sorted))
                 names_sorted = names_sorted[-top_n:]
                 imps_sorted = imps_sorted[-top_n:]
 
                 plt.style.use("dark_background")
                 plt.figure(figsize=(16, max(8, top_n * 0.35)))
-                plt.title("Importance des Features (après pipeline)", fontsize=16)
+                plt.title("Feature Importances (after pipeline)", fontsize=16)
                 plt.barh(range(top_n), imps_sorted, align="center")
                 plt.yticks(range(top_n), names_sorted)
                 plt.xlabel("Importance (Gini)")
@@ -1543,49 +1527,47 @@ class AstroVisualizer:
             else:
                 display(
                     Markdown(
-                        "#### Importance des Features\n*Aucune importance accessible pour ce modèle.*"
+                        "#### Feature Importances\n*No importances available for this model.*"
                     )
                 )
 
-            # --- Infos pipeline utiles (optionnel) ----------------------------------
+            # --- Useful pipeline info (optional) ----------------------------------
             try:
                 steps_txt = " → ".join(pipe.named_steps.keys())
-                display(Markdown(f"**Pipeline entraîné :** `{steps_txt}`"))
+                display(Markdown(f"**Trained pipeline:** `{steps_txt}`"))
             except Exception:
                 pass
 
         except Exception as e:
-            display(
-                Markdown(f"### Erreur lors de l'analyse du modèle\n**Détail :** `{e}`")
-            )
+            display(Markdown(f"### Error during model analysis\n**Detail:** `{e}`"))
 
     def interactive_model_inspector(self) -> None:
         """
-        Ouvre un mini-UI (ipywidgets) pour parcourir les modèles sauvegardés et lancer
+        Open a mini-UI (ipywidgets) for browsing saved models and launching
         leur inspection avec `_analyze_saved_model`.
 
         Comportement
         ------------
         - Cherche tous les fichiers `.pkl` dans `self.paths["MODELS_DIR"]` (ou `../models/`).
-        - Trie par date de modification décroissante (plus récent en premier).
-        - Dropdown affichant :  « <nom_fichier.pkl> — <taille> — <YYYY-MM-DD HH:MM> ».
+        - Sorted by modification date, newest first.
+        - Dropdown affichant :  " <nom_fichier.pkl> -- <taille> -- <YYYY-MM-DD HH:MM> ".
         - Bouton **Analyser** : appelle `_analyze_saved_model(model_path)`.
-        - Bouton **Rafraîchir** : rescane le répertoire (utile après un nouvel entraînement).
+        - **Refresh** button: rescan the directory (useful after a new training run).
 
         Notes
         -----
-        - Nécessite `ipywidgets` (Jupyter).
-        - L’analyse est réalisée par `_analyze_saved_model`, qui affiche le résumé et
-        l’importance des features quand disponible.
+        - Requires `ipywidgets` (Jupyter).
+        - Analysis is performed by `_analyze_saved_model`, which displays the summary and
+        l'importance des features quand disponible.
         """
         from ipywidgets import HBox, VBox, Dropdown, Button, HTML
         from IPython.display import display, Markdown
 
-        display(Markdown("--- \n## Inspecteur de Modèles Entraînés"))
+        display(Markdown("--- \n## Trained Model Inspector"))
         display(
             Markdown(
-                "Utilisez le menu déroulant pour sélectionner un modèle `.pkl` sauvegardé. "
-                "Cet outil affichera ses hyperparamètres et un graphique montrant l'importance de chaque feature "
+                "Use the drop-down to select a saved `.pkl` model. "
+                "This tool will display its hyper-parameters and a chart showing the importance of each feature "
                 "pour la classification."
             )
         )
@@ -1593,13 +1575,13 @@ class AstroVisualizer:
 
         header = HTML(
             value=(
-                f"<b>Dossier des modèles :</b> <code>{models_dir}</code><br>"
-                "Sélectionne un modèle puis clique <b>Analyser</b>."
+                f"<b>Models directory :</b> <code>{models_dir}</code><br>"
+                "Select a model and click <b>Analyse</b>."
             )
         )
 
         def _scan_models() -> list[tuple[str, str]]:
-            """Retourne une liste d’options (label lisible, chemin absolu)."""
+            """Return a list of options (human-readable label, absolute path)."""
             if not os.path.exists(models_dir):
                 return []
 
@@ -1614,27 +1596,27 @@ class AstroVisualizer:
                     mtime = datetime.fromtimestamp(stat.st_mtime).strftime(
                         "%Y-%m-%d %H:%M"
                     )
-                    label = f"{f} — {size_mb:.2f} MB — {mtime}"
+                    label = f"{f} -- {size_mb:.2f} MB -- {mtime}"
                     entries.append((label, full))
                 except Exception:
-                    # Si on n'arrive pas à lire les stats, on garde au moins le nom.
+                    # If stats cannot be read, keep at least the filename.
                     entries.append((f, full))
 
-            # Tri : plus récent d'abord
+            # Sort: newest first
             entries.sort(key=lambda x: os.path.getmtime(x[1]), reverse=True)
             return entries
 
         options = _scan_models()
 
         if not options:
-            display(Markdown(f"### Aucun modèle `.pkl` trouvé dans `{models_dir}`."))
+            display(Markdown(f"### No `.pkl` model found in `{models_dir}`."))
             return
 
-        dd = Dropdown(options=options, description="Modèle :", layout={"width": "75%"})
+        dd = Dropdown(options=options, description="Model:", layout={"width": "75%"})
         btn_analyze = Button(
             description="Analyser", button_style="success", icon="search"
         )
-        btn_refresh = Button(description="Rafraîchir", button_style="", icon="refresh")
+        btn_refresh = Button(description="Refresh", button_style="", icon="refresh")
 
         out = widgets.Output()
 
@@ -1644,20 +1626,16 @@ class AstroVisualizer:
                 try:
                     self._analyze_saved_model(dd.value)
                 except Exception as e:
-                    display(
-                        Markdown(f"### Erreur lors de l'analyse\n**Détail :** `{e}`")
-                    )
+                    display(Markdown(f"### Error during analysis\n**Detail:** `{e}`"))
 
         def on_refresh_clicked(_):
             new_opts = _scan_models()
             if not new_opts:
                 out.clear_output(wait=True)
                 with out:
-                    display(
-                        Markdown(f"### Aucun modèle `.pkl` trouvé dans `{models_dir}`.")
-                    )
+                    display(Markdown(f"### No `.pkl` model found in `{models_dir}`."))
                 return
-            dd.options = new_opts  # conserve la sélection si possible
+            dd.options = new_opts  # preserve selection if possible
 
         btn_analyze.on_click(on_analyze_clicked)
         btn_refresh.on_click(on_refresh_clicked)
@@ -1672,7 +1650,7 @@ class AstroVisualizer:
         display(ui)
 
     # ==============================================================================
-    # Outil 7: Comparaison de Spectres ---
+    # Outil 7: Spectra Comparison ---
     # ==============================================================================
 
     def _plot_spectra_comparison(
@@ -1683,35 +1661,35 @@ class AstroVisualizer:
         save_path: str | None = None,
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """
-        Superpose et compare plusieurs spectres `.fits.gz`.
+        Overlay and compare multiple `.fits.gz` spectra.
 
-        Paramètres
+        Parameters
         ----------
         file_paths : list[str]
-            Chemins **relatifs** (sous RAW_DATA_DIR) des spectres à tracer.
+            **Relative** paths (under RAW_DATA_DIR) of the spectra to plot.
         normalize : bool, default=True
-            Si True, normalise chaque spectre avant affichage (via `SpectraPreprocessor`).
+            If True, normalise each spectrum before plotting (via `SpectraPreprocessor`).
         offset : float, default=0.0
-            Décalage vertical ajouté par spectre (i * offset) pour améliorer la lisibilité.
+            Vertical offset added per spectrum (i * offset) for improved readability.
         save_path : str | None, default=None
-            Optionnel : chemin de sortie pour sauvegarder la figure (PNG).
+            Optional output path for saving the figure (PNG).
 
-        Retour
-        ------
+        Returns
+        -------
         (fig, ax) ou None
-            Figure et axes Matplotlib si au moins un spectre est tracé, sinon None.
+            Matplotlib figure and axes if at least one spectrum is plotted, else None.
 
         Notes
         -----
-        - Les fichiers doivent être compressés `.fits.gz`.
-        - Les chemins fournis sont relatifs à `self.paths["RAW_DATA_DIR"]`.
-        - Si `self.DEFAULT_XLIM` existe, on l’utilise pour la limite en X, sinon (3800, 7000).
+        - Files must be compressed `.fits.gz`.
+        - Paths are relative to `self.paths["RAW_DATA_DIR"]`.
+        - Si `self.DEFAULT_XLIM` existe, on l'utilise pour la limite en X, sinon (3800, 7000).
         """
         if not file_paths:
-            print("Aucun fichier fourni.")
+            print("No files provided.")
             return None
 
-        # Dédoublonne et nettoie la liste
+        # Deduplicate and clean the list
         uniq_paths: list[str] = []
         for p in file_paths:
             if p and p not in uniq_paths:
@@ -1734,17 +1712,17 @@ class AstroVisualizer:
                 ):
                     wavelength, flux, _ = preprocessor.load_spectrum(hdul)
             except Exception as e:
-                print(f"[!] Ignoré (lecture impossible) : {rel_path} -> {e}")
+                print(f"[!] Skipped (unreadable) : {rel_path} -> {e}")
                 continue
 
             if normalize:
                 try:
                     flux = preprocessor.normalize_spectrum(flux)
                 except Exception:
-                    # On n'interrompt pas l'affichage pour un échec de normalisation
+                    # Do not interrupt display for a normalisation failure
                     pass
 
-            # Décalage vertical constant par courbe (i*offset)
+            # Constant vertical offset per curve (i*offset)
             y = flux + (i * offset if offset else 0.0)
 
             ax.plot(wavelength, y, lw=1.0, label=os.path.basename(rel_path))
@@ -1752,23 +1730,23 @@ class AstroVisualizer:
 
         if plotted == 0:
             plt.close(fig)
-            print("Aucun spectre n'a pu être chargé/affiché.")
+            print("No spectra could be loaded / displayed.")
             return None
 
         # Axes, grille, titre
         ax.set_xlabel("Longueur d'onde (Å)")
-        ax.set_ylabel("Flux (unités normalisées)" if normalize else "Flux (adu)")
-        ax.set_title("Comparaison de Spectres")
+        ax.set_ylabel("Flux (normalised units)" if normalize else "Flux (adu)")
+        ax.set_title("Spectra Comparison")
         ax.grid(True, alpha=0.25)
 
-        # Limites X par défaut (si dispo)
+        # Default X limits (if available)
         try:
             xlim = getattr(self, "DEFAULT_XLIM", (3800.0, 7000.0))
             ax.set_xlim(xlim)
         except Exception:
             pass
 
-        # Légende
+        # Legend
         ax.legend(loc="upper right", frameon=True, fontsize=9)
 
         fig.tight_layout()
@@ -1788,25 +1766,25 @@ class AstroVisualizer:
 
         Interface
         ---------
-        - Liste multi-sélection des fichiers (sous `RAW_DATA_DIR`).
-        - Case à cocher pour normaliser les spectres.
-        - Curseur de décalage vertical (offset) appliqué à chaque courbe.
-        - Option d'export PNG dans le dossier `logs/` avec nom auto (ou personnalisé).
+        - Multi-select list of files (under `RAW_DATA_DIR`).
+        - Check-box for normalising the spectra.
+        - Vertical-offset slider applied to each curve.
+        - PNG export option into `logs/` with automatic (or custom) filename.
 
-        Effets de bord
+        Side effects
         --------------
-        - Affiche la figure dans la cellule courante.
-        - Si l'export est activé, écrit un PNG dans `self.paths["LOGS_DIR"]`.
+        - Display the figure in the current cell.
+        - If export is enabled, write a PNG into `self.paths["LOGS_DIR"]`.
         """
-        display(Markdown("--- \n## Comparateur de Spectres"))
+        display(Markdown("--- \n## Spectra Comparator"))
         display(
             Markdown(
-                "Sélectionnez plusieurs spectres (maintenez `Ctrl` ou `Shift`) pour les superposer. Ajustez le décalage pour mieux les distinguer."
+                "Select multiple spectra (hold `Ctrl` or `Shift`) to overlay them.  Adjust the offset to better distinguish them."
             )
         )
 
         if not getattr(self, "available_spectra", None):
-            print("Aucun spectre trouvé.")
+            print("No spectra found.")
             return
 
         # --- Widgets -------------------------------------------------------------
@@ -1818,7 +1796,7 @@ class AstroVisualizer:
         )
         normalize = widgets.Checkbox(value=True, description="Normaliser")
         offset = widgets.FloatSlider(
-            value=0.5, min=0.0, max=5.0, step=0.1, description="Décalage Y:"
+            value=0.5, min=0.0, max=5.0, step=0.1, description="Y offset:"
         )
 
         export_toggle = widgets.Checkbox(
@@ -1845,7 +1823,7 @@ class AstroVisualizer:
             with out:
                 sel = list(files.value)
                 if not sel:
-                    print("Sélectionne au moins un spectre dans la liste.")
+                    print("Select at least one spectrum from the list.")
                     return
 
                 save_path = None
@@ -1865,7 +1843,7 @@ class AstroVisualizer:
                     return
 
                 if save_path:
-                    print(f"Figure sauvegardée : {save_path}")
+                    print(f"Figure saved : {save_path}")
 
         run_btn.on_click(on_run_clicked)
 
@@ -1883,12 +1861,12 @@ class AstroVisualizer:
         display(ui)
 
     # ==============================================================================
-    # Outil 8 : Analyseur de Spectre Augmenté (Version Plotly) ---
+    # Tool 8: Augmented Spectrum Analyser (Plotly Version) ---
     # ==============================================================================
 
     def _display_formatted_header_for_streamlit(self, st, fits_relative_path):
         """
-        Affiche les informations de l'en-tête FITS dans Streamlit.
+        Display FITS header information in Streamlit.
         """
         full_path = os.path.join(self.paths["RAW_DATA_DIR"], fits_relative_path)
         try:
@@ -1896,11 +1874,9 @@ class AstroVisualizer:
                 with fits.open(f_gz, memmap=False) as hdul:
                     header = hdul[0].header
 
-            md_output = (
-                f"### En-tête du fichier : `{os.path.basename(full_path)}`\n---\n"
-            )
+            md_output = f"### File header : `{os.path.basename(full_path)}`\n---\n"
             sections = {}
-            current_section = "Informations Générales"
+            current_section = "General Information"
             sections[current_section] = ""
             for key, value in header.items():
                 if key == "COMMENT" and "--------" in str(value):
@@ -1918,7 +1894,7 @@ class AstroVisualizer:
                     md_output += f"\n#### {title}\n{content}"
             st.markdown(md_output, unsafe_allow_html=True)
         except Exception as e:
-            st.error(f"Erreur lors de l'ouverture du header : {e}")
+            st.error(f"Error while opening header : {e}")
 
     def _plot_spectrum_analysis_plotly(
         self, st, file_path_or_buffer, prominence, window
@@ -1943,12 +1919,12 @@ class AstroVisualizer:
                 peak_indices, peak_wavelengths, properties
             )
 
-            # --- Récupération des pics associés pour les cercles verts ---
+            # --- Retrieve matched peaks for green circles ---
             matched_wavelengths = [
                 data[0] for data in matched_lines.values() if data is not None
             ]
 
-            # --- Création du Graphique Interactif avec Plotly ---
+            # --- Create Interactive Plotly Chart ---
             fig = go.Figure()
 
             # 1. Ajouter le spectre
@@ -1957,24 +1933,24 @@ class AstroVisualizer:
                     x=wavelength,
                     y=flux_norm,
                     mode="lines",
-                    name="Spectre Normalisé",
+                    name="Normalised Spectrum",
                     line=dict(color="rgba(200, 200, 200, 0.7)", width=1),
                 )
             )
 
-            # 2. Ajouter les pics détectés
+            # 2. Add detected peaks
             if len(peak_indices) > 0:
                 fig.add_trace(
                     go.Scatter(
                         x=peak_wavelengths,
                         y=flux_norm[peak_indices],
                         mode="markers",
-                        name="Pics Détectés",
+                        name="Detected Peaks",
                         marker=dict(color="red", symbol="triangle-down", size=8),
                     )
                 )
 
-            # Ajout des cercles vert
+            # Add green circles
             if matched_wavelengths:
                 matched_indices = [
                     np.abs(wavelength - wl).argmin() for wl in matched_wavelengths
@@ -1984,7 +1960,7 @@ class AstroVisualizer:
                         x=wavelength[matched_indices],
                         y=flux_norm[matched_indices],
                         mode="markers",
-                        name="Pics Associés",
+                        name="Matched Peaks",
                         marker=dict(
                             symbol="circle-open",
                             color="lime",
@@ -1994,10 +1970,10 @@ class AstroVisualizer:
                     )
                 )
 
-            # 3. Préparer les formes pour les raies cibles (lignes verticales)
+            # 3. Prepare shapes for target lines (vertical lines)
             shapes = []
 
-            # On sépare les raies de Balmer des autres pour les boutons
+            # Separate Balmer lines from others for toggle buttons
             _balmer_lines = {
                 k: v for k, v in peak_detector.target_lines.items() if "H" in k
             }
@@ -2016,18 +1992,18 @@ class AstroVisualizer:
                         x1=wl,
                         y1=1,
                         line=dict(color="rgba(0, 150, 255, 0.5)", width=1, dash="dash"),
-                        name=name,  # On stocke le nom pour le filtrage
+                        name=name,  # Store the name for filtering
                     )
                 )
 
             # --- Mise en forme du graphique ---
             subclass = header.get("SUBCLASS", "N/A")
-            title = f"Analyse du Spectre : {header.get('DESIG', 'Inconnu')} (Type: {subclass})"
+            title = f"Spectrum Analysis: {header.get('DESIG', 'Unknown')} (Type: {subclass})"
             fig.update_layout(
                 title=title,
                 xaxis_title="Longueur d'onde (Å)",
-                yaxis_title="Flux Normalisé",
-                template="plotly_dark",  # Thème sombre
+                yaxis_title="Normalised Flux",
+                template="plotly_dark",  # Dark theme
                 legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
                 shapes=shapes,  # On ajoute les lignes verticales
             )
@@ -2045,12 +2021,12 @@ class AstroVisualizer:
                         buttons=list(
                             [
                                 dict(
-                                    label="Toutes les Raies",
+                                    label="All Lines",
                                     method="relayout",
                                     args=["shapes", shapes],
                                 ),
                                 dict(
-                                    label="Raies de Balmer",
+                                    label="Balmer Lines",
                                     method="relayout",
                                     args=[
                                         "shapes",
@@ -2058,7 +2034,7 @@ class AstroVisualizer:
                                     ],
                                 ),
                                 dict(
-                                    label="Raies de Calcium",
+                                    label="Calcium Lines",
                                     method="relayout",
                                     args=[
                                         "shapes",
@@ -2066,7 +2042,7 @@ class AstroVisualizer:
                                     ],
                                 ),
                                 dict(
-                                    label="Aucune Raie",
+                                    label="No Lines",
                                     method="relayout",
                                     args=["shapes", []],
                                 ),
@@ -2080,31 +2056,31 @@ class AstroVisualizer:
             return header  # On retourne le header pour l'afficher
 
         except Exception as e:
-            st.error(f"Erreur lors de l'analyse du spectre : {e}")
+            st.error(f"Error during analysis du spectre : {e}")
             return None
 
     def app(self):
         """
-        La méthode principale pour lancer l'application Streamlit.
+        Main entry point for the Streamlit application.
         """
         import streamlit as st
 
         st.set_page_config(page_title="AstroSpectro Visualizer", layout="wide")
-        st.title("AstroSpectro - Tableau de Bord d'Analyse")
+        st.title("AstroSpectro - Analysis Dashboard")
 
-        # --- Barre Latérale de Contrôle ---
-        st.sidebar.header("Source des Données")
+        # --- Sidebar controls ---
+        st.sidebar.header("Data Source")
 
         source_option = st.sidebar.radio(
-            "Choisir une source de spectre",
-            ("Sélectionner un spectre du projet", "Téléverser un fichier FITS"),
+            "Choose a spectrum source",
+            ("Select a project spectrum", "Upload a FITS file"),
         )
 
         file_to_process = None
 
-        if source_option == "Sélectionner un spectre du projet":
+        if source_option == "Select a project spectrum":
             selected_file_path = st.sidebar.selectbox(
-                "Sélectionner un Spectre", self.available_spectra
+                "Select a Spectrum", self.available_spectra
             )
             if selected_file_path:
                 file_to_process = os.path.join(
@@ -2112,15 +2088,15 @@ class AstroVisualizer:
                 )
         else:
             uploaded_file = st.sidebar.file_uploader(
-                "Charger un spectre (.fits.gz)", type=["gz"]
+                "Upload a spectrum (.fits.gz)", type=["gz"]
             )
             if uploaded_file is not None:
                 file_to_process = uploaded_file
 
         st.sidebar.markdown("---")
-        st.sidebar.header("Paramètres de Détection")
+        st.sidebar.header("Detection Parameters")
         prominence = st.sidebar.slider("Prominence", 0.01, 1.0, 0.2, 0.01)
-        window = st.sidebar.slider("Fenêtre (Å)", 1, 50, 15, 1)
+        window = st.sidebar.slider("Window (Å)", 1, 50, 15, 1)
 
         # --- Affichage Principal ---
         if file_to_process:
@@ -2130,16 +2106,16 @@ class AstroVisualizer:
 
             if header:
                 st.markdown("---")
-                with st.expander("Afficher l'En-tête FITS Complet"):
+                with st.expander("Show Full FITS Header"):
                     self._display_header_for_streamlit(st, header)
 
     def _display_header_for_streamlit(self, st, header):
         """
-        Affiche un objet header FITS dans Streamlit.
+        Display a FITS header object in Streamlit.
         """
-        md_output = "#### Métadonnées Principales\n"
+        md_output = "#### Main Metadata\n"
 
-        # Affiche quelques clés importantes
+        # Display key header entries
         md_output += (
             f"- **Objet :** `{header.get('OBJECT', header.get('DESIG', 'N/A'))}`\n"
         )
@@ -2152,11 +2128,11 @@ class AstroVisualizer:
         st.json(dict(header))
 
     # ==============================================================================
-    # Outil 9 : Tableau de Bord du Dataset Spectral ---
+    # Outil 9 : Spectral Dataset Dashboard ---
     # ==============================================================================
 
     def _resolve_trained_log_path(self):
-        """Essaie de localiser le fichier trained_spectra*.csv de façon robuste."""
+        """Try to locate the trained_spectra*.csv file robustly."""
         prj = self.paths.get("PROJECT_ROOT", ".")
         cat = self.paths.get("CATALOG_DIR", os.path.join(prj, "data", "catalog"))
         data_root = os.path.join(prj, "data")
@@ -2180,14 +2156,14 @@ class AstroVisualizer:
 
     def display_dataset_dashboard(self, show_charts: bool = True) -> pd.DataFrame:
         """
-        Mini-dashboard esthétique sur l'état du dataset :
-        - KPI cards (total, déjà utilisés, nouveaux candidats)
-        - Top sous-classes (top 15)
-        - Spectres par plan (top 20)
-        - Récapitulatif final (avec distinct_subclasses / distinct_plans)
+        Aesthetic mini-dashboard showing the dataset status:
+        - KPI cards (total, already used, new candidates)
+        - Top sub-classes (top 15)
+        - Spectra per plan (top 20)
+        - Final recap (with distinct_subclasses / distinct_plans)
         """
 
-        # ---------- helpers esthétiques ----------
+        # ---------- aesthetic helpers ----------
         def _fmt_fr(n: int) -> str:
             try:
                 return f"{int(n):,}".replace(",", " ")
@@ -2225,11 +2201,11 @@ class AstroVisualizer:
             return st
 
         # ---------- 1) volumes disponibles ----------
-        display(Markdown("### Tableau de Bord du Dataset Spectral"))
+        display(Markdown("### Spectral Dataset Dashboard"))
         display(
             Markdown(
-                "Ce panneau donne un aperçu rapide de votre collection de spectres et met en évidence "
-                "d’éventuelles opportunités de nouveaux entraînements."
+                "This panel gives a quick overview of your spectra collection and highlights "
+                "potential opportunities for new training runs."
             )
         )
 
@@ -2292,15 +2268,15 @@ class AstroVisualizer:
         cards_html = f"""
         <div style="display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:12px;margin:8px 0 16px;">
         <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;">
-            <div style="font-size:12px;color:#bdbdbd;">Spectres téléchargés (data/raw)</div>
+            <div style="font-size:12px;color:#bdbdbd;">Downloaded spectra (data/raw)</div>
             <div style="font-size:28px;font-weight:800;margin-top:2px;">{_fmt_fr(total_available)}</div>
         </div>
         <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;">
-            <div style="font-size:12px;color:#bdbdbd;">Spectres déjà utilisés</div>
+            <div style="font-size:12px;color:#bdbdbd;">Already-used spectra</div>
             <div style="font-size:28px;font-weight:800;margin-top:2px;">{_fmt_fr(total_trained)}</div>
         </div>
         <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;">
-            <div style="font-size:12px;color:#bdbdbd;">Nouveaux candidats</div>
+            <div style="font-size:12px;color:#bdbdbd;">New candidates</div>
             <div style="font-size:28px;font-weight:800;margin-top:2px;">{_fmt_fr(total_new_candidates)}</div>
         </div>
         </div>
@@ -2308,7 +2284,7 @@ class AstroVisualizer:
         display(HTML(cards_html))
 
         # =====================================================================
-        # 4) Top sous-classes (top 15) & Spectres par plan (top 20)
+        # 4) Top sub-classes (top 15) & Spectra per plan (top 20)
         # =====================================================================
         labels = getattr(self, "labels_catalog", {}) or {}
 
@@ -2327,7 +2303,7 @@ class AstroVisualizer:
             for p in (self.available_spectra or [])
         ]
 
-        # ---------- 5) **RÉCAP EN HAUT** (remplace les deux petits tableaux) ----------
+        # ---------- 5) **RECAP AT TOP** (replaces the two small tables) ----------
         distinct_subclasses = (
             int(pd.Series(subclasses).nunique()) if (labels and subclasses) else 0
         )
@@ -2358,7 +2334,7 @@ class AstroVisualizer:
             vc = pd.Series(subclasses).value_counts()
             subclass_counts_df = vc.head(15).rename("# count").reset_index()
             subclass_counts_df.columns = ["subclass", "# count"]
-            display(Markdown("#### Top sous-classes (top 15)"))
+            display(Markdown("#### Top sub-classes (top 15)"))
             display(_style(subclass_counts_df, {"# count": lambda x: _fmt_fr(x)}))
         else:
             subclass_counts_df = None
@@ -2367,10 +2343,10 @@ class AstroVisualizer:
             vc = pd.Series(plans).value_counts()
             plan_counts_df = vc.head(20).rename("# count").reset_index()
             plan_counts_df.columns = ["plan_id", "# count"]
-            display(Markdown("#### Spectres par plan (top 20)"))
+            display(Markdown("#### Spectra per plan (top 20)"))
             display(_style(plan_counts_df, {"# count": lambda x: _fmt_fr(x)}))
 
-        # (optionnel) mini-barres
+        # (optional) mini-bars
         if show_charts and subclass_counts_df is not None:
             try:
                 _ = plt.figure(figsize=(7.5, 4.5))
@@ -2390,7 +2366,7 @@ class AstroVisualizer:
         return summary_df
 
     # ==============================================================================
-    # Outil 10 : Analyse d'Interprétabilité des Modèles (SHAP) ---
+    # Tool 10: Model Interpretability Analysis (SHAP) ---
     # ==============================================================================
 
     # ---------------------------------------------------------------------
@@ -2398,23 +2374,23 @@ class AstroVisualizer:
     # ---------------------------------------------------------------------
 
     def refresh_available_spectra(self) -> int:
-        """Met à jour self.available_spectra en rescannant data/raw/."""
+        """Refresh self.available_spectra by rescanning data/raw/."""
         self.available_spectra = self._scan_for_spectra()
         return len(self.available_spectra)
 
     # ---------------------------------------------------------------------
-    # Helper : prépare X pour le modèle (aligne colonnes + étapes pipeline)
+    # Helper: prepare X for the model (align columns + pipeline steps)
     # ---------------------------------------------------------------------
 
     def _prepare_for_model(self, df: pd.DataFrame, clf_wrapper):
         """
-        Aligne un DataFrame de features sur les colonnes d'entraînement du modèle,
-        puis applique les étapes *amont* du pipeline (imputer/scaler/selector).
-        Retourne (Xt, feature_names_for_plot).
+        Align a feature DataFrame with the model's training columns,
+        then apply *upstream* pipeline steps (imputer / scaler / selector).
+        Return (Xt, feature_names_for_plot).
         """
         pipe = clf_wrapper.model_pipeline
 
-        # Colonnes attendues
+        # Expected columns
         used_cols = list(getattr(clf_wrapper, "feature_names_used", list(df.columns)))
         X = df.copy()
         for c in used_cols:
@@ -2422,7 +2398,7 @@ class AstroVisualizer:
                 X[c] = np.nan
         X = X.reindex(columns=used_cols)
 
-        # Imputer -> Scaler (si présents)
+        # Imputer -> Scaler (if present)
         imp = getattr(pipe, "named_steps", {}).get("imputer")
         scl = getattr(pipe, "named_steps", {}).get("scaler")
 
@@ -2432,7 +2408,7 @@ class AstroVisualizer:
         if scl is not None:
             Xt = scl.transform(Xt)
 
-        # Sélection de features (si présente)
+        # Feature selection (if present)
         sel = getattr(pipe, "named_steps", {}).get("feature_selector")
         if sel is not None:
             Xt = sel.transform(Xt)
@@ -2443,37 +2419,37 @@ class AstroVisualizer:
         else:
             feature_names_for_plot = used_cols
 
-        # Sécurité longueur
+        # Length safety check
         if len(feature_names_for_plot) != Xt.shape[1]:
             feature_names_for_plot = used_cols[: Xt.shape[1]]
 
         return Xt, feature_names_for_plot
 
     # ---------------------------------------------------------------------
-    # Helper : fabrique un échantillon de features prêt pour le modèle
+    # Helper: build a feature sample ready for the model
     # ---------------------------------------------------------------------
 
     def _get_features_sample(
         self, clf, sample_n: int, source: str = "auto"
     ) -> pd.DataFrame:
         """
-        Retourne un DataFrame X_df (features uniquement) prêt pour l'alignement modèle.
+        Return a feature-only DataFrame X_df ready for model alignment.
         source ∈ {"auto","features_csv","raw_fits"}.
-        - 'auto' : essaie d'abord le dernier features_*.csv, sinon les FITS.
+        - 'auto': try the latest features_*.csv first, then fall back to FITS.
         """
 
         source = (source or "auto").lower()
 
-        # 1) Tentative via dernier CSV de features
+        # 1) Attempt via latest features CSV
         if source in ("auto", "features_csv"):
             latest = latest_file(self.paths["PROCESSED_DIR"], "features_*.csv")
             if latest and os.path.exists(latest):
                 df = pd.read_csv(latest)
-                # retire colonnes cibles si présentes
+                # Remove target columns if present
                 for col in ("main_class", "label", "target", "y"):
                     if col in df.columns:
                         df = df.drop(columns=[col])
-                # garde uniquement les colonnes attendues par le modèle si connues
+                # Keep only columns expected by the model (if known)
                 expected = list(getattr(clf, "feature_names_used", list(df.columns)))
                 for c in expected:
                     if c not in df.columns:
@@ -2484,16 +2460,14 @@ class AstroVisualizer:
                 if not df.empty:
                     return df
             if source == "features_csv":
-                raise RuntimeError(
-                    "Aucun features_*.csv utilisable trouvé dans data/processed/."
-                )
+                raise RuntimeError("No usable features_*.csv found in data/processed/.")
 
-        # 2) Fallback : extraction directe depuis les FITS
+        # 2) Fallback: direct extraction from FITS
         if not getattr(self, "available_spectra", None):
             self.refresh_available_spectra()
         files = list(self.available_spectra)
         if not files:
-            raise RuntimeError("Aucun spectre trouvé dans data/raw/.")
+            raise RuntimeError("No spectra found in data/raw/.")
 
         rng = np.random.default_rng(42)
         if len(files) > sample_n:
@@ -2525,9 +2499,7 @@ class AstroVisualizer:
 
         if not rows:
             msg = " | ".join(errors[:3]) if errors else "aucun fichier valide"
-            raise RuntimeError(
-                f"Impossible de construire un échantillon (FITS). Détails: {msg}"
-            )
+            raise RuntimeError(f"Failed to build sample (FITS). Details: {msg}")
 
         return pd.DataFrame(np.vstack(rows), columns=feature_names)
 
@@ -2536,13 +2508,13 @@ class AstroVisualizer:
     # ---------------------------------------------------------------------
     def _build_shap_explainer(self, *, pipe, model, X_df, mode: str):
         """
-        Retourne (explainer, X_background) selon le mode.
+        Return (explainer, X_background) according to the mode.
         mode ∈ {"auto","tree","linear","kernel","permutation"}.
         """
         import shap
 
         n = len(X_df)
-        # fond compact si gros échantillon
+        # Compact background for large samples
         try:
             X_bg = (
                 shap.kmeans(X_df, k=min(50, max(10, n // 200)))
@@ -2587,12 +2559,12 @@ class AstroVisualizer:
         elif mode == "permutation":
             explainer = shap.Explainer(model, X_bg, algorithm="permutation")
         else:
-            raise ValueError(f"Mode SHAP inconnu: {mode}")
+            raise ValueError(f"Unknown SHAP mode: {mode}")
 
         return explainer, X_bg
 
     # ---------------------------------------------------------------------
-    # Lancement d’une analyse SHAP "end-to-end" sur un échantillon
+    # Run an end-to-end SHAP analysis on a sample
     # ---------------------------------------------------------------------
 
     def _run_shap_analysis(
@@ -2604,46 +2576,46 @@ class AstroVisualizer:
         data_source: str = "auto",
     ) -> "pd.DataFrame | None":
         """
-        Charge un modèle, calcule un échantillon de features, aligne sur le pipeline
-        et produit un tableau des importances SHAP (moyenne |valeur| par feature).
-        Exporte aussi CSV/LaTeX dans logs/shap et mémorise les objets utiles aux tracés.
+        Load a model, compute a feature sample, align with the pipeline,
+        and produce a table of SHAP importances (mean |value| per feature).
+        Also export CSV / LaTeX into logs/shap and cache objects for plots.
 
         Parameters
         ----------
         model_path : str
-            Chemin absolu du .pkl (SpectralClassifier sauvegardé).
+            Absolute path of the .pkl (saved SpectralClassifier).
         sample_n : int, default=500
-            Taille d’échantillon de spectres (bornée par le disponible).
+            Spectrum sample size (capped by the number available).
 
         Returns
         -------
         pd.DataFrame | None
-            Tableau des importances moyennes SHAP (|valeur|) trié décroissant,
-            ou None en cas d’impossibilité.
+            Mean absolute SHAP importance table, sorted descending,
+            or None on failure.
         """
         import shap
 
-        # 0) Charger le modèle
+        # 0) Load the model
         clf = SpectralClassifier.load_model(model_path)
         pipe = clf.model_pipeline
         model_core = getattr(pipe, "named_steps", {}).get("clf", pipe)
 
-        # 1) Échantillon X_df
+        # 1) Sample X_df
         try:
             X_df = self._get_features_sample(
                 clf, sample_n=int(sample_n), source=data_source
             )
         except Exception as e:
-            print(f"[!] Échec construction échantillon ({e}).")
+            print(f"[!] Failed to build sample ({e}).")
             return None
 
         # 2) Alignement pipeline (imputer/scaler/selector)
         Xt, names_for_plot = self._prepare_for_model(X_df, clf)
 
-        # 3) Explainer SHAP - VERSION SIMPLIFIÉE
-        # TreeExplainer pour XGBoost (utilise les données déjà transformées)
+        # 3) SHAP explainer - simplified version
+        # TreeExplainer for XGBoost (uses already-transformed data)
 
-        # Extraire le modèle XGBoost brut
+        # Extract the raw XGBoost model
         try:
             xgb_model = pipe.named_steps["clf"]
             if hasattr(
@@ -2656,28 +2628,28 @@ class AstroVisualizer:
             print(f"[!] Impossible d'extraire XGBoost: {e}")
             xgb_model = model_core
 
-        # TreeExplainer (rapide et stable pour XGBoost)
+        # TreeExplainer (fast and stable for XGBoost)
         try:
             explainer = shap.TreeExplainer(xgb_model)
-            print(f"✓ TreeExplainer créé pour {type(xgb_model).__name__}")
+            print(f"✓ TreeExplainer created for {type(xgb_model).__name__}")
         except Exception as e:
             print(f"[!] Erreur TreeExplainer: {e}")
             return None
 
-        # 4) Calculer SHAP values sur les données DÉJÀ TRANSFORMÉES (Xt)
+        # 4) Compute SHAP values on ALREADY-TRANSFORMED data (Xt)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
             sv = explainer(Xt)
 
-        # 4) SHAP values (API homogène : appel direct)
+        # 4) SHAP values (uniform API: direct call)
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=RuntimeWarning)
             sv = explainer(Xt)
 
-        # Mémorise l'explication complète pour les tracés
+        # Cache the full explanation for plots
         self._last_shap_explanation = sv
 
-        # 5) Importances moyen(|val|)
+        # 5) Mean |value| importances
         vals = getattr(sv, "values", sv)
         vals = np.asarray(vals)
         if vals.ndim == 3:  # multi-classes
@@ -2693,7 +2665,7 @@ class AstroVisualizer:
             {"feature": names_for_plot, "mean_abs_shap": mean_abs}
         ).sort_values("mean_abs_shap", ascending=False, ignore_index=True)
 
-        # Mémorise pour les helpers de tracé
+        # Cache for plotting helpers
         self._last_shap_importances = df_out
         return df_out
 
@@ -2703,30 +2675,30 @@ class AstroVisualizer:
 
     def interactive_shap_explainer(self) -> None:
         """
-        Crée un petit **widget notebook** pour sélectionner un modèle sauvegardé
-        (.pkl) et lancer une analyse d'interprétabilité **SHAP**.
+        Create a small **notebook widget** for selecting a saved model
+        (.pkl) and launching a **SHAP** interpretability analysis.
 
         Le workflow :
         1) scan du dossier `data/models/` (ou `self.paths["MODELS_DIR"]`)
-        2) choix d'un modèle via un Dropdown
-        3) réglage du nombre d'échantillons (pour les graphes SHAP)
+        2) select a model via a Dropdown
+        3) set the number of samples (for SHAP charts)
         4) clic sur "Analyser" -> appelle `self._run_shap_analysis(...)`
             et affiche les graphes + un tableau d'importances.
 
         Notes
         -----
-        - Utilise la méthode privée `_run_shap_analysis` implémentée plus haut.
-        - Les graphes sont générés avec Matplotlib + SHAP (beeswarm).
-        - Un CSV des importances peut aussi être exporté dans `logs/`.
+        - Uses the private method `_run_shap_analysis` implemented above.
+        - Charts are generated with Matplotlib + SHAP (beeswarm).
+        - An importances CSV can also be exported to `logs/`.
         """
         import ipywidgets as widgets
         from IPython.display import display, Markdown
         from datetime import datetime, timezone
 
-        display(Markdown("### Outil d'Analyse d'Interprétabilité des Modèles (SHAP)"))
-        display(Markdown("Sélectionnez un modèle entraîné puis lancez l'analyse."))
+        display(Markdown("### Model Interpretability Analysis Tool (SHAP)"))
+        display(Markdown("Select a trained model and launch the analysis."))
 
-        # modèles
+        # Models
         models_dir = self.paths.get("MODELS_DIR", "../data/models/")
         saved = []
         if os.path.isdir(models_dir):
@@ -2740,18 +2712,18 @@ class AstroVisualizer:
                 reverse=True,
             )
         if not saved:
-            print("Aucun modèle entraîné (.pkl) trouvé dans data/models/.")
+            print("No trained model (.pkl) found in data/models/.")
             return
 
         dd_model = widgets.Dropdown(
-            options=saved, description="Modèle :", layout={"width": "700px"}
+            options=saved, description="Model:", layout={"width": "700px"}
         )
         sample_slider = widgets.IntSlider(
             value=500,
             min=100,
             max=2000,
             step=50,
-            description="Échantillons :",
+            description="Samples:",
             continuous_update=False,
         )
         topk_slider = widgets.IntSlider(
@@ -2776,12 +2748,12 @@ class AstroVisualizer:
         )
         source_dd = widgets.Dropdown(
             options=[
-                ("Auto (CSV puis FITS)", "auto"),
-                ("Features CSV seulement", "features_csv"),
-                ("FITS (extraction en direct)", "raw_fits"),
+                ("Auto (CSV then FITS)", "auto"),
+                ("Features CSV only", "features_csv"),
+                ("FITS (live extraction)", "raw_fits"),
             ],
             value="auto",
-            description="Données :",
+            description="Data source:",
             layout={"width": "240px"},
         )
         run_btn = widgets.Button(
@@ -2816,7 +2788,7 @@ class AstroVisualizer:
                             float_format="%.6f",
                         )
                     except Exception as e:
-                        display(Markdown(f"> Export impossible : `{e}`"))
+                        display(Markdown(f"> Export failed : `{e}`"))
 
         run_btn.on_click(_on_click)
         display(
@@ -2838,7 +2810,7 @@ class AstroVisualizer:
         )
 
     # ---------------------------------------------------------------------
-    # Helpers de tracé réutilisables dans d’autres cellules
+    # Reusable plotting helpers for other cells
     # ---------------------------------------------------------------------
 
     def plot_shap_summary_bar(
@@ -2847,38 +2819,36 @@ class AstroVisualizer:
         save_path: str | None = None,
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """
-        Trace un **bar chart** des importances SHAP (moyenne de la valeur absolue).
+        Plot a **bar chart** of SHAP importances (mean absolute value).
 
-        Pré-requis
-        ----------
-        - Avoir exécuté `_run_shap_analysis(...)` (ou le widget `interactive_shap_explainer()`),
-        qui mémorise le dernier résultat dans `self._last_shap_importances`.
+        Prerequisites
+        -----------
+        - Call `_run_shap_analysis(...)` (or the widget `interactive_shap_explainer()`) first;
+        this stores the latest result in `self._last_shap_importances`.
 
-        Paramètres
+        Parameters
         ----------
         top_n : int, default=20
-            Nombre maximum de features à afficher (les plus importantes).
+            Maximum number of features to display (most important).
         save_path : str | None, default=None
-            Chemin d'export PNG. Si None, la figure n'est pas sauvegardée.
-            Le(s) dossier(s) parent(s) sont créés au besoin.
+            PNG export path.  If None, the figure is not saved.
+            Parent directories are created as needed.
 
         Returns
         -------
         (matplotlib.figure.Figure, matplotlib.axes.Axes) | None
-            La figure et ses axes si un résultat SHAP est disponible, sinon None.
+            The figure and its axes if a SHAP result is available, else None.
 
         Notes
         -----
-        - Le graphique est trié **du plus important au moins important** (en haut → bas),
-        avec une échelle `mean(|SHAP value|)`.
-        - Thème sombre pour être cohérent avec le reste des tracés.
+        - The chart is sorted **most important to least** (top to bottom), → bas),
+        with a `mean(|SHAP value|)` scale.
+        - Dark theme for consistency with other plots.
         """
-        # Récupère le dernier tableau d'importances calculé par _run_shap_analysis
+        # Retrieve the last importance table computed by _run_shap_analysis
         df = getattr(self, "_last_shap_importances", None)
         if df is None or df.empty:
-            print(
-                "Aucun résultat SHAP mémorisé. Lance d'abord interactive_shap_explainer()."
-            )
+            print("No cached SHAP result.  Run interactive_shap_explainer() first.")
             return None
         top = df.head(int(top_n))
         plt.style.use("dark_background")
@@ -2887,7 +2857,7 @@ class AstroVisualizer:
         x_vals = top["mean_abs_shap"].astype(float).iloc[::-1]
         ax.barh(y_labels, x_vals)
         ax.set_xlabel("mean(|SHAP value|)")
-        ax.set_title("SHAP — importances (top)")
+        ax.set_title("SHAP -- importances (top)")
         ax.grid(axis="x", alpha=0.30, linestyle="--")
         fig.tight_layout()
         if save_path:
@@ -2904,38 +2874,38 @@ class AstroVisualizer:
         save_path: str | None = None,
     ) -> plt.Figure | None:
         """
-        Trace un **beeswarm SHAP** (distribution des contributions par feature),
-        avec gestion de **fallback** si le beeswarm n’est pas disponible.
+        Plot a **SHAP beeswarm** (per-feature contribution distribution),
+        with **fallback** handling if the beeswarm is not available.
 
-        Pré-requis
-        ----------
-        - Avoir exécuté `_run_shap_analysis(...)` (ou le widget `interactive_shap_explainer()`),
-        qui mémorise la dernière explication SHAP dans `self._last_shap_explanation`.
+        Prerequisites
+        -----------
+        - Call `_run_shap_analysis(...)` (or the widget `interactive_shap_explainer()`) first;
+        this stores the latest explanation in `self._last_shap_explanation`.
 
-        Paramètres
+        Parameters
         ----------
         max_display : int, default=15
-            Nombre maximum de features affichées.
+            Maximum number of features to display.
         save_path : str | None, default=None
-            Chemin d'export PNG. Si None, la figure n'est pas sauvegardée.
-            Le(s) dossier(s) parent(s) sont créés au besoin.
+            PNG export path.  If None, the figure is not saved.
+            Parent directories are created as needed.
 
         Returns
         -------
         (matplotlib.figure.Figure, matplotlib.axes.Axes) | None
-            La figure et ses axes si l’explication SHAP est disponible, sinon None.
+            The figure and its axes if a SHAP explanation is available, else None.
 
         Notes
         -----
-        - Si `shap.plots.beeswarm(...)` échoue (p.ex. formes non supportées),
-        on essaie `shap.plots.bar(...)`. Si cela échoue aussi, on retombe
+        - If `shap.plots.beeswarm(...)` fails (e.g. unsupported shapes),
+        try `shap.plots.bar(...)`.  If that also fails, fall back to the
         sur notre bar chart custom (`plot_shap_summary_bar`).
-        - Thème sombre et mise en page serrée par défaut.
+        - Dark theme and tight layout by default.
         """
         sv = getattr(self, "_last_shap_explanation", None)
         if sv is None:
             print(
-                "Aucune explication SHAP mémorisée. Lance d'abord interactive_shap_explainer()."
+                "No cached SHAP explanation.  Run interactive_shap_explainer() first."
             )
             return None
         plt.style.use("dark_background")
@@ -2962,7 +2932,7 @@ class AstroVisualizer:
         return fig, plt.gca()
 
     # ==============================================================================
-    # Outil 11 : Analyse des sous-classes spectrales ---
+    # Tool 11: Sub-class Distribution Analysis ---
     # ==============================================================================
 
     def plot_subclass_distribution(
@@ -2972,28 +2942,28 @@ class AstroVisualizer:
         save_path: Optional[str] = None,
     ) -> Optional[tuple[plt.Figure, plt.Axes]]:
         """
-        Affiche (et optionnellement sauvegarde) la **distribution des sous-classes spectrales**
-        à partir du catalogue temporaire `master_catalog_temp.csv`.
+        Display (and optionally save) the **spectral sub-class distribution**
+        from the temporary catalogue `master_catalog_temp.csv`.
 
-        Paramètres
+        Parameters
         ----------
         top_n : int, default=20
-            Nombre maximal de sous-classes affichées (les plus fréquentes).
+            Maximum number of sub-classes to display (most frequent).
         normalize : bool, default=False
-            Si True, affiche des fréquences relatives (pourcentage). Sinon, des comptes bruts.
+            If True, display relative frequencies (percentages); otherwise raw counts.
         save_path : str | None, default=None
-            Chemin d'export PNG. Si None, la figure n'est pas sauvegardée.
+            PNG export path.  If None, the figure is not saved.
 
         Returns
         -------
         (Figure, Axes) ou None
-            Retourne la figure et les axes Matplotlib si tout s'est bien passé.
-            Retourne None si le catalogue est introuvable ou vide.
+            Return the Matplotlib figure and axes on success.
+            Return None if the catalogue is not found or empty.
 
         Notes
         -----
-        - Cherche une colonne `'subclass'`. Si absente, essaie `'label'`.
-        - Trie par fréquence décroissante.
+        - Look for a `'subclass'` column; fall back to `'label'`.
+        - Sort by frequency, descending.
         """
         import os
         import pandas as pd
@@ -3004,20 +2974,18 @@ class AstroVisualizer:
         cat_path = os.path.join(self.paths["CATALOG_DIR"], "master_catalog_temp.csv")
         if not os.path.exists(cat_path):
             display(
-                Markdown(
-                    "> Catalogue temporaire introuvable : `master_catalog_temp.csv`."
-                )
+                Markdown("> Temporary catalogue not found : `master_catalog_temp.csv`.")
             )
             return None
 
         try:
             df = pd.read_csv(cat_path, sep="|")
         except Exception as e:
-            display(Markdown(f"> Erreur de lecture du catalogue : `{e}`"))
+            display(Markdown(f"> Catalogue read error : `{e}`"))
             return None
 
         if df.empty:
-            display(Markdown("> Catalogue vide."))
+            display(Markdown("> Empty catalogue."))
             return None
 
         # 2) Identifier la colonne des sous-classes
@@ -3028,31 +2996,31 @@ class AstroVisualizer:
                 break
 
         if label_col is None:
-            display(Markdown("> Aucune colonne `subclass` ou `label` trouvée."))
+            display(Markdown("> No `subclass` or `label` column found."))
             return None
 
-        # 3) Comptage & sélection top N
+        # 3) Count & select top N
         counts = df[label_col].astype(str).value_counts(dropna=False)
         if counts.empty:
-            display(Markdown("> Aucun label exploitable dans le catalogue."))
+            display(Markdown("> No usable labels in the catalogue."))
             return None
 
         counts = counts.iloc[:top_n].copy()
 
-        # 4) Normalisation éventuelle
+        # 4) Optional normalisation
         if normalize:
             total = counts.sum()
             values = (counts / total) * 100.0
-            ylabel = "Fréquence (%)"
+            ylabel = "Frequency (%)"
         else:
             values = counts
-            ylabel = "Nombre d'exemples"
+            ylabel = "Number of examples"
 
         # 5) Plot
         plt.style.use("dark_background")
         fig, ax = plt.subplots(figsize=(12, 6))
         ax.bar(counts.index.astype(str), values.values)
-        ax.set_title("Distribution des Sous-Classes Spectrales")
+        ax.set_title("Spectral Sub-class Distribution")
         ax.set_xlabel("Sous-classe")
         ax.set_ylabel(ylabel)
         ax.grid(axis="y", alpha=0.3, linestyle="--")
@@ -3070,7 +3038,7 @@ class AstroVisualizer:
         return fig, ax
 
     # ==============================================================================
-    # Outil 12 : Comparateur de normalisation de spectre
+    # Tool 12: Spectrum Normalisation Comparator
     # ==============================================================================
 
     def plot_normalization_comparison(
@@ -3082,73 +3050,71 @@ class AstroVisualizer:
         save_path: str | None = None,
     ) -> tuple[plt.Figure, tuple[plt.Axes, plt.Axes]] | None:
         """
-        Compare visuellement l'effet de la **normalisation** sur deux spectres.
+        Visually compare the effect of **normalisation** on two spectra.
 
-        Deux sous-graphes sont tracés :
-        1) flux bruts (“Avant normalisation”)
-        2) flux normalisés (“Après normalisation”)
+        Two sub-plots are drawn:
+        1) raw flux ("Before normalisation")
+        2) normalised flux ("After normalisation")
 
-        Si `save_path` est omis, la figure est sauvegardée par défaut dans :
+        If `save_path` is omitted, the figure is saved by default to:
             <PROJECT_ROOT>/website/static/img/avant_apres_normalisation.png
 
-        Paramètres
+        Parameters
         ----------
         sample_paths : list[str] | None
-            Chemins **relatifs** (sous `RAW_DATA_DIR`) des spectres à utiliser.
-            Si None, on prélève aléatoirement `n_samples` fichiers parmi
+            **Relative** paths (under `RAW_DATA_DIR`) of the spectra to use.
+            If None, randomly sample `n_samples` files from
             `self.available_spectra`.
         n_samples : int, default 2
-            Nombre de spectres à comparer si `sample_paths` n'est pas fourni.
+            Number of spectra to compare when `sample_paths` is not provided.
         random_state : int | None
-            Graine pour l’échantillonnage aléatoire reproductible.
+            Random seed for reproducible sampling.
         save_path : str | None
-            Chemin d’export PNG. Si None => chemin par défaut. Si "", pas d’export.
+            PNG export path.  If None, use default path.  If "", no export.
 
         Returns
         -------
         (fig, (ax1, ax2)) | None
-            La figure et les axes Matplotlib si au moins 2 spectres sont disponibles,
-            sinon `None`.
+            The Matplotlib figure and axes if at least 2 spectra are available,
+            else `None`.
 
         Notes
         -----
-        - Les chemins fournis ou échantillonnés doivent être relatifs à `RAW_DATA_DIR`
-        et pointer vers des fichiers compressés `.fits.gz`.
-        - Utilise `SpectraPreprocessor.normalize_spectrum` pour la normalisation.
+        - Paths must be relative to `RAW_DATA_DIR`
+        and point to compressed `.fits.gz` files.
+        - Use `SpectraPreprocessor.normalize_spectrum` for normalisation.
         """
         import random
 
-        # --- Vérifications préalables ---------------------------------------------
+        # --- Preliminary checks ---------------------------------------------
         if not getattr(self, "available_spectra", []):
-            print(
-                "Veuillez d'abord exécuter la cellule de setup pour initialiser `visualizer`."
-            )
+            print("Please run the setup cell first to initialise `visualizer`.")
             return None
 
-        # Sélection des fichiers (2 par défaut)
+        # File selection (2 by default)
         if sample_paths is None:
             pool = list(self.available_spectra)
             if len(pool) < 2:
                 print(
-                    "Pas assez de spectres disponibles pour générer la figure (il en faut au moins 2)."
+                    "Not enough spectra available to generate the figure (at least 2 required)."
                 )
                 return None
             if random_state is not None:
                 random.seed(random_state)
             sample_paths = random.sample(pool, k=max(2, min(n_samples, len(pool))))
         else:
-            # Nettoie et s'assure d'avoir au moins 2 éléments distincts
+            # Clean and ensure at least 2 distinct items
             sample_paths = [p for p in (sample_paths or []) if p]
-            sample_paths = list(dict.fromkeys(sample_paths))  # dédoublonne
+            sample_paths = list(dict.fromkeys(sample_paths))  # Deduplicate
             if len(sample_paths) < 2:
-                print("Fournir au moins deux chemins relatifs de spectres `.fits.gz`.")
+                print("Provide at least two relative paths to `.fits.gz` spectra.")
                 return None
 
-        # --- Chargement & prétraitement -------------------------------------------
+        # --- Loading & preprocessing -------------------------------------------
         preprocessor = SpectraPreprocessor()
         spectra_data: list[dict] = []
 
-        for rel in sample_paths[:2]:  # on n’affiche que 2 courbes pour la lisibilité
+        for rel in sample_paths[:2]:  # on n'affiche que 2 courbes for readability
             full_path = os.path.join(self.paths["RAW_DATA_DIR"], rel)
             try:
                 with gzip.open(full_path, "rb") as f_gz:
@@ -3178,43 +3144,43 @@ class AstroVisualizer:
         ax1.plot(
             spectra_data[0]["wavelength"],
             spectra_data[0]["flux_raw"],
-            label="Spectre 1 (Brut)",
+            label="Spectrum 1 (Raw)",
             alpha=0.9,
         )
         ax1.plot(
             spectra_data[1]["wavelength"],
             spectra_data[1]["flux_raw"],
-            label="Spectre 2 (Brut)",
+            label="Spectrum 2 (Raw)",
             alpha=0.9,
         )
-        ax1.set_title("Avant Normalisation", fontsize=16)
-        ax1.set_ylabel("Flux (unités arbitraires)")
+        ax1.set_title("Before Normalisation", fontsize=16)
+        ax1.set_ylabel("Flux (arbitrary units)")
         ax1.grid(True, linestyle=":", alpha=0.5)
         ax1.legend()
 
-        # Après normalisation (flux normalisés)
+        # After normalisation (normalised flux)
         ax2.plot(
             spectra_data[0]["wavelength"],
             spectra_data[0]["flux_norm"],
-            label="Spectre 1 (Normalisé)",
+            label="Spectrum 1 (Normalised)",
         )
         ax2.plot(
             spectra_data[1]["wavelength"],
             spectra_data[1]["flux_norm"],
-            label="Spectre 2 (Normalisé)",
+            label="Spectrum 2 (Normalised)",
         )
-        ax2.set_title("Après Normalisation", fontsize=16)
-        ax2.set_xlabel("Longueur d’onde (Å)")
-        ax2.set_ylabel("Flux Normalisé")
+        ax2.set_title("After Normalisation", fontsize=16)
+        ax2.set_xlabel("Longueur d'onde (Å)")
+        ax2.set_ylabel("Normalised Flux")
         ax2.grid(True, linestyle=":", alpha=0.5)
         ax2.legend()
 
-        fig.suptitle("Impact de la Normalisation sur les Spectres", fontsize=20, y=1.02)
+        fig.suptitle("Impact of Normalisation on Spectra", fontsize=20, y=1.02)
         fig.tight_layout(rect=(0, 0, 1, 0.98))
 
         # --- Sauvegarde -----------------------------------------------------------
         if save_path is None:
-            # Chemin par défaut dans website/static/img/
+            # Default path in website/static/img/
             save_path = os.path.join(
                 self.paths.get("PROJECT_ROOT", "."),
                 "website",
@@ -3227,14 +3193,14 @@ class AstroVisualizer:
             try:
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
                 fig.savefig(save_path, dpi=150, bbox_inches="tight")
-                print(f"Figure de normalisation sauvegardée dans : {save_path}")
+                print(f"Normalisation figure saved to : {save_path}")
             except Exception as e:
-                print(f"[!] Échec de la sauvegarde ({e})")
+                print(f"[!] Save failed ({e})")
 
         return fig, (ax1, ax2)
 
     # ==============================================================================
-    # Outil 13 : Explorateur et Analyse des Features
+    # Tool 13: Feature Explorer and Analysis
     # ==============================================================================
 
     def feature_explorer(
@@ -3249,48 +3215,48 @@ class AstroVisualizer:
         do_permutation: bool = True,
     ) -> dict | None:
         """
-        Charge et concatène les fichiers CSV de features, effectue une analyse
-        exploratoire (EDA), trace des distributions et corrélations, puis entraîne
-        un modèle baseline (RandomForest) pour estimer des importances de variables.
+        Load and concatenate feature CSV files, perform an
+        exploratory analysis (EDA), plot distributions and correlations, then train
+        a baseline model (RandomForest) to estimate feature importances.
 
-        Paramètres
+        Parameters
         ----------
         pattern : str | None
-            Motif glob des fichiers features (par ex. ".../data/processed/features_*.csv").
+            Glob pattern for feature files (e.g. ".../data/processed/features_*.csv").
             Si None, essaie automatiquement "<PROJECT_ROOT>/data/processed/features_*.csv".
         save_dir : str | None
-            Dossier d’export (PNGs + CSV). Si None => "<LOGS_DIR>/features".
+            Export directory (PNGs + CSV).  If None => "<LOGS_DIR>/features".
         max_hists : int, default=24
-            Nombre max. d’histogrammes tracés (colonnes numériques à plus forte variance).
+            Maximum histograms to plot (highest-variance numeric columns).
         corr_top_n : int, default=30
-            Nombre de colonnes (numériques, plus forte variance) pour la heatmap de corrélation.
+            Number of columns (numeric, highest variance) for the correlation heat-map.
         rf_estimators : int, default=300
             n_estimators pour le RandomForestClassifier baseline.
         random_state : int, default=42
-            Graine pour la reproductibilité (échantillonnage / RF / split).
+            Random seed for reproducibility (sampling / RF / split).
         do_permutation : bool, default=True
             Calcule aussi la permutation importance (validation split).
 
         Returns
         -------
         dict | None
-            Un dictionnaire récapitulatif :
+            A summary dictionary:
             {
-            "df": DataFrame concaténé,
+            "df": concatenated DataFrame,
             "numeric_cols": [...],
             "label_col": "subclass" | "label" | None,
             "rf_importances": DataFrame | None,
             "perm_importances": DataFrame | None,
-            "save_dir": chemin d’export
+            "save_dir": chemin d'export
             }
-            Retourne None si aucun fichier n’est trouvé.
+            Return None if no files are found.
 
         Notes
         -----
-        - Détecte automatiquement le séparateur des CSV via `sep=None, engine='python'`.
-        - Si aucune colonne label n’est trouvée ('subclass' ou 'label'), les importances
-        baseline sont sautées mais l’EDA est tout de même produite.
-        - Graphiques enregistrés en PNG (dark theme) si `save_dir` est défini/valide.
+        - Automatically detect the CSV separator via `sep=None, engine='python'`.
+        - If no label column is found ('subclass' or 'label'), baseline importances
+        are skipped but the EDA is still produced.
+        - Charts saved as PNG (dark theme) when `save_dir` is defined and valid.
         """
         import os
         from textwrap import dedent
@@ -3306,7 +3272,7 @@ class AstroVisualizer:
         from sklearn.pipeline import Pipeline
         from sklearn.inspection import permutation_importance
 
-        # ---------- Résolution des chemins ----------
+        # ---------- Path resolution ----------
         if pattern is None:
             proj = self.paths.get("PROJECT_ROOT", ".")
             pattern = os.path.join(proj, "data", "processed", "features_*.csv")
@@ -3314,10 +3280,12 @@ class AstroVisualizer:
             save_dir = os.path.join(self.paths.get("LOGS_DIR", "./logs"), "features")
         os.makedirs(save_dir, exist_ok=True)
 
-        # ---------- Lecture & concaténation ----------
+        # ---------- Read & concatenate ----------
         files = sorted(glob.glob(pattern))
         if not files:
-            display(Markdown(f"> **Aucun fichier** trouvé pour le motif : `{pattern}`"))
+            display(
+                Markdown(f"> **No files** found matching the pattern : `{pattern}`")
+            )
             return None
 
         dfs = []
@@ -3329,18 +3297,16 @@ class AstroVisualizer:
                 print(f"[!] Lecture impossible: {p} ({e})")
 
         if not dfs:
-            display(Markdown("> Aucun CSV valide n’a pu être chargé."))
+            display(Markdown("> No valid CSV could be loaded."))
             return None
 
         df = pd.concat(dfs, ignore_index=True)
         display(
-            Markdown(
-                f"**{len(files)}** fichier(s) chargé(s) — total lignes : **{len(df):,}**"
-            )
+            Markdown(f"**{len(files)}** file(s) loaded -- total rows : **{len(df):,}**")
         )
 
-        # ---------- EDA rapide ----------
-        # Résumé types & manquants
+        # ---------- Quick EDA ----------
+        # Type & missing-value summary
         nunique = df.nunique(dropna=True)
         missing = df.isna().sum()
         missing_rate = (missing / len(df)).round(4)
@@ -3354,10 +3320,10 @@ class AstroVisualizer:
             ("missing_rate_overall", float(missing_rate.mean())),
         ]
         summary_df = pd.DataFrame(info_rows, columns=["metric", "value"])
-        display(Markdown("### Résumé global"))
+        display(Markdown("### Global summary"))
         display(summary_df)
 
-        # Top manquants
+        # Top missing
         miss_tbl = (
             pd.DataFrame(
                 {"missing": missing, "missing_rate": missing_rate, "nunique": nunique}
@@ -3365,18 +3331,18 @@ class AstroVisualizer:
             .sort_values("missing_rate", ascending=False)
             .head(30)
         )
-        display(Markdown("### Colonnes les plus manquantes"))
+        display(Markdown("### Most-missing columns"))
         display(miss_tbl)
 
-        # describe numérique
+        # Numeric describe
         num_df = df.select_dtypes(include=[np.number])
         if not num_df.empty:
-            display(Markdown("### Statistiques descriptives (numériques)"))
+            display(Markdown("### Descriptive statistics (numeric)"))
             display(num_df.describe().T.head(30))
 
-        # ---------- Figures : distributions ----------
+        # ---------- Figures: distributions ----------
         if not num_df.empty and max_hists > 0:
-            # Colonnes triées par variance (desc)
+            # Columns sorted by variance (desc)
             var = num_df.var(numeric_only=True).sort_values(ascending=False)
             cols = list(var.index[:max_hists])
 
@@ -3408,16 +3374,16 @@ class AstroVisualizer:
                 pass
             plt.show()
 
-        # ---------- Figure : corrélation (top variance) ----------
+        # ---------- Figure: correlation (top variance) ----------
         corr_cols = list(num_df.var().sort_values(ascending=False).index[:corr_top_n])
         if len(corr_cols) >= 2:
-            # Remplace NaN par médiane pour corr; évite colonnes constantes
+            # Replace NaN with median for correlation; skip constant columns
             Xcorr = num_df[corr_cols].copy()
             for c in Xcorr.columns:
                 if Xcorr[c].isna().any():
                     med = Xcorr[c].median()
                     Xcorr[c] = Xcorr[c].fillna(med)
-            # supprime colonnes constantes (variance nulle)
+            # Remove constant columns (zero variance)
             Xcorr = Xcorr.loc[:, Xcorr.var() > 0]
             if Xcorr.shape[1] >= 2:
                 C = Xcorr.corr().values
@@ -3425,12 +3391,12 @@ class AstroVisualizer:
                 plt.style.use("dark_background")
                 fig, ax = plt.subplots(figsize=(max(8, 0.35 * Xcorr.shape[1]), 8))
                 im = ax.imshow(C, vmin=-1, vmax=1, cmap="coolwarm")
-                ax.set_title("Corrélations (top variance)", fontsize=14)
+                ax.set_title("Correlations (top variance)", fontsize=14)
                 ticks = range(Xcorr.shape[1])
                 ax.set_xticks(ticks)
                 ax.set_yticks(ticks)
                 labels = list(Xcorr.columns)
-                # évite de saturer les labels
+                # Avoid saturating labels
                 if len(labels) <= 30:
                     ax.set_xticklabels(labels, rotation=90, fontsize=8)
                     ax.set_yticklabels(labels, fontsize=8)
@@ -3462,23 +3428,21 @@ class AstroVisualizer:
         if label_col is None:
             display(
                 Markdown(
-                    "> Aucune colonne label trouvée (`subclass`/`label`). Importances sautées."
+                    "> No label column found (`subclass`/`label`).  Importances skipped."
                 )
             )
         else:
-            # On ne garde que les colonnes numériques pour la baseline simple
+            # Keep only numeric columns for the simple baseline
             X_num = df.select_dtypes(include=[np.number]).copy()
             y = df[label_col].astype(str)
 
-            # supprime colonnes constantes
+            # Remove constant columns
             X_num = X_num.loc[:, X_num.var() > 0]
             if X_num.empty:
-                display(
-                    Markdown("> Aucune feature numérique exploitable (variance nulle).")
-                )
+                display(Markdown("> No usable numeric features (zero variance)."))
             else:
-                # --- Split train/test (robuste aux classes très rares) ---
-                # y est la série/array des labels; X_num les features numériques déjà préparées
+                # --- Train / test split (robust to very rare classes) ---
+                # y is the label Series/array; X_num the numeric features already prepared
                 class_counts = pd.Series(y).value_counts(dropna=False)
 
                 if (class_counts < 2).any():
@@ -3488,17 +3452,17 @@ class AstroVisualizer:
                     try:
                         display(
                             Markdown(
-                                "> Split **non-stratifié** : certaines classes sont trop rares "
+                                "> **Unstratified** split: some classes are too rare "
                                 "("
                                 + ", ".join([f"`{k}`={v}" for k, v in rare.items()])
                                 + "). "
-                                "Ajoutez des exemples ou fusionnez ces classes pour réactiver le split stratifié."
+                                "Add examples or merge these classes to re-enable stratified splitting."
                             )
                         )
                     except Exception:
                         # si display/Markdown pas dispo, on log simplement
                         print(
-                            "[Info] Split non-stratifié (classes trop rares) :",
+                            "[Info] Unstratified split (too-rare classes) :",
                             dict(rare),
                         )
 
@@ -3506,7 +3470,7 @@ class AstroVisualizer:
                 else:
                     stratify_vec = y  # OK pour la stratification
 
-                # (25% test par défaut; ajuste si besoin)
+                # (25 % test by default; adjust as needed)
                 X_train, X_test, y_train, y_test = train_test_split(
                     X_num,
                     y,
@@ -3549,17 +3513,17 @@ class AstroVisualizer:
                 except Exception:
                     pass
 
-                # Tracé bar
+                # Bar plot
                 self._plot_feature_importances_bar(
                     rf_df,
                     top_n=25,
                     save_path=os.path.join(save_dir, "rf_importances_top25.png"),
                 )
 
-                # Permutation importance (sur test)
+                # Permutation importance (on test set)
                 if do_permutation:
                     try:
-                        # calcule sur les données imputées
+                        # Compute on imputed data
                         X_test_imp = pipe.named_steps["imputer"].transform(X_test)
                         result = permutation_importance(
                             rf,
@@ -3589,19 +3553,19 @@ class AstroVisualizer:
                     except Exception as e:
                         print(f"[!] Permutation importance impossible : {e}")
 
-        # ---------- Récap ----------
+        # ---------- Recap ----------
         md = dedent(
             f"""
-            ### Exploration terminée
-            * Fichiers chargés : **{len(files)}**
-            * Lignes concaténées : **{len(df):,}**
-            * Label utilisé : **{label_col or "aucun"}**
+            ### Exploration complete
+            * Files loaded : **{len(files)}**
+            * Concatenated rows : **{len(df):,}**
+            * Label used : **{label_col or "none"}**
             * Exports : `{save_dir}`
             """
         )
         display(Markdown(md))
 
-        # Mémo pour réutiliser ailleurs si besoin
+        # Memo for later reuse if needed
         self._last_features_df = df.copy()
         self._last_features_numeric = list(
             df.select_dtypes(include=[np.number]).columns
@@ -3619,7 +3583,7 @@ class AstroVisualizer:
         }
 
     # ----------------------------------------------------------------------
-    # Petit helper réutilisable : bar chart des importances (top N)
+    # Reusable helper: importance bar chart (top N)
     # ----------------------------------------------------------------------
 
     def _plot_feature_importances_bar(
@@ -3630,10 +3594,10 @@ class AstroVisualizer:
         save_path: str | None = None,
     ) -> tuple[plt.Figure, plt.Axes] | None:
         """
-        Trace un bar chart horizontal des importances à partir d’un DataFrame
-        de la forme : columns = ['feature', 'importance'].
+        Plot a horizontal bar chart of importances from a DataFrame
+        with columns = ['feature', 'importance'].
 
-        Si `importances_df` est None, on utilise `self._last_rf_importances`.
+        If `importances_df` is None, use `self._last_rf_importances`.
         """
         import os
         import matplotlib.pyplot as plt
@@ -3642,7 +3606,7 @@ class AstroVisualizer:
             importances_df = getattr(self, "_last_rf_importances", None)
 
         if importances_df is None or importances_df.empty:
-            print("Aucune importance à tracer.")
+            print("No importances to plot.")
             return None
 
         top = importances_df.head(int(top_n)).copy()
@@ -3650,7 +3614,7 @@ class AstroVisualizer:
         fig, ax = plt.subplots(figsize=(10, max(5, 0.35 * len(top))))
         ax.barh(top["feature"][::-1], top[top.columns[-1]][::-1])
         ax.set_xlabel(top.columns[-1])
-        ax.set_title("Importances — top")
+        ax.set_title("Importances -- top")
         ax.grid(True, axis="x", linestyle=":", alpha=0.3)
         fig.tight_layout()
 

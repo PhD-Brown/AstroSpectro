@@ -1,54 +1,50 @@
-"""
-AstroSpectro — Enrichissement d’un catalogue par croisement Gaia DR3
-====================================================================
+"""AstroSpectro — Enrich a catalog via Gaia DR3 cross-matching.
 
-Ce module enrichit un catalogue source (positions ICRS RA/Dec) avec des
-mesures photométriques/astrométriques **Gaia DR3**. Il propose deux
-stratégies complémentaires :
+This module enriches a source catalog (ICRS RA/Dec positions) with
+**Gaia DR3** photometric and astrometric measurements.  Two complementary
+strategies are provided:
 
-1) *bulk* (recommandé) — Cross-match côté **serveur** via TAP_UPLOAD :
-   on envoie les positions par lot, on joint `gaiadr3.gaia_source`,
-   puis on récupère le meilleur match (distance angulaire minimale).
-   C’est rapide et économique en allers/retours réseau. Une logique de
-   **reprise** réduit la taille des lots si le service renvoie une 500.
+1. *bulk* (recommended) — Server-side cross-match via ``TAP_UPLOAD``:
+   positions are uploaded in batches, joined against
+   ``gaiadr3.gaia_source``, and the best match (smallest angular
+   distance) is returned.  This is fast and network-efficient.  A
+   **retry** logic halves the batch size when the service returns a 500.
 
-2) *cone* — Recherches par *cone search* individuelles (**étoile par
-   étoile**) via `Gaia.cone_search_async`. C’est plus lent mais robuste
-   si TAP_UPLOAD est temporairement indisponible.
+2. *cone* — Individual cone searches (**star by star**) via
+   ``Gaia.cone_search_async``.  Slower but robust when ``TAP_UPLOAD``
+   is temporarily unavailable.
 
-Le mode `auto` tente *bulk*, puis bascule sur *cone* si nécessaire.
+The ``auto`` mode tries *bulk* first, then falls back to *cone*.
 
 Conventions
 -----------
-- Coordonnées en **degrés** (ICRS).
-- Rayon de recherche donné en **arcsec**.
-- Le champ interne `objid` est fabriqué si absent, pour réaligner les
-  résultats sur les lignes du DataFrame source.
-- Le filtre **RUWE** est appliqué en fin de croisement : si RUWE ≥
-  `ruwe_max`, on **conserve la ligne** mais on neutralise les colonnes
-  Gaia (NaN). Cela évite de supprimer des sources lors des merges.
+- Coordinates in **degrees** (ICRS).
+- Search radius given in **arcseconds**.
+- An internal ``objid`` field is fabricated if absent, to realign results
+  with the rows of the source DataFrame.
+- The **RUWE** filter is applied after the cross-match: if
+  ``RUWE >= ruwe_max``, the row is **kept** but all Gaia columns are
+  set to NaN.  This avoids dropping sources during merges.
 
-Entrées / Sorties
+Inputs / Outputs
 -----------------
-Entrée :
-    - Un `pandas.DataFrame` contenant au minimum `ra` et `dec`
-      (en degrés). Une colonne `objid` est facultative.
+Input :
+    A ``pandas.DataFrame`` with at least ``ra`` and ``dec`` columns
+    (in degrees).  An ``objid`` column is optional.
 
-Sortie :
-    - Un tuple `(df_merged, stats)` où `df_merged` est le DataFrame
-      enrichi et `stats` un dict récapitulatif. Le `df_merged` est aussi
-      écrit sur disque à `output_catalog_path` (CSV).
+Output :
+    A tuple ``(df_merged, stats)`` where ``df_merged`` is the enriched
+    DataFrame and ``stats`` a summary dict.  ``df_merged`` is also
+    written to disk at ``output_catalog_path`` (CSV).
 
-Dépendances
------------
-- astropy (coordinates, table, units)
-- astroquery.gaia
-- pandas / numpy / tqdm
+Dependencies
+------------
+astropy (coordinates, table, units), astroquery.gaia, pandas, numpy, tqdm.
 
-Exemple minimal
----------------
+Examples
+--------
 >>> from gaia_crossmatcher import enrich_catalog_with_gaia
->>> df = pd.DataFrame({"ra":[10.1, 231.2], "dec":[-5.3, 19.7]})
+>>> df = pd.DataFrame({"ra": [10.1, 231.2], "dec": [-5.3, 19.7]})
 >>> out, stats = enrich_catalog_with_gaia(
 ...     df, "data/catalog/gaia_enriched.csv",
 ...     search_radius_arcsec=0.5, mode="auto", ruwe_max=1.4
@@ -70,11 +66,11 @@ from astropy.table import Table
 from astroquery.gaia import Gaia
 from tqdm import tqdm
 
-# ----------------------------- Constantes ------------------------------------
+# ----------------------------- Constants ------------------------------------
 
 GAIA_MAIN = "gaiadr3.gaia_source"
 
-# Champs de sortie utiles et relativement stables
+# Useful and relatively stable output fields
 BASE_FIELDS = [
     "bp_rp",
     "phot_bp_rp_excess_factor",
@@ -95,25 +91,25 @@ BASE_FIELDS = [
     "phot_variable_flag",
 ]
 
-# Champs GSP-Phot parfois absents/instables → optionnels
+# GSP-Phot fields that are sometimes absent/unstable — optional
 RISKY_FIELDS = ["radius_gspphot", "mass_gspphot", "age_gspphot"]
 
 
-# ----------------------------- Utilitaires -----------------------------------
+# ----------------------------- Utilities -------------------------------------
 
 
 def _ensure_numeric_radec(df: pd.DataFrame) -> pd.DataFrame:
-    """Garantit que `ra`/`dec` sont numériques (float64), NaN si invalide.
+    """Ensure ``ra`` and ``dec`` are numeric (float64), NaN if invalid.
 
     Parameters
     ----------
     df : pd.DataFrame
-        Catalogue d’entrée.
+        Input catalog.
 
     Returns
     -------
     pd.DataFrame
-        Copie avec colonnes `ra`/`dec` forcées en numérique.
+        Copy with ``ra`` / ``dec`` coerced to numeric.
     """
     df = df.copy()
     df["ra"] = pd.to_numeric(df["ra"], errors="coerce")
@@ -122,17 +118,15 @@ def _ensure_numeric_radec(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _validate_catalog(df: pd.DataFrame) -> pd.DataFrame:
-    """Valide la présence de `ra`/`dec` et crée `objid` si absent.
+    """Validate that ``ra`` / ``dec`` exist and create ``objid`` if absent.
 
     Raises
     ------
     ValueError
-        Si `ra`/`dec` sont manquants.
+        If ``ra`` or ``dec`` columns are missing.
     """
     if "ra" not in df or "dec" not in df:
-        raise ValueError(
-            "Le catalogue d’entrée doit contenir les colonnes 'ra' et 'dec'."
-        )
+        raise ValueError("The input catalog must contain 'ra' and 'dec' columns.")
     if "objid" not in df.columns:
         df = df.copy()
         df["objid"] = df.index.astype(int)
@@ -140,11 +134,11 @@ def _validate_catalog(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _features_from_row(s: pd.Series | dict, include_risky: bool) -> Dict[str, float]:
-    """Extrait un sous-ensemble de champs Gaia + couleurs dérivées."""
+    """Extract a subset of Gaia fields plus derived colour indices."""
     fields = BASE_FIELDS + (RISKY_FIELDS if include_risky else [])
     out = {k: s.get(k, None) for k in fields}
 
-    # Petits indices couleur utiles
+    # Handy colour indices
     bp = s.get("phot_bp_mean_mag")
     g = s.get("phot_g_mean_mag")
     rp = s.get("phot_rp_mean_mag")
@@ -165,25 +159,26 @@ def _bulk_crossmatch(
     include_risky: bool,
     debug: bool = False,
 ) -> pd.DataFrame:
-    """Cross-match côté **serveur** via TAP_UPLOAD (rapide, par lots).
+    """Server-side cross-match via ``TAP_UPLOAD`` (fast, batched).
 
-    Stratégie
-    ---------
-    - Upload d’un lot `src(objid, ra, dec)` dans TAP.
-    - Jointure spatiale avec `gaia_table` via `CONTAINS(..., CIRCLE(...))`.
-    - **Reprise** : en cas d’exception (souvent 500), division par 2 de la
-      taille de lot et nouvel essai ; on abandonne le lot en dessous de 50.
+    Strategy
+    --------
+    - Upload a batch ``src(objid, ra, dec)`` into TAP.
+    - Spatial join with ``gaia_table`` via
+      ``CONTAINS(..., CIRCLE(...))``.
+    - **Retry**: on exception (often a 500), halve the batch size and
+      retry; give up on the batch below a size of 50.
 
     Notes
     -----
-    `Gaia.ROW_LIMIT` est forcé à -1 afin de ne pas tronquer la réponse.
+    ``Gaia.ROW_LIMIT`` is forced to ``-1`` to prevent truncation.
 
     Returns
     -------
     pd.DataFrame
-        Une ligne par `objid` enrichi (meilleur match).
+        One row per matched ``objid`` (best match).
     """
-    # Nettoyage des entrées : RA/Dec non-NaN uniquement
+    # Clean inputs: keep only rows with valid RA/Dec
     df = df_src.loc[
         df_src["ra"].notna() & df_src["dec"].notna(), ["objid", "ra", "dec"]
     ].copy()
@@ -224,7 +219,7 @@ def _bulk_crossmatch(
     sel_gaia = ",".join([f"g.{c}" for c in gaia_cols])
 
     def as_table(chunk: pd.DataFrame) -> Table:
-        """Convertit un chunk en Table astropy (types explicites)."""
+        """Convert a chunk to an astropy Table with explicit dtypes."""
         return Table(
             [
                 chunk["objid"].astype("int64").values,
@@ -236,7 +231,7 @@ def _bulk_crossmatch(
         )
 
     def run_cm_on_chunk(chunk_df: pd.DataFrame) -> pd.DataFrame:
-        """Lance la requête TAPUPLOAD pour un lot et renvoie un DataFrame."""
+        """Run the TAP_UPLOAD query for one batch and return a DataFrame."""
         t = as_table(chunk_df)
         q = f"""
         SELECT
@@ -256,7 +251,7 @@ def _bulk_crossmatch(
         )
         return job.get_results().to_pandas()
 
-    # Boucle par lots avec reprise
+    # Batched loop with retry logic
     all_rows = []
     batch_size = 400
     i = 0
@@ -270,9 +265,9 @@ def _bulk_crossmatch(
             i = j
         except Exception as e:
             if debug:
-                print(f"[bulk] erreur sur {i}:{j} → retry plus petit ({e})")
+                print(f"[bulk] error on {i}:{j} → retrying smaller ({e})")
             if batch_size <= 50:
-                # on abandonne ce lot (il sera couvert par le fallback 'cone')
+                # give up on this batch (will be covered by 'cone' fallback)
                 i = j
             else:
                 batch_size //= 2
@@ -285,11 +280,11 @@ def _bulk_crossmatch(
     if df_cm.empty:
         return pd.DataFrame(columns=["objid"])
 
-    # Meilleur match par objid (distance croissante)
+    # Best match per objid (ascending distance)
     df_cm.sort_values(["objid", "match_dist_arcsec"], inplace=True)
     df_best = df_cm.groupby("objid", as_index=False).first()
 
-    # Compléments GSP-Phot
+    # GSP-Phot supplement
     ap_base = [
         "teff_gspphot",
         "logg_gspphot",
@@ -323,7 +318,7 @@ def _bulk_crossmatch(
         if not df_ap.empty:
             df_best = df_best.merge(df_ap, on="source_id", how="left")
 
-    # Réalignement sur df_src (ordre/présence)
+    # Realign on df_src (order/presence)
     best_map = df_best.set_index("objid")
     aligned = []
     for _, row in df_src.iterrows():
@@ -358,7 +353,7 @@ def _bulk_crossmatch(
 def _cone_crossmatch(
     df_src: pd.DataFrame, radius_arcsec: float, include_risky: bool
 ) -> pd.DataFrame:
-    """Cross-match **étoile par étoile** via `Gaia.cone_search_async` (lent)."""
+    """Star-by-star cross-match via ``Gaia.cone_search_async`` (slow)."""
     out = []
     radius = radius_arcsec * u.arcsec
     for _, row in tqdm(
@@ -381,7 +376,7 @@ def _cone_crossmatch(
             best = r[0]
             s = {k: best.get(k, None) for k in best.colnames}
 
-            # 'dist' est en degrés → conversion en arcsec
+            # 'dist' is in degrees → convert to arcseconds
             dist_deg = s.get("dist")
             match_arcsec = float(dist_deg) * 3600 if dist_deg is not None else None
 
@@ -407,7 +402,7 @@ def _cone_crossmatch(
     return pd.DataFrame(out)
 
 
-# ------------------------------ API principale -------------------------------
+# ------------------------------ Main API -------------------------------------
 
 
 def enrich_catalog_with_gaia(
@@ -422,70 +417,70 @@ def enrich_catalog_with_gaia(
     gaia_user: str | None = None,
     gaia_pass: str | None = None,
 ) -> Tuple[pd.DataFrame, Dict[str, object]]:
-    """Enrichit un catalogue (RA/Dec) avec Gaia DR3.
+    """Enrich a catalog (RA/Dec) with Gaia DR3 photometry and astrometry.
 
-    Paramètres
+    Parameters
     ----------
     input_catalog_df : DataFrame
-        Catalogue d’entrée avec `ra`, `dec` (degrés). `objid` est optionnel.
+        Input catalog with ``ra``, ``dec`` (degrees).  ``objid`` is optional.
     output_catalog_path : str
-        Chemin du CSV de sortie (sera écrasé si `overwrite=True`).
+        Destination CSV path (overwritten when ``overwrite=True``).
     search_radius_arcsec : float, default=0.5
-        Rayon de recherche autour de chaque source (en **arcsec**).
+        Search radius around each source, in **arcseconds**.
     ruwe_max : float, default=1.4
-        Seuil RUWE. Si dispo et >= seuil, on neutralise les colonnes Gaia.
-        Passer `None` pour désactiver ce filtre.
+        RUWE threshold.  If available and >= threshold, Gaia columns are
+        set to NaN.  Pass ``None`` to disable this filter.
     include_risky : bool, default=False
-        Ajoute les colonnes GSP-Phot plus “fragiles” (radius/mass/age).
+        Include the less stable GSP-Phot columns (radius/mass/age).
     overwrite : bool, default=False
-        Écrase le `output_catalog_path` si déjà présent.
-    mode : {"auto","bulk","cone"}, default="auto"
-        Stratégie de cross-match.
+        Overwrite ``output_catalog_path`` if it already exists.
+    mode : {'auto', 'bulk', 'cone'}, default='auto'
+        Cross-match strategy.
     gaia_table : str, default=GAIA_MAIN
-        Table Gaia principale à joindre (ex.: `gaiadr3.gaia_source`).
-    gaia_user, gaia_pass : str | None
-        Identifiants optionnels pour `Gaia.login` (ignorés si échec).
+        Primary Gaia table to join (e.g. ``gaiadr3.gaia_source``).
+    gaia_user, gaia_pass : str or None
+        Optional credentials for ``Gaia.login`` (ignored on failure).
 
-    Retour
-    ------
+    Returns
+    -------
     (df_merged, stats) : (DataFrame, dict)
-        DataFrame enrichi (et enregistré) + statistiques de match.
+        Enriched DataFrame (also saved to disk) and match statistics.
     """
-    # (optionnel) authentification Gaia
+    # (optional) Gaia authentication
     if gaia_user and gaia_pass:
         try:
             Gaia.login(user=gaia_user, password=gaia_pass)
         except Exception:
-            pass  # l’échec d’auth ne doit pas casser l’enrichissement
+            pass  # auth failure must not break the enrichment
 
-    # Réutilisation éventuelle du fichier déjà enrichi
+    # Reuse existing enriched file if available
     if os.path.exists(output_catalog_path) and not overwrite:
-        print("  > Fichier enrichi existant trouvé. Chargement…")
+        print("  > Existing enriched file found. Loading…")
         return pd.read_csv(output_catalog_path, sep=","), {"skipped": True}
 
-    # Préparation/validation des données sources
+    # Prepare and validate source data
     df_src = _validate_catalog(input_catalog_df.copy())
     df_src = _ensure_numeric_radec(df_src)
 
-    # 1) Cross-match Gaia
+    # 1) Gaia cross-match
     df_gaia = pd.DataFrame()
     if mode in ("auto", "bulk"):
         try:
-            print("  > Tentative de cross-match en mode 'bulk'…")
+            print("  > Attempting cross-match in 'bulk' mode…")
             df_gaia = _bulk_crossmatch(
                 df_src, search_radius_arcsec, gaia_table, include_risky
             )
         except Exception as e:
-            print(f"  > Le mode 'bulk' a échoué : {e}. Passage en mode 'cone'.")
+            print(f"  > 'bulk' mode failed: {e}. Switching to 'cone' mode.")
             if mode == "bulk":
                 raise
             df_gaia = pd.DataFrame()
 
     if df_gaia.empty and mode in ("auto", "cone"):
-        print("  > Lancement du cross-match en mode 'cone' (étoile par étoile)…")
+        print("  > Starting cross-match in 'cone' mode (star by star)…")
         df_gaia = _cone_crossmatch(df_src, search_radius_arcsec, include_risky)
 
-    # 2) Filtre RUWE (neutralisation douce)
+    # 2) RUWE filter (soft nullification)
     ruwe_thr = None if ruwe_max is None else float(np.atleast_1d(ruwe_max)[0])
     if ("ruwe" in df_gaia.columns) and (ruwe_thr is not None):
         ruwe_vals = pd.to_numeric(df_gaia["ruwe"], errors="coerce")
@@ -493,7 +488,7 @@ def enrich_catalog_with_gaia(
         cols_to_null = [c for c in df_gaia.columns if c != "objid"]
         df_gaia.loc[bad, cols_to_null] = pd.NA
 
-    # 3) Merge + post-traitements de types
+    # 3) Merge + type post-processing
     df_merged = pd.merge(df_src, df_gaia, on="objid", how="left")
     df_merged.drop(columns=["objid"], inplace=True, errors="ignore")
 
@@ -541,10 +536,10 @@ def enrich_catalog_with_gaia(
             "string"
         )
 
-    # 4) Écriture
+    # 4) Write to disk
     df_merged.to_csv(output_catalog_path, index=False, sep=",")
 
-    # 5) Statistiques
+    # 5) Statistics
     n_total = len(df_src)
     n_matched = (
         int(df_merged["source_id"].notna().sum()) if "source_id" in df_merged else 0

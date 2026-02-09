@@ -38,7 +38,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-# Helpers “sécurité invvar” (évite warnings/NaN dans sqrt)
+# Safe invvar helpers (avoid warnings / NaN in sqrt)
 from utils import sanitize_invvar, make_stddev_uncertainty_from_invvar
 
 

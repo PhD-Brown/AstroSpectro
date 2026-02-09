@@ -1,52 +1,55 @@
-"""
-AstroSpectro — Génération d’un catalogue à partir de headers FITS
-=================================================================
+"""AstroSpectro — Build a CSV catalog from FITS headers.
 
-Ce module construit un **catalogue CSV** en parcourant une liste de chemins vers
-des spectres au format FITS (compressés `.fits.gz` ou non). Les métadonnées
-sont lues dans l’en-tête (HDU[0].header) et projetées sur un schéma de
-colonnes **stable** attendu par le reste de la pipeline.
+This module constructs a **CSV catalog** by iterating over a list of paths to
+FITS spectra (compressed ``.fits.gz`` or plain ``.fits``).  Metadata are read
+from the primary header (``HDU[0].header``) and projected onto a **stable**
+column schema expected by the rest of the pipeline.
 
 Conventions
 -----------
-- Les chemins d’entrée peuvent être `str` ou `pathlib.Path`.
-- Les fichiers peuvent être **compressés** (`.fits.gz`) ou non (`.fits`).
-- Le CSV est écrit avec un séparateur `|` (pipe), conforme aux autres scripts.
-- Les valeurs manquantes sont remplies avec la sentinelle `"UNKNOWN"`.
+- Input paths may be ``str`` or ``pathlib.Path``.
+- Files may be **compressed** (``.fits.gz``) or plain (``.fits``).
+- The CSV uses a pipe (``|``) delimiter, consistent with other pipeline
+  scripts.
+- Missing values are filled with the sentinel ``"UNKNOWN"``.
 
-Entrées / Sorties
+Inputs / Outputs
 -----------------
-Entrée :
-    - `fits_paths` : itérable de chemins vers des fichiers FITS (.fits ou .fits.gz)
+Input :
+    ``fits_paths`` — iterable of paths to FITS files (``.fits`` or
+    ``.fits.gz``).
 
-Sortie :
-    - Un fichier CSV sur disque (`output_csv`) avec les colonnes décrites ci-dessous.
-    - Optionnel : le `DataFrame` Pandas résultant (`return_df=True`).
+Output :
+    A CSV file on disk (``output_csv``) with the columns listed below.
+    Optionally, the resulting Pandas ``DataFrame`` (``return_df=True``).
 
-Colonnes produites
-------------------
-['fits_name','obsid','plan_id','mjd','class','subclass',
- 'filename_original','author','data_version','date_creation',
- 'telescope','longitude_site','latitude_site',
- 'obs_date_utc','jd','designation','ra','dec',
- 'fiber_id','fiber_type','object_name','catalog_object_type',
- 'magnitude_type','magnitude_u','magnitude_g','magnitude_r','magnitude_i','magnitude_z',
- 'heliocentric_correction','radial_velocity_corr','seeing',
- 'redshift','redshift_error','snr_u','snr_g','snr_r','snr_i','snr_z']
+Exported columns
+----------------
+``['fits_name', 'obsid', 'plan_id', 'mjd', 'class', 'subclass',
+ 'filename_original', 'author', 'data_version', 'date_creation',
+ 'telescope', 'longitude_site', 'latitude_site',
+ 'obs_date_utc', 'jd', 'designation', 'ra', 'dec',
+ 'fiber_id', 'fiber_type', 'object_name', 'catalog_object_type',
+ 'magnitude_type', 'magnitude_u', 'magnitude_g', 'magnitude_r',
+ 'magnitude_i', 'magnitude_z',
+ 'heliocentric_correction', 'radial_velocity_corr', 'seeing',
+ 'redshift', 'redshift_error', 'snr_u', 'snr_g', 'snr_r',
+ 'snr_i', 'snr_z']``
 
-Exemple minimal
----------------
+Examples
+--------
 >>> from pathlib import Path
 >>> paths = Path("data/raw").glob("**/*.fits.gz")
->>> df = generate_catalog_from_fits(paths, "data/catalog/generated.csv", return_df=True)
+>>> df = generate_catalog_from_fits(paths, "data/catalog/generated.csv",
+...                                 return_df=True)
 >>> df.head()
 
 Notes
 -----
-- Le module n’ouvre **jamais** l’array de flux ; seule la *header table* est lue,
-  ce qui rend l’opération très légère en mémoire.
-- Si `tqdm` est installé, une barre de progression s’affiche automatiquement
-  quand `verbose=True`.
+- The module **never** opens the flux array; only the header table is read,
+  making the operation very lightweight in terms of memory.
+- If ``tqdm`` is installed, a progress bar is displayed automatically when
+  ``verbose=True``.
 """
 
 from __future__ import annotations
@@ -58,7 +61,7 @@ from typing import Iterable, List, Optional, Union
 import pandas as pd
 from astropy.io import fits
 
-# --- Schéma des colonnes exportées (ordre stable) -----------------------------
+# --- Exported column schema (stable order) ------------------------------------
 
 FIELDNAMES: List[str] = [
     "fits_name",
@@ -67,39 +70,39 @@ FIELDNAMES: List[str] = [
     "mjd",
     "class",
     "subclass",
-    # Informations générales
+    # General metadata
     "filename_original",
     "author",
     "data_version",
     "date_creation",
-    # Télescope / site
+    # Telescope / site
     "telescope",
     "longitude_site",
     "latitude_site",
     # Observation
     "obs_date_utc",
     "jd",
-    # Position / cible
+    # Position / target
     "designation",
     "ra",
     "dec",
-    # Fibre & objet
+    # Fibre & object
     "fiber_id",
     "fiber_type",
     "object_name",
     "catalog_object_type",
-    # Magnitudes (typiquement 5 bandes)
+    # Magnitudes (typically 5 bands)
     "magnitude_type",
     "magnitude_u",
     "magnitude_g",
     "magnitude_r",
     "magnitude_i",
     "magnitude_z",
-    # Paramètres de réduction
+    # Reduction parameters
     "heliocentric_correction",
     "radial_velocity_corr",
     "seeing",
-    # Analyse pipeline
+    # Pipeline analysis
     "redshift",
     "redshift_error",
     "snr_u",
@@ -113,36 +116,36 @@ UNKNOWN = "UNKNOWN"
 
 
 def _open_fits_for_header(path: Path):
-    """Retourne un contexte `fits.open(...)` adapté à l’extension du fichier."""
-    # Important : on lit *uniquement* la header table ; memmap inutile ici
+    """Return a ``fits.open(...)`` context manager suitable for the file extension."""
+    # Only the header table is read; memory-mapping is unnecessary here
     if "".join(path.suffixes).lower().endswith(".fits.gz"):
-        # Lecture streamée à partir du gzip sans décompresser sur disque
+        # Stream from gzip without decompressing to disk
         return fits.open(gzip.open(path, "rb"), memmap=False)
     return fits.open(path, memmap=False)
 
 
 def _ensure_parent_dir(output_csv: Union[str, Path]) -> None:
-    """Crée le dossier parent du CSV si nécessaire."""
+    """Create the parent directory of the output CSV if it does not exist."""
     out = Path(output_csv).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)
 
 
 def _row_from_header(hdr: fits.Header) -> dict:
-    """Mappe les clés du header FITS vers le schéma `FIELDNAMES`."""
-    # NB: .get(...) renvoie UNKNOWN si la clé n'existe pas — stable et explicite
+    """Map FITS header keywords to the ``FIELDNAMES`` schema."""
+    # .get(...) returns UNKNOWN when the key is absent — safe and explicit
     return {
-        "fits_name": UNKNOWN,  # MAJ faite plus bas (nom du fichier)
+        "fits_name": UNKNOWN,  # overwritten below with the file name
         "obsid": hdr.get("OBSID", UNKNOWN),
         "plan_id": hdr.get("PLANID", UNKNOWN),
         "mjd": hdr.get("MJD", UNKNOWN),
         "class": hdr.get("CLASS", UNKNOWN),
         "subclass": hdr.get("SUBCLASS", UNKNOWN),
-        # Informations générales
+        # General metadata
         "filename_original": hdr.get("FILENAME", UNKNOWN),
         "author": hdr.get("AUTHOR", UNKNOWN),
         "data_version": hdr.get("DATA_VRS", UNKNOWN),
         "date_creation": hdr.get("DATE", UNKNOWN),
-        # Télescope / site
+        # Telescope / site
         "telescope": hdr.get("TELESCOP", UNKNOWN),
         "longitude_site": hdr.get("LONGITUD", UNKNOWN),
         "latitude_site": hdr.get("LATITUDE", UNKNOWN),
@@ -153,7 +156,7 @@ def _row_from_header(hdr: fits.Header) -> dict:
         "designation": hdr.get("DESIG", UNKNOWN),
         "ra": hdr.get("RA", UNKNOWN),
         "dec": hdr.get("DEC", UNKNOWN),
-        # Fibre & objet
+        # Fibre & object
         "fiber_id": hdr.get("FIBERID", UNKNOWN),
         "fiber_type": hdr.get("FIBERTYP", UNKNOWN),
         "object_name": hdr.get("NAME", UNKNOWN),
@@ -165,11 +168,11 @@ def _row_from_header(hdr: fits.Header) -> dict:
         "magnitude_r": hdr.get("MAG3", UNKNOWN),
         "magnitude_i": hdr.get("MAG4", UNKNOWN),
         "magnitude_z": hdr.get("MAG5", UNKNOWN),
-        # Paramètres de réduction
+        # Reduction parameters
         "heliocentric_correction": hdr.get("HELIO", UNKNOWN),
         "radial_velocity_corr": hdr.get("VELDISP", UNKNOWN),
         "seeing": hdr.get("SEEING", UNKNOWN),
-        # Analyse pipeline
+        # Pipeline analysis
         "redshift": hdr.get("Z", UNKNOWN),
         "redshift_error": hdr.get("Z_ERR", UNKNOWN),
         "snr_u": hdr.get("SNRU", UNKNOWN),
@@ -189,51 +192,53 @@ def generate_catalog_from_fits(
     delimiter: str = "|",
 ) -> Optional[pd.DataFrame]:
     """
-    Génère un **catalogue CSV** à partir d'une liste de fichiers FITS.
+    Generate a **CSV catalog** from a list of FITS files.
 
     Parameters
     ----------
-    fits_paths:
-        Itérable de chemins `.fits` ou `.fits.gz` (str/Path).
-    output_csv:
-        Chemin du fichier CSV à écrire. Le dossier parent est créé si besoin.
-    verbose:
-        Si True, imprime la progression (et utilise `tqdm` si présent).
-    return_df:
-        Si True, retourne le DataFrame Pandas créé (utile en notebook).
-    delimiter:
-        Séparateur du CSV. Par défaut `|` pour rester aligné avec la pipeline.
+    fits_paths :
+        Iterable of ``.fits`` or ``.fits.gz`` paths (``str`` / ``Path``).
+    output_csv :
+        Destination CSV path. The parent directory is created if needed.
+    verbose :
+        If ``True``, print progress messages (and use ``tqdm`` when available).
+    return_df :
+        If ``True``, return the resulting Pandas ``DataFrame`` (handy in
+        notebooks).
+    delimiter :
+        CSV separator. Defaults to ``|`` for consistency with the rest of
+        the pipeline.
 
     Returns
     -------
     pandas.DataFrame or None
-        Le DataFrame si `return_df=True`, sinon `None`.
+        The ``DataFrame`` when ``return_df=True``, otherwise ``None``.
 
     Notes
     -----
-    - Si aucun fichier n'est lisible, un CSV **vide** avec les bonnes colonnes
-      est tout de même écrit.
-    - Les valeurs absentes dans les headers sont remplacées par `"UNKNOWN"`.
+    - If no file is readable, an **empty** CSV with the correct columns is
+      still written.
+    - Missing header values are filled with ``"UNKNOWN"``.
     """
-    # Normalisation des chemins en liste concrète (pour tqdm & len)
+    # Materialise paths into a concrete list (needed for tqdm & len)
     files: List[Path] = [Path(p).expanduser() for p in fits_paths]
     _ensure_parent_dir(output_csv)
 
     if not files:
         if verbose:
-            print("  > Aucun fichier FITS fourni : création d’un CSV vide.")
+            print("  > No FITS files provided: writing an empty CSV.")
         pd.DataFrame(columns=FIELDNAMES).to_csv(output_csv, sep=delimiter, index=False)
         return pd.DataFrame(columns=FIELDNAMES) if return_df else None
 
-    # Barre de progression optionnelle
+    # Optional progress bar
     it = files
     if verbose:
         try:
             from tqdm import tqdm  # type: ignore
 
-            it = tqdm(files, desc="Extraction des headers", unit="fichier")
+            it = tqdm(files, desc="Extracting headers", unit="file")
         except Exception:
-            # Pas de tqdm : fallback silencieux sur l'itérateur brut
+            # tqdm unavailable: silent fallback to raw iterator
             pass
 
     rows: List[dict] = []
@@ -242,19 +247,19 @@ def generate_catalog_from_fits(
             with _open_fits_for_header(path) as hdul:
                 hdr = hdul[0].header
                 row = _row_from_header(hdr)
-                row["fits_name"] = path.name  # nom de fichier (stable)
+                row["fits_name"] = path.name  # stable file name
                 rows.append(row)
                 if verbose and "tqdm" not in str(type(it)):
-                    print(f"[OK] {path.name} ajouté au catalogue.")
+                    print(f"[OK] {path.name} added to catalog.")
         except Exception as e:
-            # On n'arrête pas la génération pour un fichier défaillant
+            # Do not abort generation because of a single faulty file
             if verbose:
-                print(f"[ERREUR] Lecture impossible pour {path} : {e!s}")
+                print(f"[ERROR] Cannot read {path}: {e!s}")
 
-    # Écriture sur disque (une seule passe)
+    # Write to disk (single pass)
     if not rows:
         if verbose:
-            print("  > AVERTISSEMENT : aucun header exploitable — CSV vide écrit.")
+            print("  > WARNING: no exploitable headers — empty CSV written.")
         pd.DataFrame(columns=FIELDNAMES).to_csv(output_csv, sep=delimiter, index=False)
         return pd.DataFrame(columns=FIELDNAMES) if return_df else None
 
@@ -262,38 +267,36 @@ def generate_catalog_from_fits(
     df.to_csv(output_csv, sep=delimiter, index=False)
 
     if verbose:
-        print(
-            f"[OK] Catalogue écrit : {Path(output_csv).resolve()}  ({len(df)} lignes)"
-        )
+        print(f"[OK] Catalog written: {Path(output_csv).resolve()}  ({len(df)} rows)")
 
     return df if return_df else None
 
 
-# --- CLI minimal (optionnel) --------------------------------------------------
+# --- Minimal CLI (optional) ---------------------------------------------------
 if __name__ == "__main__":
     import argparse
     from glob import glob
 
     parser = argparse.ArgumentParser(
-        description="Génère un catalogue CSV à partir de headers FITS."
+        description="Generate a CSV catalog from FITS headers."
     )
     parser.add_argument(
         "--inputs",
         nargs="+",
         required=True,
-        help="Chemins ou motifs glob (ex: data/raw/**/*.fits.gz).",
+        help="Paths or glob patterns (e.g. data/raw/**/*.fits.gz).",
     )
     parser.add_argument(
         "--output",
         required=True,
-        help="Chemin du CSV de sortie (sera créé si nécessaire).",
+        help="Output CSV path (created if necessary).",
     )
     parser.add_argument(
-        "--quiet", action="store_true", help="Désactive les messages de progression."
+        "--quiet", action="store_true", help="Disable progress messages."
     )
     args = parser.parse_args()
 
-    # Expansion des patterns glob fournis
+    # Expand the user-supplied glob patterns
     expanded: List[str] = []
     for pattern in args.inputs:
         matches = glob(pattern, recursive=True)
