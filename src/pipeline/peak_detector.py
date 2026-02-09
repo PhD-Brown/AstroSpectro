@@ -1,32 +1,36 @@
-"""AstroSpectro — Détection de raies d’absorption (pics négatifs)
+"""AstroSpectro --- Absorption-line detection (negative peaks).
 
-Ce module expose une petite classe utilitaire, `PeakDetector`, qui:
-- détecte les minima locaux (raies en absorption) dans un spectre normalisé,
-- associe ces minima à un petit jeu de raies connues (Balmer, Ca II, Mg_b, Na_D),
-- retourne un mapping {nom_de_raie -> (lambda_detectée, prominence)}.
+This module exposes ``PeakDetector``, a lightweight utility class that:
+
+- detects local minima (absorption lines) in a normalised spectrum,
+- associates those minima with a small set of known reference lines
+  (Balmer, Ca II, Mg b, Na D),
+- returns a mapping ``{line_name: (detected_wavelength, prominence)}``.
 
 Conventions
 -----------
-- Longueurs d’onde en Angströms (Å).
-- On détecte des **minima** en inversant le flux (absorption).
-- La fenêtre de tolérance autour des longueurs d’onde théoriques est donnée par `window` (Å).
+- Wavelengths are in Angstroms (Å).
+- Detection operates on the **inverted** flux (absorption features become
+  positive peaks) so that ``scipy.signal.find_peaks`` can be applied directly.
+- The tolerance window around each reference wavelength is controlled by the
+  *window* parameter (in Å).
 
-Entrées / Sorties
------------------
-Entrées:
-    wavelength : array-like (N,)
-    flux       : array-like (N,) — de préférence déjà normalisé
+Inputs / Outputs
+----------------
+Inputs:
+    wavelength : array-like, shape ``(N,)``
+    flux       : array-like, shape ``(N,)`` --- preferably normalised
 
-Sorties:
-    - `detect_peaks(...)`      -> (indices_peaks: np.ndarray[int], properties: dict)
-    - `match_known_lines(...)` -> dict[str, tuple[float, float] | None]
-    - `analyze_spectrum(...)`  -> idem, pipeline complet (détecte + associe)
+Outputs:
+    - ``detect_peaks(...)``      -> ``(peak_indices, properties)``
+    - ``match_known_lines(...)`` -> ``dict[str, tuple[float, float] | None]``
+    - ``analyze_spectrum(...)``  -> same as above (full pipeline)
 
-Exemple
--------
+Examples
+--------
 >>> pd = PeakDetector(prominence=0.85, window=28)
 >>> matches = pd.analyze_spectrum(wl, flux_norm)
->>> matches["Hβ"]  # -> (lambda_detectee, prominence) ou None
+>>> matches["Hbeta"]  # -> (detected_wavelength, prominence) or None
 """
 
 from __future__ import annotations
@@ -38,72 +42,87 @@ from scipy.signal import find_peaks
 
 
 class PeakDetector:
-    """Détecteur simple de raies d’absorption (pics inversés).
+    """Simple absorption-line detector (inverted peaks).
 
-    Args:
-        prominence: Seuil de "proéminence" passé à `scipy.signal.find_peaks`
-            (après inversion du flux). Plus grand => moins de pics détectés.
-        window: Tolérance (en Å) pour associer un pic détecté à une raie
-            théorique connue (± `window` autour de λ_théorique).
+    Parameters
+    ----------
+    prominence : float, optional
+        Prominence threshold passed to ``scipy.signal.find_peaks`` on the
+        inverted flux.  Higher values yield fewer detected peaks
+        (default: 0.85).
+    window : int, optional
+        Tolerance in Angstroms for associating a detected peak with a
+        reference line (``+/- window`` around the theoretical wavelength)
+        (default: 28).
 
-    Attributes:
-        target_lines: Dictionnaire {nom_de_raie -> λ_théorique (Å)}.
-        prominence:  Seuil de proéminence pour la détection.
-        window:      Tolérance d’association en Å.
+    Attributes
+    ----------
+    target_lines : dict[str, float]
+        Mapping ``{line_name: theoretical_wavelength (Å)}``.
+    prominence : float
+        Prominence threshold for detection.
+    window : int
+        Association tolerance in Angstroms.
 
-    Notes:
-        - On **n’inverse** pas les longueurs d’onde; on inverse uniquement le
-          flux pour détecter des minima comme s’il s’agissait de maxima.
-        - Les dictionnaires Python préservent l’ordre d’insertion; l’ordre des
-          raies renvoyées suit donc celui de `target_lines`.
+    Notes
+    -----
+    - Only the flux is inverted; wavelengths are left unchanged.
+    - Python dicts preserve insertion order, so the returned mapping
+      follows the order defined in ``target_lines``.
     """
 
     def __init__(self, prominence: float = 0.85, window: int = 28) -> None:
         self.prominence = float(prominence)
         self.window = int(window)
 
-        # Vocabulaire minimal de raies (Å)
+        # Minimal line vocabulary (Å)
         self.target_lines: Dict[str, float] = {
-            # Balmer (étoiles A/F chaudes)
+            # Balmer series (hot A/F stars)
             "Hα": 6563.0,
             "Hβ": 4861.0,
-            # Calcium (généralistes)
+            # Calcium (general-purpose)
             "CaII K": 3933.0,
             "CaII H": 3968.0,
-            # Pour G/K plus froides
-            "Mg_b": 5175.0,  # Triplet du magnésium (approx. centre)
-            "Na_D": 5893.0,  # Doublet du sodium (approx. centre)
+            # For cooler G/K stars
+            "Mg_b": 5175.0,  # Magnesium triplet (approx. centre)
+            "Na_D": 5893.0,  # Sodium doublet (approx. centre)
         }
 
     # --------------------------------------------------------------------- #
-    # Détection
+    # Detection
     # --------------------------------------------------------------------- #
     def detect_peaks(
         self, wavelength: Iterable[float], flux: Iterable[float]
     ) -> Tuple[np.ndarray, Mapping[str, np.ndarray]]:
-        """Détecte les **minima** d’un spectre.
+        """Detect **minima** in a spectrum.
 
-        Le flux est inversé (–flux) pour utiliser `find_peaks` comme détecteur
-        de minima d’absorption.
+        The flux is inverted (``-flux``) so that ``find_peaks`` can be used
+        as an absorption-minimum detector.
 
-        Args:
-            wavelength: Longueurs d’onde (Å), 1D.
-            flux: Flux (normalisé de préférence), 1D.
+        Parameters
+        ----------
+        wavelength : array-like
+            Wavelengths in Angstroms, 1-D.
+        flux : array-like
+            Flux (preferably normalised), 1-D.
 
-        Returns:
-            indices: Indices (np.ndarray[int]) des pics détectés dans les arrays
-                d’entrée.
-            properties: Dictionnaire `scipy.signal.find_peaks` contenant, entre
-                autres, `prominences` (float par pic).
+        Returns
+        -------
+        indices : np.ndarray of int
+            Indices of the detected peaks in the input arrays.
+        properties : dict[str, np.ndarray]
+            Dictionary returned by ``scipy.signal.find_peaks`` containing,
+            among others, ``'prominences'`` (float per peak).
 
-        Remarques:
-            - Les NaN/Inf sont masqués (retirés) avant détection.
-            - `prominence` est directement passé à `find_peaks`.
+        Notes
+        -----
+        NaN / Inf values are masked (removed) before detection.
+        ``prominence`` is passed directly to ``find_peaks``.
         """
         wl = np.asarray(wavelength, dtype=float)
         fx = np.asarray(flux, dtype=float)
 
-        # Masquage robuste (évite les surprises avec find_peaks)
+        # Robust masking (avoids surprises with find_peaks)
         good = np.isfinite(wl) & np.isfinite(fx)
         wl = wl[good]
         fx = fx[good]
@@ -113,7 +132,7 @@ class PeakDetector:
         return peak_indices, properties
 
     # --------------------------------------------------------------------- #
-    # Association aux raies connues
+    # Association with known lines
     # --------------------------------------------------------------------- #
     def match_known_lines(
         self,
@@ -121,30 +140,37 @@ class PeakDetector:
         peak_wavelengths: np.ndarray,
         properties: Mapping[str, np.ndarray],
     ) -> Dict[str, Optional[Tuple[float, float]]]:
-        """Associe les pics détectés aux raies `target_lines`.
+        """Associate detected peaks with the reference ``target_lines``.
 
-        Pour chaque raie de référence, on retient le **candidat le plus
-        proéminent** parmi les pics situés à ±`window` Å de λ_théorique.
+        For each reference line, the **most prominent** candidate within
+        ``+/- window`` Angstroms of the theoretical wavelength is selected.
 
-        Args:
-            peak_indices: Indices des pics (issus de `detect_peaks`).
-            peak_wavelengths: `wavelength[peak_indices]` (Å).
-            properties: Dictionnaire de propriétés renvoyé par `find_peaks`
-                — on utilise notamment `properties["prominences"]`.
+        Parameters
+        ----------
+        peak_indices : np.ndarray
+            Indices of the detected peaks (from ``detect_peaks``).
+        peak_wavelengths : np.ndarray
+            ``wavelength[peak_indices]`` in Angstroms.
+        properties : Mapping[str, np.ndarray]
+            Properties dict returned by ``find_peaks``; must contain
+            ``'prominences'``.
 
-        Returns:
-            dict {nom_de_raie -> (lambda_detectée, prominence) | None}
+        Returns
+        -------
+        dict[str, tuple[float, float] | None]
+            ``{line_name: (detected_wavelength, prominence)}`` or ``None``
+            for unmatched lines.
         """
         matched: Dict[str, Optional[Tuple[float, float]]] = {}
         prominences = np.asarray(properties.get("prominences", []), dtype=float)
 
         for name, target_wl in self.target_lines.items():
-            # indices des pics dans la fenêtre ±window
+            # peak indices within the +/- window
             mask = np.abs(peak_wavelengths - target_wl) <= self.window
             candidates = np.where(mask)[0]
 
             if candidates.size > 0:
-                # Choisit le candidat le plus "fort" (proéminence max)
+                # Select the strongest candidate (highest prominence)
                 best_local = candidates[np.argmax(prominences[candidates])]
                 best_wl = float(peak_wavelengths[best_local])
                 best_prom = float(prominences[best_local])
@@ -155,24 +181,29 @@ class PeakDetector:
         return matched
 
     # --------------------------------------------------------------------- #
-    # Pipeline court
+    # Short pipeline
     # --------------------------------------------------------------------- #
     def analyze_spectrum(
         self, wavelength: Iterable[float], flux: Iterable[float]
     ) -> Dict[str, Optional[Tuple[float, float]]]:
-        """Pipeline court: détection des minima + association aux raies.
+        """Full pipeline: detect minima and associate with reference lines.
 
-        Args:
-            wavelength: Longueurs d’onde (Å), 1D.
-            flux: Flux (normalisé), 1D.
+        Parameters
+        ----------
+        wavelength : array-like
+            Wavelengths in Angstroms, 1-D.
+        flux : array-like
+            Normalised flux, 1-D.
 
-        Returns:
-            dict {nom_de_raie -> (lambda_detectée, prominence) | None}
-            (les clés sont les mêmes que `self.target_lines`).
+        Returns
+        -------
+        dict[str, tuple[float, float] | None]
+            Same keys as ``self.target_lines``.  Values are
+            ``(detected_wavelength, prominence)`` or ``None``.
         """
         idx, props = self.detect_peaks(wavelength, flux)
         if idx.size == 0:
-            # Conserve l’ordre des clés de target_lines
+            # Preserve the key order of target_lines
             return {name: None for name in self.target_lines}
 
         wl = np.asarray(wavelength, dtype=float)
@@ -184,26 +215,30 @@ __all__ = ["PeakDetector", "matches_to_dataframe", "matches_to_series"]
 
 
 def matches_to_dataframe(matches: Mapping[str, Optional[Tuple[float, float]]]):
-    """Convertit un dict de correspondances raies -> (λ, prom) en DataFrame.
+    """Convert a line-match dict to a DataFrame.
 
-    Schéma retourné (index = nom de raie):
-        - line         : nom de la raie (index)
-        - lambda_A     : longueur d'onde détectée (Å) ou NaN si absente
-        - prominence   : proéminence du pic (float) ou NaN si absente
-        - matched      : booléen, True si une correspondance existe
+    The returned DataFrame is indexed by line name and contains:
 
-    Args:
-        matches: dict { "Hβ": (4860.9, 0.93), "Na_D": None, ... }
+    - ``lambda_A``   : detected wavelength (Å) or NaN if unmatched
+    - ``prominence`` : peak prominence (float) or NaN if unmatched
+    - ``matched``    : boolean flag, True when a match exists
 
-    Returns:
-        pd.DataFrame indexé par le nom de la raie.
+    Parameters
+    ----------
+    matches : Mapping[str, tuple[float, float] | None]
+        e.g. ``{"Hbeta": (4860.9, 0.93), "Na_D": None, ...}``
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame indexed by line name.
     """
     try:
-        import pandas as pd  # import paresseux pour ne pas imposer la dépendance
+        import pandas as pd  # lazy import to avoid hard dependency
     except Exception as e:
         raise RuntimeError(
-            "pandas est requis pour matches_to_dataframe(). "
-            "Installez-le avec `pip install pandas`."
+            "pandas is required for matches_to_dataframe(). "
+            "Install it with `pip install pandas`."
         ) from e
 
     rows = []
@@ -231,26 +266,31 @@ def matches_to_series(
     order: Optional[Sequence[str]] = None,
     prefix: str = "match_",
 ):
-    """Aplati les correspondances en **une seule ligne** (Series) aux colonnes stables.
+    """Flatten line matches into a single row (Series) with stable column names.
 
-    Colonnes générées (pour chaque raie dans `order` ou dans l'ordre du dict):
-        - f"{prefix}{RAIE}_wl"
-        - f"{prefix}{RAIE}_prom"
+    For each line in *order* (or dict insertion order), two columns are
+    produced: ``{prefix}{LINE}_wl`` and ``{prefix}{LINE}_prom``.
 
-    Args:
-        matches: dict { "Hβ": (4860.9, 0.93), "Na_D": None, ... }
-        order: ordre explicite des raies (sinon l’ordre d’insertion du dict).
-        prefix: préfixe des colonnes (par défaut 'match_').
+    Parameters
+    ----------
+    matches : Mapping[str, tuple[float, float] | None]
+        e.g. ``{"Hbeta": (4860.9, 0.93), "Na_D": None, ...}``
+    order : Sequence[str] or None, optional
+        Explicit line ordering.  If ``None``, dict insertion order is used.
+    prefix : str, optional
+        Column-name prefix (default: ``'match_'``).
 
-    Returns:
-        pandas.Series avec 2*len(order) colonnes. Les absences deviennent NaN.
+    Returns
+    -------
+    pd.Series
+        Series with ``2 * len(order)`` entries.  Missing lines become NaN.
     """
     try:
         import pandas as pd
     except Exception as e:
         raise RuntimeError(
-            "pandas est requis pour matches_to_series(). "
-            "Installez-le avec `pip install pandas`."
+            "pandas is required for matches_to_series(). "
+            "Install it with `pip install pandas`."
         ) from e
 
     names = list(order) if order is not None else list(matches.keys())

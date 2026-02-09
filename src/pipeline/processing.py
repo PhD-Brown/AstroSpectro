@@ -1,63 +1,51 @@
 """
-AstroSpectro — Pipeline de traitement des spectres (prétraîtement + features)
-==============================================================================
+AstroSpectro --- Spectrum processing pipeline (preprocessing + features).
+=========================================================================
 
-Ce module applique, pour chaque spectre FITS, une chaîne de traitement complète :
-1) Prétraitement (chargement, normalisation du flux, sécurisation de l’invvar)
-2) Détection & association des raies d’absorption (PeakDetector)
-3) Extraction de descripteurs spectroscopiques (FeatureEngineer : FWHM, EW, ratios, indices…)
-4) Construction de features “couleur/photométrie” (si dispo dans le catalogue)
-5) Assemblage final en ligne de DataFrame, puis agrégation en un tableau features
+For each FITS spectrum this module applies the full processing chain:
+
+1. Preprocessing (loading, flux normalisation, inverse-variance sanitisation).
+2. Absorption-line detection and association (``PeakDetector``).
+3. Spectroscopic feature extraction (``FeatureEngineer``: FWHM, EW,
+   ratios, indices, etc.).
+4. Photometric / colour features (when available from the catalogue).
+5. Final assembly into a DataFrame row, then aggregation into a
+   feature table.
 
 Conventions
 -----------
-- Longueurs d’onde en Angströms (Å).
-- `invvar` (inverse-variance) est **nettoyée/tolérante** en amont pour éviter NaN/Inf lors des `sqrt`
-  et produire une incertitude robuste (voir `utils.sanitize_invvar` & `make_stddev_uncertainty_from_invvar`).
-- Les colonnes `match_*` (ex: `match_Hβ_wl`, `match_Hβ_prom`) proviennent du matching de raies
-  (détection + association); elles **complètent** les colonnes `feature_*` renvoyées par la
-  Feature Engineering (prominence/FWHM/EW/indices/ratios).
-- Les vecteurs de features `feature_*` sont renvoyés **dans un ordre stable** (liste `feature_names`).
+- Wavelengths are in Angstroms (Å).
+- ``invvar`` (inverse-variance) is cleaned upstream to avoid NaN / Inf
+  during ``sqrt`` operations and to produce robust uncertainties (see
+  ``utils.sanitize_invvar`` and ``make_stddev_uncertainty_from_invvar``).
+- ``match_*`` columns (e.g. ``match_Hbeta_wl``, ``match_Hbeta_prom``)
+  come from the line-matching step and **complement** the ``feature_*``
+  columns returned by the Feature Engineering module.
+- ``feature_*`` vectors are returned in a **stable order**
+  (``feature_names`` list).
 
-Entrées / Sorties attendues
----------------------------
-Entrées :
-- `file_path`       : chemin du fichier FITS à traiter (str)
-- `catalog_row`     : (optionnel) ligne de catalogue pour enrichissement photométrique / Gaia
-- `config`          : (optionnel) dict des paramètres (fenêtre de détection, seuils, etc.)
+Inputs / Outputs
+----------------
+Inputs:
+    - ``file_path`` : path to a FITS file (str)
+    - ``catalog_row`` : (optional) catalogue row for photometric / Gaia
+      enrichment
+    - ``config`` : (optional) parameter dict (detection window, thresholds)
 
-Sorties :
-- `pandas.Series`   : une ligne consolidée contenant :
-    * colonnes `match_*`  (longueur d’onde détectée + prominence par raie connue)
-    * colonnes `feature_*` (FWHM, EW, indices, ratios… alignés à `FeatureEngineer.feature_names`)
-    * colonnes photométriques/GAIA si disponibles (ex: `bp_rp`, `ag_gspphot`, …)
-- un ensemble de ces Series est agrégé en `pandas.DataFrame`.
+Outputs:
+    - ``pd.Series`` : consolidated row containing ``match_*``, ``feature_*``,
+      and photometric / Gaia columns when available.
+    - An ensemble of such Series is aggregated into a ``pd.DataFrame``.
 
-API publique (principales méthodes)
------------------------------------
-- `ProcessingPipeline.process_one(file_path, catalog_row=None) -> pd.Series`
-    Traite un spectre unique et renvoie une ligne prête à être concaténée.
-- `ProcessingPipeline.process_many(file_paths, catalog_df=None) -> pd.DataFrame`
-    Boucle sur une liste de fichiers et retourne le tableau complet des features.
-- `matches_to_series(matched_lines: dict) -> pd.Series`
-    Helper qui convertit un mapping `{nom_de_raie: (lambda_detectée, prominence)}` en Series
-    avec des noms de colonnes stables (`match_<RAIE>_wl`, `match_<RAIE>_prom`).
+Public API
+----------
+- ``ProcessingPipeline.run(batch_paths) -> pd.DataFrame``
 
-Remarques d’implémentation
---------------------------
-- Le matching de raies est **tolérant** : les raies absentes ne cassent pas la chaîne,
-  et les colonnes correspondantes sont remplies avec des NaN (ou des 0 selon le cas).
-- La normalisation du flux et la création d’incertitudes utilisent les utilitaires de `utils.py`
-  afin d’éviter les warnings de type `invalid value encountered in sqrt`.
-- Les features spectroscopiques sont calculées via `FeatureEngineer` qui garantit l’ordre stable
-  des colonnes (liste `feature_names` utilisée pour aligner X/y en apprentissage).
-
-Exemple minimal
----------------
+Examples
+--------
 >>> from pipeline.processing import ProcessingPipeline
->>> pp = ProcessingPipeline(paths)                        # chemins/répertoires utiles
->>> row = pp.process_one("data/raw/spec-XXXXX.fits.gz")   # ligne de features pour 1 spectre
->>> df  = pp.process_many(["specA.fits.gz", "specB.fits.gz"])  # batch -> DataFrame
+>>> pp = ProcessingPipeline(raw_data_dir, catalog_df)
+>>> df = pp.run(["specA.fits.gz", "specB.fits.gz"])
 """
 
 from __future__ import annotations
@@ -83,77 +71,87 @@ from utils import sanitize_invvar
 
 
 class ProcessingPipeline:
-    """Exécute un pipeline complet de traitement pour chaque spectre FITS.
+    """Execute the full processing pipeline for each FITS spectrum.
 
-    Ce pipeline applique les étapes de prétraitement, de détection de raies,
-    d'extraction de descripteurs, d'ajout de features photométriques et
-    d'agrégation des résultats dans un DataFrame.
+    This pipeline applies preprocessing, line detection, feature extraction,
+    photometric feature addition, and result aggregation into a DataFrame.
 
-    Args:
-        raw_data_dir (str): Dossier contenant les fichiers FITS (gz).
-        master_catalog_df (pd.DataFrame): Catalogue de métadonnées pour enrichir
-            les spectres avec des informations photométriques ou Gaia.
+    Parameters
+    ----------
+    raw_data_dir : str
+        Directory containing the FITS files (``.fits.gz``).
+    master_catalog_df : pd.DataFrame
+        Master metadata catalogue used to enrich spectra with photometric
+        or Gaia information.
 
-    Attributes:
-        preprocessor (SpectraPreprocessor): Utilitaire pour charger et normaliser les spectres.
-        peak_detector (PeakDetector): Détection et association des raies d'absorption.
-        feature_engineer (FeatureEngineer): Extraction des descripteurs spectroscopiques.
-        master_catalog (pd.DataFrame): Catalogue enrichi (optionnel) utilisé pour joindre des informations.
+    Attributes
+    ----------
+    preprocessor : SpectraPreprocessor
+        Utility for loading and normalising spectra.
+    peak_detector : PeakDetector
+        Absorption-line detection and association engine.
+    feature_engineer : FeatureEngineer
+        Spectroscopic feature extractor.
+    master_catalog : pd.DataFrame
+        Enriched catalogue (optional) for join operations.
     """
 
     def __init__(self, raw_data_dir: str, master_catalog_df: pd.DataFrame) -> None:
         self.raw_data_dir = raw_data_dir
         self.preprocessor = SpectraPreprocessor()
-        # Seuils par défaut — ajuste si besoin (plus haut = moins de faux positifs)
+        # Default thresholds (higher = fewer false positives)
         self.peak_detector = PeakDetector(prominence=0.15, window=8)
         self.feature_engineer = FeatureEngineer()
 
         self.master_catalog = master_catalog_df
         if self.master_catalog is not None and not self.master_catalog.empty:
             if "fits_name" in self.master_catalog.columns:
-                # Prépare une clé de jointure simple (sans .gz)
+                # Prepare a simple join key (without .gz)
                 self.master_catalog = self.master_catalog.copy()
                 self.master_catalog["fits_name_only"] = self.master_catalog[
                     "fits_name"
                 ].str.replace(".gz", "", regex=False)
             else:
                 print(
-                    "AVERTISSEMENT: La colonne 'fits_name' est manquante dans le catalogue fourni."
+                    "WARNING: Column 'fits_name' is missing from the supplied catalogue."
                 )
 
     def run(self, batch_paths: List[str]) -> pd.DataFrame:
-        """Traite une liste de spectres et renvoie un DataFrame de features.
+        """Process a batch of spectra and return a feature DataFrame.
 
-        Pour chaque chemin fourni, cette méthode charge le spectre, normalise
-        le flux, détecte les raies, extrait les descripteurs spectroscopiques,
-        calcule des features de couleur et joint éventuellement des informations
-        provenant du catalogue maître. Les features sont stabilisées et enrichies
-        avec des colonnes Gaia et des composites de raies.
+        For each path, loads the spectrum, normalises the flux, detects
+        absorption lines, extracts spectroscopic features, computes colour
+        features, and optionally joins information from the master
+        catalogue.  Features are stabilised and enriched with Gaia-derived
+        columns and line composites.
 
-        Args:
-            batch_paths (List[str]): Chemins relatifs des fichiers FITS à traiter.
+        Parameters
+        ----------
+        batch_paths : list[str]
+            Relative paths (within ``raw_data_dir``) of the FITS files to
+            process.
 
-        Returns:
-            pd.DataFrame: Tableau des features calculés et enrichis pour l'ensemble des spectres.
+        Returns
+        -------
+        pd.DataFrame
+            Feature table computed and enriched for all spectra in the batch.
         """
         all_features_list: List[Dict[str, float]] = []
 
-        print(
-            f"\n--- Démarrage du pipeline de traitement pour {len(batch_paths)} spectres ---"
-        )
-        for file_path in tqdm(batch_paths, desc="Traitement des spectres"):
+        print(f"\n--- Starting processing pipeline for {len(batch_paths)} spectra ---")
+        for file_path in tqdm(batch_paths, desc="Processing spectra"):
             full_fits_path = os.path.join(self.raw_data_dir, file_path)
             try:
-                # 1) Chargement + prétraitement
+                # 1) Loading + preprocessing
                 with gzip.open(full_fits_path, "rb") as f_gz:
                     with fits.open(f_gz, memmap=False) as hdul:
                         wavelength, flux, invvar = self.preprocessor.load_spectrum(hdul)
-                        # Robustesse numérique : évite NaN/inf/<=0 avant sqrt()
+                        # Numerical robustness: avoid NaN/inf/<=0 before sqrt()
                         invvar = sanitize_invvar(invvar)
 
                 flux_norm = self.preprocessor.normalize_spectrum(flux)
 
-                # 2) Détection/association de raies
+                # 2) Line detection / association
                 matched_lines = self.peak_detector.analyze_spectrum(
                     wavelength, flux_norm
                 )
@@ -163,12 +161,12 @@ class ProcessingPipeline:
                     matched_lines, wavelength, flux_norm, invvar
                 )
 
-                # 3.b) Colonnes supplémentaires issues du matching (stables & interprétables)
-                order = self.feature_engineer.base_lines  # ordre canonique des raies
+                # 3.b) Additional columns from line matching (stable & interpretable)
+                order = self.feature_engineer.base_lines  # canonical line order
                 match_series = matches_to_series(
                     matched_lines, order=order, prefix="match_"
                 )
-                # Harmonise les noms (pas d'espaces) pour rester cohérent
+                # Harmonise names (no spaces) for consistency
                 match_series = match_series.rename(lambda c: c.replace(" ", ""))
 
                 # 4) Feature couleur “Blue/Red” (simple proxy de pente)
@@ -181,27 +179,27 @@ class ProcessingPipeline:
                 color_index = flux_blue / (flux_red + 1e-6)
 
                 # 4.b) Global continuum shape: slope and curvature (Pack D)
-                # On ajuste un polynôme de degré 2 sur la plage du continuum
+                # Fit a degree-2 polynomial over the continuum range
                 slope = 0.0
                 curvature = 0.0
                 try:
                     cont_mask = (wavelength > 4300) & (wavelength < 6800)
                     lam = wavelength[cont_mask]
                     flx = flux_norm[cont_mask]
-                    # On n'utilise que les points finits
+                    # Use only finite points
                     valid = np.isfinite(lam) & np.isfinite(flx)
                     lam = lam[valid]
                     flx = flx[valid]
                     if lam.size >= 10:
-                        # Ajuste un polynôme de degré 2 : flx ≈ a*λ² + b*λ + c
+                        # Fit a degree-2 polynomial: flx ~ a*lam^2 + b*lam + c
                         coeffs = np.polyfit(lam, flx, deg=2)
                         curvature = float(coeffs[0])
                         slope = float(coeffs[1])
                 except Exception:
-                    # Laisse slope/curvature à 0 si l'ajustement échoue
+                    # Leave slope/curvature at 0 if the fit fails
                     pass
 
-                # 5) Assemblage de la ligne
+                # 5) Row assembly
                 record: Dict[str, float] = {"file_path": file_path}
 
                 # features FE (dans l’ordre canonique)
@@ -210,13 +208,13 @@ class ProcessingPipeline:
                 ):
                     record[feature_name] = float(feature_val)
 
-                # feature couleur locale
+                # local colour feature
                 record["feature_color_index_BlueRed"] = float(color_index)
-                # continuité du continuum : pente et courbure
+                # continuum shape: slope and curvature
                 record["feature_cont_slope"] = float(slope)
                 record["feature_cont_curvature"] = float(curvature)
 
-                # colonnes issues du matching (wl/prom par raie)
+                # columns from matching (wl/prom per line)
                 record.update(
                     {
                         k: float(v) if pd.notna(v) else np.nan
@@ -227,61 +225,61 @@ class ProcessingPipeline:
                 all_features_list.append(record)
 
             except Exception as e:
-                print(f"\n    -> ERREUR lors du traitement de {file_path}: {e}")
+                print(f"\n    -> ERROR processing {file_path}: {e}")
 
         features_df = pd.DataFrame(all_features_list)
         features_df = stabilize_spectral_features(features_df)
 
-        # --- Jointure avec le catalogue maître (si présent) ---
+        # --- Join with master catalogue (if present) ---
         if (
             features_df.empty
             or self.master_catalog is None
             or self.master_catalog.empty
         ):
             print(
-                f"\nPipeline de traitement terminé. {len(features_df)} spectres traités."
+                f"\nProcessing pipeline finished. {len(features_df)} spectra processed."
             )
             if "label" not in features_df.columns:
                 features_df["label"] = "UNKNOWN"
             return features_df
 
-        # Clé de jointure côté features
+        # Join key on the features side
         features_df["fits_name_only"] = features_df["file_path"].apply(
             lambda x: os.path.basename(x).replace(".gz", "")
         )
 
-        # 1) Jointure d'abord
+        # 1) Join first
         merged_df = pd.merge(
             features_df, self.master_catalog, how="left", on="fits_name_only"
         )
 
-        # 2) Puis les features dérivées GAIA (les colonnes existent maintenant)
+        # 2) Then Gaia-derived features (columns now exist)
         merged_df, new_gaia_cols = add_gaia_derived_features(
             merged_df, min_parallax_snr=5.0
         )
-        print(f"  > Features Gaia dérivées ajoutées : {len(new_gaia_cols)} colonnes")
+        print(f"  > Gaia-derived features added: {len(new_gaia_cols)} columns")
 
-        # --- Composites de raies (Pack B) ---
+        # --- Line composites (Pack B) ---
         try:
             from .feature_engineering import add_line_composites
 
             merged_df, new_line_cols = add_line_composites(merged_df)
-            print(f"  > Composites de raies ajoutés : {len(new_line_cols)} colonne(s)")
+            print(f"  > Line composites added: {len(new_line_cols)} column(s)")
         except Exception as exc:
-            print(f"  > AVERTISSEMENT: échec de add_line_composites: {exc}")
+            print(f"  > WARNING: add_line_composites failed: {exc}")
 
-        # 2bis) Écart à la séquence principale (delta_ms)
+        # 2bis) Main-sequence offset (delta_ms)
         merged_df, ms_coeffs = add_main_sequence_delta(merged_df, min_parallax_snr=10.0)
         if ms_coeffs is None:
             print(
-                "  > delta_ms : pas assez d'étoiles propres pour ajuster la polynomiale (resté NaN)."
+                "  > delta_ms: not enough clean stars to fit the polynomial (kept as NaN)."
             )
         else:
             np.save("delta_ms_poly_coeffs.npy", ms_coeffs)
-            print("  > delta_ms ajouté (poly deg=3).")
+            print("  > delta_ms added (poly deg=3).")
 
-        # --- Indices de couleur photométriques (g-r, r-i) ---
-        print("  > Création des features de couleur photométrique...")
+        # --- Photometric colour indices (g-r, r-i) ---
+        print("  > Creating photometric colour features...")
 
         mag_cols = ["magnitude_g", "magnitude_r", "magnitude_i"]
         for col in mag_cols:
@@ -301,10 +299,10 @@ class ProcessingPipeline:
 
         merged_df.fillna({"feature_color_gr": 0, "feature_color_ri": 0}, inplace=True)
 
-        # Nettoyage final
+        # Final cleanup
         merged_df = merged_df.drop(columns=["fits_name_only"], errors="ignore")
 
         print(
-            f"\nPipeline de traitement terminé. {len(merged_df)} spectres traités et enrichis."
+            f"\nProcessing pipeline finished. {len(merged_df)} spectra processed and enriched."
         )
         return merged_df

@@ -1,30 +1,30 @@
-"""AstroSpectro — Prétraitement des spectres (FITS -> arrays propres)
+"""AstroSpectro --- Spectrum preprocessing (FITS to clean arrays).
 
-Ce module centralise les opérations de bas niveau nécessaires avant l’extraction
-de features :
+This module centralises the low-level operations required before feature
+extraction:
 
-1) Lecture d’un spectre depuis un HDUList FITS :
-   - flux : ligne 0 du tableau
-   - inverse-variance (invvar) : ligne 1
-   - calcul des longueurs d’onde : 10**(COEFF0 + i * COEFF1)  [wavelength en Å]
+1. **Reading** a spectrum from a FITS HDUList:
+   - flux: row 0 of the data array
+   - inverse-variance (invvar): row 1
+   - wavelength reconstruction: ``10**(COEFF0 + i * COEFF1)``  [Angstroms]
 
-2) Normalisation du flux (simple, robuste) pour stabiliser l’analyse.
+2. **Normalisation** of the flux (simple, robust) to stabilise downstream
+   analysis.
 
-3) Sécurisation de l’inverse-variance via `sanitize_invvar()` afin d’éviter tout
-   warning/NaN lors de la conversion en écart-type (sqrt). Optionnellement,
-   on peut retourner directement une `StdDevUncertainty`.
+3. **Sanitisation** of the inverse-variance via ``sanitize_invvar()`` to
+   prevent warnings / NaN during the square-root conversion.  Optionally
+   returns a ``StdDevUncertainty`` directly.
 
 Conventions
 -----------
-- Longueurs d’onde : Å.
-- Les spectres attendus sont déjà “ligne-centré” (absorption en négatif
-  après inversion éventuelle plus en amont si besoin).
-- Les helpers de sécurité proviennent de `src/utils.py`.
+- Wavelengths are in Angstroms (Å).
+- Spectra are assumed to be rest-frame (absorption features have negative
+  residuals after normalisation if applicable).
+- Safety helpers are imported from ``src/utils.py``.
 
-Exemple minimal
----------------
+Examples
+--------
 >>> sp = SpectraPreprocessor()
->>> # hdul: astropy.io.fits.HDUList
 >>> wl, flux, invvar = sp.load_spectrum(hdul)
 >>> flux_n = sp.normalize_spectrum(flux)
 >>> spec = sp.prepare(hdul, normalize=True, return_uncertainty=True)
@@ -44,52 +44,77 @@ from utils import sanitize_invvar, make_stddev_uncertainty_from_invvar
 
 @dataclass
 class ProcessedSpectrum:
-    """Conteneur typé pour un spectre prétraité."""
+    """Typed container for a preprocessed spectrum.
 
-    wavelength: np.ndarray  # (N,) en Å
+    Attributes
+    ----------
+    wavelength : np.ndarray
+        Wavelength grid in Angstroms, shape ``(N,)``.
+    flux : np.ndarray
+        Raw flux array, shape ``(N,)``.
+    invvar : np.ndarray
+        Raw inverse-variance array, shape ``(N,)``.
+    flux_norm : np.ndarray or None
+        Normalised flux, shape ``(N,)``, if normalisation was requested.
+    invvar_clean : np.ndarray or None
+        Sanitised inverse-variance, shape ``(N,)``, after ``sanitize_invvar``.
+    uncertainty : StdDevUncertainty or None
+        Standard-deviation uncertainty, if requested.
+    """
+
+    wavelength: np.ndarray  # (N,) in Angstroms
     flux: np.ndarray  # (N,)
-    invvar: np.ndarray  # (N,) inverse-variance (brut)
-    flux_norm: Optional[np.ndarray] = None  # (N,) flux normalisé (si demandé)
-    invvar_clean: Optional[np.ndarray] = None  # (N,) invvar après “sanitize”
-    uncertainty: Optional[object] = None  # StdDevUncertainty (si demandé)
+    invvar: np.ndarray  # (N,) raw inverse-variance
+    flux_norm: Optional[np.ndarray] = None  # (N,) normalised flux (if requested)
+    invvar_clean: Optional[np.ndarray] = None  # (N,) invvar after sanitisation
+    uncertainty: Optional[object] = None  # StdDevUncertainty (if requested)
 
 
 class SpectraPreprocessor:
-    """
-    Outils de prétraitement : lecture FITS, normalisation, sécurisation invvar.
+    """Preprocessing tools: FITS reading, normalisation, inverse-variance sanitisation.
+
+    This class provides a minimal, stateless API for loading a LAMOST-style FITS
+    spectrum, normalising its flux, and optionally computing a robust uncertainty
+    array from the inverse-variance extension.
     """
 
     # --------------------------------------------------------------------- #
-    # Lecture FITS -> (wavelength, flux, invvar)
+    # FITS reading -> (wavelength, flux, invvar)
     # --------------------------------------------------------------------- #
     def load_spectrum(self, hdul) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Extrait le spectre (wavelength, flux, invvar) depuis un HDUList FITS.
+        Extract wavelength, flux, and inverse-variance from a FITS HDUList.
 
-        Le flux (ligne 0) et l'inverse-variance (ligne 1) sont lus depuis
-        `hdul[0].data`, tandis que les longueurs d'onde sont reconstruites
-        via les mots-clés `COEFF0` (départ log10) et `COEFF1` (pas log10).
+        Flux (row 0) and inverse-variance (row 1) are read from
+        ``hdul[0].data``.  Wavelengths are reconstructed from the header
+        keywords ``COEFF0`` (starting log10 wavelength) and ``COEFF1``
+        (log10 step).
 
-        Args:
-            hdul: Objet `astropy.io.fits.HDUList` déjà ouvert.
+        Parameters
+        ----------
+        hdul : astropy.io.fits.HDUList
+            An already-opened HDUList.
 
-        Returns:
-            tuple(np.ndarray, np.ndarray, np.ndarray):
-                - wavelength (N,): longueurs d'onde en Å
-                - flux (N,)
-                - invvar (N,): inverse-variance brute
+        Returns
+        -------
+        wavelength : np.ndarray
+            Wavelength grid in Angstroms, shape ``(N,)``.
+        flux : np.ndarray
+            Flux array, shape ``(N,)``.
+        invvar : np.ndarray
+            Raw inverse-variance array, shape ``(N,)``.
 
-        Raises:
-            ValueError: si la forme des données est invalide ou si COEFF0/COEFF1
-                        sont absents du header.
+        Raises
+        ------
+        ValueError
+            If the data shape is invalid (fewer than 2 rows) or if
+            ``COEFF0`` / ``COEFF1`` are missing from the header.
         """
         header = hdul[0].header
         data = hdul[0].data
 
         if data.ndim < 2 or data.shape[0] < 2:
-            raise ValueError(
-                "Le tableau de données FITS est invalide (moins de 2 lignes)."
-            )
+            raise ValueError("Invalid FITS data array (fewer than 2 rows).")
 
         flux = data[0]
         invvar = data[1]
@@ -100,37 +125,47 @@ class SpectraPreprocessor:
             loglam = loglam_start + np.arange(len(flux)) * loglam_step
             wavelength = 10**loglam
         else:
-            raise ValueError("Header FITS invalide : COEFF0 ou COEFF1 manquants.")
+            raise ValueError("Invalid FITS header: COEFF0 or COEFF1 missing.")
 
         return wavelength, flux, invvar
 
     # --------------------------------------------------------------------- #
-    # Normalisation simple & robuste
+    # Simple & robust normalisation
     # --------------------------------------------------------------------- #
     def normalize_spectrum(
         self, flux: np.ndarray, method: str = "median"
     ) -> np.ndarray:
         """
-        Normalise un vecteur de flux.
+        Normalise a flux vector.
 
-        Actuellement, seule la normalisation **par la médiane** est proposée
-        (méthode robuste pour limiter l'effet des raies et outliers).
+        Currently only **median** normalisation is supported, which is robust
+        against emission/absorption lines and outliers.
 
-        Args:
-            flux: Tableau 1D de flux.
-            method: Stratégie ("median" uniquement pour l’instant).
+        Parameters
+        ----------
+        flux : np.ndarray
+            One-dimensional flux array.
+        method : {'median'}, optional
+            Normalisation strategy (default: ``'median'``).
 
-        Returns:
-            np.ndarray: flux normalisé (même forme que `flux`).
+        Returns
+        -------
+        np.ndarray
+            Normalised flux with the same shape as *flux*.
+
+        Raises
+        ------
+        ValueError
+            If *method* is not ``'median'``.
         """
         if method != "median":
-            raise ValueError(f"Méthode de normalisation inconnue: {method!r}")
+            raise ValueError(f"Unknown normalisation method: {method!r}")
 
         med = float(np.median(flux))
         return flux / med if med > 0 else flux
 
     # --------------------------------------------------------------------- #
-    # Pipeline court : lecture + options de normalisation & incertitudes
+    # Short pipeline: read + optional normalisation & uncertainties
     # --------------------------------------------------------------------- #
     def prepare(
         self,
@@ -140,24 +175,33 @@ class SpectraPreprocessor:
         min_invvar: float = 1e-12,
     ) -> ProcessedSpectrum:
         """
-        Prétraite un spectre complet depuis un HDUList FITS.
+        Preprocess a complete spectrum from a FITS HDUList.
 
-        Étapes:
-            1) Lecture (wavelength, flux, invvar).
-            2) Sécurisation de l'inverse-variance (`sanitize_invvar`).
-            3) Normalisation du flux (optionnelle).
-            4) Construction de l'incertitude (optionnelle) via
-               `make_stddev_uncertainty_from_invvar`.
+        Steps
+        -----
+        1. Read wavelength, flux, and inverse-variance.
+        2. Sanitise inverse-variance via ``sanitize_invvar``.
+        3. Normalise flux (optional).
+        4. Build ``StdDevUncertainty`` (optional) via
+           ``make_stddev_uncertainty_from_invvar``.
 
-        Args:
-            hdul: HDUList FITS.
-            normalize: Si True, calcule et renvoie `flux_norm`.
-            return_uncertainty: Si True, calcule et renvoie une
-                `StdDevUncertainty` basée sur l'invvar nettoyé.
-            min_invvar: Planche minimale appliquée à l'invvar lors du nettoyage.
+        Parameters
+        ----------
+        hdul : astropy.io.fits.HDUList
+            Opened FITS HDUList.
+        normalize : bool, optional
+            If True, compute and return ``flux_norm`` (default: True).
+        return_uncertainty : bool, optional
+            If True, compute and return a ``StdDevUncertainty`` from the
+            cleaned inverse-variance (default: False).
+        min_invvar : float, optional
+            Minimum floor applied to inverse-variance during sanitisation
+            (default: 1e-12).
 
-        Returns:
-            ProcessedSpectrum: conteneur avec les champs utiles remplis.
+        Returns
+        -------
+        ProcessedSpectrum
+            Container with the relevant fields populated.
         """
         wl, flux, invvar = self.load_spectrum(hdul)
 

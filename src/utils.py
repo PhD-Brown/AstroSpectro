@@ -1,47 +1,43 @@
 """
-AstroSpectro — Utilitaires généraux
-===================================
+General-purpose utilities for the AstroSpectro pipeline.
 
-Ce module regroupe de petites fonctions transversales utilisées par les
-notebooks et les scripts de la pipeline :
+This module provides cross-cutting helper functions used by notebooks and
+pipeline scripts, covering project environment setup, file operations,
+spectroscopic data sanitization, and model compatibility checks.
 
-1) Initialisation de l’environnement du projet depuis un notebook
-   (`setup_project_env`) — détection de la racine, ajout du dossier `src`
-   au `sys.path`, construction des chemins standards.
-2) Chargement des variables d’environnement depuis un fichier `.env`
-   (`load_env_vars`), avec filtrage par préfixe (par défaut: *GAIA_*).
-3) Aides de fichiers: récupération du fichier le plus récent (`latest_file`)
-   et calcul de checksum (`md5sum`).
-4) Aides spectroscopiques: sécurisation d’inverse-variances pour des `sqrt`
-   sans warning/erreur (`sanitize_invvar`) et fabrication d’une
-   `StdDevUncertainty` cohérente (`make_stddev_uncertainty_from_invvar`).
-5) Vérification de compatibilité d’un modèle avec un DataFrame de features
-   (`check_model_compat`).
+Scientific Context
+------------------
+Several helpers address numerical pitfalls common in spectroscopic data
+processing. Inverse-variance arrays from LAMOST FITS files may contain
+non-finite or non-positive entries that would trigger warnings or produce
+NaN when computing standard deviations. The sanitization functions centralize
+robust handling of these edge cases.
 
-Conventions
------------
-- Tous les chemins retournés par `setup_project_env` sont **absolus** (str).
-- Les messages d’information sont imprimés par défaut ; on peut les
-  désactiver via `verbose=False`.
-- Pas d’effet de bord caché : la création des répertoires standards est
-  **optionnelle** et contrôlée par `create_missing_dirs`.
+Key Components
+--------------
+- setup_project_env(): Detect project root, build standard paths, update sys.path
+- load_env_vars(): Load environment variables from a .env file with prefix filtering
+- latest_file(): Retrieve the most recently modified file matching a glob pattern
+- sanitize_invvar(): Clean inverse-variance arrays for safe sqrt operations
+- make_stddev_uncertainty_from_invvar(): Build an Astropy StdDevUncertainty from invvar
+- check_model_compat(): Verify feature consistency between a trained model and a DataFrame
 
-Entrées / Sorties principales
------------------------------
-- `setup_project_env(...) -> dict[str, str]`
-- `load_env_vars(...) -> dict[str, str]`
-- `latest_file(...) -> str | None`
-- `md5sum(...) -> str`
-- `sanitize_invvar(...) -> np.ndarray`
-- `make_stddev_uncertainty_from_invvar(...) -> StdDevUncertainty`
-- `check_model_compat(...) -> tuple[list[str], list[str]]`
-
-Exemple minimal
----------------
+Typical Usage
+-------------
 >>> paths = setup_project_env()
 >>> latest = latest_file(paths["REPORTS_DIR"], "features_*.csv")
->>> env = load_env_vars()          # filtre GAIA_* par défaut
+>>> env = load_env_vars()  # filters GAIA_* variables by default
 >>> print(latest, list(env)[:3])
+
+Notes
+-----
+- All paths returned by ``setup_project_env`` are **absolute** strings.
+- Informational messages are printed by default; disable with ``verbose=False``.
+- Directory creation is **optional** and controlled by ``create_missing_dirs``.
+
+Dependencies
+------------
+astropy.nddata, python-dotenv
 """
 
 from __future__ import annotations
@@ -58,7 +54,7 @@ import pandas as pd
 from astropy.nddata import StdDevUncertainty
 from dotenv import load_dotenv
 
-# Pour hints NumPy (facultatif, ne change rien à l’exécution)
+# Optional NumPy type stubs (no runtime effect)
 try:
     import numpy.typing as npt
 except Exception:  # pragma: no cover
@@ -78,7 +74,7 @@ __all__ = [
 ]
 
 # ---------------------------------------------------------------------
-# 1) Environnement projet
+# 1) Project environment
 # ---------------------------------------------------------------------
 
 
@@ -89,39 +85,51 @@ def setup_project_env(
     verbose: bool = True,
 ) -> Dict[str, str]:
     """
-    Détecte la racine du projet, construit les chemins standards et (optionnel)
-    ajoute `src/` au `sys.path`.
+    Detect the project root, build standard directory paths, and optionally update sys.path.
 
-    Args:
-        create_missing_dirs: Si True, crée les dossiers standards s'ils n'existent pas
-            (data/, data/raw/, data/catalog/, data/processed/, data/models/,
-            data/reports/, notebooks/, logs/).
-        add_to_sys_path: Si True, ajoute `SRC_DIR` à `sys.path` pour
-            permettre `import ...` depuis les notebooks.
-        verbose: Affiche quelques messages d'information.
+    Walks up from the current working directory until a ``src/`` folder is found,
+    then constructs a dictionary of canonical paths used throughout the pipeline.
 
-    Returns:
-        Un dictionnaire de chemins **absolus** :
-        PROJECT_ROOT, SRC_DIR, PIPELINE_DIR, TOOLS_DIR, DATA_DIR, RAW_DATA_DIR,
-        CATALOG_DIR, PROCESSED_DIR, MODELS_DIR, REPORTS_DIR, NOTEBOOKS_DIR, LOGS_DIR.
+    Parameters
+    ----------
+    create_missing_dirs : bool, optional
+        If True, create standard directories when they do not exist
+        (data/, data/raw/, data/catalog/, data/processed/, data/models/,
+        data/reports/, notebooks/, logs/) (default: True).
+    add_to_sys_path : bool, optional
+        If True, append ``SRC_DIR`` to ``sys.path`` so that pipeline modules
+        can be imported directly from notebooks (default: True).
+    verbose : bool, optional
+        Print informational messages to stdout (default: True).
 
-    Raises:
-        FileNotFoundError: si la racine (contenant `src/`) n’est pas trouvée.
+    Returns
+    -------
+    dict[str, str]
+        Dictionary of **absolute** paths with keys: PROJECT_ROOT, SRC_DIR,
+        PIPELINE_DIR, TOOLS_DIR, DATA_DIR, RAW_DATA_DIR, CATALOG_DIR,
+        PROCESSED_DIR, MODELS_DIR, REPORTS_DIR, NOTEBOOKS_DIR, LOGS_DIR.
 
-    Notes:
-        - La recherche part du répertoire de travail courant (`os.getcwd()`),
-          puis remonte jusqu’à trouver un dossier `src/`.
+    Raises
+    ------
+    FileNotFoundError
+        If no parent directory containing a ``src/`` folder is found.
+
+    Examples
+    --------
+    >>> paths = setup_project_env(verbose=False)
+    >>> paths["RAW_DATA_DIR"]
+    '/home/user/AstroSpectro/data/raw'
     """
     project_root = Path(os.getcwd()).resolve()
     while not (project_root / "src").is_dir():
         parent = project_root.parent
         if parent == project_root:
             raise FileNotFoundError(
-                "Impossible de localiser la racine du projet (dossier 'src' introuvable)."
+                "Cannot locate project root: no 'src' directory found in any parent."
             )
         project_root = parent
 
-    # Construction des chemins standards
+    # Build canonical directory paths
     paths: Dict[str, str] = {
         "PROJECT_ROOT": str(project_root),
         "SRC_DIR": str(project_root / "src"),
@@ -154,15 +162,15 @@ def setup_project_env(
         sys.path.append(paths["SRC_DIR"])
 
     if verbose:
-        print(f"[INFO] Racine du projet détectée : {paths['PROJECT_ROOT']}")
+        print(f"[INFO] Project root detected: {paths['PROJECT_ROOT']}")
         if add_to_sys_path:
-            print("[INFO] Dossier 'src' ajouté au sys.path.")
+            print("[INFO] 'src' directory added to sys.path.")
 
     return paths
 
 
 # ---------------------------------------------------------------------
-# 2) Variables d’environnement
+# 2) Environment variables
 # ---------------------------------------------------------------------
 
 
@@ -172,39 +180,51 @@ def load_env_vars(
     prefix: str = "GAIA_",
 ) -> Dict[str, str]:
     """
-    Charge un fichier `.env` et retourne les variables filtrées par préfixe.
+    Load a ``.env`` file and return variables filtered by prefix.
 
-    Args:
-        env_file_path: Chemin explicite du `.env`. Si None, on prend
-            `<PROJECT_ROOT>/.env` (en remontant automatiquement la racine).
-        prefix: Préfixe pour filtrer les variables retournées (ex. 'GAIA_').
-            Utiliser `prefix=""` pour retourner toutes les variables du `.env`.
+    Parameters
+    ----------
+    env_file_path : str, os.PathLike, or None, optional
+        Explicit path to the ``.env`` file. If None, the file is located
+        automatically at ``<PROJECT_ROOT>/.env`` (default: None).
+    prefix : str, optional
+        Only return variables whose names start with this prefix.
+        Use ``prefix=""`` to return all loaded variables (default: ``"GAIA_"``).
 
-    Returns:
-        Dictionnaire {VAR: valeur} pour les variables dont le nom commence
-        par `prefix`.
+    Returns
+    -------
+    dict[str, str]
+        Mapping of environment variable names to their values.
 
-    Raises:
-        FileNotFoundError: si le fichier `.env` n’existe pas.
+    Raises
+    ------
+    FileNotFoundError
+        If the ``.env`` file does not exist at the resolved path.
+
+    Examples
+    --------
+    >>> env = load_env_vars(prefix="GAIA_")
+    >>> env["GAIA_USER"]
+    'my_gaia_username'
     """
     if env_file_path is None:
-        # Détecte la racine comme dans setup_project_env()
+        # Detect root the same way as setup_project_env()
         root = Path(os.getcwd()).resolve()
         while not (root / "src").is_dir():
             parent = root.parent
             if parent == root:
                 raise FileNotFoundError(
-                    "Impossible de localiser la racine du projet pour trouver le fichier .env."
+                    "Cannot locate project root to find the .env file."
                 )
             root = parent
         env_file_path = root / ".env"
 
     env_path = Path(env_file_path)
     if not env_path.exists():
-        raise FileNotFoundError(f"Fichier .env introuvable : {env_path}")
+        raise FileNotFoundError(f".env file not found: {env_path}")
 
     load_dotenv(env_path)
-    print(f"[INFO] Variables d'environnement chargées depuis {env_path}")
+    print(f"[INFO] Environment variables loaded from {env_path}")
 
     if prefix:
         return {k: v for k, v in os.environ.items() if k.startswith(prefix)}
@@ -212,49 +232,61 @@ def load_env_vars(
 
 
 # ---------------------------------------------------------------------
-# 3) Aides fichiers
+# 3) File helpers
 # ---------------------------------------------------------------------
 
 
 def latest_file(directory: str | os.PathLike, pattern: str) -> str | None:
     """
-    Retourne le fichier le plus récent qui matche un *glob pattern*.
+    Return the most recently modified file matching a glob pattern.
 
-    Args:
-        directory: Dossier à parcourir.
-        pattern: Motif de recherche type `glob` (ex.: `'features_*.csv'`).
+    Parameters
+    ----------
+    directory : str or os.PathLike
+        Directory to search.
+    pattern : str
+        Glob pattern to match (e.g., ``'features_*.csv'``).
 
-    Returns:
-        Chemin (str) du fichier le plus récent, ou `None` si aucun match.
+    Returns
+    -------
+    str or None
+        Absolute path of the most recent matching file, or None if no match.
 
-    Exemple:
-        >>> latest_file("data/reports", "features_*.csv")
-        'data/reports/features_20250101T101500Z.csv'
+    Examples
+    --------
+    >>> latest_file("data/reports", "features_*.csv")
+    'data/reports/features_20250101T101500Z.csv'
     """
     p = Path(directory)
     try:
         matches = list(p.glob(pattern))
         if not matches:
             return None
-        # Tri par date de modification décroissante
+        # Sort by modification time, most recent first
         matches.sort(key=lambda f: f.stat().st_mtime, reverse=True)
         return str(matches[0])
     except Exception:
-        # Une erreur d'I/O ne doit pas faire planter l'appelant
+        # I/O errors should not crash the caller
         return None
 
 
 def md5sum(path: str | os.PathLike, chunk_size: int = 1 << 20) -> str:
     """
-    Calcule le hash MD5 d’un fichier (utile pour tracer exactement
-    quel fichier a servi à l’entraînement d’un modèle, etc.).
+    Compute the MD5 hash of a file.
 
-    Args:
-        path: Chemin du fichier.
-        chunk_size: Taille des blocs lus (par défaut 1 MiB).
+    Useful for tracing exactly which file was used for training a model.
 
-    Returns:
-        Empreinte MD5 hexadécimale (32 caractères).
+    Parameters
+    ----------
+    path : str or os.PathLike
+        Path to the file.
+    chunk_size : int, optional
+        Read block size in bytes (default: 1 MiB).
+
+    Returns
+    -------
+    str
+        Hexadecimal MD5 digest (32 characters).
     """
     h = hashlib.md5()
     with open(path, "rb") as f:
@@ -267,44 +299,41 @@ def safe_sigma_from_invvar(
     invvar: np.ndarray, *, bad_to_inf: bool = True
 ) -> np.ndarray:
     """
-    Convertit une carte d'inverse-variance (invvar) en incertitudes 1-sigma
-    robustes, en neutralisant les valeurs invalides/contraintes qui déclenchent
-    sinon des avertissements ``sqrt`` côté Astropy.
+    Convert an inverse-variance array to robust 1-sigma uncertainties.
 
-    Notes
-    -----
-    - Pour tout pixel avec invvar > 0 et fini → sigma = 1 / sqrt(invvar).
-    - Pour tout pixel NaN/Inf ou invvar <= 0 → sigma = +inf (par défaut),
-      ce qui revient à *ignorer* ces points dans les algos pondérés.
-      Mettre ``bad_to_inf=False`` pour renvoyer NaN à la place (rarement utile).
-    - Préserve la forme d'entrée et renvoie un tableau ``float64``.
+    Neutralizes invalid entries (NaN, Inf, non-positive) that would otherwise
+    trigger ``sqrt`` warnings in Astropy/specutils.
 
     Parameters
     ----------
     invvar : np.ndarray
-        Tableau d'inverse-variance par pixel (mêmes dimensions que le flux).
+        Inverse-variance per pixel (same shape as the flux array).
     bad_to_inf : bool, optional
-        Si True (défaut), les points invalides reçoivent ``np.inf`` (pondération nulle).
-        Sinon, ils reçoivent ``np.nan``.
+        If True (default), invalid pixels receive ``np.inf`` (zero weighting
+        in weighted algorithms). Set to False for ``np.nan`` instead.
 
     Returns
     -------
     sigma : np.ndarray
-        Incertitudes 1-sigma prêtes pour ``StdDevUncertainty`` (Astropy).
+        1-sigma uncertainties suitable for ``StdDevUncertainty`` (Astropy).
+
+    Notes
+    -----
+    - For pixels where invvar > 0 and finite: sigma = 1 / sqrt(invvar).
+    - For invalid pixels: sigma = +inf (default) or NaN.
+    - The output is always ``float64`` and preserves the input shape.
 
     Examples
     --------
-    >>> import numpy as np
-    >>> from utils import safe_sigma_from_invvar
     >>> invvar = np.array([4.0, 0.25, 0.0, np.nan])
     >>> safe_sigma_from_invvar(invvar)
     array([0.5 , 2.  ,  inf,  inf])
     """
     invvar = np.asarray(invvar, dtype=float)
 
-    # Marque les entrées non finies ou non strictement positives comme "mauvaises"
+    # Mark non-finite or non-positive entries as invalid
     bad = ~np.isfinite(invvar) | (invvar <= 0.0)
-    # Copie locale pour éviter les surprises si l'appelant réutilise invvar ensuite
+    # Local copy to avoid side effects on the caller's array
     invvar = invvar.copy()
     invvar[bad] = 0.0
 
@@ -317,7 +346,7 @@ def safe_sigma_from_invvar(
 
 
 # ---------------------------------------------------------------------
-# 4) Aides spectroscopiques
+# 4) Spectroscopic helpers
 # ---------------------------------------------------------------------
 
 
@@ -325,23 +354,28 @@ def sanitize_invvar(
     invvar: "npt.ArrayLike | np.ndarray", min_val: float = 1e-12
 ) -> np.ndarray:
     """
-    Nettoie un tableau d'inverse-variance pour un usage sûr dans `sqrt()`.
+    Clean an inverse-variance array for safe use in ``sqrt()``.
 
-    Opérations réalisées :
-      - conversion en float,
-      - remplacement des NaN/Inf/valeurs <= 0 par 0,
-      - clipping final à `[min_val, +inf)`.
+    Replaces NaN, Inf, and non-positive values with zero, then clips the
+    result to ``[min_val, +inf)``.
 
-    Args:
-        invvar: Tableau inverse-variance d'entrée.
-        min_val: Valeur minimale après clipping (évite 0 strict et négatifs).
+    Parameters
+    ----------
+    invvar : array-like
+        Input inverse-variance array.
+    min_val : float, optional
+        Floor value after clipping, preventing strict zero and negatives
+        (default: 1e-12).
 
-    Returns:
-        `np.ndarray` float nettoyé.
+    Returns
+    -------
+    np.ndarray
+        Cleaned float array, safe for downstream sqrt operations.
 
-    Notes:
-        Ce comportement reproduit ce que tu utilises déjà dans le pipeline,
-        en centralisant la logique ici.
+    Examples
+    --------
+    >>> sanitize_invvar(np.array([0.0, -1.0, np.nan, 4.0]))
+    array([1.e-12, 1.e-12, 1.e-12, 4.e+00])
     """
     inv = np.asarray(invvar, dtype=float)
     bad = ~np.isfinite(inv) | (inv <= 0)
@@ -354,14 +388,24 @@ def make_stddev_uncertainty_from_invvar(
     invvar: "npt.ArrayLike | np.ndarray", min_val: float = 1e-12
 ) -> StdDevUncertainty:
     """
-    Construit une `StdDevUncertainty` (écarts-types) à partir d'une inverse-variance.
+    Build an Astropy ``StdDevUncertainty`` from an inverse-variance array.
 
-    Args:
-        invvar: Tableau inverse-variance (sera nettoyé via `sanitize_invvar`).
-        min_val: Valeur minimale pour `sanitize_invvar`.
+    Parameters
+    ----------
+    invvar : array-like
+        Inverse-variance array (sanitized internally via ``sanitize_invvar``).
+    min_val : float, optional
+        Floor value for ``sanitize_invvar`` (default: 1e-12).
 
-    Returns:
-        `StdDevUncertainty` prêt à être passé à `specutils`/`astropy`.
+    Returns
+    -------
+    StdDevUncertainty
+        Standard-deviation uncertainty ready for specutils / astropy.
+
+    Examples
+    --------
+    >>> unc = make_stddev_uncertainty_from_invvar(invvar_array)
+    >>> spectrum = Spectrum(flux=flux * u.adu, spectral_axis=wl * u.AA, uncertainty=unc)
     """
     inv = sanitize_invvar(invvar, min_val)
     with np.errstate(invalid="ignore", divide="ignore"):
@@ -370,30 +414,34 @@ def make_stddev_uncertainty_from_invvar(
 
 
 # ---------------------------------------------------------------------
-# 5) Compatibilité modèle / features
+# 5) Model / feature compatibility
 # ---------------------------------------------------------------------
 
 
 def check_model_compat(clf, df: pd.DataFrame) -> Tuple[List[str], List[str]]:
     """
-    Compare les colonnes numériques présentes dans `df` aux features
-    attendues par le modèle (attribut `feature_names_used`).
+    Compare DataFrame columns to the features expected by a trained model.
 
-    Args:
-        clf: Modèle entraîné possédant l’attribut `feature_names_used`
-             (ex.: `SpectralClassifier`).
-        df: DataFrame de features (colonnes numériques).
+    Parameters
+    ----------
+    clf : object
+        Trained model exposing a ``feature_names_used`` attribute
+        (e.g., ``SpectralClassifier``).
+    df : pd.DataFrame
+        Feature DataFrame with numeric columns.
 
-    Returns:
-        `(missing, extra)` :
-          - `missing`: features attendues par le modèle mais absentes de `df`,
-          - `extra`  : colonnes numériques présentes dans `df` mais non
-            utilisées par le modèle.
+    Returns
+    -------
+    missing : list[str]
+        Features expected by the model but absent from ``df``.
+    extra : list[str]
+        Numeric columns in ``df`` not used by the model.
 
-    Exemple:
-        >>> missing, extra = check_model_compat(clf, features_df)
-        >>> if missing:
-        ...     print("Colonnes manquantes:", missing)
+    Examples
+    --------
+    >>> missing, extra = check_model_compat(clf, features_df)
+    >>> if missing:
+    ...     print("Missing columns:", missing)
     """
     expected = set(getattr(clf, "feature_names_used", []))
     present = {c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])}
@@ -403,20 +451,25 @@ def check_model_compat(clf, df: pd.DataFrame) -> Tuple[List[str], List[str]]:
 
 
 # ---------------------------------------------------------------------
-# 6) Petits helpers de confort (fichiers, logs, affichage)
+# 6) Convenience helpers (files, logs, display)
 # ---------------------------------------------------------------------
 
 
 def ensure_dir(path: str | os.PathLike, *, parents: bool = True) -> Path:
     """
-    Crée un dossier s'il n'existe pas (équivalent sûr à mkdir -p).
+    Create a directory if it does not exist (equivalent to ``mkdir -p``).
 
-    Args:
-        path: Chemin du dossier à garantir.
-        parents: Crée les parents si nécessaire.
+    Parameters
+    ----------
+    path : str or os.PathLike
+        Directory path to ensure.
+    parents : bool, optional
+        Create parent directories as needed (default: True).
 
-    Returns:
-        Path vers le dossier (toujours existant après l'appel).
+    Returns
+    -------
+    Path
+        Path object for the directory (guaranteed to exist after the call).
     """
     p = Path(path)
     p.mkdir(parents=parents, exist_ok=True)
@@ -425,18 +478,23 @@ def ensure_dir(path: str | os.PathLike, *, parents: bool = True) -> Path:
 
 def utc_now_tag(*, with_z: bool = True, ms: bool = False) -> str:
     """
-    Génère un tag horodaté UTC pour nommer fichiers/logs.
+    Generate a UTC timestamp tag for naming files and logs.
 
-    Args:
-        with_z: Ajoute le suffixe 'Z' (UTC) à la fin.
-        ms: Inclut les millisecondes.
+    Parameters
+    ----------
+    with_z : bool, optional
+        Append a 'Z' suffix indicating UTC (default: True).
+    ms : bool, optional
+        Include milliseconds in the tag (default: False).
 
-    Returns:
-        Chaîne style 'YYYYMMDDTHHMMSSZ' ou 'YYYYMMDDTHHMMSSmmmZ'.
+    Returns
+    -------
+    str
+        Timestamp string, e.g., ``'20250915T152727Z'`` or ``'20250915T152727123Z'``.
     """
     now = datetime.now(timezone.utc)
     if ms:
-        s = now.strftime("%Y%m%dT%H%M%S%f")[:-3]  # garde millisecondes
+        s = now.strftime("%Y%m%dT%H%M%S%f")[:-3]  # keep milliseconds
     else:
         s = now.strftime("%Y%m%dT%H%M%S")
     return f"{s}Z" if with_z else s
@@ -444,10 +502,24 @@ def utc_now_tag(*, with_z: bool = True, ms: bool = False) -> str:
 
 def sizeof_fmt(num: int | float, suffix: str = "B") -> str:
     """
-    Formate une taille en octets de façon lisible (KiB, MiB, ...).
+    Format a byte size as a human-readable string (KiB, MiB, etc.).
 
-    Exemple:
-        >>> sizeof_fmt(1536000)  # 1.46 MiB
+    Parameters
+    ----------
+    num : int or float
+        Size in bytes.
+    suffix : str, optional
+        Unit suffix (default: ``"B"``).
+
+    Returns
+    -------
+    str
+        Formatted size string.
+
+    Examples
+    --------
+    >>> sizeof_fmt(1536000)
+    '1.46 MiB'
     """
     num = float(num)
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
