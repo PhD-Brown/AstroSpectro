@@ -2575,9 +2575,15 @@ class AstroVisualizer:
             except Exception:
                 explainer = shap.Explainer(model, X_bg)
         elif mode == "kernel":
-            # kernel explainer attend une fonction
-            f = pipe.predict_proba if hasattr(pipe, "predict_proba") else pipe.predict
-            explainer = shap.KernelExplainer(f, X_bg)
+
+            def model_predict(X):
+                return (
+                    pipe.predict_proba(X)
+                    if hasattr(pipe, "predict_proba")
+                    else pipe.predict(X)
+                )
+
+            explainer = shap.KernelExplainer(model_predict, X_bg)
         elif mode == "permutation":
             explainer = shap.Explainer(model, X_bg, algorithm="permutation")
         else:
@@ -2634,15 +2640,34 @@ class AstroVisualizer:
         # 2) Alignement pipeline (imputer/scaler/selector)
         Xt, names_for_plot = self._prepare_for_model(X_df, clf)
 
-        # 3) Explainer SHAP
-        mode = (explainer_mode or "auto").lower()
+        # 3) Explainer SHAP - VERSION SIMPLIFIÉE
+        # TreeExplainer pour XGBoost (utilise les données déjà transformées)
+
+        # Extraire le modèle XGBoost brut
         try:
-            explainer, _ = self._build_shap_explainer(
-                pipe=pipe, model=model_core, X_df=X_df, mode=mode
-            )
+            xgb_model = pipe.named_steps["clf"]
+            if hasattr(
+                xgb_model, "base_estimator"
+            ):  # Si wrapper (ThresholdTuned, etc.)
+                xgb_model = xgb_model.base_estimator
+            if hasattr(xgb_model, "calibrated_classifiers_"):  # Si calibration
+                xgb_model = xgb_model.calibrated_classifiers_[0].estimator
         except Exception as e:
-            print(f"[!] Explainer '{mode}' indisponible ({e}). Bascule permutation.")
-            explainer = shap.Explainer(pipe, Xt, algorithm="permutation")
+            print(f"[!] Impossible d'extraire XGBoost: {e}")
+            xgb_model = model_core
+
+        # TreeExplainer (rapide et stable pour XGBoost)
+        try:
+            explainer = shap.TreeExplainer(xgb_model)
+            print(f"✓ TreeExplainer créé pour {type(xgb_model).__name__}")
+        except Exception as e:
+            print(f"[!] Erreur TreeExplainer: {e}")
+            return None
+
+        # 4) Calculer SHAP values sur les données DÉJÀ TRANSFORMÉES (Xt)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=RuntimeWarning)
+            sv = explainer(Xt)
 
         # 4) SHAP values (API homogène : appel direct)
         with warnings.catch_warnings():
