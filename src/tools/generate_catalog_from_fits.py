@@ -143,7 +143,7 @@ def _row_from_header(hdr: fits.Header) -> dict:
         # General metadata
         "filename_original": hdr.get("FILENAME", UNKNOWN),
         "author": hdr.get("AUTHOR", UNKNOWN),
-        "data_version": hdr.get("DATA_VRS", UNKNOWN),
+        "data_version": hdr.get("DATA_V", UNKNOWN),
         "date_creation": hdr.get("DATE", UNKNOWN),
         # Telescope / site
         "telescope": hdr.get("TELESCOP", UNKNOWN),
@@ -170,7 +170,7 @@ def _row_from_header(hdr: fits.Header) -> dict:
         "magnitude_z": hdr.get("MAG5", UNKNOWN),
         # Reduction parameters
         "heliocentric_correction": hdr.get("HELIO", UNKNOWN),
-        "radial_velocity_corr": hdr.get("VELDISP", UNKNOWN),
+        "radial_velocity_corr": hdr.get("HELIO_RV", UNKNOWN),
         "seeing": hdr.get("SEEING", UNKNOWN),
         # Pipeline analysis
         "redshift": hdr.get("Z", UNKNOWN),

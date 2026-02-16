@@ -448,6 +448,7 @@ class MasterPipeline:
         processed_dir: str,
         models_dir: str,
         reports_dir: str,
+        use_wandb: bool = False,
     ) -> None:
         """Initialise the orchestrator and prepare internal pipeline state.
 
@@ -523,6 +524,7 @@ class MasterPipeline:
 
             self._runs_out = nullcontext()
         self._last_run_ts: Optional[str] = None
+        self.use_wandb = use_wandb
 
     # --------------------- Public API (Notebook) ---------------------
 
@@ -1075,6 +1077,7 @@ class MasterPipeline:
         # n_jobs pour les learners
         n_jobs: int | None = None,
         exclude_classes: list[str] | None = None,
+        use_wandb: bool = False,
         # Job count for the estimator (XGB/RF) and XGB tree method
         **kwargs: Any,
     ) -> Optional[SpectralClassifier]:
@@ -1385,6 +1388,7 @@ class MasterPipeline:
                     exp_name=exp_name,
                     notes=notes,
                     fi_n_repeats=fi_n_repeats,
+                    use_wandb=use_wandb,
                 )
 
                 # Record the latest run timestamp and refresh the runs table
@@ -1972,6 +1976,7 @@ class MasterPipeline:
         save_calib = _W.Checkbox(value=False, description="save_calibration")
         save_feat = _W.Checkbox(value=True, description="save_feature_importance")
         export_pred = _W.Checkbox(value=False, description="export_test_predictions")
+        use_wandb = _W.Checkbox(value=False, description="Log to W&B")
         fi_nrep = _W.IntSlider(
             value=10, min=3, max=50, step=1, description="FI n_repeats"
         )
@@ -1983,6 +1988,7 @@ class MasterPipeline:
                 save_feat,
                 fi_nrep,
                 export_pred,
+                use_wandb,
             ]
         )
         # --- Preset configuration and experiment name ----------------
@@ -2365,6 +2371,7 @@ class MasterPipeline:
                 "save_feature_importance": save_feat.value,
                 "export_test_predictions": export_pred.value,
                 "fi_n_repeats": int(fi_nrep.value),
+                "use_wandb": use_wandb.value,
                 # Notes
                 "notes": notes_widget.value,
                 "exp_name": (exp_name_widget.value or None),
@@ -2831,6 +2838,7 @@ class MasterPipeline:
         exp_name: str | None = None,
         notes: str = "",
         fi_n_repeats: int = 10,
+        use_wandb: bool = False,
     ) -> str | None:
         """Save the model, compute metrics, and generate session artefacts.
 
@@ -2866,6 +2874,8 @@ class MasterPipeline:
             Free-text notes for the JSON report.
         fi_n_repeats : int
             Permutation-importance repeat count.
+        use_wandb : bool
+            Enable Weights & Biases logging for this run.
 
         Returns
         -------
@@ -3457,6 +3467,22 @@ class MasterPipeline:
         except Exception as e:
             print(f"  (warning) Session report generation failed: {e}")
 
+        # === W&B LOGGING (NON-INVASIVE) ===
+        if use_wandb:
+            try:
+                self._log_to_wandb(
+                    session_report=session_report,
+                    meta=meta,
+                    run_dir=run_dir,
+                    ts=ts,
+                    model_path=model_path,
+                    clf=clf,
+                    exp_name=exp_name,
+                )
+            except Exception as e:
+                print(f"⚠️  W&B logging failed (non-critical): {e}")
+                print("   Training completed successfully, continuing...")
+
         # --- CELL SUMMARY DISPLAY ---
         try:
             from sklearn.metrics import balanced_accuracy_score
@@ -3516,3 +3542,277 @@ class MasterPipeline:
 
         print("\nSEARCH SESSION COMPLETE")
         return report_path
+
+    def _log_to_wandb(
+        self,
+        session_report: dict,
+        meta: dict,
+        run_dir: str,
+        ts: str,
+        model_path: str | None,
+        clf: SpectralClassifier,
+        exp_name: str | None,
+    ) -> None:
+        """Log training session to Weights & Biases.
+
+        Reads the in-memory session report and metadata, logs all
+        metrics, uploads existing PNG files, and saves the model
+        artifact.  This method is NON-INVASIVE: it reuses all
+        existing outputs and generates nothing new.
+
+        Parameters
+        ----------
+        session_report : dict
+            Session report dictionary (already saved to disk).
+        meta : dict
+            Model metadata dictionary.
+        run_dir : str
+            Path to the run artefact directory.
+        ts : str
+            Timestamp string for the current run.
+        model_path : str or None
+            Path to the serialised model file.
+        clf : SpectralClassifier
+            Trained classifier instance.
+        exp_name : str or None
+            Experiment name.
+        """
+        from pipeline.wandb_config import should_use_wandb, init_wandb_run
+
+        if not should_use_wandb(use_wandb=True):
+            return
+
+        import wandb
+
+        model_lower = clf.model_type.lower()
+        n_selected = len(meta.get("selected_features_") or [])
+        n_candidate = max(meta.get("n_candidate_features", 0) or 0, 1)
+
+        # --- Config ---
+        run_config = {
+            # Model
+            "model_type": meta.get("model_type"),
+            "prediction_target": meta.get("prediction_target"),
+            # Features
+            "n_candidate_features": meta.get("n_candidate_features"),
+            "n_selected_features": n_selected,
+            "feature_selection_ratio": round(n_selected / n_candidate, 4),
+            "selected_features": meta.get("selected_features_"),
+            # Dataset
+            "training_set_size": session_report.get("training_set_size"),
+            "test_set_size": session_report.get("test_set_size"),
+            "total_spectra": session_report.get("total_spectra_processed"),
+            # Classes
+            "n_classes": len(session_report.get("class_labels", [])),
+            "class_labels": session_report.get("class_labels"),
+            # Versions
+            "python_version": meta.get("python"),
+            "numpy_version": meta.get("numpy"),
+            "scikit_learn_version": meta.get("scikit_learn"),
+            "xgboost_version": meta.get("xgboost"),
+            # Experiment
+            "exp_name": meta.get("exp_name", exp_name),
+            "timestamp": ts,
+            "trained_on_file": meta.get("trained_on_file"),
+        }
+        best_params = meta.get("best_params_")
+        if best_params and isinstance(best_params, dict):
+            for key, val in best_params.items():
+                run_config[f"hp/{key}"] = val
+        class_filter = session_report.get("class_filter")
+        if class_filter and isinstance(class_filter, dict):
+            run_config["classes_excluded"] = class_filter.get("classes", [])
+
+        # --- Tags ---
+        macro_f1 = (
+            session_report.get("classification_report", {})
+            .get("macro avg", {})
+            .get("f1-score", 0)
+        )
+        tags = [
+            clf.model_type,
+            meta.get("prediction_target", "main_class"),
+            f"acc_{int(session_report.get('accuracy', 0) * 100)}",
+            f"f1_{int((macro_f1 or 0) * 100)}",
+            f"feat_{n_selected}",
+            exp_name if exp_name else "unnamed",
+        ]
+        tags = [t for t in tags if t and str(t).strip()]
+
+        # --- Init run ---
+        run_name = f"{model_lower}-{ts}"
+        run = init_wandb_run(name=run_name, config=run_config, tags=tags)
+
+        # --- Notes / description / summary ---
+        notes_text = session_report.get("notes", "")
+        if notes_text and str(notes_text).strip():
+            run.notes = str(notes_text)
+
+        exp_label = exp_name if exp_name else "Unnamed"
+        acc_pct = int(session_report.get("accuracy", 0) * 100)
+        run.description = (
+            f"{exp_label} | {clf.model_type} | {acc_pct}% acc | {n_selected} feat"
+        )
+
+        run.summary.update(
+            {
+                "best_accuracy": session_report.get("accuracy"),
+                "best_f1_macro": macro_f1,
+                "best_roc_auc": (session_report.get("roc_auc") or {}).get("macro"),
+                "n_features_used": n_selected,
+            }
+        )
+
+        # =============== METRICS ===============
+        metrics: dict = {}
+
+        # --- Main ---
+        for k in ("accuracy", "balanced_accuracy"):
+            if k in session_report:
+                metrics[k] = float(session_report[k])
+
+        # --- ROC AUC (global + per-class) ---
+        roc = session_report.get("roc_auc")
+        if isinstance(roc, dict):
+            for key, val in roc.items():
+                if isinstance(val, (int, float)):
+                    metrics[f"roc_auc/{key}"] = float(val)
+
+        # --- Average Precision (per-class + mean) ---
+        avg_prec = session_report.get("avg_precision")
+        if isinstance(avg_prec, dict):
+            ap_vals = []
+            for key, val in avg_prec.items():
+                if isinstance(val, (int, float)):
+                    metrics[f"avg_precision/{key}"] = float(val)
+                    ap_vals.append(float(val))
+            if ap_vals:
+                metrics["avg_precision/mean"] = float(np.mean(ap_vals))
+
+        # --- Brier Score (per-class + mean) ---
+        brier = session_report.get("brier_score")
+        if isinstance(brier, dict):
+            br_vals = []
+            for key, val in brier.items():
+                if isinstance(val, (int, float)):
+                    metrics[f"brier/{key}"] = float(val)
+                    br_vals.append(float(val))
+            if br_vals:
+                metrics["brier/mean"] = float(np.mean(br_vals))
+
+        # --- Classification Report (F1, Precision, Recall per class + avgs) ---
+        cr = session_report.get("classification_report")
+        if isinstance(cr, dict):
+            for cls_name, row in cr.items():
+                if not isinstance(row, dict):
+                    continue
+                if cls_name == "accuracy":
+                    continue
+                prefix = cls_name.replace(" ", "_")
+                for m in ("f1-score", "precision", "recall", "support"):
+                    if m in row:
+                        safe_m = m.replace("-", "_")
+                        metrics[f"{prefix}/{safe_m}"] = (
+                            int(row[m]) if m == "support" else float(row[m])
+                        )
+
+        # --- Confusion Matrix derived stats ---
+        cm = session_report.get("confusion_matrix")
+        labels = session_report.get("class_labels", [])
+        if cm and isinstance(cm, list):
+            cm_arr = np.array(cm)
+            metrics["cm/correct"] = int(np.trace(cm_arr))
+            metrics["cm/incorrect"] = int(cm_arr.sum() - np.trace(cm_arr))
+            for i, cls in enumerate(labels):
+                if i < cm_arr.shape[0]:
+                    metrics[f"cm/tp_{cls}"] = int(cm_arr[i, i])
+                    metrics[f"cm/fp_{cls}"] = int(cm_arr[:, i].sum() - cm_arr[i, i])
+                    metrics[f"cm/fn_{cls}"] = int(cm_arr[i, :].sum() - cm_arr[i, i])
+
+        # --- Dataset / feature counts ---
+        metrics["dataset/n_train"] = session_report.get("training_set_size", 0)
+        metrics["dataset/n_test"] = session_report.get("test_set_size", 0)
+        metrics["dataset/n_spectra"] = session_report.get("total_spectra_processed", 0)
+        metrics["features/selected"] = n_selected
+        metrics["features/candidate"] = meta.get("n_candidate_features", 0)
+
+        if metrics:
+            wandb.log(metrics)
+            print(f"  > Logged {len(metrics)} metrics to W&B")
+
+        # =============== IMAGES ===============
+        png_map = {
+            "confusion_matrix": f"confusion_matrix_{model_lower}_{ts}.png",
+            "calibration": f"calibration_{model_lower}_{ts}.png",
+            "roc_curves": f"roc_{model_lower}_{ts}.png",
+            "pr_curves": f"pr_{model_lower}_{ts}.png",
+            "feature_importance": f"feature_importance_{model_lower}_{ts}.png",
+        }
+        for label, filename in png_map.items():
+            img_path = os.path.join(run_dir, filename)
+            if os.path.isfile(img_path):
+                wandb.log({label: wandb.Image(img_path)})
+
+        # =============== PREDICTIONS TABLE ===============
+        try:
+            pred_path = os.path.join(
+                run_dir, f"test_predictions_{model_lower}_{ts}.csv"
+            )
+            if os.path.isfile(pred_path):
+                df_pred = pd.read_csv(pred_path)
+                if len(df_pred) > 1000:
+                    df_pred = df_pred.sample(n=1000, random_state=42)
+                wandb.log({"predictions_sample": wandb.Table(dataframe=df_pred)})
+        except Exception:
+            pass
+
+        # =============== CUSTOM CHARTS ===============
+        try:
+            if isinstance(cr, dict) and labels:
+                f1_data = []
+                pr_data = []
+                for cls in labels:
+                    row = cr.get(cls)
+                    if isinstance(row, dict):
+                        f1_data.append([cls, row.get("f1-score", 0)])
+                        pr_data.append(
+                            [cls, row.get("precision", 0), row.get("recall", 0)]
+                        )
+                if f1_data:
+                    t = wandb.Table(data=f1_data, columns=["class", "f1_score"])
+                    wandb.log(
+                        {
+                            "f1_by_class": wandb.plot.bar(
+                                t, "class", "f1_score", title="F1 Score by Class"
+                            )
+                        }
+                    )
+                if pr_data:
+                    t = wandb.Table(
+                        data=pr_data, columns=["class", "precision", "recall"]
+                    )
+                    wandb.log(
+                        {
+                            "precision_vs_recall": wandb.plot.scatter(
+                                t,
+                                "precision",
+                                "recall",
+                                title="Precision vs Recall by Class",
+                            )
+                        }
+                    )
+        except Exception:
+            pass
+
+        # =============== MODEL ARTIFACT ===============
+        if model_path and os.path.isfile(model_path):
+            artifact = wandb.Artifact(
+                name=f"model-{model_lower}-{ts}",
+                type="model",
+                description=f"{clf.model_type} trained on {ts}",
+            )
+            artifact.add_file(model_path)
+            run.log_artifact(artifact)
+
+        wandb.finish()
+        print(f"  > W&B run logged: {run_name}")
