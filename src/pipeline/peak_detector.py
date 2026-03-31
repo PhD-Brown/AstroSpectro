@@ -201,13 +201,20 @@ class PeakDetector:
             Same keys as ``self.target_lines``.  Values are
             ``(detected_wavelength, prominence)`` or ``None``.
         """
-        idx, props = self.detect_peaks(wavelength, flux)
+        wl = np.asarray(wavelength, dtype=float)
+        fx = np.asarray(flux, dtype=float)
+
+        # Apply the same NaN/Inf mask as detect_peaks to avoid index misalignment
+        good = np.isfinite(wl) & np.isfinite(fx)
+        wl_clean = wl[good]
+        fx_clean = fx[good]
+
+        idx, props = self.detect_peaks(wl_clean, fx_clean)
         if idx.size == 0:
             # Preserve the key order of target_lines
             return {name: None for name in self.target_lines}
 
-        wl = np.asarray(wavelength, dtype=float)
-        peak_wl = wl[idx]
+        peak_wl = wl_clean[idx]
         return self.match_known_lines(idx, peak_wl, props)
 
 

@@ -161,7 +161,7 @@ class DatasetBuilder:
                 try:
                     p = os.path.relpath(p, self.raw_data_dir).replace("\\", "/")
                 except Exception:
-                    # Si on ne peut pas relativiser (hors raw/), garde tel quel
+                    # If you can't put it into perspective (except for raw/), keep it as is.
                     pass
             paths.append(p)
 

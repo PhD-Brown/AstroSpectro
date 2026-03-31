@@ -50,7 +50,6 @@ Examples
 ...     search_radius_arcsec=0.5, mode="auto", ruwe_max=1.4
 ... )
 >>> stats["match_rate_pct"]
-72.5
 """
 
 from __future__ import annotations
@@ -195,6 +194,7 @@ def _bulk_crossmatch(
 
     radius_deg = float(radius_arcsec) / 3600.0
 
+    # TODO: ajouter phot_*_mean_flux_over_error pour features SNR (cf. audit V1 #7)
     gaia_cols = [
         "source_id",
         "ra AS gaia_ra",

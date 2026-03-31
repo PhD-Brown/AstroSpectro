@@ -77,7 +77,6 @@ from sklearn.metrics import (
 #  Parameter templates (base_params, grid, distributions)
 #  These dicts define default parameters and search grids for each model.
 #  They pre-fill the corresponding UI fields when a model is selected.
-
 # ================================================================
 
 # Base presets (starting parameters for each model)
@@ -526,6 +525,11 @@ class MasterPipeline:
         self._last_run_ts: Optional[str] = None
         self.use_wandb = use_wandb
 
+    @property
+    def _pending_session_path(self) -> str:
+        """Absolute path to the pending session JSON file."""
+        return os.path.join(self.catalog_dir, "session_pending.json")
+
     # --------------------- Public API (Notebook) ---------------------
 
     def select_batch(
@@ -554,7 +558,7 @@ class MasterPipeline:
         Side Effects:
             Update :attr:`current_batch` with the selected paths.
         """
-        print("\n=== STEP 1: SELECT NEW BATCH ===")
+        print("\n=== STEP 2: SELECT NEW BATCH ===")
         self.current_batch = self.builder.get_new_training_batch(
             batch_size=batch_size, strategy=strategy
         )
@@ -583,7 +587,7 @@ class MasterPipeline:
         ``master_catalog_temp.csv`` or ``master_catalog_gaia.csv`` in
         *catalog_dir* depending on the Gaia flag.
         """
-        print("\n=== STEP 2: CATALOGUE GENERATION AND ENRICHMENT ===")
+        print("\n=== STEP 3: CATALOGUE GENERATION AND ENRICHMENT ===")
         if not self.current_batch:
             print("  > Error: No batch selected. Run `select_batch` first.")
             return
@@ -607,8 +611,12 @@ class MasterPipeline:
             print(
                 f"  > Gaia: {stats.get('matched', 0)}/{stats.get('total', 0)} objects matched."
             )
+            catalog_saved_to = self.gaia_catalog_path
         else:
             self.master_catalog_df = local_df
+            catalog_saved_to = self.master_catalog_path
+
+        self._save_pending_session(catalog_path=catalog_saved_to)
 
     def process_data(self) -> Optional[pd.DataFrame]:
         """
@@ -631,12 +639,15 @@ class MasterPipeline:
             Update :attr:`features_df` and :attr:`last_features_path`.
             Write a ``features_*.csv`` file in *processed_dir*.
         """
-        print("\n=== STEP 3: DATA PROCESSING AND FEATURE EXTRACTION ===")
+        print("\n=== STEP 4: DATA PROCESSING AND FEATURE EXTRACTION ===")
         if self.master_catalog_df.empty:
-            print(
-                "  > Error: Catalogue is empty. Run `generate_and_enrich_catalog` first."
-            )
-            return None
+            # Attempt transparent restoration from a pending session
+            if not self._restore_pending_session():
+                print(
+                    "  > Error: Catalog is empty and no pending session was found.\n"
+                    "  > Please run generate_and_enrich_catalog() (Step 3) first."
+                )
+                return None
 
         pipeline = ProcessingPipeline(self.raw_data_dir, self.master_catalog_df)
         self.features_df = pipeline.run(self.current_batch)
@@ -650,9 +661,103 @@ class MasterPipeline:
             print(
                 f"\n  > Feature dataset saved to: {os.path.basename(self.last_features_path)}"
             )
+            self._clear_pending_session()
             return self.features_df
 
         return None
+
+    # ------------------------------------------------------------------
+    # Pending-session helpers
+    # Allows resuming Step 4 (process_data) without re-running the
+    # Gaia cross-match after a kernel restart.
+    # ------------------------------------------------------------------
+
+    def _save_pending_session(self, catalog_path: str) -> None:
+        """
+        Persist the current pipeline state after Step 3 completes.
+
+        Writes ``catalog_dir/session_pending.json`` containing the
+        current batch and the path to the enriched catalog CSV.
+        This file is read by :meth:`_restore_pending_session` and
+        deleted automatically by :meth:`_clear_pending_session` once
+        feature extraction succeeds.
+
+        Args:
+            catalog_path (str): Absolute path to the catalog CSV that
+                was just written (Gaia-enriched or local).
+        """
+        session = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "catalog_path": catalog_path,
+            "batch_size": len(self.current_batch),
+            "current_batch": self.current_batch,
+        }
+        try:
+            with open(self._pending_session_path, "w", encoding="utf-8") as f:
+                json.dump(session, f, indent=2)
+            print(
+                f"  > Pending session saved \u2192 {os.path.basename(self._pending_session_path)}"
+            )
+        except Exception as e:
+            print(f"  > Warning: could not save pending session: {e}")
+
+    def _restore_pending_session(self) -> bool:
+        """
+        Restore pipeline state from a previously saved pending session.
+
+        Loads ``current_batch`` and ``master_catalog_df`` from the JSON
+        file written by :meth:`_save_pending_session`.  Called
+        transparently by :meth:`process_data` when ``master_catalog_df``
+        is empty at Step 4 entry.
+
+        Returns:
+            bool: ``True`` if state was restored successfully, ``False``
+            otherwise (file missing, catalog CSV not found, JSON error).
+        """
+        if not os.path.exists(self._pending_session_path):
+            return False
+
+        try:
+            with open(self._pending_session_path, "r", encoding="utf-8") as f:
+                session = json.load(f)
+        except Exception as e:
+            print(f"  > Warning: could not read pending session: {e}")
+            return False
+
+        catalog_path = session.get("catalog_path", "")
+        if not os.path.exists(catalog_path):
+            print(
+                f"  > Warning: pending session found but catalog is missing: {catalog_path}"
+            )
+            return False
+
+        self.master_catalog_df = pd.read_csv(catalog_path, low_memory=False)
+        self.current_batch = session.get("current_batch", [])
+
+        print(
+            f"  > Pending session restored from {session.get('timestamp', 'unknown time')}"
+        )
+        print(
+            f"  > Catalog : {os.path.basename(catalog_path)} "
+            f"({len(self.master_catalog_df)} entries)"
+        )
+        print(f"  > Batch   : {len(self.current_batch)} spectra")
+        return True
+
+    def _clear_pending_session(self) -> None:
+        """
+        Delete the pending session file after a successful feature extraction.
+
+        Called automatically at the end of :meth:`process_data` when the
+        features DataFrame is non-empty.  Safe to call even if the file
+        does not exist.
+        """
+        try:
+            if os.path.exists(self._pending_session_path):
+                os.remove(self._pending_session_path)
+                print("  > Pending session cleared (extraction complete).")
+        except Exception as e:
+            print(f"  > Warning: could not clear pending session: {e}")
 
     # --- Existing feature utilities ---------------------------------
 
@@ -886,7 +991,7 @@ class MasterPipeline:
                     base = f"background-color:{c_best};"
                 if is_last and not is_best:
                     base = f"background-color:{c_last};"
-                # en plus, on met le metric en vert plus soutenu si c'est la best row
+                # In addition, we make the metric a deeper green if it is the best row.
                 if is_best and col == metric_col:
                     base = f"background-color:{c_cell}; font-weight:bold;"
                 styles.append(base)
@@ -1035,10 +1140,10 @@ class MasterPipeline:
         # split/seed
         test_size: float = 0.21,
         random_state: int = 42,
-        # grilles
+        # grids
         param_grid: dict | None = None,
         param_distributions: dict | None = None,
-        # poids & calibration
+        # weight & calibration
         use_balanced_weights: bool = True,
         calibrate_probs: bool = False,
         calibration_method: str = "sigmoid",
@@ -1054,7 +1159,7 @@ class MasterPipeline:
         knn_imputer_k: int = 5,
         scaler_type: str | None = None,
         mi_top_k: int | None = None,
-        # artefacts
+        # artifacts
         fi_n_repeats: int = 10,
         save_confusion_png: bool = False,
         save_curves_roc_pr: bool = True,
@@ -1065,19 +1170,21 @@ class MasterPipeline:
         base_params: dict | None = None,
         exp_name: str | None = None,
         notes: str = "",
-        # filtres & PCA & sampler
+        # filters & PCA & sampler
         var_threshold: float | None = None,
         corr_threshold: float | None = None,
         use_pca: bool | None = None,
         pca_components: float | int | None = None,
         sampler: str | None = None,
-        # tuning de seuils
+        # threshold tuning
         tune_thresholds: bool | None = None,
         threshold_metric: str | None = None,
-        # n_jobs pour les learners
+        # n_jobs for learners
         n_jobs: int | None = None,
         exclude_classes: list[str] | None = None,
         use_wandb: bool = False,
+        # spectro-only mode
+        spectro_only: bool = False,
         # Job count for the estimator (XGB/RF) and XGB tree method
         **kwargs: Any,
     ) -> Optional[SpectralClassifier]:
@@ -1217,6 +1324,9 @@ class MasterPipeline:
             XGBoost tree method.
         excluded_classes : list[str] or None
             Classes to exclude before training.
+        spectro_only : bool, default False
+            Ne conserver que les colonnes spectroscopiques (flux) pour
+            l'entraînement.
 
         Returns
         -------
@@ -1328,9 +1438,14 @@ class MasterPipeline:
             pca_components=pca_components,
             sampler=sampler,
             mi_top_k=mi_top_k,
-            # tuning de seuils
+            # threshold tuning
             tune_thresholds=tune_thresholds,
             threshold_metric=threshold_metric,
+            # propagation du filtre de classes au niveau du label
+            # (nécessaire pour "s", "W" qui échappent au filtre main_class)
+            exclude_classes=(exclude_classes or []) or None,
+            # spectro-only mode
+            spectro_only=spectro_only,
         )
         if not result:
             print(
@@ -1355,7 +1470,7 @@ class MasterPipeline:
                 f"\n[Feature selection] not used. {len(feature_cols_before_fs)} features total."
             )
 
-        # Sauvegarde + rapport
+        # Backup + report
         processed_files = []
         if "file_path" in self.features_df.columns:
             processed_files = (
@@ -1371,7 +1486,7 @@ class MasterPipeline:
                 return
 
             try:
-                # Journalisation & rapport : retourne le chemin du dossier du run
+                # Logging & reporting: returns the path of the run folder
                 run_dir = self._log_and_report(
                     trained_clf,
                     feature_cols_before_fs,
@@ -1544,9 +1659,9 @@ class MasterPipeline:
             except Exception:
                 return None
 
-        # --- Onglet 1 : Data & Split -------------------------------------------------
+        # --- Tab 1 : Data & Split -------------------------------------------------
 
-        # Choix de la cible : liste fixe des colonnes de classes
+        # Target selection: fixed list of class columns
         target = _W.Dropdown(
             options=["main_class", "sub_class_top25", "sub_class_bins"],
             value="main_class",
@@ -1602,7 +1717,7 @@ class MasterPipeline:
             layout=_W.Layout(width="300px"),
         )
 
-        # --- Bloc "Source des features" -------------------------------------
+        # --- “Feature source” block -------------------------------------
         feat_src = _W.Dropdown(
             options=[
                 ("In memory", "mem"),
@@ -1621,7 +1736,7 @@ class MasterPipeline:
         feat_load = _W.Button(description="Load", icon="upload")
         feat_info = _W.HTML(value="")
 
-        # --- Exclure des classes du target ---
+        # --- Exclude classes from the target ---
         exclude_txt = _W.Text(
             value="",
             placeholder="ex: B,D,W",
@@ -1752,6 +1867,7 @@ class MasterPipeline:
             description="Corr. max", min=0.90, max=0.999, step=0.001, value=0.98
         )
         use_pca = _W.Checkbox(description="PCA", value=False)
+        spectro_only = _W.Checkbox(description="Spectro only", value=False)
         pca_components = _W.FloatSlider(
             description="PCA n_comp", min=0.5, max=0.999, step=0.001, value=0.99
         )
@@ -1779,7 +1895,7 @@ class MasterPipeline:
                 base_params,
                 var_threshold,
                 corr_threshold,
-                use_pca,
+                _W.HBox([use_pca, spectro_only]),
                 pca_components,
                 sampler,
             ]
@@ -1877,11 +1993,11 @@ class MasterPipeline:
             # Early stopping enabled only when no search is active
             es.disabled = search.value is not None
             es_rounds.disabled = es.disabled
-            # Affiche/cacher les champs selon le mode de recherche
+            # Show/hide fields according to search mode
             param_grid.layout.display = "block" if search.value == "grid" else "none"
             param_dists.layout.display = "block" if search.value == "random" else "none"
             n_iter.layout.display = "block" if search.value == "random" else "none"
-            # Estimation de la taille de la grille
+            # Estimating the size of the grid
             if search.value == "grid":
                 n = _grid_size(_parse_json(param_grid))
                 grid_hint.value = f"<i>Estimated grid size: {n}</i>" if n else ""
@@ -1999,9 +2115,9 @@ class MasterPipeline:
         btn_load = _W.Button(description="Load", icon="upload")
 
         def _collect_widgets():
-            # Regroupe les widgets utiles dans un dict {nom: widget}
+            # Group useful widgets in a dictionary {name: widget}
             return {
-                # Onglet Data & Split
+                # Data & Split tab
                 "prediction_target": target,
                 "test_size": test_size,
                 "seed": seed,
@@ -2019,7 +2135,7 @@ class MasterPipeline:
                 "base_params": base_params,
                 "param_grid": param_grid,
                 "param_dists": param_dists,
-                # Onglet Recherche HP
+                # HP Search tab
                 "search": search,
                 "scoring": scoring,
                 "n_iter": n_iter,
@@ -2031,7 +2147,7 @@ class MasterPipeline:
 
         tab_presets = _W.HBox([preset_path, btn_save, btn_load])
 
-        # ==== Lancer ====
+        # ==== Run ====
         run_btn = _W.Button(
             description="Launch training",
             button_style="success",
@@ -2113,7 +2229,7 @@ class MasterPipeline:
             [add_to_batch_btn, run_batch_btn, clear_batch_btn, batch_progress]
         )
 
-        # ==== onglets globaux ====
+        # ==== global tabs ====
         tabs = _W.Tab(
             children=[
                 tab_data,
@@ -2135,7 +2251,7 @@ class MasterPipeline:
 
         display(tabs, tpl_box, notes_box, batch_box)
 
-        # Templates hyperparams (callback + dictionnaires)
+        # Hyperparameters templates (callback + dictionaries)
         def _tpl_xgb_medium():
             return {
                 "clf__gamma": [0, 0.1, 0.5, 1.0, 2.0, 5.0],
@@ -2213,11 +2329,11 @@ class MasterPipeline:
                 d = {}
             param_dists.value = json.dumps(d, indent=2)
             search.value = "random"
-            template_dropdown.value = ""  # reset visuel
+            template_dropdown.value = ""  # visual reset
 
         apply_template_btn.on_click(_apply_template)
 
-        # Estimation "nombre de fits" (et petit temps indicatif)
+        # Estimated “number of fits” (and approximate time required)
         def _estimate_fits(*args):
             try:
                 grid = json.loads(param_grid.value or "{}")
@@ -2242,7 +2358,7 @@ class MasterPipeline:
             total = combs * folds
             fits_label.value = f"<b>Estimated fits:</b> {total:,}"
 
-        # observe
+        # observer
         for w in (param_grid, param_dists, cv_folds, n_iter, search):
             w.observe(_estimate_fits, "value")
         _estimate_fits()
@@ -2252,7 +2368,7 @@ class MasterPipeline:
             # Disable n_estimators for SVM
             n_estim.disabled = model.value == "SVM"
 
-            # si SVM et qu'on a besoin de proba → forcer probability=True dans base_params
+            # if SVM and probability is needed → force probability=True in base_params
             need_proba = calibrate.value or save_rocpr.value or export_pred.value
             if model.value == "SVM" and need_proba:
                 try:
@@ -2263,7 +2379,7 @@ class MasterPipeline:
                     bp["probability"] = True
                     base_params.value = json.dumps(bp, indent=2)
 
-        # observe
+        # observer
         for w in (model, calibrate, save_rocpr, export_pred):
             w.observe(_model_context_update, "value")
         _model_context_update()
@@ -2341,10 +2457,10 @@ class MasterPipeline:
                 "weight_norm": wt_norm.value,
                 "calibrate_probs": calibrate.value,
                 "calibration_method": calib_method.value,
-                # utiliser les widgets (pas des constantes)
+                # use widgets (not constants)
                 "calibrate_holdout_size": float(calib_holdout.value),
                 "calibrate_cv": int(calib_cv.value),
-                # filtres/ PCA / sampler
+                # filters/ PCA / sampler
                 "var_threshold": (
                     None
                     if (var_threshold.value is None or var_threshold.value <= 0)
@@ -2360,7 +2476,7 @@ class MasterPipeline:
                     None if not use_pca.value else float(pca_components.value)
                 ),
                 "sampler": (None if sampler.value == "none" else sampler.value),
-                # Tuning de seuils
+                # Threshold tuning
                 "tune_thresholds": bool(tune_thresholds.value),
                 "threshold_metric": threshold_metric.value,
                 # Outputs
@@ -2372,10 +2488,11 @@ class MasterPipeline:
                 "export_test_predictions": export_pred.value,
                 "fi_n_repeats": int(fi_nrep.value),
                 "use_wandb": use_wandb.value,
-                # Notes
+                # Note
                 "notes": notes_widget.value,
                 "exp_name": (exp_name_widget.value or None),
                 "exclude_classes": _get_excluded(),
+                "spectro_only": spectro_only.value,
             }
 
             # Count numeric features (informational)
@@ -2450,7 +2567,7 @@ class MasterPipeline:
         clear_batch_btn.on_click(_on_clear_batch)
         run_batch_btn.on_click(_on_run_batch)
 
-        # Rendu du tableau des runs : style + liens cliquables
+        # Rendering of the runs table: style + clickable links
         def _render_runs_table(df):
             if df is None or df.empty:
                 display(HTML("<i>No runs found.</i>"))
@@ -2514,7 +2631,7 @@ class MasterPipeline:
                 )
             )
 
-        # === Explorer de runs =====================================================================
+        # === Explore runs =====================================================================
 
         # Widgets
         runs_refresh_btn = _W.Button(
@@ -2715,7 +2832,7 @@ class MasterPipeline:
         display(_W.HTML("<hr>"))
         display(_W.HTML("<h3>🔎 Run explorer</h3>"))
         display(runs_box)
-        # Zone d'affichage unique pour la table des runs
+        # Single display area for the run table (updated by _refresh_runs)
         display(self._runs_out)
 
         # Initial population: fill dropdown and refresh table
@@ -2732,7 +2849,7 @@ class MasterPipeline:
                 clear_output(wait=True)
                 print("Starting training...")
 
-            # 0) Verify that features are loaded
+            # 0) Verify that features are loaded (avoid starting a run with an empty dataset)
             if getattr(self, "features_df", None) is None or self.features_df.empty:
                 with out:
                     print(

@@ -503,7 +503,7 @@ class AstroVisualizer:
             },
         )
 
-        # --- Mise en page --------------------------------------------------------
+        # --- Layout --------------------------------------------------------
         controls = widgets.VBox(
             [
                 file_path_widget,
@@ -795,7 +795,7 @@ class AstroVisualizer:
             # --- Summary: predicted class ---
             display(Markdown(f"**Predicted spectral class (ML):** `{predicted_label}`"))
 
-            # --- Historique de session + export rapport HTML ---
+            # --- Session history + HTML report export ---
             if not hasattr(builtins, "log_analyses"):
                 builtins.log_analyses = pd.DataFrame(
                     columns=[
@@ -1367,7 +1367,7 @@ class AstroVisualizer:
                 alpha=0.6,
             )
 
-        # Nuage de points par plan
+        # Point cloud by plane
         sc = ax.scatter(
             x,
             y,
@@ -1380,7 +1380,7 @@ class AstroVisualizer:
             zorder=1,
         )
 
-        # Grille & habillage
+        # Grid & layout
         ax.grid(True, color="w", alpha=0.2, lw=0.5)
 
         # RA ticks (hours): 150..-150 step 30 deg°
@@ -1403,7 +1403,7 @@ class AstroVisualizer:
 
         fig.tight_layout()
 
-        # -- 5) Sauvegarde
+        # -- 5) Save
         if save_path is not False:
             if not save_path:
                 ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -1492,7 +1492,7 @@ class AstroVisualizer:
                 )
             display(Markdown("\n".join(md)))
 
-            # --- Importance des features -------------------------------------------
+            # --- Importance of features -------------------------------------------
             # Prefer *selected* feature names if selection exists,
             # since the classifier was trained on the transformed feature space.
             feature_names_for_plot = selected_cols or used_cols
@@ -1733,7 +1733,7 @@ class AstroVisualizer:
             print("No spectra could be loaded / displayed.")
             return None
 
-        # Axes, grille, titre
+        # Axes, grid, title
         ax.set_xlabel("Longueur d'onde (Å)")
         ax.set_ylabel("Flux (normalised units)" if normalize else "Flux (adu)")
         ax.set_title("Spectra Comparison")
@@ -1847,7 +1847,7 @@ class AstroVisualizer:
 
         run_btn.on_click(on_run_clicked)
 
-        # --- Mise en page --------------------------------------------------------
+        # --- Layout --------------------------------------------------------
         controls_right = widgets.VBox(
             [normalize, offset, export_toggle, export_name, run_btn]
         )
@@ -1927,7 +1927,7 @@ class AstroVisualizer:
             # --- Create Interactive Plotly Chart ---
             fig = go.Figure()
 
-            # 1. Ajouter le spectre
+            # 1. Add the spectrum
             fig.add_trace(
                 go.Scatter(
                     x=wavelength,
@@ -1996,19 +1996,19 @@ class AstroVisualizer:
                     )
                 )
 
-            # --- Mise en forme du graphique ---
+            # --- Graph formatting ---
             subclass = header.get("SUBCLASS", "N/A")
             title = f"Spectrum Analysis: {header.get('DESIG', 'Unknown')} (Type: {subclass})"
             fig.update_layout(
                 title=title,
-                xaxis_title="Longueur d'onde (Å)",
+                xaxis_title="Wavelength (Å)",
                 yaxis_title="Normalised Flux",
                 template="plotly_dark",  # Dark theme
                 legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
-                shapes=shapes,  # On ajoute les lignes verticales
+                shapes=shapes,  # Vertical lines are added
             )
 
-            # --- Ajout des boutons interactifs ---
+            # --- Add interactive buttons ---
             fig.update_layout(
                 updatemenus=[
                     dict(
@@ -2053,7 +2053,7 @@ class AstroVisualizer:
             )
 
             st.plotly_chart(fig, use_container_width=True)
-            return header  # On retourne le header pour l'afficher
+            return header  # We flip the header to display it
 
         except Exception as e:
             st.error(f"Error during analysis du spectre : {e}")
@@ -2124,7 +2124,7 @@ class AstroVisualizer:
         md_output += f"- **RA / Dec :** `{header.get('RA', 'N/A')}` / `{header.get('DEC', 'N/A')}`\n"
         st.markdown(md_output)
 
-        # Affiche le header complet sous forme de dictionnaire
+        # Displays the complete header as a dictionary
         st.json(dict(header))
 
     # ==============================================================================
@@ -2200,7 +2200,7 @@ class AstroVisualizer:
             )
             return st
 
-        # ---------- 1) volumes disponibles ----------
+        # ---------- 1) available volumes ----------
         display(Markdown("### Spectral Dataset Dashboard"))
         display(
             Markdown(
@@ -2211,7 +2211,7 @@ class AstroVisualizer:
 
         total_available = len(getattr(self, "available_spectra", []) or [])
 
-        # ---------- 2) retrouver et lire trained_spectra.csv (robuste) ----------
+        # ---------- 2) Find and read trained_spectra.csv (robust) ----------
         def _first_existing(paths):
             seen, out = set(), []
             for p in paths:
@@ -2288,7 +2288,7 @@ class AstroVisualizer:
         # =====================================================================
         labels = getattr(self, "labels_catalog", {}) or {}
 
-        # sous-classes (liste et top 15)
+        # sub-classes (top 15)
         subclasses: list[str] = []
         if labels:
             for rel in self.available_spectra or []:
@@ -2329,7 +2329,7 @@ class AstroVisualizer:
         )
         display(_style(summary_df, {"# value": lambda x: _fmt_fr(x)}))
 
-        # ---------- 6) Top sous-classes / spectres par plan ----------
+        # ---------- 6) Top sub-classes / spectra per plan ----------
         if labels and subclasses:
             vc = pd.Series(subclasses).value_counts()
             subclass_counts_df = vc.head(15).rename("# count").reset_index()
@@ -2678,8 +2678,8 @@ class AstroVisualizer:
         Create a small **notebook widget** for selecting a saved model
         (.pkl) and launching a **SHAP** interpretability analysis.
 
-        Le workflow :
-        1) scan du dossier `data/models/` (ou `self.paths["MODELS_DIR"]`)
+        Workflow :
+        1) scan of the file `data/models/` (or `self.paths["MODELS_DIR"]`)
         2) select a model via a Dropdown
         3) set the number of samples (for SHAP charts)
         4) clic sur "Analyser" -> appelle `self._run_shap_analysis(...)`
@@ -2970,7 +2970,7 @@ class AstroVisualizer:
         import matplotlib.pyplot as plt
         from IPython.display import display, Markdown
 
-        # 1) Charger le catalogue temporaire
+        # 1) Load the temporary catalog
         cat_path = os.path.join(self.paths["CATALOG_DIR"], "master_catalog_temp.csv")
         if not os.path.exists(cat_path):
             display(
@@ -2988,7 +2988,7 @@ class AstroVisualizer:
             display(Markdown("> Empty catalogue."))
             return None
 
-        # 2) Identifier la colonne des sous-classes
+        # 2) Identify the subclass column
         label_col = None
         for cand in ("subclass", "label"):
             if cand in df.columns:
@@ -3027,7 +3027,7 @@ class AstroVisualizer:
         plt.setp(ax.get_xticklabels(), rotation=45, ha="right")
         fig.tight_layout()
 
-        # 6) Sauvegarde optionnelle
+        # 6) Optional backup
         if save_path:
             try:
                 os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -3114,7 +3114,7 @@ class AstroVisualizer:
         preprocessor = SpectraPreprocessor()
         spectra_data: list[dict] = []
 
-        for rel in sample_paths[:2]:  # on n'affiche que 2 courbes for readability
+        for rel in sample_paths[:2]:  # only 2 curves are displayed for readability
             full_path = os.path.join(self.paths["RAW_DATA_DIR"], rel)
             try:
                 with gzip.open(full_path, "rb") as f_gz:
@@ -3130,17 +3130,17 @@ class AstroVisualizer:
                     }
                 )
             except Exception as e:
-                print(f"[!] Lecture impossible pour {rel} : {e}")
+                print(f"[!] Unable to read {rel} : {e}")
 
         if len(spectra_data) < 2:
-            print("Impossible de charger deux spectres valides.")
+            print("Unable to load two valid spectra.")
             return None
 
         # --- Figure ---------------------------------------------------------------
         plt.style.use("dark_background")
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(18, 6), sharex=True)
 
-        # Avant normalisation (flux bruts)
+        # Before normalisation (raw flux)
         ax1.plot(
             spectra_data[0]["wavelength"],
             spectra_data[0]["flux_raw"],
@@ -3170,7 +3170,7 @@ class AstroVisualizer:
             label="Spectrum 2 (Normalised)",
         )
         ax2.set_title("After Normalisation", fontsize=16)
-        ax2.set_xlabel("Longueur d'onde (Å)")
+        ax2.set_xlabel("Wavelength (Å)")
         ax2.set_ylabel("Normalised Flux")
         ax2.grid(True, linestyle=":", alpha=0.5)
         ax2.legend()
@@ -3178,7 +3178,7 @@ class AstroVisualizer:
         fig.suptitle("Impact of Normalisation on Spectra", fontsize=20, y=1.02)
         fig.tight_layout(rect=(0, 0, 1, 0.98))
 
-        # --- Sauvegarde -----------------------------------------------------------
+        # --- Save -----------------------------------------------------------
         if save_path is None:
             # Default path in website/static/img/
             save_path = os.path.join(
@@ -3448,7 +3448,7 @@ class AstroVisualizer:
                 if (class_counts < 2).any():
                     rare = class_counts[class_counts < 2]
 
-                    # Message d'info dans le notebook
+                    # Info message in the notebook
                     try:
                         display(
                             Markdown(
@@ -3460,15 +3460,15 @@ class AstroVisualizer:
                             )
                         )
                     except Exception:
-                        # si display/Markdown pas dispo, on log simplement
+                        # if display/Markdown is not available, we simply log
                         print(
                             "[Info] Unstratified split (too-rare classes) :",
                             dict(rare),
                         )
 
-                    stratify_vec = None  # fallback : pas de stratification
+                    stratify_vec = None  # fallback : no stratification
                 else:
-                    stratify_vec = y  # OK pour la stratification
+                    stratify_vec = y  # OK for lamination
 
                 # (25 % test by default; adjust as needed)
                 X_train, X_test, y_train, y_test = train_test_split(

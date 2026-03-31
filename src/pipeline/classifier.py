@@ -574,7 +574,7 @@ class SpectralClassifier:
         pca_components: float | int = 0.99,
         # imbalance
         sampler: str | None = None,
-        # seuils
+        # thresholds
         tune_thresholds: bool = False,
         threshold_metric: str = "f1_macro",
     ):
@@ -649,19 +649,32 @@ class SpectralClassifier:
     # Data preparation (label construction + cleaning)
     # ---------------------------------------------------------------------
 
-    def _clean_and_filter_data(self, df: pd.DataFrame) -> pd.DataFrame | None:
+    def _clean_and_filter_data(
+        self,
+        df: pd.DataFrame,
+        exclude_classes: list[str] | None = None,
+    ) -> pd.DataFrame | None:
         """Build the label column and filter examples.
 
         Depending on ``prediction_target``, create a ``label`` column from
-        ``subclass``, remove rows with invalid labels, and discard classes
-        with too few examples.  The original DataFrame is not modified;
-        a new object is returned.
+        ``subclass``, remove rows with invalid labels, apply explicit class
+        exclusions, and discard classes with too few examples.  The original
+        DataFrame is not modified; a new object is returned.
 
         Parameters
         ----------
         df : pd.DataFrame
             DataFrame containing feature columns and a ``subclass`` column
             from which the target is derived.
+        exclude_classes : list[str] or None, optional
+            Classes to remove **after** the label column has been created.
+            The comparison is done on the ``label`` column (e.g. ``"s"``,
+            ``"W"``), so it correctly handles sub-classes like ``"sdK2"``
+            whose first character is ``"s"`` but whose ``main_class`` regex
+            match would return ``"K"``.  Filtering at this stage is the only
+            way to guarantee that these labels are excluded regardless of
+            the upstream ``main_class`` pre-filter in ``run_training_session``.
+            Pass ``None`` or an empty list to skip this step.
 
         Returns
         -------
@@ -675,6 +688,8 @@ class SpectralClassifier:
           are removed.
         - Classes with fewer than 10 examples are dropped to ensure
           minimum support during training.
+        - ``exclude_classes`` is applied *after* label creation so that
+          first-character labels (e.g. ``"s"`` from ``"sdK2"``) are caught.
         """
         if "subclass" not in df.columns:
             print("WARNING: 'subclass' column not found. Cannot create labels.")
@@ -755,6 +770,24 @@ class SpectralClassifier:
             f"  > {initial_count - len(df_trainable)} rows with invalid or null labels removed."
         )
 
+        # --- Explicit class exclusions (applied on the LABEL column) ----------
+        # This must run after label creation so that labels derived from
+        # subclass.str[0] (e.g. "s" from "sdK2") are caught correctly.
+        # The upstream main_class pre-filter in run_training_session cannot
+        # catch these because main_class uses a regex that never extracts "s".
+        if exclude_classes:
+            _excl = [str(c) for c in exclude_classes]
+            before_excl = len(df_trainable)
+            df_trainable = df_trainable[
+                ~df_trainable["label"].astype(str).isin(_excl)
+            ].copy()
+            removed_excl = before_excl - len(df_trainable)
+            if removed_excl:
+                print(
+                    f"  > {removed_excl} rows excluded by explicit class filter "
+                    f"(label-level): {_excl}"
+                )
+
         label_counts = df_trainable["label"].value_counts()
         rare_labels = label_counts[label_counts < 10].index.tolist()
         if rare_labels:
@@ -776,7 +809,7 @@ class SpectralClassifier:
     # ---------------------------------------------------------------------
 
     def _prepare_features_and_labels(
-        self, df_trainable: pd.DataFrame
+        self, df_trainable: pd.DataFrame, *, spectro_only: bool = False
     ) -> tuple[pd.DataFrame, np.ndarray]:
         """
         Dynamically select numeric columns to build X and y.
@@ -790,6 +823,10 @@ class SpectralClassifier:
         ----------
         df_trainable : pd.DataFrame
             Cleaned DataFrame containing at least a ``label`` column.
+        spectro_only : bool, default False
+            If ``True``, drop every non-spectroscopic column (photometry,
+            astrometry, kinematic and cross-match features) so that only
+            flux-derived features remain.
 
         Returns
         -------
@@ -802,6 +839,7 @@ class SpectralClassifier:
         Update ``feature_names_used`` with the final column order.
         """
         cols_to_exclude = [
+            # file / ids / labels
             "file_path",
             "fits_name",
             "obsid",
@@ -809,6 +847,9 @@ class SpectralClassifier:
             "mjd",
             "class",
             "subclass",
+            "label",
+            "main_class",
+            # general / strings
             "filename_original",
             "author",
             "data_version",
@@ -821,20 +862,121 @@ class SpectralClassifier:
             "catalog_object_type",
             "magnitude_type",
             "heliocentric_correction",
-            "radial_velocity_corr",
-            "label",
-            "main_class",
-            "source_id",
-            "gaia_ra",
-            "gaia_dec",
-            "match_dist_arcsec",
             "pipeline_version",
             "processing_notes",
             "download_url",
             "spectrum_hash",
             "flux_unit",
             "wavelength_unit",
+            # --- observational metadata to exclude from learning ---
+            "longitude_site",
+            "latitude_site",
+            "ra",
+            "dec",
+            "jd",
+            "fiber_id",
+            "seeing",
+            "redshift",
+            "redshift_error",
+            "snr_u",
+            "snr_g",
+            "snr_r",
+            "snr_i",
+            "snr_z",
+            # --- new header fields (metadata / QC / instrument) ---
+            "ra_obs",
+            "dec_obs",
+            "focus_mm",
+            "x_value_mm",
+            "y_value_mm",
+            "objname",
+            "tcomment",
+            "tsource",
+            "tfrom",
+            "obs_type",
+            "obscomm",
+            "offset",
+            "offset_v",
+            "fibermas",
+            "scamean",
+            "spid",
+            "spra",
+            "spdec",
+            "slit_mod",
+            "skychi2",
+            "schi2min",
+            "schi2max",
+            "nstd",
+            "fstar",
+            "nskies",
+            "sflatten",
+            "pcaskysb",
+            "wfit_type",
+            "coeff0",
+            "coeff1",
+            "crval1",
+            "cd1_1",
+            "crpix1",
+            "dc_flag",
+            # Gaia matching identifiers
+            "source_id",
+            "gaia_ra",
+            "gaia_dec",
+            "match_dist_arcsec",
+            # --- Data Leakage Gaia ---
+            "teff_gspphot",
+            "logg_gspphot",
+            "mh_gspphot",
+            "radial_velocity",
+            "distance_gspphot",
+            # --- Raw photometry and astrometry ---
+            "parallax",
+            "parallax_error",
+            "pmra",
+            "pmdec",
+            "ruwe",
+            "phot_g_mean_mag",
+            "phot_bp_mean_mag",
+            "phot_rp_mean_mag",
+            "bp_rp",
+            "bp_g",
+            "g_rp",
         ]
+
+        # --- Spectro-only mode: keep only flux-derived columns ----------
+        n_before_spectro = len(cols_to_exclude)
+        if spectro_only:
+            non_spectro_prefixes = (
+                "parallax",
+                "pmra",
+                "pmdec",
+                "ruwe",
+                "phot_",
+                "bp_rp",
+                "bp_g",
+                "g_rp",
+                "radial_velocity",
+                "rv_",
+                "teff",
+                "logg",
+                "fe_h",
+                "alpha_fe",
+                "dist_",
+                "v_",
+                "J_",
+                "H_",
+                "K_",
+                "l_",
+                "b_",
+            )
+            cols_to_exclude += [
+                c
+                for c in df_trainable.columns
+                if c.startswith(non_spectro_prefixes) and c not in cols_to_exclude
+            ]
+            print(
+                f"  > spectro_only=True  \u279c  {len(cols_to_exclude) - n_before_spectro} extra columns excluded"
+            )
 
         candidate_cols = [
             c
@@ -1185,7 +1327,7 @@ class SpectralClassifier:
         n_iter: int = 80,
         random_state: int = 42,
         param_overrides: dict | None = None,
-        # poids & calibration
+        # weight & calibration
         use_balanced_weights: bool = True,
         class_weight_mode: str | None = None,
         class_weight_alpha: float = 1.0,
@@ -1212,9 +1354,12 @@ class SpectralClassifier:
         corr_threshold: Optional[float] = None,
         use_pca: Optional[bool] = None,
         pca_components: Optional[float | int] = None,
-        # seuils
+        # thresholds
         tune_thresholds: Optional[bool] = None,
         threshold_metric: Optional[str] = None,
+        exclude_classes: list[str] | None = None,
+        # spectro-only mode
+        spectro_only: bool = False,
     ) -> tuple[
         "SpectralClassifier", list[str], pd.DataFrame, np.ndarray, np.ndarray | None
     ]:
@@ -1316,6 +1461,14 @@ class SpectralClassifier:
             Enable threshold tuning via ``ThresholdTunedClassifier``.
             threshold_metric : str or None
             Metric for threshold optimisation. Defaults to None.
+            exclude_classes : list[str] or None, default None
+            Classes to exclude **after** label creation inside
+            ``_clean_and_filter_data``.  Necessary for labels like ``"s"``
+            (sub-giants, subclass ``"sdK2"``) whose first character is not
+            captured by the upstream ``main_class`` regex filter.
+            Pass ``None`` or an empty list to skip.
+            spectro_only : bool, default False
+            If ``True``, restrict features to spectroscopic columns only.
 
         Returns:
             Tuple[SpectralClassifier, List[str], pd.DataFrame, np.ndarray, np.ndarray | None]:
@@ -1335,12 +1488,17 @@ class SpectralClassifier:
         )
 
         # 0) Cleaning + label
-        df_trainable = self._clean_and_filter_data(features_df)
+        df_trainable = self._clean_and_filter_data(
+            features_df, exclude_classes=exclude_classes
+        )
         if df_trainable is None:
             print("> No usable data after cleaning; stopping.")
             return False
 
         # Apply preprocessor settings for this session
+        # Remember spectro-only flag for metadata persistence
+        self._spectro_only = spectro_only
+
         # Save existing values to restore them later
         orig_imp = getattr(self, "imputer_strategy", None)
         orig_knn = getattr(self, "knn_imputer_k", None)
@@ -1370,7 +1528,9 @@ class SpectralClassifier:
             groups_full = df_trainable[group_col].values
 
         # 1) X/y + XGBoost encoding
-        X_all, y_all = self._prepare_features_and_labels(df_trainable)
+        X_all, y_all = self._prepare_features_and_labels(
+            df_trainable, spectro_only=spectro_only
+        )
         feature_cols_before_fs = list(self.feature_names_used)
         y_all = y_all.astype(str)
 
@@ -1906,21 +2066,23 @@ class SpectralClassifier:
 
         proba = getattr(self.model_pipeline, "predict_proba", lambda X: None)(X_test)
         if proba is not None:
-            # numeric indices of true classes
+            # Compute numeric indices of true classes (for ECE / top-2 only)
             if (self.label_encoder is not None) and np.issubdtype(
                 np.asarray(y_test).dtype, np.integer
             ):
-                y_test_dec = self.label_encoder.inverse_transform(y_test)
-                y_pred_dec = self.label_encoder.inverse_transform(predictions)
+                y_idx = np.asarray(y_test)
             else:
-                y_test_dec, y_pred_dec = y_test, predictions
                 label_to_idx = {lab: i for i, lab in enumerate(self.class_labels)}
                 y_idx = np.array([label_to_idx.get(str(v), -1) for v in y_test_dec])
                 mask = y_idx >= 0
                 proba = proba[mask]
                 y_idx = y_idx[mask]
             ece = _ece_score(y_idx, proba)
-            top2 = (y_idx == np.argsort(proba, axis=1)[:, -2:]).any(axis=1).mean()
+            top2 = (
+                (y_idx.reshape(-1, 1) == np.argsort(proba, axis=1)[:, -2:])
+                .any(axis=1)
+                .mean()
+            )
             print(f"ECE={ece:.3f} | Top-2 acc={top2:.3f}")
 
         print("\n--- Evaluation Report ---")
@@ -1982,6 +2144,7 @@ class SpectralClassifier:
             "xgboost": xgb_ver,
             "model_type": self.model_type,
             "prediction_target": self.prediction_target,
+            "spectro_only": getattr(self, "_spectro_only", False),
             "best_params_": getattr(self, "best_params_", None),
             "class_labels": list(getattr(self, "class_labels", [])),
             "feature_names_used": list(getattr(self, "feature_names_used", [])),

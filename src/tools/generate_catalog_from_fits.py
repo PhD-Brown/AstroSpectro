@@ -55,54 +55,93 @@ Notes
 from __future__ import annotations
 
 import gzip
+import glob
+import math
+import argparse
 from pathlib import Path
-from typing import Iterable, List, Optional, Union
-
-import pandas as pd
+from typing import List, Any, Iterable, Union, Optional
 from astropy.io import fits
+import pandas as pd
+
+UNKNOWN = "UNKNOWN"
+
+
+def _hdr_first(hdr, keys: Iterable[str], default: Any):
+    """Return the first existing header value among keys (trim strings)."""
+    for k in keys:
+        if k in hdr:
+            v = hdr.get(k)
+            if v is None:
+                continue
+            if isinstance(v, str):
+                v2 = v.strip()
+                if v2 == "":
+                    continue
+                return v2
+            return v
+    return default
+
+
+def _to_float(x, default=math.nan):
+    """Best-effort float conversion (handles string numbers)."""
+    if x is None:
+        return default
+    if isinstance(x, str):
+        x = x.strip()
+        if x == "" or x.upper() == "UNKNOWN":
+            return default
+    try:
+        return float(x)
+    except Exception:
+        return default
+
+
+def _mag_or_nan(x):
+    """
+    LAMOST headers sometimes use 99/99.00 as 'missing magnitude'.
+    Convert to NaN so the column stays numeric.
+    """
+    v = _to_float(x, default=math.nan)
+    if math.isfinite(v) and v >= 90:
+        return math.nan
+    return v
+
 
 # --- Exported column schema (stable order) ------------------------------------
 
-FIELDNAMES: List[str] = [
+FIELDNAMES = [
+    "file_path",
     "fits_name",
     "obsid",
     "plan_id",
     "mjd",
     "class",
     "subclass",
-    # General metadata
     "filename_original",
     "author",
     "data_version",
     "date_creation",
-    # Telescope / site
     "telescope",
     "longitude_site",
     "latitude_site",
-    # Observation
     "obs_date_utc",
     "jd",
-    # Position / target
     "designation",
     "ra",
     "dec",
-    # Fibre & object
     "fiber_id",
     "fiber_type",
     "object_name",
     "catalog_object_type",
-    # Magnitudes (typically 5 bands)
     "magnitude_type",
     "magnitude_u",
     "magnitude_g",
     "magnitude_r",
     "magnitude_i",
     "magnitude_z",
-    # Reduction parameters
     "heliocentric_correction",
     "radial_velocity_corr",
     "seeing",
-    # Pipeline analysis
     "redshift",
     "redshift_error",
     "snr_u",
@@ -110,9 +149,44 @@ FIELDNAMES: List[str] = [
     "snr_r",
     "snr_i",
     "snr_z",
+    # --- extra header metadata (DR5) ---
+    "ra_obs",
+    "dec_obs",
+    "focus_mm",
+    "x_value_mm",
+    "y_value_mm",
+    "objname",
+    "tcomment",
+    "tsource",
+    "tfrom",
+    "obs_type",
+    "obscomm",
+    "magnitude_j",
+    "magnitude_h",
+    "offset",
+    "offset_v",
+    "fibermas",
+    "scamean",
+    "spid",
+    "spra",
+    "spdec",
+    "slit_mod",
+    "skychi2",
+    "schi2min",
+    "schi2max",
+    "nstd",
+    "fstar",
+    "nskies",
+    "sflatten",
+    "pcaskysb",
+    "wfit_type",
+    "coeff0",
+    "coeff1",
+    "crval1",
+    "cd1_1",
+    "crpix1",
+    "dc_flag",
 ]
-
-UNKNOWN = "UNKNOWN"
 
 
 def _open_fits_for_header(path: Path):
@@ -132,54 +206,98 @@ def _ensure_parent_dir(output_csv: Union[str, Path]) -> None:
 
 def _row_from_header(hdr: fits.Header) -> dict:
     """Map FITS header keywords to the ``FIELDNAMES`` schema."""
-    # .get(...) returns UNKNOWN when the key is absent — safe and explicit
     return {
-        "fits_name": UNKNOWN,  # overwritten below with the file name
+        "fits_name": UNKNOWN,  # overwritten later with the file name
+        # --- IDs / classes ---
         "obsid": hdr.get("OBSID", UNKNOWN),
         "plan_id": hdr.get("PLANID", UNKNOWN),
         "mjd": hdr.get("MJD", UNKNOWN),
         "class": hdr.get("CLASS", UNKNOWN),
         "subclass": hdr.get("SUBCLASS", UNKNOWN),
-        # General metadata
+        # --- General metadata ---
         "filename_original": hdr.get("FILENAME", UNKNOWN),
         "author": hdr.get("AUTHOR", UNKNOWN),
-        "data_version": hdr.get("DATA_V", UNKNOWN),
+        "data_version": _hdr_first(hdr, ["DATA_V", "DATA_VRS", "DR"], default=UNKNOWN),
         "date_creation": hdr.get("DATE", UNKNOWN),
-        # Telescope / site
+        "pipeline_version": hdr.get("VERSPIPE", UNKNOWN),
+        # --- Telescope / site ---
         "telescope": hdr.get("TELESCOP", UNKNOWN),
-        "longitude_site": hdr.get("LONGITUD", UNKNOWN),
-        "latitude_site": hdr.get("LATITUDE", UNKNOWN),
-        # Observation
+        "longitude_site": _to_float(hdr.get("LONGITUD", None), default=math.nan),
+        "latitude_site": _to_float(hdr.get("LATITUDE", None), default=math.nan),
+        # --- Observation time ---
         "obs_date_utc": hdr.get("DATE-OBS", UNKNOWN),
-        "jd": hdr.get("JD", hdr.get("MJD", UNKNOWN)),
-        # Position
+        # LAMOST: MJD and LMJD exist often; JD not always present.
+        "jd": _hdr_first(hdr, ["JD", "MJD", "LMJD"], default=UNKNOWN),
+        # --- Position ---
         "designation": hdr.get("DESIG", UNKNOWN),
-        "ra": hdr.get("RA", UNKNOWN),
-        "dec": hdr.get("DEC", UNKNOWN),
-        # Fibre & object
+        "ra": _to_float(hdr.get("RA", None), default=math.nan),
+        "dec": _to_float(hdr.get("DEC", None), default=math.nan),
+        # --- Fibre & object ---
         "fiber_id": hdr.get("FIBERID", UNKNOWN),
         "fiber_type": hdr.get("FIBERTYP", UNKNOWN),
-        "object_name": hdr.get("NAME", UNKNOWN),
+        # In DR5 the object name is typically OBJNAME; NAME can be absent.
+        "object_name": _hdr_first(hdr, ["OBJNAME", "NAME"], default=UNKNOWN),
         "catalog_object_type": hdr.get("OBJTYPE", UNKNOWN),
-        # Magnitudes
+        # --- Magnitudes ---
         "magnitude_type": hdr.get("MAGTYPE", UNKNOWN),
-        "magnitude_u": hdr.get("MAG1", UNKNOWN),
-        "magnitude_g": hdr.get("MAG2", UNKNOWN),
-        "magnitude_r": hdr.get("MAG3", UNKNOWN),
-        "magnitude_i": hdr.get("MAG4", UNKNOWN),
-        "magnitude_z": hdr.get("MAG5", UNKNOWN),
-        # Reduction parameters
+        "magnitude_u": _mag_or_nan(hdr.get("MAG1", None)),
+        "magnitude_g": _mag_or_nan(hdr.get("MAG2", None)),
+        "magnitude_r": _mag_or_nan(hdr.get("MAG3", None)),
+        "magnitude_i": _mag_or_nan(hdr.get("MAG4", None)),
+        "magnitude_z": _mag_or_nan(hdr.get("MAG5", None)),
+        # --- Reduction / analysis ---
         "heliocentric_correction": hdr.get("HELIO", UNKNOWN),
-        "radial_velocity_corr": hdr.get("HELIO_RV", UNKNOWN),
-        "seeing": hdr.get("SEEING", UNKNOWN),
-        # Pipeline analysis
-        "redshift": hdr.get("Z", UNKNOWN),
-        "redshift_error": hdr.get("Z_ERR", UNKNOWN),
-        "snr_u": hdr.get("SNRU", UNKNOWN),
-        "snr_g": hdr.get("SNRG", UNKNOWN),
-        "snr_r": hdr.get("SNRR", UNKNOWN),
-        "snr_i": hdr.get("SNRI", UNKNOWN),
-        "snr_z": hdr.get("SNRZ", UNKNOWN),
+        "radial_velocity_corr": _to_float(hdr.get("HELIO_RV", None), default=math.nan),
+        "seeing": _to_float(hdr.get("SEEING", None), default=math.nan),
+        "redshift": _to_float(hdr.get("Z", None), default=math.nan),
+        "redshift_error": _to_float(hdr.get("Z_ERR", None), default=math.nan),
+        "snr_u": _to_float(hdr.get("SNRU", None), default=math.nan),
+        "snr_g": _to_float(hdr.get("SNRG", None), default=math.nan),
+        "snr_r": _to_float(hdr.get("SNRR", None), default=math.nan),
+        "snr_i": _to_float(hdr.get("SNRI", None), default=math.nan),
+        "snr_z": _to_float(hdr.get("SNRZ", None), default=math.nan),
+        "ra_obs": _to_float(hdr.get("RA_OBS", None), default=math.nan),
+        "dec_obs": _to_float(hdr.get("DEC_OBS", None), default=math.nan),
+        "focus_mm": _to_float(hdr.get("FOCUS", None), default=math.nan),
+        "x_value_mm": _to_float(hdr.get("X_VALUE", None), default=math.nan),
+        "y_value_mm": _to_float(hdr.get("Y_VALUE", None), default=math.nan),
+        "objname": _hdr_first(hdr, ["OBJNAME", "NAME"], default=UNKNOWN),
+        # Targeting / plate info (often an internal field / tile identifier)
+        "tcomment": hdr.get("TCOMMENT", UNKNOWN),
+        "tsource": hdr.get("TSOURCE", UNKNOWN),
+        "tfrom": hdr.get("TFROM", UNKNOWN),
+        # Filtering: keep only Science frames if you want
+        "obs_type": hdr.get("OBS_TYPE", UNKNOWN),
+        "obscomm": hdr.get("OBSCOMM", UNKNOWN),
+        # Extra mags (J/H often 99 when missing)
+        "magnitude_j": _mag_or_nan(hdr.get("MAG6", None)),
+        "magnitude_h": _mag_or_nan(hdr.get("MAG7", None)),
+        # Offsets / masks
+        "offset": hdr.get("OFFSET", UNKNOWN),
+        "offset_v": _to_float(hdr.get("OFFSET_V", None), default=math.nan),
+        "fibermas": hdr.get("FIBERMAS", UNKNOWN),
+        # Scatter light, spectrograph & reduction QC
+        "scamean": _to_float(hdr.get("SCAMEAN", None), default=math.nan),
+        "spid": hdr.get("SPID", UNKNOWN),
+        "spra": _to_float(hdr.get("SPRA", None), default=math.nan),
+        "spdec": _to_float(hdr.get("SPDEC", None), default=math.nan),
+        "slit_mod": hdr.get("SLIT_MOD", UNKNOWN),
+        "skychi2": _to_float(hdr.get("SKYCHI2", None), default=math.nan),
+        "schi2min": _to_float(hdr.get("SCHI2MIN", None), default=math.nan),
+        "schi2max": _to_float(hdr.get("SCHI2MAX", None), default=math.nan),
+        "nstd": hdr.get("NSTD", UNKNOWN),
+        "fstar": hdr.get("FSTAR", UNKNOWN),
+        "nskies": hdr.get("NSKIES", UNKNOWN),
+        "sflatten": hdr.get("SFLATTEN", UNKNOWN),
+        "pcaskysb": hdr.get("PCASKYSB", UNKNOWN),
+        # Wavelength solution (often constant across spectra, but ok for traceability)
+        "wfit_type": hdr.get("WFITTYPE", UNKNOWN),
+        "coeff0": _to_float(hdr.get("COEFF0", None), default=math.nan),
+        "coeff1": _to_float(hdr.get("COEFF1", None), default=math.nan),
+        "crval1": _to_float(hdr.get("CRVAL1", None), default=math.nan),
+        "cd1_1": _to_float(hdr.get("CD1_1", None), default=math.nan),
+        "crpix1": _to_float(hdr.get("CRPIX1", None), default=math.nan),
+        "dc_flag": hdr.get("DC-FLAG", UNKNOWN),
     }
 
 

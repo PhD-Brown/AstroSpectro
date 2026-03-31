@@ -35,6 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional, Tuple
+import warnings
 
 import numpy as np
 
@@ -130,15 +131,15 @@ class SpectraPreprocessor:
         return wavelength, flux, invvar
 
     # --------------------------------------------------------------------- #
-    # Simple & robust normalisation
+    # Simple & robust standardization
     # --------------------------------------------------------------------- #
     def normalize_spectrum(
         self, flux: np.ndarray, method: str = "median"
     ) -> np.ndarray:
         """
-        Normalise a flux vector.
+        Standardise a flux vector.
 
-        Currently only **median** normalisation is supported, which is robust
+        Currently only **median** standardisation is supported, which is robust
         against emission/absorption lines and outliers.
 
         Parameters
@@ -146,12 +147,12 @@ class SpectraPreprocessor:
         flux : np.ndarray
             One-dimensional flux array.
         method : {'median'}, optional
-            Normalisation strategy (default: ``'median'``).
+            Standardisation strategy (default: ``'median'``).
 
         Returns
         -------
         np.ndarray
-            Normalised flux with the same shape as *flux*.
+            Standardised flux with the same shape as *flux*.
 
         Raises
         ------
@@ -159,13 +160,16 @@ class SpectraPreprocessor:
             If *method* is not ``'median'``.
         """
         if method != "median":
-            raise ValueError(f"Unknown normalisation method: {method!r}")
+            raise ValueError(f"Unknown standardisation method: {method!r}")
 
         med = float(np.median(flux))
-        return flux / med if med > 0 else flux
+        if med <= 0 or not np.isfinite(med):
+            warnings.warn(f"Median flux is {med}; returning un-standardised spectrum.")
+            return flux
+        return flux / med
 
     # --------------------------------------------------------------------- #
-    # Short pipeline: read + optional normalisation & uncertainties
+    # Short pipeline: read + optional standardisation & uncertainties
     # --------------------------------------------------------------------- #
     def prepare(
         self,
