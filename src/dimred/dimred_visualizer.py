@@ -167,10 +167,15 @@ class DimRedVisualizer:
             label=f"Seuil {threshold*100:.0f}%",
         )
         ax.axvline(n_thresh, color="#55A868", ls=":", lw=1.5, label=f"{n_thresh} PCs")
+
+        # ← AJOUTER CES DEUX LIGNES
+        n_thresh_plot = min(n_thresh, len(cumvar))  # clamp si n_thresh > max_pcs
+        idx = n_thresh_plot - 1  # index 0-based dans cumvar
+
         ax.annotate(
-            f"{n_thresh} PCs\n→ {cumvar[n_thresh-1]*100:.1f}%",
-            xy=(n_thresh, cumvar[n_thresh - 1] * 100),
-            xytext=(n_thresh + 2, cumvar[n_thresh - 1] * 100 - 8),
+            f"{n_thresh} PCs\n→ {cumvar[idx]*100:.1f}%",  # affiche la vraie valeur
+            xy=(n_thresh_plot, cumvar[idx] * 100),
+            xytext=(n_thresh_plot + 2, cumvar[idx] * 100 - 8),
             fontsize=9,
             arrowprops=dict(arrowstyle="->", color="gray"),
             color="#55A868",

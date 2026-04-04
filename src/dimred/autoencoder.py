@@ -670,7 +670,9 @@ class SpectralAutoencoder:
             Device cible. None = auto-détection.
         """
         _check_torch()
-        checkpoint = torch.load(path, map_location="cpu")
+        # PyTorch>=2.6 defaults to weights_only=True, which can fail for
+        # checkpoints containing non-tensor metadata (history, numpy scalars).
+        checkpoint = torch.load(path, map_location="cpu", weights_only=False)
         ae = cls(
             input_dim=checkpoint["input_dim"],
             latent_dim=checkpoint["latent_dim"],
