@@ -72,6 +72,97 @@ _GAIA_META_COLS = [
 # Colonnes SNR LAMOST
 _SNR_COLS = ["snr_u", "snr_g", "snr_r", "snr_i", "snr_z"]
 
+# Colonnes instrumentales et métadonnées observationnelles à exclure
+# Synchronisé avec classifier.py (SpectralClassifier.cols_to_exclude)
+# Raison : ces colonnes ne décrivent pas la physique stellaire
+_INSTRUMENTAL_COLS = [
+    # Calibration spectrale (FITS headers LAMOST)
+    "crval1",
+    "coeff0",
+    "coeff1",
+    "cd1_1",
+    "crpix1",
+    "dc_flag",
+    "wfit_type",
+    # Coordonnées spatiales (3 variantes RA + Dec)
+    "ra",
+    "dec",
+    "ra_obs",
+    "dec_obs",
+    "spra",
+    "spdec",
+    # Métadonnées d'observation / site
+    "longitude_site",
+    "latitude_site",
+    "fiber_id",
+    "seeing",
+    "redshift",
+    "redshift_error",
+    # Qualité pipeline LAMOST (chi2, flat, PCA sky)
+    "skychi2",
+    "schi2min",
+    "schi2max",
+    "offset",
+    "offset_v",
+    "fibermas",
+    "scamean",
+    "spid",
+    "slit_mod",
+    "fstar",
+    "nskies",
+    "nstd",
+    "sflatten",
+    "pcaskysb",
+    # Champs FITS divers
+    "focus_mm",
+    "x_value_mm",
+    "y_value_mm",
+    "objname",
+    "tcomment",
+    "tsource",
+    "tfrom",
+    "obs_type",
+    "obscomm",
+    # Identifiants Gaia (pas physique)
+    "match_dist_arcsec",
+    "parallax_error",
+    # Flags de qualité Gaia (dérivés de ruwe, non spectroscopiques)
+    "is_good_ruwe",
+    # Autres métadonnées
+    "pipeline_version",
+    "processing_notes",
+    "download_url",
+    "spectrum_hash",
+    "flux_unit",
+    "wavelength_unit",
+    "radial_velocity_corr",
+]
+
+# Préfixes non-spectroscopiques pour le mode spectro_only
+# (exclut photométrie Gaia, cinématique, paramètres stellaires GSP)
+# Synchronisé avec classifier.py spectro_only logic
+_NON_SPECTRO_PREFIXES = (
+    "parallax",
+    "pmra",
+    "pmdec",
+    "ruwe",
+    "phot_",
+    "bp_rp",
+    "bp_g",
+    "g_rp",
+    "radial_velocity",
+    "rv_",
+    "teff",
+    "logg",
+    "fe_h",
+    "alpha_fe",
+    "dist_",
+    "distance_",
+    "ag_gspphot",
+    "ebpminrp",
+    "astrometric_",
+)
+
 
 class DimRedDataLoader:
     """
@@ -121,6 +212,7 @@ class DimRedDataLoader:
         class_balance: bool = False,
         n_per_class: int = 5000,
         drop_nan_threshold: float = 0.10,
+        spectro_only: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
         Charge et prépare les données.
@@ -148,6 +240,14 @@ class DimRedDataLoader:
         drop_nan_threshold : float
             Fraction maximale de NaN par colonne feature avant suppression
             de la colonne (défaut 10%).
+        spectro_only : bool, default False
+            Si True, conserve uniquement les features spectroscopiques pures
+            (dérivées des flux du spectre). Exclut les colonnes SNR, Gaia
+            photométriques, coordonnées spatiales, métadonnées d'observation
+            et tous les artefacts instrumentaux LAMOST.
+            Équivalent au mode ``spectro_only=True`` de SpectralClassifier —
+            garantit que PCA/UMAP/AE travaillent sur les mêmes features
+            que le pipeline XGBoost supervisé.
 
         Returns
         -------
@@ -156,7 +256,7 @@ class DimRedDataLoader:
         y : np.ndarray (N,)
             Étiquettes de classe (str).
         meta : pd.DataFrame (N, .)
-            Paramètres physiques + SNR pour coloration des embeddings.
+            Paramètres physiques Gaia + SNR pour coloration des embeddings.
         """
         if mode == "spectra":
             raise NotImplementedError(
@@ -189,7 +289,9 @@ class DimRedDataLoader:
             logger.info("Filtre classes %s : %d lignes restantes", classes, len(df))
 
         # 4) Sélection des colonnes features
-        feat_cols = self._select_feature_columns(df, nan_threshold=drop_nan_threshold)
+        feat_cols = self._select_feature_columns(
+            df, nan_threshold=drop_nan_threshold, spectro_only=spectro_only
+        )
         self.feature_names_ = feat_cols
 
         # 5) Suppression des lignes avec NaN résiduel
@@ -270,17 +372,37 @@ class DimRedDataLoader:
         return df
 
     def _select_feature_columns(
-        self, df: pd.DataFrame, nan_threshold: float = 0.10
+        self,
+        df: pd.DataFrame,
+        nan_threshold: float = 0.10,
+        spectro_only: bool = False,
     ) -> list[str]:
         """
         Sélectionne les colonnes numériques non-meta à utiliser comme features.
 
         Exclut : colonnes d'identifiant, colonnes meta Gaia, SNR, étiquettes,
-        colonnes constantes, et colonnes avec trop de NaN.
+        colonnes constantes, colonnes avec trop de NaN, et — lorsque
+        ``spectro_only=True`` — toutes les colonnes non-spectroscopiques
+        (photométrie, cinématique, paramètres Gaia, artefacts instrumentaux).
+
+        Le jeu de features résultant est aligné avec celui utilisé par
+        ``SpectralClassifier(spectro_only=True)`` pour garantir la comparabilité
+        entre les méthodes supervisées (XGBoost) et non-supervisées
+        (PCA / UMAP / autoencodeur).
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            DataFrame fusionné (features + catalog).
+        nan_threshold : float
+            Fraction max de NaN par colonne avant suppression (défaut 10 %).
+        spectro_only : bool
+            Si True, applique en plus le filtre spectroscopique strict.
         """
-        # Colonnes à exclure explicitement
+        # ── Exclusions de base (identifiants, étiquettes, strings) ──────────
         exclude = {
             self.merge_key,
+            # Identifiants
             "obsid",
             "fits_name",
             "filename_original",
@@ -289,8 +411,12 @@ class DimRedDataLoader:
             "jd",
             "designation",
             "object_name",
+            # Étiquettes
             "class",
             "subclass",
+            "label",
+            "main_class",
+            # Métadonnées textuelles
             "author",
             "data_version",
             "date_creation",
@@ -299,21 +425,45 @@ class DimRedDataLoader:
             "catalog_object_type",
             "magnitude_type",
             "heliocentric_correction",
-            "radial_velocity_corr",
             "obs_date_utc",
             "phot_variable_flag",
+            # Identifiants Gaia
             "source_id",
             "gaia_ra",
             "gaia_dec",
         }
+        # Colonnes Gaia meta (conservées dans meta, pas dans X)
         exclude |= set(_GAIA_META_COLS)
-        exclude |= set(_SNR_COLS)
 
+        # ── Mode spectro_only : exclure SNR + instrumentaux + photométrie ────
+        if spectro_only:
+            # SNR = qualité observationnelle, pas propriété de l'étoile
+            exclude |= set(_SNR_COLS)
+            # Artefacts instrumentaux et métadonnées LAMOST
+            # (synchronisé avec classifier.py cols_to_exclude)
+            exclude |= set(_INSTRUMENTAL_COLS)
+            # Préfixes photométriques / cinématiques Gaia
+            # (synchronisé avec classifier.py spectro_only logic)
+            logger.info(
+                "Mode spectro_only=True : exclusion SNR + instrumentaux + Gaia photom."
+            )
+        else:
+            # Mode par défaut : exclure uniquement les SNR
+            # (comportement historique conservé pour rétrocompatibilité)
+            exclude |= set(_SNR_COLS)
+
+        # ── Sélection des colonnes candidates ────────────────────────────────
         feat_cols = []
         for c in df.columns:
             if c in exclude:
                 continue
             if not pd.api.types.is_numeric_dtype(df[c]):
+                continue
+            # En mode spectro_only, exclure aussi par préfixe Gaia/photom.
+            if spectro_only and c.startswith(_NON_SPECTRO_PREFIXES):
+                logger.debug(
+                    "Colonne '%s' exclue (spectro_only, préfixe non-spectro)", c
+                )
                 continue
             nan_frac = df[c].isna().mean()
             if nan_frac > nan_threshold:
@@ -325,7 +475,9 @@ class DimRedDataLoader:
             feat_cols.append(c)
 
         logger.info(
-            "%d features sélectionnées pour la réduction de dimension", len(feat_cols)
+            "%d features sélectionnées (spectro_only=%s)",
+            len(feat_cols),
+            spectro_only,
         )
         return feat_cols
 
