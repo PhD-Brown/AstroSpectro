@@ -706,3 +706,431 @@ class SpectralAutoencoder:
     def __repr__(self) -> str:
         arch = f"{self.input_dim} → {self.hidden_dims} → {self.latent_dim}"
         return f"SpectralAutoencoder({arch})"
+
+
+# ── Fonctions utilitaires de niveau module ───────────────────────────────────
+
+
+def tester_candidat(
+    x_raw: np.ndarray,
+    ae_model,
+    loader_ref,
+    feature_names_ref: list,
+    Z_train: np.ndarray,
+    cluster_labels_train=None,
+    meta_train=None,
+    y_train=None,
+    teff_train=None,
+    label: str = "Candidat",
+    save_path=None,
+) -> dict:
+    """
+    Projette un nouveau spectre dans l'espace latent AE et produit
+    une fiche diagnostique complète (3 panneaux).
+
+    Provient de la cellule 57 du notebook phy3500_03_autoencoder.ipynb.
+
+    Parameters
+    ----------
+    x_raw : np.ndarray (1, n_features) ou (n_features,)
+        Features brutes (non standardisées) du candidat.
+    ae_model : SpectralAutoencoder
+        Modèle entraîné (z=2).
+    loader_ref : DimRedDataLoader
+        Loader ayant servi à l'entraînement (contient le scaler).
+    feature_names_ref : list[str]
+        Noms des features dans l'ordre du modèle.
+    Z_train : np.ndarray (N, 2)
+        Espace latent du dataset d'entraînement.
+    label : str
+        Étiquette du candidat pour la figure.
+    save_path : Path | str | None
+        Chemin de sauvegarde de la figure.
+
+    Returns
+    -------
+    dict : z (coords latentes), mse, cluster, verdict, x_scaled, x_recon.
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.gridspec as gridspec
+
+    x = np.atleast_2d(x_raw).astype(float)
+
+    # 1. Standardisation
+    if hasattr(loader_ref, "scaler_") and loader_ref.scaler_ is not None:
+        x_scaled = loader_ref.scaler_.transform(x)
+    else:
+        x_scaled = x.copy()
+
+    # 2. Encodage
+    z = ae_model.encode(x_scaled)  # (1, 2)
+
+    # 3. Reconstruction
+    x_recon_scaled = ae_model.reconstruct(x_scaled)
+    mse = float(np.mean((x_scaled - x_recon_scaled) ** 2))
+
+    # 4. Cluster k-NN
+    dists = np.linalg.norm(Z_train - z, axis=1)
+    nn_idx = np.argsort(dists)[:50]
+    cluster_pred = None
+    if cluster_labels_train is not None:
+        nn_cl = cluster_labels_train[nn_idx]
+        nn_cl_valid = nn_cl[nn_cl >= 0]
+        cluster_pred = (
+            int(np.bincount(nn_cl_valid).argmax()) if len(nn_cl_valid) > 0 else -1
+        )
+
+    # 5. Verdict anomalie
+    MSE_Q95, MSE_Q99 = 0.97, 3.0
+    if mse < MSE_Q95:
+        verdict = "🟢 BANAL — spectre typique du dataset"
+    elif mse < MSE_Q99:
+        verdict = "🟡 INHABITUEL — dans le top 5% des erreurs"
+    else:
+        verdict = "🔴 ANOMALIE — objet très atypique"
+
+    # ── Figure 3 panneaux ────────────────────────────────────────────────
+    fig = plt.figure(figsize=(18, 6), dpi=150)
+    gs = gridspec.GridSpec(1, 3, width_ratios=[1.4, 1.3, 1.3], wspace=0.35)
+    ax1, ax2, ax3 = [fig.add_subplot(gs[i]) for i in range(3)]
+
+    # Panneau 1 : espace latent
+    if teff_train is not None:
+        valid_t = np.isfinite(teff_train)
+        sc = ax1.scatter(
+            Z_train[valid_t, 0],
+            Z_train[valid_t, 1],
+            c=teff_train[valid_t],
+            cmap="plasma",
+            s=0.5,
+            alpha=0.2,
+            rasterized=True,
+            zorder=1,
+        )
+        plt.colorbar(sc, ax=ax1, label="T_eff (K)", fraction=0.03)
+    else:
+        ax1.scatter(
+            Z_train[:, 0], Z_train[:, 1], c="#4A4A4A", s=0.5, alpha=0.2, rasterized=True
+        )
+    ax1.scatter(
+        z[0, 0],
+        z[0, 1],
+        s=300,
+        c="#FFD700",
+        marker="*",
+        edgecolors="white",
+        linewidths=1.5,
+        zorder=6,
+    )
+    ax1.annotate(
+        f"{label}\n({z[0,0]:.3f}, {z[0,1]:.3f})",
+        (z[0, 0], z[0, 1]),
+        textcoords="offset points",
+        xytext=(10, 8),
+        fontsize=9,
+        fontweight="bold",
+        color="#FFD700",
+        bbox=dict(boxstyle="round,pad=0.3", fc="black", alpha=0.75),
+        zorder=7,
+    )
+    title_str = (
+        f"Position latente — Cluster C{cluster_pred}"
+        if cluster_pred is not None and cluster_pred >= 0
+        else "Position latente — Bruit/outlier"
+    )
+    ax1.set_title(title_str, fontsize=11, fontweight="bold")
+    ax1.set_xlabel("AE axe 1")
+    ax1.set_ylabel("AE axe 2")
+    ax1.grid(True, alpha=0.15)
+
+    # Panneau 2 : profil features clés
+    KEY_F = [
+        ("Hα EW", "feature_Hα_eq_width", "#E8593C"),
+        ("Hβ EW", "feature_Hβ_eq_width", "#E8593C"),
+        ("Ca II K", "feature_CaIIK_eq_width", "#3B8BD4"),
+        ("Mg b", "feature_Mg_b_eq_width", "#4C9B6F"),
+        ("FeH proxy", "feature_FeH_proxy", "#B07DB8"),
+        ("BV synthét.", "feature_synthetic_BV", "#7F8FA6"),
+    ]
+    valid_kf = [(l, n, c) for l, n, c in KEY_F if n in feature_names_ref]
+    kf_orig = [x_scaled[0, feature_names_ref.index(n)] for _, n, _ in valid_kf]
+    kf_recon = [x_recon_scaled[0, feature_names_ref.index(n)] for _, n, _ in valid_kf]
+    kf_labels = [l for l, _, _ in valid_kf]
+    kf_colors = [c for _, _, c in valid_kf]
+    y_kf = np.arange(len(kf_labels))
+    w_kf = 0.35
+    ax2.barh(
+        y_kf - w_kf / 2,
+        kf_orig,
+        w_kf,
+        color=kf_colors,
+        alpha=0.90,
+        edgecolor="white",
+        linewidth=0.4,
+        label="Original",
+    )
+    ax2.barh(
+        y_kf + w_kf / 2,
+        kf_recon,
+        w_kf,
+        color=kf_colors,
+        alpha=0.35,
+        edgecolor=kf_colors,
+        linewidth=1.2,
+        label="Reconstruit",
+    )
+    ax2.set_yticks(y_kf)
+    ax2.set_yticklabels(kf_labels, fontsize=9)
+    ax2.axvline(0, color="gray", lw=0.7, ls="--")
+    ax2.set_xlabel("Score standardisé (σ)")
+    ax2.set_title("Profil spectroscopique clé", fontsize=11)
+    ax2.legend(fontsize=8)
+    ax2.grid(axis="x", alpha=0.2)
+
+    # Panneau 3 : jauge MSE
+    cmap_gauge = plt.cm.RdYlGn_r
+    for j in range(100):
+        ax3.barh(0, 0.1, left=j * 0.1, height=0.4, color=cmap_gauge(j / 100), alpha=0.7)
+    ax3.axvline(min(mse, 10.0), color="black", lw=3, ymin=0.1, ymax=0.9)
+    ax3.axvline(MSE_Q95, color="orange", lw=1.5, ls="--", label=f"q95 = {MSE_Q95:.2f}")
+    ax3.axvline(MSE_Q99, color="red", lw=1.5, ls="--", label=f"q99 ≈ {MSE_Q99:.2f}")
+    ax3.set_xlim(0, 10)
+    ax3.set_ylim(-0.5, 1)
+    ax3.set_xlabel("MSE de reconstruction")
+    ax3.set_yticks([])
+    ax3.set_title(f"Score d'anomalie\nMSE = {mse:.4f}", fontsize=11)
+    ax3.text(
+        0.5,
+        0.75,
+        verdict,
+        transform=ax3.transAxes,
+        ha="center",
+        va="center",
+        fontsize=10,
+        fontweight="bold",
+        bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#AAA", alpha=0.9),
+    )
+    ax3.legend(fontsize=8, loc="upper right")
+
+    fig.suptitle(
+        f"Fiche diagnostique AE — {label}", fontsize=13, fontweight="bold", y=1.02
+    )
+    plt.tight_layout()
+    if save_path is not None:
+        fig.savefig(save_path, bbox_inches="tight", dpi=150)
+    plt.show()
+
+    return {
+        "z": z[0],
+        "mse": mse,
+        "cluster": cluster_pred,
+        "verdict": verdict,
+        "x_scaled": x_scaled[0],
+        "x_recon": x_recon_scaled[0],
+    }
+
+
+def latent_arithmetic(
+    Z_ae: np.ndarray,
+    meta: "pd.DataFrame",
+    y: np.ndarray,
+    save_path=None,
+) -> dict:
+    """
+    Arithmétique dans l'espace latent (word2vec stellaire).
+
+    Test : K_géante − K_naine + G_naine ≈ G_géante ?
+
+    Provient de la cellule 46 du notebook phy3500_03_autoencoder.ipynb.
+
+    Returns
+    -------
+    dict avec les populations sélectionnées, les résultats des tests
+    et la figure matplotlib.
+    """
+    import matplotlib.pyplot as plt
+
+    teff_v = (
+        meta["teff_gspphot"].values.astype(float)
+        if "teff_gspphot" in meta.columns
+        else None
+    )
+    logg_v = (
+        meta["logg_gspphot"].values.astype(float)
+        if "logg_gspphot" in meta.columns
+        else None
+    )
+    if teff_v is None or logg_v is None:
+        raise ValueError(
+            "latent_arithmetic requiert teff_gspphot et logg_gspphot dans meta."
+        )
+
+    valid_all = np.isfinite(teff_v) & np.isfinite(logg_v) & (y == "STAR")
+    rng = np.random.default_rng(42)
+
+    def select_pop(teff_range, logg_range, n=200, label=""):
+        t_lo, t_hi = teff_range
+        g_lo, g_hi = logg_range
+        mask = (
+            valid_all
+            & (teff_v >= t_lo)
+            & (teff_v < t_hi)
+            & (logg_v >= g_lo)
+            & (logg_v < g_hi)
+        )
+        n_found = mask.sum()
+        if n_found < 20:
+            print(f"  ⚠  {label} : seulement {n_found} étoiles — résultat peu fiable")
+        n_sel = min(n, n_found)
+        if n_sel == 0:
+            return None, 0
+        idx_sel = rng.choice(np.where(mask)[0], n_sel, replace=False)
+        z_mean = Z_ae[idx_sel].mean(axis=0)
+        print(f"  {label:20s} : n={n_found:5d}  z̄=({z_mean[0]:+.3f}, {z_mean[1]:+.3f})")
+        return z_mean, n_found
+
+    print("Sélection des populations de référence :")
+    print("-" * 65)
+    pops = {
+        "K_naine": select_pop((3800, 5200), (4.0, 5.5), label="K naine"),
+        "G_naine": select_pop((5200, 6200), (4.0, 5.5), label="G naine"),
+        "F_naine": select_pop((6200, 7500), (4.0, 5.5), label="F naine"),
+        "K_geante": select_pop((3800, 5200), (0.5, 3.0), label="K géante"),
+        "G_geante": select_pop((5200, 6200), (0.5, 3.0), label="G géante"),
+        "F_geante": select_pop((6200, 7500), (0.5, 3.0), label="F géante"),
+    }
+    z = {k: v[0] for k, v in pops.items()}
+
+    TESTS = []
+    if all(z[k] is not None for k in ["K_geante", "K_naine", "G_naine", "G_geante"]):
+        TESTS.append(
+            {
+                "eq": "K_géante − K_naine + G_naine ≈ G_géante ?",
+                "pred": z["K_geante"] - z["K_naine"] + z["G_naine"],
+                "tgt": z["G_geante"],
+                "col_p": "#E8593C",
+                "col_t": "#3B8BD4",
+            }
+        )
+    if all(z[k] is not None for k in ["G_geante", "G_naine", "K_naine", "K_geante"]):
+        TESTS.append(
+            {
+                "eq": "G_géante − G_naine + K_naine ≈ K_géante ?",
+                "pred": z["G_geante"] - z["G_naine"] + z["K_naine"],
+                "tgt": z["K_geante"],
+                "col_p": "#4C9B6F",
+                "col_t": "#B07DB8",
+            }
+        )
+
+    print("\n" + "=" * 65 + "\n  RÉSULTATS DE L'ARITHMÉTIQUE LATENTE\n" + "=" * 65)
+    results = []
+    dist_ref = (
+        float(np.linalg.norm(z["K_naine"] - z["G_geante"]))
+        if (z["K_naine"] is not None and z["G_geante"] is not None)
+        else 1.0
+    )
+    for t in TESTS:
+        dist = float(np.linalg.norm(t["pred"] - t["tgt"]))
+        ratio = dist / max(dist_ref, 1e-8) * 100
+        verdict = (
+            "✓ ANALOGIE FONCTIONNELLE"
+            if ratio < 30
+            else ("~ Partielle" if ratio < 60 else "✗ Pas d'analogie")
+        )
+        print(f"\n  {t['eq']}")
+        print(f"    Prédit  : ({t['pred'][0]:+.4f}, {t['pred'][1]:+.4f})")
+        print(f"    Réel    : ({t['tgt'][0]:+.4f}, {t['tgt'][1]:+.4f})")
+        print(f"    Distance: {dist:.4f} (= {ratio:.1f}% de K_naine↔G_géante)")
+        print(f"    Verdict : {verdict}")
+        results.append(
+            {
+                "equation": t["eq"],
+                "distance": dist,
+                "ratio_pct": ratio,
+                "verdict": verdict,
+            }
+        )
+
+    # Figure
+    fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
+    sc = ax.scatter(
+        Z_ae[valid_all, 0],
+        Z_ae[valid_all, 1],
+        c=teff_v[valid_all],
+        cmap="plasma",
+        s=0.5,
+        alpha=0.2,
+        rasterized=True,
+        zorder=1,
+    )
+    plt.colorbar(sc, ax=ax, label="T_eff Gaia (K)", fraction=0.025)
+
+    POPS_PLOT = [
+        ("K_naine", "#B07DB8", "o"),
+        ("G_naine", "#4C9B6F", "o"),
+        ("F_naine", "#F5A623", "o"),
+        ("K_geante", "#B07DB8", "^"),
+        ("G_geante", "#4C9B6F", "^"),
+        ("F_geante", "#F5A623", "^"),
+    ]
+    for name, col, mrk in POPS_PLOT:
+        if z[name] is not None:
+            ax.scatter(
+                z[name][0],
+                z[name][1],
+                s=200,
+                color=col,
+                marker=mrk,
+                edgecolors="white",
+                linewidths=1.5,
+                zorder=4,
+            )
+            ax.annotate(
+                name.replace("_", " "),
+                z[name],
+                textcoords="offset points",
+                xytext=(6, 4),
+                fontsize=9,
+                color=col,
+                fontweight="bold",
+            )
+
+    for t in TESTS:
+        ax.annotate(
+            "",
+            xy=t["tgt"],
+            xytext=t["pred"],
+            arrowprops=dict(arrowstyle="->", color="#333", lw=1.5),
+        )
+        ax.scatter(
+            t["pred"][0],
+            t["pred"][1],
+            s=150,
+            color=t["col_p"],
+            marker="*",
+            edgecolors="white",
+            linewidths=1,
+            zorder=5,
+        )
+
+    ax.set_xlabel("AE axe 1")
+    ax.set_ylabel("AE axe 2")
+    ax.set_title(
+        "Arithmétique latente — word2vec stellaire\nLAMOST DR5 × Gaia DR3",
+        fontsize=12,
+        fontweight="bold",
+    )
+    ax.grid(True, alpha=0.2)
+    plt.tight_layout()
+    if save_path is not None:
+        fig.savefig(save_path, bbox_inches="tight", dpi=150)
+    plt.show()
+
+    return {
+        "populations": {
+            k: (v.tolist() if v is not None else None) for k, v in z.items()
+        },
+        "tests": results,
+        "fig": fig,
+    }

@@ -599,6 +599,60 @@ class SpectralMatrixLoader:
         logger.info("Index FITS construit : %d fichiers trouvés", len(self._fits_index))
         return self._fits_index
 
+    def inspect_sample_fits(self, n_samples: int = 3) -> list[str]:
+        """
+        Inspecte quelques fichiers FITS et retourne des lignes prêtes a afficher.
+
+        Cette methode factorise le bloc de verification rapide utilise dans
+        le notebook PCA (section spectres bruts), sans modifier la logique
+        scientifique du pipeline.
+
+        Parameters
+        ----------
+        n_samples : int
+            Nombre de fichiers FITS a inspecter.
+
+        Returns
+        -------
+        list[str]
+            Lignes de texte detaillees pour impression dans un notebook.
+        """
+        import astropy.io.fits as fits
+
+        fits_paths = list(self.fits_dir.rglob("*.fits*"))
+        sample_paths = fits_paths[: max(0, n_samples)]
+
+        lines = [
+            f"Fichiers trouvés dans RAW_DATA_DIR : {len(fits_paths)}",
+        ]
+
+        for path in sample_paths:
+            lines.append(f"\n--- {path.name} ---")
+            try:
+                with fits.open(path) as hdul:
+                    lines.append(f"  HDU list : {[h.name for h in hdul]}")
+
+                    data = hdul[0].data
+                    shape = data.shape if data is not None else "None"
+                    lines.append(f"  Data shape : {shape}")
+
+                    header = hdul[0].header
+                    lines.append(f"  COEFF0 : {header.get('COEFF0', 'ABSENT')}")
+                    lines.append(f"  COEFF1 : {header.get('COEFF1', 'ABSENT')}")
+
+                    if data is not None:
+                        flux = data[0] if data.ndim > 1 else data
+                        lines.append(
+                            f"  Flux range : [{flux.min():.2f}, {flux.max():.2f}]"
+                        )
+                        lines.append(
+                            f"  NaN count  : {np.isnan(flux).sum()}/{len(flux)}"
+                        )
+            except Exception as exc:
+                lines.append(f"  ERREUR : {exc}")
+
+        return lines
+
     def load(
         self,
         n_spectra: Optional[int] = None,

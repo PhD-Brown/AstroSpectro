@@ -33,6 +33,7 @@ Exemple
 from __future__ import annotations
 
 import logging
+import re
 from typing import List, Optional
 
 import numpy as np
@@ -237,6 +238,60 @@ class PCAAnalyzer:
                 "PC": f"PC{pc_idx + 1}",
             }
         ).reset_index(drop=True)
+
+    def loadings_family_breakdown(
+        self,
+        feature_names: Optional[List[str]] = None,
+        pc_indices: tuple[int, ...] = (0, 1),
+    ) -> dict:
+        """
+        Décompose les contributions des loadings par famille spectroscopique.
+
+        Cette méthode est conçue pour factoriser la logique du notebook 01 (section 4.bis)
+        sans modifier la logique scientifique: contribution quadratique normalisée
+        par famille et par composante principale.
+
+        Returns
+        -------
+        dict
+            Contient loadings, feat_names, families, family_list, color_map,
+            ainsi que contributions par PC (et alias contrib_pc1/contrib_pc2).
+        """
+        self._check_fitted()
+
+        if feature_names is None:
+            feat_names = self.feature_names_
+        else:
+            feat_names = list(feature_names)
+
+        if feat_names is None:
+            raise RuntimeError("Noms de features indisponibles: fournir feature_names.")
+
+        loadings = self.loadings
+        families = [self._assign_family(f) for f in feat_names]
+        family_list = list(self._FAMILIES.keys())
+        color_map = self._family_color_map()
+
+        contributions = {
+            pc_idx: self._family_contributions(pc_idx, loadings, feat_names, families)
+            for pc_idx in pc_indices
+        }
+
+        out = {
+            "loadings": loadings,
+            "feat_names": feat_names,
+            "families": families,
+            "family_list": family_list,
+            "color_map": color_map,
+            "families_map": dict(self._FAMILIES),
+            "family_colors": list(self._FAMILY_COLORS),
+            "contributions": contributions,
+        }
+        if 0 in contributions:
+            out["contrib_pc1"] = contributions[0]
+        if 1 in contributions:
+            out["contrib_pc2"] = contributions[1]
+        return out
 
     # ------------------------------------------------------------------
     # Corrélations PC ↔ paramètres physiques
@@ -451,6 +506,86 @@ class PCAAnalyzer:
     # ------------------------------------------------------------------
     # Helpers privés
     # ------------------------------------------------------------------
+
+    _FAMILIES = {
+        "Balmer\n(H α/β/γ/δ/ε/8/9/10)": [
+            r"H[αβγδε]|Halpha|Hbeta|Hgamma|Hdelta|Hepsilon|H8|H9|H10"
+            r"|feature_H[89]|feature_H10|balmer|paschen"
+        ],
+        "Calcium\n(Ca II H&K + triplet)": [r"CaII|CaH|CaK|Ca_8|Ca_trip|feature_Ca"],
+        "Magnésium\n(Mg b + triplet)": [r"Mg_b|Mg_5|MgH|Mg_trip|feature_Mg"],
+        "Fer & métaux\n(Fe, Cr, Ni, Co, V, Al)": [
+            r"feature_Fe|feature_Cr|feature_Ni|feature_Co|feature_V_"
+            r"|feature_Al|iron_peak|metal_index|metal_poor|FeH_proxy|alpha_Fe|alpha_el"
+        ],
+        "Sodium\n(Na D)": [r"Na_D|feature_Na"],
+        "Titane & moléc.\n(TiO, VO, CH, CN, CaH)": [
+            r"TiO|VO_|molecular|feature_Ti|CNO|CN_"
+        ],
+        "Strontium, Baryum\ns-process": [
+            r"feature_Sr|feature_Ba|s_process|feature_ratio_Ba|feature_ratio_Sr"
+        ],
+        "Continuum\n(pente, couleur, break)": [
+            r"continuum|slope|break_4000|flux_ratio|synthetic_BV|UV_excess"
+            r"|curvature|color_|feature_cont"
+        ],
+        "Profils de raies\n(asymétrie, ailes, etc.)": [
+            r"asymmetr|wing|kurtosis|skewness|core_width|base_width|depth"
+            r"|profile_shape|avg_line|rotation"
+        ],
+        "Indices Lick\n& indices synthétiques": [
+            r"feature_index|Dn4000|G4300|Hbeta_index|NaD_Lick|TiO_1_Lick"
+            r"|ratio_EW|EW_CaHK|contrast_metals"
+        ],
+        "Détection peak\n(match_*, present)": [r"match_|feature_.*_present"],
+        "Autres": [r".*"],
+    }
+
+    _FAMILY_COLORS = [
+        "#E8593C",
+        "#3B8BD4",
+        "#4C9B6F",
+        "#B07DB8",
+        "#F5A623",
+        "#2E86AB",
+        "#D4A853",
+        "#7F8FA6",
+        "#C06C84",
+        "#6CAE75",
+        "#A3B4C5",
+        "#CCCCCC",
+    ]
+
+    def _assign_family(self, feat_name: str) -> str:
+        for family, patterns in self._FAMILIES.items():
+            for pat in patterns:
+                if re.search(pat, feat_name, re.IGNORECASE):
+                    return family
+        return "Autres"
+
+    def _family_color_map(self) -> dict[str, str]:
+        family_list = list(self._FAMILIES.keys())
+        return {
+            fam: self._FAMILY_COLORS[i % len(self._FAMILY_COLORS)]
+            for i, fam in enumerate(family_list)
+        }
+
+    def _family_contributions(
+        self,
+        pc_idx: int,
+        loadings: np.ndarray,
+        feat_names: List[str],
+        families: List[str],
+    ) -> pd.DataFrame:
+        if pc_idx < 0 or pc_idx >= loadings.shape[0]:
+            raise IndexError(f"pc_idx={pc_idx} hors bornes (0..{loadings.shape[0]-1}).")
+
+        w = loadings[pc_idx] ** 2
+        w /= w.sum()
+        df = pd.DataFrame({"feature": feat_names, "family": families, "weight": w})
+        agg = df.groupby("family")["weight"].sum().reset_index()
+        agg = agg[agg["weight"] > 0].sort_values("weight", ascending=False)
+        return agg
 
     def _check_fitted(self) -> None:
         if self._pca is None:

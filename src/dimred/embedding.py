@@ -388,10 +388,172 @@ class EmbeddingEngine:
         # t-SNE n'a pas de transform() → on le simule pour cohérence API
         return Z
 
+    def compute_umap3d(
+        self,
+        scores_95: np.ndarray,
+        meta: "pd.DataFrame",
+        y: np.ndarray,
+        cluster_labels: np.ndarray,
+        figures_dir,
+        random_state: int = 42,
+        n_subsample: int = 20_000,
+    ) -> dict:
+        """
+        Calcule UMAP 3D, corrélations physiques et exporte les figures Plotly.
 
-# ------------------------------------------------------------------
-# Utilitaire : grille de comparaison méthodes
-# ------------------------------------------------------------------
+        Centralise la logique de la cellule 22 de phy3500_02_umap_tsne.ipynb.
+
+        Returns
+        -------
+        dict avec les clés : Z_umap3, axis3_best_param, axis3_best_corr,
+        path_3d_html, path_3d_teff, path_3d_feh, umap_3d_fit_time.
+        """
+        from pathlib import Path as _Path
+        from scipy.stats import spearmanr
+
+        try:
+            import plotly.express as px
+        except ImportError:
+            raise ImportError("Plotly non installé → pip install plotly")
+
+        figures_dir = _Path(figures_dir)
+        engine_3d = EmbeddingEngine(
+            method="umap",
+            n_components=3,
+            random_state=random_state,
+            n_neighbors=15,
+            min_dist=0.1,
+        )
+        Z_umap3 = engine_3d.fit_transform(scores_95)
+        logger.info(
+            "UMAP 3D terminé en %.1fs | shape : %s",
+            engine_3d.fit_time_,
+            Z_umap3.shape,
+        )
+
+        # Corrélations axes 3D ↔ paramètres physiques
+        phys_params = [
+            ("teff_gspphot", "T_eff (K)"),
+            ("logg_gspphot", "log g"),
+            ("mh_gspphot", "[Fe/H]"),
+            ("bp_rp", "G_BP-G_RP"),
+            ("phot_g_mean_mag", "G mag"),
+            ("parallax", "Parallaxe"),
+        ]
+        axis3_best_corr, axis3_best_param = 0.0, "?"
+        for col, label in phys_params:
+            if col not in meta.columns:
+                continue
+            vals = meta[col].values.astype(float)
+            valid = np.isfinite(vals)
+            if valid.sum() < 100:
+                continue
+            r3, _ = spearmanr(Z_umap3[valid, 2], vals[valid])
+            if abs(r3) > abs(axis3_best_corr):
+                axis3_best_corr, axis3_best_param = r3, label
+
+        # DataFrame Plotly
+        import pandas as _pd
+
+        df_3d = _pd.DataFrame(
+            {
+                "UMAP1": Z_umap3[:, 0],
+                "UMAP2": Z_umap3[:, 1],
+                "UMAP3": Z_umap3[:, 2],
+                "Classe": y,
+            }
+        )
+        for col, label in phys_params:
+            if col in meta.columns:
+                df_3d[label] = meta[col].values
+        df_3d["Cluster"] = ["Bruit" if c == -1 else f"C{c}" for c in cluster_labels]
+
+        rng = np.random.default_rng(random_state)
+        N_PLOT = min(n_subsample, len(df_3d))
+        df_plot = df_3d.iloc[rng.choice(len(df_3d), N_PLOT, replace=False)].copy()
+        COLOR_MAP = {"STAR": "#4C72B0", "GALAXY": "#DD8452", "QSO": "#55A868"}
+
+        # Figure 1 : classes LAMOST
+        fig_class = px.scatter_3d(
+            df_plot,
+            x="UMAP1",
+            y="UMAP2",
+            z="UMAP3",
+            color="Classe",
+            color_discrete_map=COLOR_MAP,
+            opacity=0.6,
+            size_max=3,
+            title=(
+                f"Variété stellaire UMAP 3D — LAMOST DR5<br>"
+                f"axe3 ↔ {axis3_best_param} ρ={axis3_best_corr:+.2f}"
+            ),
+        )
+        fig_class.update_traces(marker=dict(size=2))
+        fig_class.update_layout(
+            scene=dict(
+                xaxis_title="UMAP 1",
+                yaxis_title="UMAP 2",
+                zaxis_title=f"UMAP 3 (↔ {axis3_best_param})",
+            ),
+            margin=dict(l=0, r=0, b=0, t=50),
+        )
+        path_html = figures_dir / "umap3d_classes.html"
+        fig_class.write_html(str(path_html))
+
+        # Figure 2 : T_eff
+        path_teff = None
+        if "T_eff (K)" in df_plot.columns:
+            fig_teff = px.scatter_3d(
+                df_plot.dropna(subset=["T_eff (K)"]),
+                x="UMAP1",
+                y="UMAP2",
+                z="UMAP3",
+                color="T_eff (K)",
+                color_continuous_scale="plasma",
+                range_color=[
+                    float(df_plot["T_eff (K)"].quantile(0.02)),
+                    float(df_plot["T_eff (K)"].quantile(0.98)),
+                ],
+                opacity=0.6,
+                title="Variété stellaire UMAP 3D — T_eff · LAMOST DR5 × Gaia DR3",
+            )
+            fig_teff.update_traces(marker=dict(size=2))
+            fig_teff.update_layout(margin=dict(l=0, r=0, b=0, t=50))
+            path_teff = figures_dir / "umap3d_teff.html"
+            fig_teff.write_html(str(path_teff))
+
+        # Figure 3 : [Fe/H]
+        path_feh = None
+        if "[Fe/H]" in df_plot.columns:
+            fig_feh = px.scatter_3d(
+                df_plot.dropna(subset=["[Fe/H]"]),
+                x="UMAP1",
+                y="UMAP2",
+                z="UMAP3",
+                color="[Fe/H]",
+                color_continuous_scale="RdYlBu",
+                range_color=[
+                    float(df_plot["[Fe/H]"].quantile(0.02)),
+                    float(df_plot["[Fe/H]"].quantile(0.98)),
+                ],
+                opacity=0.6,
+                title="Variété stellaire UMAP 3D — [Fe/H] · LAMOST DR5 × Gaia DR3",
+            )
+            fig_feh.update_traces(marker=dict(size=2))
+            fig_feh.update_layout(margin=dict(l=0, r=0, b=0, t=50))
+            path_feh = figures_dir / "umap3d_feh.html"
+            fig_feh.write_html(str(path_feh))
+
+        logger.info("UMAP 3D — axe 3 ↔ %s (ρ=%+.3f)", axis3_best_param, axis3_best_corr)
+        return {
+            "Z_umap3": Z_umap3,
+            "axis3_best_param": axis3_best_param,
+            "axis3_best_corr": axis3_best_corr,
+            "path_3d_html": path_html,
+            "path_3d_teff": path_teff,
+            "path_3d_feh": path_feh,
+            "umap_3d_fit_time": engine_3d.fit_time_,
+        }
 
 
 def compare_embeddings(
