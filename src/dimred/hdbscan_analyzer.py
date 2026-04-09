@@ -68,11 +68,13 @@ class HDBSCANAnalyzer:
         metric: str = "euclidean",
         cluster_selection_method: str = "eom",
     ) -> None:
+        # Hyperparamètres "analyse fine" conservés comme état de l'analyseur.
         self.min_cluster_size = min_cluster_size
         self.min_samples = min_samples
         self.metric = metric
         self.cluster_selection_method = cluster_selection_method
 
+        # Attributs produits par fit() (version analyse standard).
         self.clusterer_ = None
         self.labels_: Optional[np.ndarray] = None
         self.n_clusters_: int = 0
@@ -107,6 +109,7 @@ class HDBSCANAnalyzer:
         except ImportError:
             raise ImportError("HDBSCAN non installé → pip install hdbscan")
 
+        # prediction_data=True garde les structures utiles à la post-analyse HDBSCAN.
         self.clusterer_ = hdbscan.HDBSCAN(
             min_cluster_size=self.min_cluster_size,
             min_samples=self.min_samples,
@@ -114,7 +117,9 @@ class HDBSCANAnalyzer:
             cluster_selection_method=self.cluster_selection_method,
             prediction_data=True,
         )
+        # fit_predict renvoie -1 pour les points bruit (non assignés à un cluster dense).
         self.labels_ = self.clusterer_.fit_predict(Z)
+        # Statistiques agrégées et palette dérivées des labels obtenus.
         self._compute_stats()
         self._build_palette()
 
@@ -141,6 +146,7 @@ class HDBSCANAnalyzer:
         except ImportError:
             raise ImportError("HDBSCAN non installé → pip install hdbscan")
 
+        # Variante "présentation": granularité plus grossière via min_cluster_size élevé.
         self.clusterer_pres_ = hdbscan.HDBSCAN(
             min_cluster_size=min_cluster_size,
             min_samples=self.min_samples,
@@ -148,11 +154,13 @@ class HDBSCANAnalyzer:
             cluster_selection_method=self.cluster_selection_method,
         )
         self.labels_pres_ = self.clusterer_pres_.fit_predict(Z)
+        # IDs triés sans bruit (-1) pour construire une légende stable.
         self.ids_pres_ = sorted(set(self.labels_pres_) - {-1})
         self.n_clusters_pres_ = len(self.ids_pres_)
 
         cmap_p = plt.get_cmap("tab20", self.n_clusters_pres_)
         self.color_map_pres_ = {cid: cmap_p(i) for i, cid in enumerate(self.ids_pres_)}
+        # Couleur dédiée au bruit, volontairement désaturée.
         self.color_map_pres_[-1] = (0.82, 0.82, 0.82, 0.25)
 
         logger.info(
@@ -193,16 +201,25 @@ class HDBSCANAnalyzer:
             raise RuntimeError("Appeler fit() avant physical_profile_table().")
 
         phys_cols = phys_cols or _PHYS_COLS
-        available = [(c, l) for c, l in phys_cols if c in meta.columns]
+        # Restreint l'analyse aux colonnes réellement présentes dans meta.
+        available = [
+            (col_name, label_name)
+            for col_name, label_name in phys_cols
+            if col_name in meta.columns
+        ]
         col_names = [c for c, _ in available]
 
+        # Table de travail alignée sur les labels HDBSCAN et les classes LAMOST.
         df_profile = meta.copy().reset_index(drop=True)
         df_profile["cluster"] = self.labels_
         df_profile["class_lamost"] = y
 
+        # Exclut le bruit pour le résumé principal des populations structurées.
         df_clusters = df_profile[df_profile["cluster"] != -1].copy()
+        # MultiIndex (mean/std) aplati ensuite pour des accès plus simples par nom de colonne.
         summary = df_clusters.groupby("cluster")[col_names].agg(["mean", "std"])
         summary.columns = ["_".join(c) for c in summary.columns]
+        # Comptage et classe dominante par cluster pour contexte astrophysique rapide.
         counts = df_clusters["cluster"].value_counts().sort_index()
         dominant = (
             df_clusters.groupby("cluster")["class_lamost"]
@@ -223,6 +240,7 @@ class HDBSCANAnalyzer:
                 if m_col in summary.columns:
                     mu = summary.loc[cid, m_col]
                     sig = summary.loc[cid, s_col]
+                    # Format différent pour T_eff (échelle absolue en K) vs autres paramètres.
                     row[label] = (
                         f"{mu:.0f} ± {sig:.0f}"
                         if col == "teff_gspphot"
@@ -243,6 +261,7 @@ class HDBSCANAnalyzer:
             if col in df_noise.columns:
                 vals = df_noise[col].dropna()
                 if len(vals) > 0:
+                    # Résumé du bruit en moyenne simple (sans dispersion) pour rester compact.
                     row_noise[label] = (
                         f"{vals.mean():.0f}"
                         if col == "teff_gspphot"
@@ -274,6 +293,7 @@ class HDBSCANAnalyzer:
             n = int(counts.get(cid, 0))
             desc = []
             if teff_mu is not None and not pd.isna(teff_mu):
+                # Règles heuristiques Teff -> familles spectrales approximatives.
                 if teff_mu > 7500:
                     desc.append("étoiles chaudes (A–F)")
                 elif teff_mu > 5500:
@@ -283,6 +303,7 @@ class HDBSCANAnalyzer:
                 else:
                     desc.append("étoiles très froides (K–M)")
             if logg_mu is not None and not pd.isna(logg_mu):
+                # Gravité de surface -> classe de luminosité (naines/géantes/supergéantes).
                 if logg_mu < 2.5:
                     desc.append("supergéantes")
                 elif logg_mu < 3.5:
@@ -290,6 +311,7 @@ class HDBSCANAnalyzer:
                 else:
                     desc.append("naines (séquence principale)")
             if mh_mu is not None and not pd.isna(mh_mu):
+                # Métallicité moyenne -> indication population stellaire galactique.
                 if mh_mu < -0.8:
                     desc.append("[Fe/H] très faible — pop. vieille/halo")
                 elif mh_mu < -0.3:
@@ -319,6 +341,7 @@ class HDBSCANAnalyzer:
         self, df_table: pd.DataFrame, df_interp: pd.DataFrame
     ) -> None:
         """Affiche les tableaux de profil physique et d'interprétation."""
+        # Impression console structurée pour insertion directe dans notes/rapport.
         print("=" * 80)
         print("  PROFIL PHYSIQUE DES POPULATIONS DÉCOUVERTES PAR HDBSCAN")
         print("  (paramètres Gaia DR3, moyenne ± écart-type par cluster)")
@@ -334,19 +357,23 @@ class HDBSCANAnalyzer:
 
     def centroid(self, Z: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """Centroïde d'un cluster dans l'espace 2D."""
+        # Barycentre euclidien simple des points du cluster sélectionné.
         return Z[mask].mean(axis=0)
 
     def _compute_stats(self) -> None:
+        # Exclut -1 (bruit) pour les compteurs de clusters astrophysiquement interprétables.
         self.cluster_ids_ = sorted(set(self.labels_) - {-1})
         self.n_clusters_ = len(self.cluster_ids_)
         self.n_noise_ = int((self.labels_ == -1).sum())
 
     def _build_palette(self) -> None:
+        # Palette continue turbo puis mapping cluster_id -> couleur.
         cmap = plt.get_cmap("turbo", max(1, self.n_clusters_))
         self.color_map_ = {
             cid: cmap(i / max(1, self.n_clusters_ - 1))
             for i, cid in enumerate(self.cluster_ids_)
         }
+        # Bruit en gris transparent pour rester en arrière-plan des figures.
         self.color_map_[-1] = (0.82, 0.82, 0.82, 0.25)
 
     @property
@@ -376,16 +403,19 @@ def compute_sensitivity(
         raise ImportError("HDBSCAN non installé → pip install hdbscan")
 
     if min_sizes is None:
+        # Grille typique du notebook pour comparer finesse vs robustesse des clusters.
         min_sizes = [50, 100, 150, 300, 500]
 
     rows = []
     for mcs in min_sizes:
+        # Refit complet pour chaque valeur de min_cluster_size (analyse de sensibilité).
         cl = _hdbscan.HDBSCAN(
             min_cluster_size=mcs,
             min_samples=min_samples,
             metric="euclidean",
             cluster_selection_method="eom",
         ).fit_predict(Z)
+        # Convention HDBSCAN: -1 = bruit, exclu du comptage de clusters.
         nc = len(set(cl)) - (1 if -1 in cl else 0)
         nn = int((cl == -1).sum())
         rows.append(
@@ -428,6 +458,7 @@ def compute_feature_profiles(
     from sklearn.preprocessing import StandardScaler
 
     try:
+        # Import via package installé (cas normal dans le projet).
         from dimred.data_loader import (
             _GAIA_META_COLS,
             _SNR_COLS,
@@ -435,6 +466,7 @@ def compute_feature_profiles(
             _NON_SPECTRO_PREFIXES,
         )
     except ImportError:
+        # Fallback notebook/exec locale si le package dimred n'est pas résolu.
         from data_loader import (
             _GAIA_META_COLS,
             _SNR_COLS,
@@ -451,6 +483,7 @@ def compute_feature_profiles(
 
     df_raw = pd.read_csv(features_csv, low_memory=False)
     if "snr_r" in df_raw.columns:
+        # Même filtre qualité que le loader principal pour cohérence inter-modules.
         df_filt = df_raw[df_raw["snr_r"] >= 10.0].copy()
     else:
         df_filt = df_raw.copy()
@@ -484,6 +517,7 @@ def compute_feature_profiles(
     }
     EXCLUDE |= set(_GAIA_META_COLS) | set(_SNR_COLS) | set(_INSTRUMENTAL_COLS)
 
+    # Colonnes retenues: features spectrales numériques, informatives, peu manquantes.
     feat_cols = [
         c
         for c in df_filt.columns
@@ -502,6 +536,7 @@ def compute_feature_profiles(
         logger.warning(
             "Désalignement : features=%d, Z_umap=%d → troncature.", len(df_feat), n_umap
         )
+        # Troncature conservative: garde l'intersection commune dans l'ordre courant.
         n_common = min(len(df_feat), n_umap)
         df_feat = df_feat.iloc[:n_common]
         cluster_labels_aligned = cluster_labels[:n_common]
@@ -510,11 +545,13 @@ def compute_feature_profiles(
         logger.info("Alignement parfait : %d spectres", n_umap)
 
     # Standardisation
+    # Passage en z-score pour comparer les contributions des features sur une même échelle.
     scaler = StandardScaler()
     X_std = scaler.fit_transform(df_feat.values.astype(float))
     X_std_df = pd.DataFrame(X_std, columns=feat_cols)
     X_std_df["cluster"] = cluster_labels_aligned
 
+    # Moyenne par cluster (hors bruit) = signature spectrale moyenne standardisée.
     cluster_means = (
         X_std_df[X_std_df["cluster"] != -1].groupby("cluster")[feat_cols].mean()
     )

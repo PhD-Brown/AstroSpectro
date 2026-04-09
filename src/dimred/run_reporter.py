@@ -24,6 +24,18 @@ Usage
 >>> from dimred.run_reporter import save_pca_run
 >>> result = save_pca_run(pca=pca, pca_spec=pca_spec, scores=scores, ...)
 >>> print(result["summary"])
+
+Principes de conception
+-----------------------
+1) Robustesse opérationnelle : le module privilégie des sorties stables,
+    explicites et traçables pour faciliter le débogage des notebooks.
+2) Reproductibilité : chaque run est horodaté en UTC, avec artefacts
+    versionnés et alias « latest » pour l'exploitation continue.
+3) Lisibilité scientifique : chaque rapport (JSON + TXT) expose à la fois
+    les métriques numériques, les dimensions, les chemins et les inventaires
+    de figures nécessaires à l'interprétation.
+4) Compatibilité descendante : certains artefacts legacy sont conservés pour
+    ne pas casser les flux existants du projet AstroSpectro.
 """
 
 from __future__ import annotations
@@ -46,7 +58,16 @@ logger = logging.getLogger(__name__)
 
 
 def class_counts(labels) -> Dict[str, int]:
-    """Compte les occurrences de chaque classe dans un tableau d'étiquettes."""
+    """
+    Compte les occurrences de chaque classe dans un tableau d'étiquettes.
+
+    Notes
+    -----
+    Utilise ``np.unique(..., return_counts=True)``, ce qui garantit :
+    - un comptage vectorisé efficace ;
+    - un ordre déterministe des clés (ordre trié NumPy), utile pour
+      comparer deux rapports de runs.
+    """
     classes, counts = np.unique(labels, return_counts=True)
     return {str(cls): int(cnt) for cls, cnt in zip(classes, counts)}
 
@@ -59,13 +80,23 @@ def safe_df_records(
 
     Remplace les NaN par None pour garantir la compatibilité JSON.
     Retourne None si df est None.
+
+    Pourquoi ce helper est critique
+    -------------------------------
+    Les DataFrames issus des analyses (variance, corrélations, stabilité)
+    contiennent souvent des NaN et des types NumPy. Cette fonction normalise
+    ces tables pour éviter les erreurs de sérialisation dans ``json.dump``.
     """
     if df is None:
         return None
+    # Copie défensive: évite de modifier le DataFrame original du notebook.
     out = df.copy()
+    # Tronque éventuellement le tableau pour garder un JSON lisible.
     if max_rows is not None:
         out = out.head(max_rows)
+    # Conversion NaN -> None pour être compatible JSON natif.
     out = out.where(pd.notna(out), None)
+    # Format final consommable par json.dump.
     return out.to_dict(orient="records")
 
 
@@ -74,25 +105,43 @@ def json_default(obj: Any) -> Any:
     Sérialiseur JSON pour les types NumPy / Pandas / Path / datetime.
 
     À passer comme argument ``default`` à ``json.dump``.
+
+    Justification
+    -------------
+    Les rapports contiennent de nombreux types non natifs JSON (NumPy, Path,
+    Timestamp). Centraliser la conversion ici garantit un comportement
+    homogène sur les trois notebooks.
     """
     if isinstance(obj, (np.integer, np.floating)):
+        # NumPy scalaire -> scalaire Python (int/float).
         return obj.item()
     if isinstance(obj, np.ndarray):
+        # Tableau NumPy -> liste imbriquée JSON.
         return obj.tolist()
     if isinstance(obj, Path):
+        # Les chemins sont stockés en texte pour traçabilité.
         return str(obj)
     if isinstance(obj, (datetime, pd.Timestamp)):
+        # Horodatage ISO lisible et standardisé.
         return obj.isoformat()
     raise TypeError(f"Type non sérialisable : {type(obj)!r}")
 
 
 def embedding_stats(Z: Optional[np.ndarray]) -> Optional[dict]:
-    """Statistiques descriptives pour un embedding 2D (x_min, x_max, means, stds)."""
+    """
+    Statistiques descriptives pour un embedding 2D.
+
+    Retourne min/max/moyenne/écart-type sur les axes x/y afin de documenter
+    l'échelle géométrique des projections (UMAP/t-SNE/AE).
+    """
     if Z is None:
         return None
+    # Normalisation d'entrée: accepte liste, DataFrame ou ndarray.
     arr = np.asarray(Z)
     if arr.ndim != 2 or arr.shape[1] < 2:
+        # Cas incomplet: on documente au moins la forme reçue.
         return {"shape": list(arr.shape)}
+    # Statistiques de dispersion et d'échelle pour les deux axes principaux.
     return {
         "shape": list(arr.shape),
         "x_min": float(np.nanmin(arr[:, 0])),
@@ -107,13 +156,20 @@ def embedding_stats(Z: Optional[np.ndarray]) -> Optional[dict]:
 
 
 def embedding_stats_nd(Z: Optional[np.ndarray], max_axes: int = 3) -> Optional[dict]:
-    """Statistiques descriptives pour un embedding N-dimensionnel."""
+    """
+    Statistiques descriptives pour un embedding N-dimensionnel.
+
+    Limite volontairement le nombre d'axes reportés (``max_axes``) pour
+    conserver des JSON compacts et lisibles.
+    """
     if Z is None:
         return None
+    # Conversion systématique pour travailler avec une API NumPy homogène.
     arr = np.asarray(Z)
     if arr.ndim != 2:
         return {"shape": list(arr.shape)}
     out: dict = {"shape": list(arr.shape)}
+    # On limite volontairement le nombre d'axes reportés pour rester concis.
     for i in range(min(arr.shape[1], max_axes)):
         vals = arr[:, i]
         out[f"axis_{i+1}_min"] = float(np.nanmin(vals))
@@ -124,32 +180,54 @@ def embedding_stats_nd(Z: Optional[np.ndarray], max_axes: int = 3) -> Optional[d
 
 
 def shape_or_none(x: Any) -> Optional[list]:
-    """Retourne ``list(array.shape)`` ou None si x est None ou non convertible."""
+    """
+    Retourne ``list(array.shape)`` ou ``None`` si conversion impossible.
+
+    Ce helper évite de dupliquer des ``try/except`` autour des extractions de
+    dimensions dans les sections de reporting.
+    """
     if x is None:
         return None
     try:
         return list(np.asarray(x).shape)
     except Exception:
+        # Si l'objet n'est pas convertible, on n'interrompt pas le reporting.
         return None
 
 
 def sensitivity_shapes(sensitivity_dict: Optional[dict]) -> Optional[dict]:
-    """Convertit un dict ``{label: Z}`` en dict ``{label: shape}``."""
+    """
+    Convertit un dict ``{label: Z}`` en dict ``{label: shape}``.
+
+    Les matrices complètes de sensibilité peuvent être volumineuses ; on
+    conserve ici uniquement leurs dimensions pour alléger le rapport.
+    """
     if sensitivity_dict is None:
         return None
+    # Réduction mémoire: on garde seulement les dimensions des matrices.
     return {str(k): list(np.asarray(v).shape) for k, v in sensitivity_dict.items()}
 
 
 def numeric_means(df: Optional[pd.DataFrame]) -> Optional[dict]:
-    """Retourne la moyenne de chaque colonne numérique d'un DataFrame."""
+    """
+    Retourne la moyenne de chaque colonne numérique d'un DataFrame.
+
+    Utilisé comme résumé compact des tables de stabilité lorsque l'on ne veut
+    pas relire la table complète dans le JSON.
+    """
     if df is None or len(df) == 0:
         return None
+    # Résume uniquement les colonnes numériques pour éviter les conversions ambiguës.
     cols = df.select_dtypes(include=[np.number]).columns
     return {str(c): float(df[c].mean()) for c in cols}
 
 
 def fmt_seconds(value: Any) -> str:
-    """Formate une durée en secondes vers une chaîne lisible (ou 'N/A')."""
+    """
+    Formate une durée en secondes vers une chaîne lisible (ou ``N/A``).
+
+    Uniformise l'affichage des temps de calcul dans les rapports TXT.
+    """
     if value is None:
         return "N/A"
     try:
@@ -160,10 +238,16 @@ def fmt_seconds(value: Any) -> str:
 
 
 def vector_stats(arr: Any) -> Optional[dict]:
-    """Statistiques robustes (min, max, mean, std, percentiles) sur un vecteur."""
+    """
+    Statistiques robustes (min, max, moyenne, écart-type, percentiles).
+
+    Inclut p05/p50/p95 pour mieux caractériser des distributions asymétriques
+    (ex. confiance XGBoost, erreurs de reconstruction).
+    """
     if arr is None:
         return None
     vals = np.asarray(arr, dtype=float)
+    # Filtre robuste: supprime NaN/inf avant calcul des percentiles.
     vals = vals[np.isfinite(vals)]
     if vals.size == 0:
         return None
@@ -180,18 +264,30 @@ def vector_stats(arr: Any) -> Optional[dict]:
 
 
 def cluster_top_counts(labels, top_n: int = 10) -> dict:
-    """Retourne les N clusters les plus peuplés (exclut le bruit -1)."""
+    """
+    Retourne les N clusters les plus peuplés (exclut le bruit ``-1``).
+
+    Cette vue « top clusters » est pratique pour les rapports synthétiques
+    sans charger toutes les distributions détaillées.
+    """
     vals = np.asarray(labels)
+    # Le bruit HDBSCAN (-1) est exclu pour se concentrer sur les clusters réels.
     counts = {str(int(c)): int((vals == c).sum()) for c in np.unique(vals) if c != -1}
     return dict(sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:top_n])
 
 
 def top3_pred_by_cluster(cluster_arr, pred_arr) -> dict:
-    """Pour chaque cluster, retourne les 3 prédictions les plus fréquentes."""
+    """
+    Pour chaque cluster, retourne les 3 prédictions les plus fréquentes.
+
+    Ce résumé permet d'évaluer rapidement la cohérence entre clusters
+    non supervisés (HDBSCAN) et classes supervisées (XGBoost).
+    """
     out: dict = {}
     c = np.asarray(cluster_arr)
     p = np.asarray(pred_arr)
     for cid in np.unique(c):
+        # À chaque cluster, on isole les prédictions correspondantes.
         mask = c == cid
         vc = pd.Series(p[mask]).value_counts().head(3)
         key = "noise" if cid == -1 else str(int(cid))
@@ -205,12 +301,22 @@ def top3_pred_by_cluster(cluster_arr, pred_arr) -> dict:
 
 
 def make_timestamp() -> str:
-    """Génère un horodatage UTC au format ``YYYYMMDDTHHMMSSz``."""
+    """
+    Génère un horodatage UTC au format ``YYYYMMDDTHHMMSSZ``.
+
+    L'usage systématique de l'UTC évite les ambiguïtés de fuseau horaire
+    lors de la comparaison de runs exécutés sur des machines différentes.
+    """
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
 def make_run_dir(reports_dir: Path, sub: str) -> Path:
-    """Crée (si besoin) ``reports_dir/runs/<sub>`` et retourne le chemin."""
+    """
+    Crée (si besoin) ``reports_dir/runs/<sub>`` et retourne le chemin.
+
+    Cette convention impose une arborescence stable :
+    ``data/reports/runs/<famille_de_notebook>/...``
+    """
     run_dir = reports_dir / "runs" / sub
     run_dir.mkdir(parents=True, exist_ok=True)
     return run_dir
@@ -228,24 +334,39 @@ def save_joblib_pair(
 
     Parameters
     ----------
-    obj          : objet à sérialiser
-    run_dir      : répertoire de destination
-    stem_run     : nom de fichier avec timestamp (sans extension)
-    stem_latest  : nom de fichier « latest » (sans extension)
-    legacy_path  : chemin legacy facultatif (ex. phy3500_pca_output.joblib)
+    obj
+        Objet à sérialiser.
+    run_dir
+        Répertoire de destination.
+    stem_run
+        Nom de fichier horodaté (sans extension).
+    stem_latest
+        Nom de fichier « latest » (sans extension).
+    legacy_path
+        Chemin legacy facultatif (ex. ``phy3500_pca_output.joblib``).
 
     Returns
     -------
     (path_run, path_latest)
+
+    Notes
+    -----
+    Le double-écriture (timestamp + latest) offre deux modes d'usage :
+    - audit reproductible d'un run précis ;
+    - accès rapide au dernier artefact pour les notebooks suivants.
     """
     import joblib
 
     path_run = run_dir / f"{stem_run}.joblib"
     path_latest = run_dir / f"{stem_latest}.joblib"
 
+    # Écriture horodatée: preuve d'exécution immuable du run courant.
     joblib.dump(obj, path_run)
+    # Écriture latest: pointeur pratique vers le plus récent résultat.
     joblib.dump(obj, path_latest)
     if legacy_path is not None:
+        # Compatibilité descendante avec d'anciens chemins utilisés dans
+        # certains notebooks/scripts historiques.
         joblib.dump(obj, legacy_path)
 
     logger.info("Joblib sauvegardé : %s", path_run)
@@ -262,6 +383,11 @@ def save_json_txt_pair(
     """
     Sauvegarde le rapport sous forme JSON + TXT (horodaté + latest).
 
+    Design
+    ------
+    - JSON : format machine-friendly (scripts, dashboards, comparaisons).
+    - TXT  : format humain lisible pour rapport de cours et relecture rapide.
+
     Returns
     -------
     (json_path, json_latest, txt_path, txt_latest)
@@ -271,11 +397,14 @@ def save_json_txt_pair(
     txt_path = run_dir / f"{stem_run}.txt"
     txt_latest = run_dir / f"{stem_latest}.txt"
 
+    # ensure_ascii=False pour conserver les accents français dans les rapports.
+    # On écrit en double (run + latest) pour combiner audit et accès rapide.
     for p in (json_path, json_latest):
         with open(p, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False, default=json_default)
 
     text_content = "\n".join(text_lines)
+    # Même logique pour le TXT: archive horodatée + alias latest.
     for p in (txt_path, txt_latest):
         with open(p, "w", encoding="utf-8") as f:
             f.write(text_content)
@@ -319,6 +448,13 @@ def save_pca_run(
     - Un rapport JSON horodaté + version latest.
     - Un rapport TXT lisible horodaté + version latest.
 
+    Rôle dans le pipeline
+    ---------------------
+    Cette fonction est la clôture analytique de NB01 : elle transforme les
+    objets mémoire (scores, PCAAnalyzer, corrélations, tableaux auxiliaires)
+    en artefacts persistants, exploitables par NB02/NB03 et auditables a
+    posteriori.
+
     Parameters
     ----------
     pca, pca_spec    : PCAAnalyzer ajustés (features / spectres bruts).
@@ -342,14 +478,20 @@ def save_pca_run(
     ``txt_path``, ``joblib_path``, ``summary`` (résumé texte court).
     """
     reports_dir = Path(paths["REPORTS_DIR"])
+    # 1) Identifiant de run (UTC) et destination de stockage.
     timestamp = make_timestamp()
     run_dir = make_run_dir(reports_dir, "phy3500_pca")
 
+    # Borne de sécurité : on ne demande jamais plus de composantes que ce
+    # qui existe réellement dans les matrices de scores en entrée.
+    # 2) Nombre de composantes conservées pour 95% de variance.
     max_pcs_features = scores.shape[1]
     max_pcs_spectra = scores_spec.shape[1]
     n_keep = min(int(pca.n_components_for_variance(0.95)), max_pcs_features)
     n_keep_spec = min(int(pca_spec.n_components_for_variance(0.95)), max_pcs_spectra)
 
+    # Dictionnaires de seuils standards (80/90/95/99%) pour lecture rapide.
+    # 3) Pré-calcul des seuils principaux pour éviter de recalculer plus bas.
     variance_thresholds = {
         f"{int(th * 100)}pct": min(
             int(pca.n_components_for_variance(th)), max_pcs_features
@@ -364,6 +506,9 @@ def save_pca_run(
     }
 
     # ── Joblib ──────────────────────────────────────────────────────────────
+    # Structure de base consommée ensuite par NB02 (UMAP/t-SNE) et utilisée
+    # également pour l'archivage scientifique des résultats PCA.
+    # 4) Ce payload contient les matrices utiles au chaînage inter-notebooks.
     output = {
         "scores": scores,
         "scores_95pct": scores[:, :n_keep],
@@ -379,6 +524,7 @@ def save_pca_run(
         "n_keep_spec": n_keep_spec,
         "features_stem": FEATURES_PATH.stem,
     }
+    # 5) Écriture physique des artefacts PCA (run + latest + legacy).
     legacy_path = reports_dir / "phy3500_pca_output.joblib"
     joblib_run, _joblib_latest = save_joblib_pair(
         output,
@@ -389,6 +535,8 @@ def save_pca_run(
     )
 
     # ── Rapport JSON ────────────────────────────────────────────────────────
+    # Le JSON capture la structure complète et machine-readable du run.
+    # 6) Le JSON décrit les entrées, dimensions, métriques et fichiers produits.
     report = {
         "run_timestamp_utc": timestamp,
         "paths": {
@@ -447,6 +595,9 @@ def save_pca_run(
     }
 
     # ── Rapport TXT ─────────────────────────────────────────────────────────
+    # Le TXT privilégie la lisibilité humaine (enseignant/collègues) avec
+    # sections compactes et tableaux principaux directement imprimés.
+    # 7) Le TXT reprend les informations clés dans un ordre de lecture narratif.
     text_lines = [
         "AstroSpectro | PHY-3500 PCA Run Report",
         "=" * 72,
@@ -489,6 +640,7 @@ def save_pca_run(
         "",
     ]
 
+    # Ajout conditionnel : seulement si les sections ont été calculées.
     if corr_df is not None:
         text_lines += [
             "Corrélations Spearman (PC × Gaia):",
@@ -508,6 +660,7 @@ def save_pca_run(
             "",
         ]
 
+    # 8) Écriture finale des deux formats de rapport.
     json_path, _jl, txt_path, _tl = save_json_txt_pair(
         report,
         run_dir,
@@ -517,6 +670,7 @@ def save_pca_run(
     )
 
     summary = (
+        # Résumé court destiné à l'affichage direct dans le notebook.
         f"Scores PCA sauvegardes -> {joblib_run}\n"
         f"Rapport JSON run        -> {json_path}\n"
         f"Rapport TXT run         -> {txt_path}\n"
@@ -585,11 +739,19 @@ def save_umap_tsne_run(
     UMAP-3D, zoom) sont ignorés s'ils sont None — la sauvegarde est
     toujours effectuée même si seul l'embedding UMAP est disponible.
 
+    Stratégie de conception
+    -----------------------
+    NB02 est modulaire: certaines sections peuvent être sautées selon le
+    temps de calcul ou l'objectif pédagogique. Cette fonction est donc
+    volontairement tolérante et assemble un rapport partiel cohérent, plutôt
+    que d'échouer dès qu'une section optionnelle manque.
+
     Returns
     -------
     dict avec les clés ``timestamp``, ``run_dir``, ``json_path``,
     ``txt_path``, ``joblib_run``, ``joblib_latest``, ``summary``.
     """
+    # Garde-fou minimal : au moins un embedding doit exister.
     if Z_umap is None and Z_tsne is None and Z_umap3 is None:
         raise RuntimeError(
             "Aucun embedding détecté (Z_umap / Z_tsne / Z_umap3). "
@@ -597,10 +759,12 @@ def save_umap_tsne_run(
         )
 
     reports_dir = Path(paths["REPORTS_DIR"])
+    # 1) Prépare le contexte de run et les répertoires de sortie.
     timestamp = make_timestamp()
     run_dir = make_run_dir(reports_dir, "phy3500_umap_tsne")
     FIGURES_DIR = Path(FIGURES_DIR)
 
+    # 2) Les temps de fit sont récupérés si les engines exposent ces attributs.
     umap_fit_time = (
         getattr(umap_engine, "fit_time_", None) if umap_engine is not None else None
     )
@@ -609,6 +773,8 @@ def save_umap_tsne_run(
     )
 
     # ── Normalisation étiquettes ─────────────────────────────────────────────
+    # Harmonisation des labels textuels (typos/variantes historiques) pour
+    # fiabiliser les comptages et comparaisons inter-sections.
     labels_norm = None
     if y is not None:
         labels_norm = np.char.upper(np.asarray(y).astype(str))
@@ -618,6 +784,8 @@ def save_umap_tsne_run(
             labels_norm = np.where(labels_norm == bad, good, labels_norm)
 
     # ── Résumé zoom (optionnel) ──────────────────────────────────────────────
+    # Résume uniquement le nombre de points dans la fenêtre de zoom utilisée
+    # dans les figures "pair" du notebook (utile pour interpréter les plots).
     zoom_summary = None
     if (
         labels_norm is not None
@@ -626,6 +794,7 @@ def save_umap_tsne_run(
         and ZOOM_Y is not None
     ):
         try:
+            # Décompacte les bornes pour produire un masque géométrique explicite.
             zx_min, zx_max = map(float, ZOOM_X)
             zy_min, zy_max = map(float, ZOOM_Y)
             zoom_mask = (
@@ -645,13 +814,16 @@ def save_umap_tsne_run(
                 },
             }
         except Exception as exc:
+            # Une erreur de zoom ne doit jamais bloquer la sauvegarde globale.
             zoom_summary = {"error": str(exc)}
 
     # ── Résumé HDBSCAN (optionnel) ───────────────────────────────────────────
+    # Capture la topologie de clustering sans stocker de structures lourdes.
     hdbscan_summary = None
     if cluster_labels is not None:
         cl = np.asarray(cluster_labels)
         n_total = int(cl.size)
+        # Convention HDBSCAN: -1 correspond au bruit (points non assignés).
         n_noise = int((cl == -1).sum())
         hdbscan_summary = {
             "n_points": n_total,
@@ -680,6 +852,8 @@ def save_umap_tsne_run(
             }
 
     # ── Résumé XGBoost (optionnel) ───────────────────────────────────────────
+    # Cette section quantifie l'accord supervisé/non supervisé :
+    # classes prédites, confiance, exactitude de référence, confusion matrix.
     xgboost_summary = None
     if y_pred is not None:
         yp = np.asarray(y_pred).astype(str)
@@ -693,12 +867,14 @@ def save_umap_tsne_run(
         if classes_pred is not None:
             xgboost_summary["classes_pred_list"] = [str(c) for c in classes_pred]
         y_ref = None
+        # Priorité à y_aligned (aligné au pont XGBoost) puis fallback labels_norm.
         if y_aligned is not None and len(np.asarray(y_aligned)) == len(yp):
             y_ref = np.asarray(y_aligned).astype(str)
         elif labels_norm is not None and len(labels_norm) == len(yp):
             y_ref = labels_norm
         if y_ref is not None:
             xgboost_summary["accuracy_vs_reference"] = float(np.mean(yp == y_ref))
+            # Matrice de confusion sérialisée sous forme index/columns/values.
             cm = pd.crosstab(pd.Series(y_ref, name="true"), pd.Series(yp, name="pred"))
             xgboost_summary["confusion_matrix"] = {
                 "index": [str(v) for v in cm.index.tolist()],
@@ -713,6 +889,7 @@ def save_umap_tsne_run(
             xgboost_summary["n_pred_F_or_G"] = int(np.asarray(fg_mask).sum())
 
     # ── Résumé UMAP-3D (optionnel) ───────────────────────────────────────────
+    # Conserve les statistiques de l'embedding 3D et les exports HTML liés.
     umap3d_summary = None
     if Z_umap3 is not None:
         umap3d_summary = {
@@ -735,6 +912,7 @@ def save_umap_tsne_run(
     png_files = sorted(str(p) for p in FIGURES_DIR.glob("*.png"))
     html_files = sorted(str(p) for p in FIGURES_DIR.glob("*.html"))
 
+    # Conversion des tableaux de stabilité en listes JSON compatibles.
     stab_umap_records = (
         safe_df_records(stab_umap.reset_index(drop=True))
         if stab_umap is not None
@@ -747,6 +925,9 @@ def save_umap_tsne_run(
     )
 
     # ── Joblib ───────────────────────────────────────────────────────────────
+    # Le joblib conserve les objets riches (embeddings + tables) destinés à
+    # la réutilisation programmatique dans NB03 et dans les analyses annexes.
+    # 3) On sérialise l'état complet utile à la reprise du pipeline.
     embeddings_output = {
         "timestamp_utc": timestamp,
         "Z_umap": Z_umap,
@@ -789,6 +970,8 @@ def save_umap_tsne_run(
     )
 
     # ── Rapport JSON ─────────────────────────────────────────────────────────
+    # Rapport structuré "machine-first" pour audit, script et comparaison.
+    # 4) Le JSON est pensé pour être relu sans réexécuter le notebook.
     report = {
         "run_timestamp_utc": timestamp,
         "notebook": "notebooks/dimred/phy3500_02_umap_tsne.ipynb",
@@ -875,6 +1058,9 @@ def save_umap_tsne_run(
     }
 
     # ── Rapport TXT ──────────────────────────────────────────────────────────
+    # Rapport "humain-first" destiné à la lecture rapide et au support de
+    # rédaction du rapport de cours.
+    # 5) Même contenu-clé que le JSON, mais organisé en sections narratives.
     text_lines = [
         "AstroSpectro | PHY-3500 UMAP/t-SNE Run Report",
         "=" * 78,
@@ -910,6 +1096,7 @@ def save_umap_tsne_run(
         f"- t-SNE fit                 : {fmt_seconds(tsne_fit_time)}",
         "",
     ]
+    # Chaque bloc suivant est ajouté uniquement si les données existent.
     if zoom_summary is not None:
         text_lines += [
             "[Zoom pair summary]",
@@ -977,6 +1164,7 @@ def save_umap_tsne_run(
         "",
     ]
 
+    # 6) Persiste les rapports sur disque (run + latest).
     json_path, _jl, txt_path, _tl = save_json_txt_pair(
         report,
         run_dir,
@@ -986,6 +1174,7 @@ def save_umap_tsne_run(
     )
 
     summary = (
+        # Résumé court imprimable dans la cellule finale du notebook.
         f"Embeddings sauvegardes      -> {joblib_run}\n"
         f"Rapport JSON run            -> {json_path}\n"
         f"Rapport TXT run             -> {txt_path}\n"
@@ -1050,21 +1239,34 @@ def save_autoencoder_run(
     Gère la résolution des variables optionnelles (history, Z_ae, X_recon)
     depuis l'objet ``ae`` si elles ne sont pas fournies explicitement.
 
+    Objectif scientifique
+    --------------------
+    NB03 compare plusieurs axes d'analyse (reconstruction, corrélations
+    physiques, comparaison PCA, interpolation latente). La fonction assemble
+    ces résultats hétérogènes dans un format unique et traçable.
+
     Returns
     -------
     dict avec les clés ``timestamp``, ``run_dir``, ``json_path``,
     ``txt_path``, ``joblib_path``, ``summary``.
     """
     reports_dir = Path(paths["REPORTS_DIR"])
+    # 1) Prépare les chemins de sortie et l'identifiant temporel du run.
     timestamp = make_timestamp()
     run_dir = make_run_dir(reports_dir, "phy3500_autoencoder")
     FIGURES_DIR = Path(FIGURES_DIR)
 
     # ── Résolution des variables depuis l'objet ae ───────────────────────────
+    # Si le notebook ne passe pas explicitement certaines variables, on tente
+    # de les reconstruire depuis l'état interne de l'objet autoencodeur.
+    # Concrètement: on garantit que Z_ae_current existe toujours.
     Z_ae_current = Z_ae if Z_ae is not None else ae.encode(X)
+    # X_recon peut rester None si la reconstruction n'a pas été demandée.
     X_recon_current = X_recon if X_recon is not None else None
+    # history_current est pris depuis l'argument, sinon depuis ae.history_.
     history_current = history if history is not None else getattr(ae, "history_", None)
 
+    # Extraction robuste des courbes d'apprentissage (peut être vide).
     train_loss = (
         history_current.get("train_loss", [])
         if isinstance(history_current, dict)
@@ -1074,6 +1276,7 @@ def save_autoencoder_run(
         history_current.get("val_loss", []) if isinstance(history_current, dict) else []
     )
 
+    # 2) Métriques de synthèse directement dérivées des courbes.
     ae_fit_time = getattr(ae, "fit_time_", None)
     epochs_done = len(train_loss) if isinstance(train_loss, list) else None
     best_val_loss = float(min(val_loss)) if len(val_loss) > 0 else None
@@ -1081,18 +1284,25 @@ def save_autoencoder_run(
     final_val_loss = float(val_loss[-1]) if len(val_loss) > 0 else None
 
     try:
+        # MSE globale calculée via l'API de l'autoencodeur.
         mse_ae_global = float(ae.reconstruction_mse(X))
     except Exception:
+        # La sauvegarde reste possible même si cette métrique échoue.
         mse_ae_global = None
 
     # ── MSE PCA de référence ─────────────────────────────────────────────────
+    # Ces métriques servent de baseline linéaire pour situer les performances
+    # de reconstruction de l'autoencodeur.
     n_pcs_95_current = n_pcs_95
     mse_pca2 = mse_pca95 = None
     if pca is not None:
         try:
+            # Baseline PCA à 2 composantes (référence visuelle classique).
             mse_pca2 = float(pca.reconstruction_error(X, n_components=2).mean())
             if n_pcs_95_current is None:
+                # Détermine automatiquement le nombre de composantes à 95%.
                 n_pcs_95_current = int(pca.n_components_for_variance(0.95))
+            # Baseline PCA "équitable" au seuil 95% de variance.
             mse_pca95 = float(
                 pca.reconstruction_error(X, n_components=n_pcs_95_current).mean()
             )
@@ -1100,19 +1310,27 @@ def save_autoencoder_run(
             pass
 
     # ── Corrélations Spearman espace latent ──────────────────────────────────
+    # Évalue la cohérence physique des axes latents avec les paramètres Gaia.
+    # Spearman est privilégié pour sa robustesse aux non-linéarités monotones
+    # et aux distributions non gaussiennes.
     phys_cols = ["teff_gspphot", "logg_gspphot", "mh_gspphot", "bp_rp"]
     ae_correlations: dict = {}
     for col in phys_cols:
+        # Ignore les colonnes absentes pour supporter des catalogues partiels.
         if col not in meta.columns:
             continue
+        # Conversion numérique robuste pour éviter les erreurs sur chaînes/NaN.
         vals = pd.to_numeric(meta[col], errors="coerce").to_numpy(dtype=float)
         valid = np.isfinite(vals)
         if valid.sum() < 3:
+            # Trop peu de points valides: corrélation non interprétable.
             ae_correlations[col] = {"latent_axis_1": None, "latent_axis_2": None}
             continue
+        # Corrélation Spearman axe latent 1 <-> paramètre physique.
         r1 = pd.Series(Z_ae_current[valid, 0]).corr(
             pd.Series(vals[valid]), method="spearman"
         )
+        # Corrélation Spearman axe latent 2 <-> paramètre physique.
         r2 = pd.Series(Z_ae_current[valid, 1]).corr(
             pd.Series(vals[valid]), method="spearman"
         )
@@ -1122,13 +1340,19 @@ def save_autoencoder_run(
         }
 
     # ── Distance d'interpolation latente ────────────────────────────────────
+    # Mesure simple de l'amplitude du trajet entre les deux pôles choisis
+    # (étoile froide -> étoile chaude) dans l'espace latent.
     latent_distance = None
     if Z_interp is not None:
         zi = np.asarray(Z_interp)
         if zi.ndim == 2 and zi.shape[0] >= 2:
+            # Distance euclidienne entre le début et la fin de l'interpolation.
             latent_distance = float(np.linalg.norm(zi[-1] - zi[0]))
 
     # ── Joblib ───────────────────────────────────────────────────────────────
+    # Archive riche des sorties NB03, réutilisable pour post-analyse ou
+    # génération d'illustrations hors notebook.
+    # 3) On regroupe toutes les sorties utiles dans une seule structure persistée.
     autoencoder_output = {
         "Z_ae": Z_ae_current,
         "X_recon": X_recon_current,
@@ -1162,6 +1386,9 @@ def save_autoencoder_run(
     )
 
     # ── Rapport JSON ─────────────────────────────────────────────────────────
+    # Rapport structuré englobant métriques, corrélations, tables et traces
+    # d'interpolation, prêt pour exploitation programmatique.
+    # 4) Le JSON sert de trace complète de l'expérience NB03.
     report = {
         "run_timestamp_utc": timestamp,
         "paths": {
@@ -1239,6 +1466,8 @@ def save_autoencoder_run(
     }
 
     # ── Rapport TXT ──────────────────────────────────────────────────────────
+    # Version lecture humaine du run (synthèse orientée rapport scientifique).
+    # 5) Le TXT condense les résultats clés pour une lecture rapide.
     text_lines = [
         "AstroSpectro | PHY-3500 Autoencoder Run Report",
         "=" * 72,
@@ -1273,6 +1502,7 @@ def save_autoencoder_run(
         "",
     ]
 
+    # Les tables détaillées sont ajoutées seulement si disponibles.
     if comparison_df is not None:
         text_lines += [
             "Comparison AE vs PCA:",
@@ -1300,6 +1530,7 @@ def save_autoencoder_run(
             "",
         ]
 
+    # 6) Écriture finale des rapports machine (JSON) et humain (TXT).
     json_path, _jl, txt_path, _tl = save_json_txt_pair(
         report,
         run_dir,
@@ -1309,6 +1540,7 @@ def save_autoencoder_run(
     )
 
     summary = (
+        # Résumé compact retourné pour affichage terminal/notebook.
         f"Autoencoder output sauvegarde -> {joblib_run}\n"
         f"Rapport JSON run              -> {json_path}\n"
         f"Rapport TXT run               -> {txt_path}\n"

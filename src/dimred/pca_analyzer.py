@@ -66,10 +66,12 @@ class PCAAnalyzer:
         random_state: int = 42,
         svd_solver: str = "auto",
     ) -> None:
+        # Paramètres utilisateur qui pilotent directement sklearn.PCA.
         self.n_components = n_components
         self.random_state = random_state
         self.svd_solver = svd_solver
 
+        # Attributs renseignés après fit().
         self._pca: Optional[PCA] = None
         self.feature_names_: Optional[List[str]] = None
         self._X_fit: Optional[np.ndarray] = None
@@ -97,13 +99,17 @@ class PCAAnalyzer:
         -------
         self
         """
+        # 1) Initialise l'estimateur PCA sklearn avec les hyperparamètres choisis.
         self._pca = PCA(
             n_components=self.n_components,
             random_state=self.random_state,
             svd_solver=self.svd_solver,
         )
+        # 2) Ajuste les composantes principales sur la matrice d'entrée.
         self._pca.fit(X)
+        # 3) Mémorise X pour d'éventuels recalculs internes (corrélations sans scores fournis).
         self._X_fit = X
+        # 4) Aligne les noms de variables: fournis par l'utilisateur ou fallback f0..fD-1.
         self.feature_names_ = feature_names or [f"f{i}" for i in range(X.shape[1])]
 
         logger.info(
@@ -119,7 +125,9 @@ class PCAAnalyzer:
         feature_names: Optional[List[str]] = None,
     ) -> np.ndarray:
         """Ajuste et retourne les scores (projections sur les PCs)."""
+        # Réutilise le même flux que fit() pour garantir un état interne cohérent.
         self.fit(X, feature_names)
+        # Projection de X dans l'espace latent PCA appris à l'étape précédente.
         return self._pca.transform(X)
 
     def transform(self, X: np.ndarray) -> np.ndarray:
@@ -156,8 +164,11 @@ class PCAAnalyzer:
         -------
         int : nombre de composantes nécessaires.
         """
+        # Courbe cumulée monotone: [PC1, PC1+PC2, ...].
         cumvar = self.cumulative_variance
+        # Premier indice où la courbe atteint (ou dépasse) le seuil demandé.
         idx = np.searchsorted(cumvar, threshold)
+        # Conversion indice 0-based -> nombre de composantes 1-based.
         n = int(idx) + 1
         logger.info(
             "%.0f%% variance → %d composantes (sur %d)",
@@ -174,7 +185,9 @@ class PCAAnalyzer:
         Utile pour export CSV ou affichage dans le rapport.
         """
         self._check_fitted()
+        # Alias local pour éviter des accès répétés à la propriété.
         ratio = self.explained_variance_ratio
+        # Tableau final: une ligne par composante principale.
         return pd.DataFrame(
             {
                 "PC": [f"PC{i+1}" for i in range(len(ratio))],
@@ -205,6 +218,7 @@ class PCAAnalyzer:
         Cols  : PC1, PC2, ...
         """
         self._check_fitted()
+        # self.loadings est (n_components, n_features) -> transpose pour avoir features en lignes.
         return pd.DataFrame(
             self.loadings.T,
             index=self.feature_names_,
@@ -228,8 +242,11 @@ class PCAAnalyzer:
         pd.DataFrame avec colonnes ['feature', 'loading', 'abs_loading'].
         """
         self._check_fitted()
+        # Vecteur de poids de la composante ciblée (taille = n_features).
         vec = self.loadings[pc_idx]
+        # Tri décroissant par impact absolu pour isoler les variables dominantes.
         idx_sorted = np.argsort(np.abs(vec))[::-1][:n_top]
+        # Restitue à la fois le signe physique (loading) et la force (abs_loading).
         return pd.DataFrame(
             {
                 "feature": [self.feature_names_[i] for i in idx_sorted],
@@ -259,6 +276,7 @@ class PCAAnalyzer:
         """
         self._check_fitted()
 
+        # Source des noms: argument explicite ou noms mémorisés au fit.
         if feature_names is None:
             feat_names = self.feature_names_
         else:
@@ -267,11 +285,13 @@ class PCAAnalyzer:
         if feat_names is None:
             raise RuntimeError("Noms de features indisponibles: fournir feature_names.")
 
+        # Prépare la taxonomie des familles spectroscopiques.
         loadings = self.loadings
         families = [self._assign_family(f) for f in feat_names]
         family_list = list(self._FAMILIES.keys())
         color_map = self._family_color_map()
 
+        # Calcule les contributions par famille pour chaque PC demandée.
         contributions = {
             pc_idx: self._family_contributions(pc_idx, loadings, feat_names, families)
             for pc_idx in pc_indices
@@ -288,6 +308,7 @@ class PCAAnalyzer:
             "contributions": contributions,
         }
         if 0 in contributions:
+            # Alias pratiques historiques utilisés dans certains notebooks.
             out["contrib_pc1"] = contributions[0]
         if 1 in contributions:
             out["contrib_pc2"] = contributions[1]
@@ -327,14 +348,17 @@ class PCAAnalyzer:
         """
         self._check_fitted()
 
+        # Si les scores ne sont pas fournis, on les recalcule depuis X d'entraînement.
         if scores is None:
             scores = self._pca.transform(self._X_fit)
 
+        # Limite l'analyse aux n_pcs premières composantes.
         scores = scores[:, :n_pcs]
 
         if method not in {"spearman", "pearson"}:
             raise ValueError("method must be 'spearman' or 'pearson'.")
 
+        # Fonction de corrélation choisie dynamiquement selon l'option demandée.
         corr_fn = spearmanr if method == "spearman" else pearsonr
 
         # Colonnes numériques uniquement
@@ -343,16 +367,21 @@ class PCAAnalyzer:
 
         n_pc = scores.shape[1]
         n_param = len(param_cols)
+        # Initialisation à NaN: conserve explicitement les cas non calculables.
         corr_matrix = np.full((n_pc, n_param), np.nan)
 
+        # Double boucle: chaque PC contre chaque paramètre physique.
         for i in range(n_pc):
             pc_scores = scores[:, i]
             for j in range(n_param):
                 param_vals = params_arr[:, j]
+                # Masque de validité commun pour ignorer NaN/inf des deux séries.
                 valid = np.isfinite(param_vals) & np.isfinite(pc_scores)
                 if valid.sum() < 30:
+                    # Seuil minimal de robustesse statistique.
                     continue
 
+                # corr_fn retourne (coefficient, p-value); seul le coefficient est conservé.
                 r, _ = corr_fn(pc_scores[valid], param_vals[valid])
                 corr_matrix[i, j] = r
 
@@ -384,13 +413,17 @@ class PCAAnalyzer:
         np.ndarray (N,) : MSE par échantillon.
         """
         self._check_fitted()
+        # Projection PCA complète de X.
         scores = self._pca.transform(X)
         if n_components is not None:
+            # Copie défensive puis troncature: on annule les composantes au-delà de n_components.
             scores_trunc = scores.copy()
             scores_trunc[:, n_components:] = 0.0
         else:
             scores_trunc = scores
+        # Retour dans l'espace original après troncature éventuelle.
         X_recon = self._pca.inverse_transform(scores_trunc)
+        # Erreur quadratique moyenne par ligne (spectre).
         mse = np.mean((X - X_recon) ** 2, axis=1)
         return mse
 
@@ -407,11 +440,13 @@ class PCAAnalyzer:
         pd.DataFrame avec colonnes ['n_components', 'mse_mean', 'mse_std'].
         """
         if n_range is None:
+            # Par défaut: explore de 1 à min(n_components, 50).
             n_max = self._pca.n_components_
             n_range = list(range(1, min(n_max + 1, 51)))
 
         rows = []
         for n in n_range:
+            # Réévalue la reconstruction pour chaque valeur de n.
             mse = self.reconstruction_error(X, n_components=n)
             rows.append(
                 {
@@ -443,12 +478,15 @@ class PCAAnalyzer:
         pd.DataFrame multi-index (classe, PC).
         """
         self._check_fitted()
+        # On travaille sur les n_pcs premières dimensions latentes.
         scores = self._pca.transform(X)[:, :n_pcs]
         classes = np.unique(y)
         rows = []
         for cls in classes:
+            # Sélection des échantillons appartenant à la classe courante.
             mask = y == cls
             for i in range(n_pcs):
+                # Statistiques descriptives de la distribution des scores de classe.
                 rows.append(
                     {
                         "classe": cls,
@@ -487,6 +525,7 @@ class PCAAnalyzer:
         """Sauvegarde le modèle PCA (joblib)."""
         import joblib
 
+        # Payload minimal suffisant pour reconstruire l'objet d'analyse.
         joblib.dump({"pca": self._pca, "feature_names": self.feature_names_}, path)
         logger.info("PCAAnalyzer sauvegardé : %s", path)
 
@@ -496,10 +535,13 @@ class PCAAnalyzer:
         import joblib
 
         obj = joblib.load(path)
+        # Bypass __init__: on réhydrate directement l'état persistant.
         analyzer = cls.__new__(cls)
         analyzer._pca = obj["pca"]
         analyzer.feature_names_ = obj["feature_names"]
+        # Conserve l'info utile de configuration (nombre de composantes effectif).
         analyzer.n_components = analyzer._pca.n_components_
+        # X de fit n'est pas sérialisé: certaines méthodes dépendantes demanderont scores explicites.
         analyzer._X_fit = None
         return analyzer
 
@@ -557,6 +599,7 @@ class PCAAnalyzer:
     ]
 
     def _assign_family(self, feat_name: str) -> str:
+        # Premier motif regex qui matche détermine la famille retenue.
         for family, patterns in self._FAMILIES.items():
             for pat in patterns:
                 if re.search(pat, feat_name, re.IGNORECASE):
@@ -564,6 +607,7 @@ class PCAAnalyzer:
         return "Autres"
 
     def _family_color_map(self) -> dict[str, str]:
+        # Assigne une couleur stable à chaque famille (ordre dict conservé).
         family_list = list(self._FAMILIES.keys())
         return {
             fam: self._FAMILY_COLORS[i % len(self._FAMILY_COLORS)]
@@ -580,13 +624,17 @@ class PCAAnalyzer:
         if pc_idx < 0 or pc_idx >= loadings.shape[0]:
             raise IndexError(f"pc_idx={pc_idx} hors bornes (0..{loadings.shape[0]-1}).")
 
+        # Contribution quadratique normalisée: somme totale = 1.
         w = loadings[pc_idx] ** 2
         w /= w.sum()
+        # Regroupement par famille pour lecture physique synthétique.
         df = pd.DataFrame({"feature": feat_names, "family": families, "weight": w})
         agg = df.groupby("family")["weight"].sum().reset_index()
+        # Nettoyage visuel + tri décroissant des contributions.
         agg = agg[agg["weight"] > 0].sort_values("weight", ascending=False)
         return agg
 
     def _check_fitted(self) -> None:
+        # Garde-fou unique pour toutes les méthodes dépendantes du modèle appris.
         if self._pca is None:
             raise RuntimeError("PCAAnalyzer non ajusté — appeler fit() d'abord.")

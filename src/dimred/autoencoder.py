@@ -25,7 +25,7 @@ Pourquoi un autoencodeur ici ?
   représentation compressée et peut projeter de nouveaux spectres sans
   recalcul complet.
 
-Pour PHY-3500, l'objectif est de **comparer** les espaces latents PCA,
+Pour PHY-3500, l'objectif est de comparer les espaces latents PCA,
 UMAP et autoencodeur et de montrer si la non-linéarité apporte
 de l'information supplémentaire.
 
@@ -72,6 +72,7 @@ except ImportError:
 
 
 def _check_torch():
+    """Valide la disponibilité de PyTorch avant toute opération AE."""
     if not _TORCH_AVAILABLE:
         raise ImportError(
             "PyTorch requis pour SpectralAutoencoder.\n" "Installer : pip install torch"
@@ -94,9 +95,11 @@ class _Encoder(nn.Module):
         dropout: float = 0.1,
     ) -> None:
         super().__init__()
+        # Construction séquentielle des blocs: Linear -> BatchNorm -> ReLU -> Dropout.
         layers = []
         prev = input_dim
         for h in hidden_dims:
+            # Chaque itération réduit progressivement la dimension vers l'espace latent.
             layers += [
                 nn.Linear(prev, h),
                 nn.BatchNorm1d(h),
@@ -104,10 +107,12 @@ class _Encoder(nn.Module):
                 nn.Dropout(p=dropout),
             ]
             prev = h
+        # Dernière couche linéaire: projection finale vers z (sans activation).
         layers.append(nn.Linear(prev, latent_dim))
         self.net = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Passage avant complet dans l'encodeur.
         return self.net(x)
 
 
@@ -122,6 +127,7 @@ class _Decoder(nn.Module):
         dropout: float = 0.1,
     ) -> None:
         super().__init__()
+        # Architecture miroir de l'encodeur pour reconstruire l'entrée originale.
         layers = []
         prev = latent_dim
         for h in hidden_dims:
@@ -132,10 +138,12 @@ class _Decoder(nn.Module):
                 nn.Dropout(p=dropout),
             ]
             prev = h
+        # Couche de sortie linéaire vers la dimension d'origine D.
         layers.append(nn.Linear(prev, output_dim))
         self.net = nn.Sequential(*layers)
 
     def forward(self, z: torch.Tensor) -> torch.Tensor:
+        # Reconstruction à partir d'un point latent.
         return self.net(z)
 
 
@@ -150,12 +158,14 @@ class _AutoencoderNet(nn.Module):
         dropout: float = 0.1,
     ) -> None:
         super().__init__()
+        # Encodeur direct puis décodeur miroir.
         self.encoder = _Encoder(input_dim, hidden_dims, latent_dim, dropout)
         self.decoder = _Decoder(
             latent_dim, list(reversed(hidden_dims)), input_dim, dropout
         )
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # Retourne à la fois reconstruction et représentation latente.
         z = self.encoder(x)
         x_recon = self.decoder(z)
         return x_recon, z
@@ -213,6 +223,7 @@ class SpectralAutoencoder:
     ) -> None:
         _check_torch()
 
+        # Hyperparamètres d'architecture exposés publiquement.
         self.input_dim = input_dim
         self.latent_dim = latent_dim
         self.hidden_dims = hidden_dims or [256, 128, 64]
@@ -220,10 +231,12 @@ class SpectralAutoencoder:
 
         # Sélection device
         if device is None:
+            # Auto-détection: CUDA si disponible, sinon CPU.
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
             self.device = torch.device(device)
 
+        # État entraînement (initialement vide).
         self._model: Optional[_AutoencoderNet] = None
         self.history_: Optional[Dict[str, List[float]]] = None
         self.fit_time_: Optional[float] = None
@@ -286,6 +299,7 @@ class SpectralAutoencoder:
         _check_torch()
 
         # Construction du modèle
+        # 1) Instancie un nouveau réseau pour ce run d'entraînement.
         self._model = _AutoencoderNet(
             input_dim=self.input_dim,
             latent_dim=self.latent_dim,
@@ -293,19 +307,23 @@ class SpectralAutoencoder:
             dropout=self.dropout,
         ).to(self.device)
 
+        # Compte des paramètres pour suivi de complexité.
         n_params = sum(p.numel() for p in self._model.parameters() if p.requires_grad)
         logger.info("Modèle construit : %d paramètres entraînables", n_params)
 
         # Split train / val
+        # 2) Crée une validation aléatoire reproductible (seed fixe).
         N = len(X)
         n_val = max(1, int(N * val_fraction))
         rng = np.random.default_rng(42)
         val_idx = rng.choice(N, size=n_val, replace=False)
         train_idx = np.setdiff1d(np.arange(N), val_idx)
 
+        # 3) Conversion NumPy -> tenseurs float et transfert vers device.
         X_train = torch.FloatTensor(X[train_idx]).to(self.device)
         X_val = torch.FloatTensor(X[val_idx]).to(self.device)
 
+        # Dataset autoencodeur: cible = entrée (apprentissage auto-supervisé).
         train_loader = DataLoader(
             TensorDataset(X_train, X_train),
             batch_size=batch_size,
@@ -313,6 +331,7 @@ class SpectralAutoencoder:
             drop_last=False,
         )
 
+        # 4) Optimisation: Adam + MSE, scheduler optionnel sur val_loss.
         optimizer = optim.Adam(
             self._model.parameters(), lr=lr, weight_decay=weight_decay
         )
@@ -325,48 +344,62 @@ class SpectralAutoencoder:
         )
         criterion = nn.MSELoss()
 
+        # Structures de suivi run (courbes + early stopping).
         history = {"train_loss": [], "val_loss": [], "lr_history": []}
         best_val_loss = float("inf")
         best_state = None
         patience_counter = 0
 
+        # Chronométrage global du fit.
         t0 = time.perf_counter()
 
         for epoch in range(1, epochs + 1):
             # ── Train ───────────────────────────────────────────────
+            # Mode entraînement: active Dropout/BatchNorm en mode train.
             self._model.train()
             train_losses = []
             for X_batch, _ in train_loader:
+                # Reset gradients de l'itération précédente.
                 optimizer.zero_grad()
+                # Forward: reconstruction du batch courant.
                 X_recon, _ = self._model(X_batch)
+                # Perte MSE entre entrée et reconstruction.
                 loss = criterion(X_recon, X_batch)
+                # Backpropagation des gradients.
                 loss.backward()
+                # Clip de gradient pour stabiliser l'entraînement.
                 nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)
                 optimizer.step()
                 train_losses.append(loss.item())
 
+            # Moyenne des pertes train sur tous les mini-batchs.
             train_loss = np.mean(train_losses)
 
             # ── Validation ──────────────────────────────────────────
+            # Mode évaluation: désactive Dropout, BatchNorm en mode eval.
             self._model.eval()
             with torch.no_grad():
                 X_val_recon, _ = self._model(X_val)
                 val_loss = criterion(X_val_recon, X_val).item()
 
+            # LR effectivement utilisée à cette epoch.
             current_lr = optimizer.param_groups[0]["lr"]
             history["train_loss"].append(train_loss)
             history["val_loss"].append(val_loss)
             history["lr_history"].append(current_lr)
 
             if scheduler is not None:
+                # ReduceLROnPlateau observe la val_loss pour ajuster lr.
                 scheduler.step(val_loss)
 
             # ── Early stopping ──────────────────────────────────────
             if val_loss < best_val_loss:
+                # Nouveau meilleur modèle: snapshot complet des poids.
                 best_val_loss = val_loss
                 best_state = {k: v.clone() for k, v in self._model.state_dict().items()}
                 patience_counter = 0
             else:
+                # Aucun progrès: incrémente le compteur de patience.
                 patience_counter += 1
 
             if (
@@ -390,6 +423,7 @@ class SpectralAutoencoder:
                 )
 
             if wandb_run is not None:
+                # Logging externe pour suivi expérimental (dashboard W&B).
                 wandb_run.log(
                     {
                         "ae/train_loss": train_loss,
@@ -401,9 +435,11 @@ class SpectralAutoencoder:
 
         # Restauration du meilleur modèle
         if best_state is not None:
+            # On restaure l'état optimal, pas nécessairement la dernière epoch.
             self._model.load_state_dict(best_state)
             logger.info("Meilleur état restauré (val_loss=%.6f)", best_val_loss)
 
+        # Métadonnées de fin d'entraînement conservées sur l'objet.
         self.fit_time_ = time.perf_counter() - t0
         self.history_ = history
 
@@ -433,6 +469,7 @@ class SpectralAutoencoder:
         self._check_fitted()
         self._model.eval()
         with torch.no_grad():
+            # Conversion + transfert device puis retour NumPy sur CPU.
             X_t = torch.FloatTensor(X).to(self.device)
             Z = self._model.encode(X_t).cpu().numpy()
         return Z
@@ -452,12 +489,14 @@ class SpectralAutoencoder:
         self._check_fitted()
         self._model.eval()
         with torch.no_grad():
+            # Pipeline inverse: latent -> tenseur -> reconstruction -> NumPy.
             Z_t = torch.FloatTensor(Z).to(self.device)
             X_recon = self._model.decode(Z_t).cpu().numpy()
         return X_recon
 
     def reconstruct(self, X: np.ndarray) -> np.ndarray:
         """Encode puis décode X. Retourne X_recon (N, D)."""
+        # Compose explicitement les deux opérations pour garder une API claire.
         return self.decode(self.encode(X))
 
     # ------------------------------------------------------------------
@@ -481,10 +520,13 @@ class SpectralAutoencoder:
         -------
         float ou np.ndarray (N,)
         """
+        # Reconstruit d'abord chaque échantillon.
         X_recon = self.reconstruct(X)
+        # Puis calcule la MSE ligne par ligne.
         mse_per = np.mean((X - X_recon) ** 2, axis=1)
         if per_sample:
             return mse_per
+        # Valeur globale agrégée utile pour comparer des modèles.
         return float(mse_per.mean())
 
     def reconstruction_summary(
@@ -504,10 +546,12 @@ class SpectralAutoencoder:
         pd.DataFrame avec colonnes ['classe', 'n', 'mse_mean', 'mse_std',
                                     'mse_median', 'mse_q95'].
         """
+        # MSE individuelle servant de base à tous les agrégats.
         mse = self.reconstruction_mse(X, per_sample=True)
         rows = []
 
         if y is None:
+            # Mode global: une seule ligne de synthèse.
             rows.append(
                 {
                     "classe": "all",
@@ -519,6 +563,7 @@ class SpectralAutoencoder:
                 }
             )
         else:
+            # Mode par classe: agrégation indépendante pour chaque label.
             for cls in np.unique(y):
                 mask = y == cls
                 m = mse[mask]
@@ -533,6 +578,7 @@ class SpectralAutoencoder:
                     }
                 )
 
+                # Retour tabulaire exploitable dans les rapports NB03.
         return pd.DataFrame(rows)
 
     def compare_with_pca(
@@ -563,6 +609,7 @@ class SpectralAutoencoder:
         rows = []
 
         # Autoencodeur
+        # Point de référence non-linéaire (dimension latente fixée).
         ae_mse = self.reconstruction_mse(X)
         rows.append(
             {
@@ -574,6 +621,7 @@ class SpectralAutoencoder:
 
         # PCA pour différents nombres de PCs
         for n in n_pcs_list:
+            # Garde-fou: ignore les n supérieurs aux composantes disponibles.
             if n > pca_analyzer.sklearn_pca.n_components_:
                 continue
             mse = pca_analyzer.reconstruction_error(X, n_components=n).mean()
@@ -585,6 +633,7 @@ class SpectralAutoencoder:
                 }
             )
 
+        # Tableau final directement plotable/comparable.
         return pd.DataFrame(rows)
 
     # ------------------------------------------------------------------
@@ -616,16 +665,20 @@ class SpectralAutoencoder:
         Z_interp : np.ndarray (n_steps, latent_dim) — trajectoire latente.
         X_interp : np.ndarray (n_steps, D) — reconstructions.
         """
+        # Normalise les entrées pour accepter vecteur (D,) ou matrice (1, D).
         if X_a.ndim == 1:
             X_a = X_a[np.newaxis]
         if X_b.ndim == 1:
             X_b = X_b[np.newaxis]
 
+        # Encodage des deux extrémités de l'interpolation.
         z_a = self.encode(X_a)[0]
         z_b = self.encode(X_b)[0]
 
+        # Mélange linéaire entre z_a et z_b avec n_steps points.
         alphas = np.linspace(0, 1, n_steps)
         Z_interp = np.array([(1 - a) * z_a + a * z_b for a in alphas])
+        # Décodage de toute la trajectoire en espace des features.
         X_interp = self.decode(Z_interp)
 
         return Z_interp, X_interp
@@ -645,6 +698,7 @@ class SpectralAutoencoder:
         """
         _check_torch()
         self._check_fitted()
+        # Checkpoint complet: poids + hyperparamètres + métadonnées de fit.
         checkpoint = {
             "model_state_dict": self._model.state_dict(),
             "input_dim": self.input_dim,
@@ -672,7 +726,9 @@ class SpectralAutoencoder:
         _check_torch()
         # PyTorch>=2.6 defaults to weights_only=True, which can fail for
         # checkpoints containing non-tensor metadata (history, numpy scalars).
+        # On force weights_only=False pour relire aussi l'historique de training.
         checkpoint = torch.load(path, map_location="cpu", weights_only=False)
+        # Réinstancie l'objet avec la même configuration architecturale.
         ae = cls(
             input_dim=checkpoint["input_dim"],
             latent_dim=checkpoint["latent_dim"],
@@ -680,6 +736,7 @@ class SpectralAutoencoder:
             dropout=checkpoint["dropout"],
             device=device,
         )
+        # Reconstruit le réseau et recharge les poids appris.
         ae._model = _AutoencoderNet(
             input_dim=ae.input_dim,
             latent_dim=ae.latent_dim,
@@ -688,6 +745,7 @@ class SpectralAutoencoder:
         ).to(ae.device)
         ae._model.load_state_dict(checkpoint["model_state_dict"])
         ae._model.eval()
+        # Métadonnées optionnelles (présentes selon la version du checkpoint).
         ae.history_ = checkpoint.get("history")
         ae.fit_time_ = checkpoint.get("fit_time")
         logger.info("SpectralAutoencoder chargé depuis : %s", path)
@@ -698,12 +756,14 @@ class SpectralAutoencoder:
     # ------------------------------------------------------------------
 
     def _check_fitted(self) -> None:
+        # Garde-fou centralisé pour toutes les méthodes dépendantes du modèle.
         if self._model is None:
             raise RuntimeError(
                 "SpectralAutoencoder non entraîné — appeler fit() d'abord."
             )
 
     def __repr__(self) -> str:
+        # Représentation compacte utile en console/notebook.
         arch = f"{self.input_dim} → {self.hidden_dims} → {self.latent_dim}"
         return f"SpectralAutoencoder({arch})"
 
@@ -754,33 +814,42 @@ def tester_candidat(
     import matplotlib.pyplot as plt
     import matplotlib.gridspec as gridspec
 
+    # Force un format (1, D) pour harmoniser le flux de calcul.
     x = np.atleast_2d(x_raw).astype(float)
 
     # 1. Standardisation
+    # Si le loader possède un scaler entraîné, on applique exactement la
+    # même transformation que pour le set d'entraînement AE.
     if hasattr(loader_ref, "scaler_") and loader_ref.scaler_ is not None:
         x_scaled = loader_ref.scaler_.transform(x)
     else:
+        # Fallback: on continue sans scaling pour ne pas bloquer le diagnostic.
         x_scaled = x.copy()
 
     # 2. Encodage
+    # Coordonnées latentes du candidat (forme attendue: (1, 2)).
     z = ae_model.encode(x_scaled)  # (1, 2)
 
     # 3. Reconstruction
+    # Mesure d'anomalie primaire: erreur de reconstruction sur espace standardisé.
     x_recon_scaled = ae_model.reconstruct(x_scaled)
     mse = float(np.mean((x_scaled - x_recon_scaled) ** 2))
 
     # 4. Cluster k-NN
+    # Approximation locale du cluster via les 50 voisins latents les plus proches.
     dists = np.linalg.norm(Z_train - z, axis=1)
     nn_idx = np.argsort(dists)[:50]
     cluster_pred = None
     if cluster_labels_train is not None:
         nn_cl = cluster_labels_train[nn_idx]
+        # On ignore le bruit HDBSCAN (-1) pour le vote majoritaire.
         nn_cl_valid = nn_cl[nn_cl >= 0]
         cluster_pred = (
             int(np.bincount(nn_cl_valid).argmax()) if len(nn_cl_valid) > 0 else -1
         )
 
     # 5. Verdict anomalie
+    # Seuils heuristiques issus du notebook (q95/q99 approximatifs).
     MSE_Q95, MSE_Q99 = 0.97, 3.0
     if mse < MSE_Q95:
         verdict = "🟢 BANAL — spectre typique du dataset"
@@ -796,6 +865,7 @@ def tester_candidat(
 
     # Panneau 1 : espace latent
     if teff_train is not None:
+        # Coloration continue par température si disponible.
         valid_t = np.isfinite(teff_train)
         sc = ax1.scatter(
             Z_train[valid_t, 0],
@@ -809,9 +879,11 @@ def tester_candidat(
         )
         plt.colorbar(sc, ax=ax1, label="T_eff (K)", fraction=0.03)
     else:
+        # Sinon, nuage neutre en gris.
         ax1.scatter(
             Z_train[:, 0], Z_train[:, 1], c="#4A4A4A", s=0.5, alpha=0.2, rasterized=True
         )
+    # Mise en évidence du candidat par une étoile dorée.
     ax1.scatter(
         z[0, 0],
         z[0, 1],
@@ -822,6 +894,7 @@ def tester_candidat(
         linewidths=1.5,
         zorder=6,
     )
+    # Annotation texte avec coordonnées latentes exactes.
     ax1.annotate(
         f"{label}\n({z[0,0]:.3f}, {z[0,1]:.3f})",
         (z[0, 0], z[0, 1]),
@@ -833,6 +906,7 @@ def tester_candidat(
         bbox=dict(boxstyle="round,pad=0.3", fc="black", alpha=0.75),
         zorder=7,
     )
+    # Titre dynamique selon prédiction de cluster disponible ou non.
     title_str = (
         f"Position latente — Cluster C{cluster_pred}"
         if cluster_pred is not None and cluster_pred >= 0
@@ -852,10 +926,16 @@ def tester_candidat(
         ("FeH proxy", "feature_FeH_proxy", "#B07DB8"),
         ("BV synthét.", "feature_synthetic_BV", "#7F8FA6"),
     ]
-    valid_kf = [(l, n, c) for l, n, c in KEY_F if n in feature_names_ref]
+    # Ne conserve que les features présentes dans le référentiel courant.
+    valid_kf = [
+        (label_name, feat_name, color)
+        for label_name, feat_name, color in KEY_F
+        if feat_name in feature_names_ref
+    ]
+    # Extrait les valeurs originales et reconstruites pour comparaison visuelle.
     kf_orig = [x_scaled[0, feature_names_ref.index(n)] for _, n, _ in valid_kf]
     kf_recon = [x_recon_scaled[0, feature_names_ref.index(n)] for _, n, _ in valid_kf]
-    kf_labels = [l for l, _, _ in valid_kf]
+    kf_labels = [label_name for label_name, _, _ in valid_kf]
     kf_colors = [c for _, _, c in valid_kf]
     y_kf = np.arange(len(kf_labels))
     w_kf = 0.35
@@ -888,9 +968,11 @@ def tester_candidat(
     ax2.grid(axis="x", alpha=0.2)
 
     # Panneau 3 : jauge MSE
+    # Fond coloré type jauge (vert -> rouge) pour lecture immédiate du risque.
     cmap_gauge = plt.cm.RdYlGn_r
     for j in range(100):
         ax3.barh(0, 0.1, left=j * 0.1, height=0.4, color=cmap_gauge(j / 100), alpha=0.7)
+    # Curseur noir = MSE du candidat (tronquée visuellement à 10).
     ax3.axvline(min(mse, 10.0), color="black", lw=3, ymin=0.1, ymax=0.9)
     ax3.axvline(MSE_Q95, color="orange", lw=1.5, ls="--", label=f"q95 = {MSE_Q95:.2f}")
     ax3.axvline(MSE_Q99, color="red", lw=1.5, ls="--", label=f"q99 ≈ {MSE_Q99:.2f}")
@@ -917,6 +999,7 @@ def tester_candidat(
     )
     plt.tight_layout()
     if save_path is not None:
+        # Export facultatif de la fiche diagnostique.
         fig.savefig(save_path, bbox_inches="tight", dpi=150)
     plt.show()
 
@@ -950,6 +1033,7 @@ def latent_arithmetic(
     """
     import matplotlib.pyplot as plt
 
+    # Récupération robuste des paramètres physiques requis.
     teff_v = (
         meta["teff_gspphot"].values.astype(float)
         if "teff_gspphot" in meta.columns
@@ -965,10 +1049,12 @@ def latent_arithmetic(
             "latent_arithmetic requiert teff_gspphot et logg_gspphot dans meta."
         )
 
+    # Filtre de base: étoiles avec teff/logg valides.
     valid_all = np.isfinite(teff_v) & np.isfinite(logg_v) & (y == "STAR")
     rng = np.random.default_rng(42)
 
     def select_pop(teff_range, logg_range, n=200, label=""):
+        # Fenêtre astrophysique ciblée (type spectral + classe gravité).
         t_lo, t_hi = teff_range
         g_lo, g_hi = logg_range
         mask = (
@@ -981,9 +1067,11 @@ def latent_arithmetic(
         n_found = mask.sum()
         if n_found < 20:
             print(f"  ⚠  {label} : seulement {n_found} étoiles — résultat peu fiable")
+        # Échantillonnage plafonné à n pour garder des populations comparables.
         n_sel = min(n, n_found)
         if n_sel == 0:
             return None, 0
+        # Barycentre latent de la population sélectionnée.
         idx_sel = rng.choice(np.where(mask)[0], n_sel, replace=False)
         z_mean = Z_ae[idx_sel].mean(axis=0)
         print(f"  {label:20s} : n={n_found:5d}  z̄=({z_mean[0]:+.3f}, {z_mean[1]:+.3f})")
@@ -999,8 +1087,10 @@ def latent_arithmetic(
         "G_geante": select_pop((5200, 6200), (0.5, 3.0), label="G géante"),
         "F_geante": select_pop((6200, 7500), (0.5, 3.0), label="F géante"),
     }
+    # On garde uniquement les barycentres latents z (sans les effectifs).
     z = {k: v[0] for k, v in pops.items()}
 
+    # Construit les équations testées seulement si les populations nécessaires existent.
     TESTS = []
     if all(z[k] is not None for k in ["K_geante", "K_naine", "G_naine", "G_geante"]):
         TESTS.append(
@@ -1025,12 +1115,14 @@ def latent_arithmetic(
 
     print("\n" + "=" * 65 + "\n  RÉSULTATS DE L'ARITHMÉTIQUE LATENTE\n" + "=" * 65)
     results = []
+    # Distance de référence pour normaliser l'erreur des analogies.
     dist_ref = (
         float(np.linalg.norm(z["K_naine"] - z["G_geante"]))
         if (z["K_naine"] is not None and z["G_geante"] is not None)
         else 1.0
     )
     for t in TESTS:
+        # Compare position prédite vs barycentre réel attendu.
         dist = float(np.linalg.norm(t["pred"] - t["tgt"]))
         ratio = dist / max(dist_ref, 1e-8) * 100
         verdict = (
@@ -1053,6 +1145,7 @@ def latent_arithmetic(
         )
 
     # Figure
+    # Fond global: étoiles de référence colorées par température.
     fig, ax = plt.subplots(figsize=(10, 8), dpi=150)
     sc = ax.scatter(
         Z_ae[valid_all, 0],
@@ -1074,6 +1167,7 @@ def latent_arithmetic(
         ("G_geante", "#4C9B6F", "^"),
         ("F_geante", "#F5A623", "^"),
     ]
+    # Marqueurs pleins pour barycentres des populations de référence.
     for name, col, mrk in POPS_PLOT:
         if z[name] is not None:
             ax.scatter(
@@ -1096,6 +1190,7 @@ def latent_arithmetic(
                 fontweight="bold",
             )
 
+    # Flèches: relient le point prédit (étoile) à la cible réelle.
     for t in TESTS:
         ax.annotate(
             "",
@@ -1124,6 +1219,7 @@ def latent_arithmetic(
     ax.grid(True, alpha=0.2)
     plt.tight_layout()
     if save_path is not None:
+        # Sauvegarde optionnelle de la figure de synthèse.
         fig.savefig(save_path, bbox_inches="tight", dpi=150)
     plt.show()
 

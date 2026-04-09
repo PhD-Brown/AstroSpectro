@@ -94,8 +94,10 @@ class EmbeddingEngine:
         self.method = method
         self.n_components = n_components
         self.random_state = random_state
+        # Paramètres utilisateurs conservés tels quels, fusionnés plus tard avec les défauts.
         self.extra_kwargs = kwargs
 
+        # État interne rempli après fit_transform pour réutilisation (transform, reporting).
         self._model = None
         self._embedding: Optional[np.ndarray] = None
         self._params_used: Optional[Dict] = None
@@ -126,6 +128,7 @@ class EmbeddingEngine:
         np.ndarray (N, n_components) — coordonnées 2D/3D.
         """
         if n_pca_components is not None:
+            # Troncature défensive: garde uniquement les premières composantes PCA voulues.
             X = X[:, :n_pca_components]
 
         logger.info(
@@ -136,13 +139,16 @@ class EmbeddingEngine:
             self.random_state,
         )
 
+        # Chronométrage wall-time pour comparaison UMAP/t-SNE et suivi notebook.
         t0 = time.perf_counter()
         if self.method == "umap":
+            # Le helper remplit aussi self._model et self._params_used.
             Z = self._fit_umap(X)
         else:
             Z = self._fit_tsne(X)
 
         self.fit_time_ = time.perf_counter() - t0
+        # Cache local du dernier embedding pour accès via propriété embedding.
         self._embedding = Z
 
         logger.info(
@@ -161,8 +167,10 @@ class EmbeddingEngine:
         UMAP supporte transform() (mais peut être lent).
         """
         if self._model is None:
+            # Empêche l'usage avant apprentissage explicite de la géométrie latente.
             raise RuntimeError("Appeler fit_transform() avant transform().")
         if self.method == "tsne":
+            # t-SNE classique ne fournit pas de mapping paramétrique stable vers de nouveaux points.
             raise NotImplementedError(
                 "t-SNE est non-paramétrique et ne supporte pas transform().\n"
                 "Utiliser UMAP ou recalculer l'embedding complet."
@@ -209,6 +217,7 @@ class EmbeddingEngine:
         from scipy.spatial import procrustes
 
         if n_pca_components is not None:
+            # Même espace d'entrée pour tous les seeds afin d'isoler l'effet aléatoire.
             X = X[:, :n_pca_components]
 
         # Sur-ensemble aléatoire pour accélérer (max 5000 points)
@@ -217,10 +226,12 @@ class EmbeddingEngine:
         idx = rng.choice(len(X), size=n, replace=False)
         X_sub = X[idx]
 
+        # `rows` alimente le DataFrame final; `embeddings` garde les géométries brutes.
         rows = []
         embeddings = []
 
         for i, seed in enumerate(range(n_seeds)):
+            # Nouveau moteur par seed: évite tout état partagé entre exécutions.
             engine_i = EmbeddingEngine(
                 method=self.method,
                 n_components=self.n_components,
@@ -237,8 +248,10 @@ class EmbeddingEngine:
                 dist = 0.0
             else:
                 try:
+                    # Procrustes aligne translation/rotation/échelle avant distance résiduelle.
                     _, _, dist = procrustes(Z_ref, Z)
                 except Exception:
+                    # Robustesse: un seed problématique ne casse pas tout le rapport.
                     dist = np.nan
             rows.append(
                 {
@@ -249,6 +262,7 @@ class EmbeddingEngine:
             )
 
         df = pd.DataFrame(rows)
+        # Moyenne calculée hors seed 0 (distance nulle par construction).
         mean_dist = df.loc[df["seed"] > 0, "procrustes_distance"].mean()
         logger.info(
             "Stabilité %s : distance Procrustes moyenne = %.4f (sur %d seeds)",
@@ -279,9 +293,11 @@ class EmbeddingEngine:
         np.ndarray (N, n_components) — embedding sur X permuté.
         """
         rng = np.random.default_rng(self.random_state + 999)
+        # Copie explicite pour préserver X d'entrée.
         X_perm = X.copy()
         # Permutation indépendante de chaque colonne
         for j in range(X_perm.shape[1]):
+            # Détruit les corrélations inter-features tout en conservant les marginales 1D.
             rng.shuffle(X_perm[:, j])
 
         logger.info("Calcul du contrôle négatif (X permuté)...")
@@ -314,16 +330,19 @@ class EmbeddingEngine:
         dict {str(param_value): embedding_array}
         """
         if param_grid is None:
+            # Grille par défaut orientée inspection visuelle coarse-to-fine.
             if self.method == "umap":
                 param_grid = {"n_neighbors": [5, 15, 30, 50, 100]}
             else:
                 param_grid = {"perplexity": [5, 15, 30, 50, 100]}
 
         results = {}
+        # Convention actuelle: un seul hyperparamètre exploré à la fois.
         param_name = list(param_grid.keys())[0]
         param_values = param_grid[param_name]
 
         for val in param_values:
+            # La valeur testée surcharge la config utilisateur courante.
             kw = {**self.extra_kwargs, param_name: val}
             engine = EmbeddingEngine(
                 method=self.method,
@@ -351,6 +370,7 @@ class EmbeddingEngine:
     @property
     def params_used(self) -> Dict:
         """Paramètres effectivement utilisés pour le dernier fit."""
+        # Retourne un dict vide avant premier fit pour API sûre côté notebook.
         return self._params_used or {}
 
     # ------------------------------------------------------------------
@@ -360,11 +380,14 @@ class EmbeddingEngine:
     def _fit_umap(self, X: np.ndarray) -> np.ndarray:
         """Ajuste UMAP et retourne les coordonnées 2D."""
         try:
+            # Import local pour garder le module utilisable même sans umap-learn installé.
             import umap
         except ImportError:
             raise ImportError("UMAP non installé. Exécuter : pip install umap-learn")
+        # Priorité aux kwargs utilisateur sur les valeurs par défaut du projet.
         params = {**self._UMAP_DEFAULTS, **self.extra_kwargs}
         self._params_used = params
+        # L'objet modèle est conservé pour autoriser transform() sur nouveaux points.
         self._model = umap.UMAP(
             n_components=self.n_components,
             random_state=self.random_state,
@@ -376,6 +399,7 @@ class EmbeddingEngine:
         """Ajuste t-SNE et retourne les coordonnées 2D."""
         from sklearn.manifold import TSNE
 
+        # Même logique de fusion: defaults du projet puis surcharge utilisateur.
         params = {**self._TSNE_DEFAULTS, **self.extra_kwargs}
         self._params_used = params
         self._model = TSNE(
@@ -416,7 +440,9 @@ class EmbeddingEngine:
         except ImportError:
             raise ImportError("Plotly non installé → pip install plotly")
 
+        # Normalisation du chemin de sortie pour write_html.
         figures_dir = _Path(figures_dir)
+        # UMAP 3D recalculé avec hyperparamètres de référence du pipeline.
         engine_3d = EmbeddingEngine(
             method="umap",
             n_components=3,
@@ -443,12 +469,15 @@ class EmbeddingEngine:
         axis3_best_corr, axis3_best_param = 0.0, "?"
         for col, label in phys_params:
             if col not in meta.columns:
+                # Paramètre absent du catalogue: on l'ignore proprement.
                 continue
             vals = meta[col].values.astype(float)
             valid = np.isfinite(vals)
             if valid.sum() < 100:
+                # Corrélation non robuste si trop peu de points valides.
                 continue
             r3, _ = spearmanr(Z_umap3[valid, 2], vals[valid])
+            # On retient le paramètre le plus corrélé en valeur absolue.
             if abs(r3) > abs(axis3_best_corr):
                 axis3_best_corr, axis3_best_param = r3, label
 
@@ -466,10 +495,12 @@ class EmbeddingEngine:
         for col, label in phys_params:
             if col in meta.columns:
                 df_3d[label] = meta[col].values
+        # Labels cluster human-readable pour exploration interactive Plotly.
         df_3d["Cluster"] = ["Bruit" if c == -1 else f"C{c}" for c in cluster_labels]
 
         rng = np.random.default_rng(random_state)
         N_PLOT = min(n_subsample, len(df_3d))
+        # Sous-échantillon uniforme pour limiter le poids des fichiers HTML.
         df_plot = df_3d.iloc[rng.choice(len(df_3d), N_PLOT, replace=False)].copy()
         COLOR_MAP = {"STAR": "#4C72B0", "GALAXY": "#DD8452", "QSO": "#55A868"}
 
@@ -497,6 +528,7 @@ class EmbeddingEngine:
             ),
             margin=dict(l=0, r=0, b=0, t=50),
         )
+        # Export autonome (HTML interactif partageable hors notebook).
         path_html = figures_dir / "umap3d_classes.html"
         fig_class.write_html(str(path_html))
 
@@ -511,6 +543,7 @@ class EmbeddingEngine:
                 color="T_eff (K)",
                 color_continuous_scale="plasma",
                 range_color=[
+                    # Bornes robustes 2-98% pour atténuer outliers Gaia.
                     float(df_plot["T_eff (K)"].quantile(0.02)),
                     float(df_plot["T_eff (K)"].quantile(0.98)),
                 ],
@@ -533,6 +566,7 @@ class EmbeddingEngine:
                 color="[Fe/H]",
                 color_continuous_scale="RdYlBu",
                 range_color=[
+                    # Même clipping robuste pour homogénéiser les échelles visuelles.
                     float(df_plot["[Fe/H]"].quantile(0.02)),
                     float(df_plot["[Fe/H]"].quantile(0.98)),
                 ],
@@ -545,6 +579,7 @@ class EmbeddingEngine:
             fig_feh.write_html(str(path_feh))
 
         logger.info("UMAP 3D — axe 3 ↔ %s (ρ=%+.3f)", axis3_best_param, axis3_best_corr)
+        # Bundle unique pour réutilisation dans le notebook et dans le reporting.
         return {
             "Z_umap3": Z_umap3,
             "axis3_best_param": axis3_best_param,
@@ -586,6 +621,7 @@ def compare_embeddings(
     results = {}
     for method in methods:
         logger.info("--- Calcul %s ---", method.upper())
+        # Un moteur indépendant par méthode pour éviter tout couplage d'état.
         engine = EmbeddingEngine(method=method, random_state=random_state)
         Z = engine.fit_transform(X, n_pca_components=n_pca_components)
         results[method] = Z
