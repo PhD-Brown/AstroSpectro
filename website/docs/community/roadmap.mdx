@@ -1,9 +1,15 @@
 ---
 id: roadmap
 title: Feuille de Route
+sidebar_label: Feuille de Route
+sidebar_position: 3
+description: >
+  Feuille de route du projet AstroSpectro — état des fonctionnalités implémentées
+  et développements planifiés.
+tags: [roadmap, feuille-de-route, développement]
 ---
 
-<!-- Complet for v1.0.0 release -->
+{/* Complet for v1.0.0 release */}
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFlask, faMapSigns, faLaptopCode, faHexagonNodes, faRobot, faRocket } from '@fortawesome/free-solid-svg-icons'
@@ -28,9 +34,14 @@ Cette page présente les développements prévus et les idées d'amélioration p
         <div className="card__body">
           <p>Améliorer la profondeur et la précision des informations extraites des spectres.</p>
           <ul>
-            <li>[+/-] Extraction de features avancées (FWHM, EW, nouvelles raies...)</li>
-            <li>[x] Meilleure exploitation du continuum (fit, indices)</li>
-            <li>[x] Intégration des métadonnées (SNR, magnitude)</li>
+            <li>[x] Extraction V1 : raies principales (Hα, Hβ, Ca II K&H, Mg b, Na D) — prominence, FWHM, EW</li>
+            <li>[x] Ratios de raies et indices spectraux (TiO5, Dn4000, G4300, CaH2/3)</li>
+            <li>[x] **Extraction V2 : 174 features spectrales — 9 familles physiques** (bandes moléculaires TiO/VO, Balmer étendu Hγ→H10, raies métalliques Fe/Mg/Ca/Na/Si/Ti/Cr/Ba/Sr, indices Lick/SDSS, continuum, profils de raies, couleurs synthétiques, indices composites)</li>
+            <li>[x] **Cross-match Gaia DR3** (parallaxe, Teff, log g, [Fe/H], bp_rp, M_G, v_tan)</li>
+            <li>[x] Mode `spectro_only=True` — exclusion des features non spectrales (ra, dec, redshift)</li>
+            <li>[x] **Validation SHAP** — 97,9 % des top-30 features sont spectrales physiques</li>
+            <li>[ ] Optimisation Optuna à grande échelle (~139k fichiers FITS restants)</li>
+            <li>[ ] Détection d'anomalies : intersection HDBSCAN bruit ∩ top 1 % MSE autoencoder</li>
           </ul>
         </div>
       </div>
@@ -44,10 +55,19 @@ Cette page présente les développements prévus et les idées d'amélioration p
         <div className="card__body">
           <p>Explorer des modèles plus performants et des techniques de traitement de données avancées.</p>
           <ul>
-            <li>[+/-] Amélioration de la qualité des données (débruitage, outliers)</li>
-            <li>[x] Data augmentation et équilibrage (SMOTE)</li>
-            <li>[+/-] Benchmarking de nouveaux modèles (SVM, XGBoost, CNN 1D)</li>
-            <li>[ ] Explicabilité des modèles (XAI avec SHAP/LIME)</li>
+            <li>[x] **XGBoost** — modèle principal, 87 % balanced accuracy (mode spectro_only)</li>
+            <li>[x] **LightGBM, CatBoost, ExtraTrees, VotingClassifier** — disponibles dans `SpectralClassifier`</li>
+            <li>[x] GridSearchCV avec validation croisée stratifiée</li>
+            <li>[x] Infrastructure Optuna (déployée — scalage en cours)</li>
+            <li>[x] **Suivi d'expériences W&B** — 85+ runs, 121 métriques/run</li>
+            <li>[x] Calibration ECE (*Expected Calibration Error*)</li>
+            <li>[x] **Réduction de dimension** : PCA, UMAP, t-SNE, HDBSCAN (projet PHY-3500 + `src/dimred/` v0.3.0)</li>
+            <li>[x] **Autoencoder spectral** (SpectralAutoencoder PyTorch — latent space 2D et 3D)</li>
+            <li>[x] **Explicabilité SHAP** — découverte : Ca II H&K / Mg b dominent sur Balmer</li>
+            <li>[+/-] SMOTE — intégré mais rôle limité depuis l'optimisation sur balanced_accuracy</li>
+            <li>[ ] Caractérisation des 20 clusters HDBSCAN (croisement objets rares : variables, binaires, RGB)</li>
+            <li>[ ] Extension à LAMOST DR10 (~10⁷ spectres) ou SDSS</li>
+            <li>[ ] CNN 1D sur flux bruts (architecture planifiée, non implémentée)</li>
           </ul>
         </div>
       </div>
@@ -61,11 +81,15 @@ Cette page présente les développements prévus et les idées d'amélioration p
         <div className="card__body">
           <p>Rendre le pipeline plus robuste, plus accessible et plus facile à utiliser pour la communauté.</p>
           <ul>
-            <li>[ ] Automatisation complète (Snakemake/Prefect)</li>
-            <li>[ ] Création d'une API pour les prédictions</li>
-            <li>[ ] Développement d'une démo interactive (Streamlit/Gradio)</li>
-            <li>[x] Démos "Zéro-installation" (Google Colab)</li>
-            <li>[ ] Support multi-survey (SDSS, Gaia)</li>
+            <li>[x] Architecture modulaire `src/pipeline/` + `src/dimred/` avec packaging `pyproject.toml`</li>
+            <li>[x] **Codespaces GitHub** — environnement zéro-installation en 1 clic</li>
+            <li>[x] Déploiement Docusaurus (GitHub Pages, CI/CD automatique)</li>
+            <li>[x] Application Streamlit (déploiement `deploy-streamlit`)</li>
+            <li>[x] Parallélisation joblib (~340k spectres/h, Ryzen 9 5950X 32 fils)</li>
+            <li>[x] Artefacts horodatés reproductibles (`.pkl` + `.json` par run)</li>
+            <li>[ ] API REST pour les prédictions (endpoint `/predict`)</li>
+            <li>[ ] Automatisation complète Snakemake / Prefect</li>
+            <li>[ ] Support multi-survey (SDSS, Gaia RVS)</li>
           </ul>
         </div>
       </div>

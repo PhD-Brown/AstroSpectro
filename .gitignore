@@ -41,6 +41,8 @@ delta_ms_poly_coeffs.npy
 # === Output, figures, temporary files ===
 *.tmp
 *.out
+.tmp/
+.tmp*/
 
 # === Notion, idées, doc privée ===
 notes/

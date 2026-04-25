@@ -1,0 +1,165 @@
+---
+id: dataset-dimred
+title: Dataset — LAMOST DR5 × Gaia DR3 (PHY-3500)
+sidebar_label: Dataset DIMRED
+sidebar_position: 1
+description: >
+  Description complète du jeu de données utilisé dans le projet PHY-3500 :
+  N = 43 019 spectres LAMOST DR5 croisés avec Gaia DR3, p = 183 descripteurs
+  spectroscopiques après filtrage qualité.
+tags: [dataset, lamost, gaia, prétraitement, qualité]
+---
+
+import DatasetStats from '@site/src/components/DatasetStats';
+import ClassDistribution from '@site/src/components/ClassDistribution';
+import DescriptorFamilies from '@site/src/components/DescriptorFamilies';
+import QualityPipeline from '@site/src/components/QualityPipeline';
+
+# Dataset — LAMOST DR5 × Gaia DR3
+
+Ce document décrit le jeu de données utilisé dans le cadre du projet PHY-3500 et de l'article *«La réduction de dimension conserve-t-elle l'essentiel de l'information physique des spectres stellaires ?»* (Baker, Caillat & Jean, 28 avril 2026). Il constitue la base de toutes les analyses de réduction de dimension présentées dans ce projet.
+
+<DatasetStats />
+
+---
+
+## 2.1 Sources
+
+### LAMOST DR5 — Large Sky Area Multi-Object Fiber Spectroscopic Telescope
+
+LAMOST (Cui et al., 2012) est un télescope chinois dédié à la spectroscopie multi-objets à grande échelle. La cinquième publication de données (Data Release 5) couvre :
+
+<div align="center">
+
+| Paramètre | Valeur |
+|:---|:---|
+| Couverture spectrale | 3690–9100 Å |
+| Résolution spectrale | R ≈ 1800 (basse résolution) |
+| Nombre de spectres total DR5 | > 9 millions |
+| Nombre de canaux par spectre (flux brut) | 3 921 |
+
+</div>
+
+Les spectres sont distribués au format FITS, avec un en-tête contenant les métadonnées d'observation (coordonnées, identifiants, type spectral LAMOST, redshift mesuré, SNR par bande).
+
+À cette résolution, l'inspection visuelle individuelle est impossible : l'analyse automatisée est une nécessité, pas un choix. C'est précisément ce qui motive le développement de méthodes de réduction de dimension et de classification automatique.
+
+---
+
+### Gaia DR3 — Gaia Data Release 3
+
+Gaia DR3 (Gaia Collaboration, Vallenari et al., 2023) fournit les paramètres astrophysiques de référence utilisés pour valider et interpréter les résultats :
+
+| Paramètre | Symbole | Unité | Rôle dans le projet |
+|:---|:---:|:---:|:---|
+| Température effective | T_eff | K | Validation de PC1 (ρ = +0,831) |
+| Gravité de surface | log g | dex | Distinction naines/géantes |
+| Métallicité | [Fe/H] | dex | Validation de PC2 |
+| Photométrie BP/RP | G_BP, G_RP | mag | Couleurs photométriques |
+| Parallaxe | π | mas | Distance, magnitude absolue |
+| Mouvement propre | μα, μδ | mas/yr | Vitesse tangentielle |
+| Extinction | A_G | mag | Correction de rougissement |
+
+---
+
+### Croisement positionnel LAMOST × Gaia
+
+Le croisement est réalisé par coordonnées angulaires avec un rayon de tolérance de **1 arcseconde**. Ce rayon est suffisamment conservateur pour éviter les fausses associations dans des champs peu denses, tout en assurant un taux de croisement élevé pour les étoiles de la Voie Lactée.
+
+Le croisement est géré par `gaia_crossmatcher.py` dans le pipeline AstroSpectro. Il produit un catalogue maître fusionnant les colonnes LAMOST et Gaia pour chaque spectre apparié.
+
+---
+
+## 2.2 Jeu de données final
+
+### Filtres qualité appliqués
+
+Deux filtres sont appliqués séquentiellement avant toute analyse :
+
+<QualityPipeline />
+
+---
+
+### Variables supprimées
+
+Avant la construction de la matrice de descripteurs, les variables suivantes ont été **explicitement retirées** :
+
+| Variable | Source | Raison |
+|:---:|:---:|:---|
+| `ra` | LAMOST | Coordonnée angulaire — biais géographique observationnel |
+| `dec` | LAMOST | Coordonnée angulaire — même raison |
+| `redshift` | LAMOST | Métadonnée instrumentale — biais non physique |
+
+:::warning[Fuite de données (*feature leakage*)]
+Ces trois variables possèdent un pouvoir discriminant **artificiel** : elles encodent *où* et *quand* le spectre a été observé, pas les propriétés physiques de l'étoile. Un modèle entraîné avec `ra` ou `dec` apprend à classifier les étoiles par position dans le ciel — corrélée avec les types spectraux via les programmes d'observation de LAMOST — plutôt que par leur physique réelle. Dans le pipeline AstroSpectro, ce mode d'exclusion est activé via `spectro_only=True`.
+:::
+
+---
+
+### Composition finale
+
+<ClassDistribution />
+
+La grande majorité des spectres étant des étoiles, les analyses de réduction de dimension et de classification se concentrent sur la population stellaire. Les galaxies et QSO sont trop rares (63 objets combinés) pour être intégrés à l'analyse HDBSCAN de façon statistiquement significative.
+
+---
+
+### Les 183 descripteurs
+
+Les 183 descripteurs se répartissent en **six familles physiques**. Les couleurs correspondent aux couleurs spectrales approximatives des raies concernées :
+
+<DescriptorFamilies />
+
+---
+
+## 2.3 Standardisation
+
+### Transformation z-score
+
+Avant toute analyse, chaque descripteur $j$ est standardisé en scores z :
+
+$$
+\tilde{x}_{ij} = \frac{x_{ij} - \bar{x}_j}{s_j}
+$$
+
+où $\bar{x}_j$ et $s_j$ sont la moyenne et l'écart-type empiriques calculés sur l'ensemble des $N = 43\,019$ spectres.
+
+Cette étape est **indispensable pour la PCA** et vivement recommandée pour UMAP et t-SNE.
+
+### Pourquoi standardiser ?
+
+Sans standardisation, les descripteurs à grande variance (typiquement les flux bruts intégrés sur de larges fenêtres) domineraient artificiellement les premières composantes principales, *indépendamment de leur contenu physique réel*. Par exemple, un indice de continuum calculé sur 100 Å a mécaniquement plus de variance absolue qu'une largeur équivalente mesurée sur 2 Å, sans que cela reflète une différence d'importance physique.
+
+La standardisation place tous les descripteurs sur un pied d'égalité en termes de variance (variance = 1 après transformation), laissant à la PCA le soin de découvrir les directions de variance réelle dans l'espace physique.
+
+### Implémentation
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)   # X : (43019, 183)
+```
+
+La standardisation est calculée uniquement sur le jeu d'entraînement et appliquée sans recalcul sur tout nouveau spectre à classifier, conformément aux bonnes pratiques pour éviter la fuite d'information (*data leakage*).
+
+---
+
+## Accès aux données
+
+| Source | URL | Format |
+|:---|:---|:---:|
+| LAMOST DR5 spectres | http://dr5.lamost.org/ | FITS |
+| Gaia DR3 archive | https://gea.esac.esa.int/archive/ | VOTable / CSV |
+
+Le téléchargement automatisé des spectres FITS est géré par `dr5_downloader.py` dans le pipeline AstroSpectro. Voir le [guide de téléchargement](../user-guides/downloading-data) pour les instructions détaillées.
+
+---
+
+## Pages connexes
+
+- [Catalogue des 183 descripteurs](./features-list-183) — définitions physiques complètes
+- [Réduction de dimension](./dimensionality-reduction) — PCA, UMAP, t-SNE sur ce dataset
+- [Interprétation physique de la PCA](./pca-physical-interpretation) — variance, eigenspectra, corrélations Gaia
+- [Guide de téléchargement](../user-guides/downloading-data) — récupérer les spectres LAMOST DR5
+- [Guide de prétraitement](../user-guides/preprocessing) — normalisation, lissage, contrôle qualité

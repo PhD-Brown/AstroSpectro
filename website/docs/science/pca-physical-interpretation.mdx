@@ -1,0 +1,162 @@
+---
+id: pca-physical-interpretation
+title: Interprétation physique de la PCA
+sidebar_label: PCA — interprétation physique
+sidebar_position: 4
+description: >
+  Analyse détaillée des axes principaux PCA appliquée aux 183 descripteurs
+  de LAMOST DR5 : variance expliquée, eigenspectra sur flux bruts, loadings
+  par famille spectrale, corrélations Gaia DR3 et diagramme HR.
+tags: [pca, astrophysique, eigenspectra, lamost, gaia, temperature, metallicite]
+---
+
+import PCAxisCards from '@site/src/components/PCAxisCards';
+import VarianceChart from '@site/src/components/VarianceChart';
+import FamilyContributions from '@site/src/components/FamilyContributions';
+import EigenspectraContrast from '@site/src/components/EigenspectraContrast';
+import GaiaCorrelations from '@site/src/components/GaiaCorrelations';
+import LoadingsBars from '@site/src/components/LoadingsBars';
+
+# Interprétation physique de la PCA
+
+Cette page présente l'interprétation astrophysique des résultats de l'Analyse en Composantes Principales (PCA) appliquée aux **183 descripteurs spectroscopiques** de N = 43 019 spectres LAMOST DR5 × Gaia DR3. Elle documente la signification physique de chaque axe principal, confirmée par croisement avec les paramètres Gaia DR3 indépendants.
+
+## Résumé des deux axes principaux
+
+<PCAxisCards />
+
+---
+
+## Fondements mathématiques de la PCA
+
+La PCA cherche les directions orthogonales $\mathbf{w}_k \in \mathbb{R}^p$ qui maximisent successivement la variance projetée des données centrées $\mathbf{X} \in \mathbb{R}^{N \times p}$. Ce problème est équivalent à la diagonalisation de la matrice de covariance empirique :
+
+$$
+\mathbf{C} = \frac{1}{N-1}\mathbf{X}^\top\mathbf{X} \in \mathbb{R}^{p \times p}
+$$
+
+Le théorème spectral garantit $\mathbf{C} = \mathbf{W}\mathbf{\Lambda}\mathbf{W}^\top$ avec $\lambda_1 \geq \cdots \geq \lambda_p \geq 0$. La projection sur les K premières composantes donne les scores $\mathbf{Z} = \mathbf{X}\mathbf{W}_K$.
+
+En pratique, la SVD tronquée est préférée : $\mathbf{X} \approx \mathbf{U}_K\mathbf{\Sigma}_K\mathbf{W}_K^\top$ (algorithme de Lanczos pour $N = 43 019$, $p = 183$). Le théorème d'Eckart-Young garantit que cette troncature est la meilleure approximation de rang K au sens de la norme de Frobenius :
+
+$$
+\mathbf{X}_K = \underset{\text{rang}(M) \leq K}{\arg\min} \|\mathbf{X} - M\|_F
+$$
+
+---
+
+## Variance expliquée
+
+### Seuils caractéristiques et erreur de reconstruction
+
+La variance expliquée cumulée révèle la **haute dimensionnalité intrinsèque** de l'espace des 183 descripteurs : le spectre des valeurs propres décroît régulièrement, sans coude net — contrairement à ce qu'on observe sur les flux bruts.
+
+<VarianceChart />
+
+**Les 2 premières composantes ne capturent que 28,8 % de la variance totale** (PC1 : 16,9 %, $\lambda_1 = 30,19$ ; PC2 : 12,0 %, $\lambda_2 = 21,39$). Il faut **91 composantes** pour atteindre 95 %, ce qui indique que la variété des spectres occupe un espace effectif d'au moins une dizaine de dimensions.
+
+Ce constat a une implication pratique importante : UMAP et t-SNE sont appliqués aux **91 premières composantes PCA** (seuil 95 %) plutôt qu'aux 183 descripteurs bruts. Cette pré-réduction élimine le bruit des composantes tardives tout en préservant l'essentiel de la structure.
+
+---
+
+## Eigenspectra PCA sur flux bruts
+
+En complément des descripteurs ingéniérisés, la PCA a également été appliquée directement aux **flux bruts** de 10 000 spectres LAMOST (3 921 canaux). Les vecteurs propres obtenus — les *eigenspectra* — sont interprétables comme des spectres de base dans l'espace des flux.
+
+### Contraste avec les descripteurs
+
+<EigenspectraContrast />
+
+### Interprétation physique des 3 premiers eigenspectra
+
+**PC1 (46,6 % de la variance des flux) — Pente de couleur (Teff) :**
+Dominée par un continuum quasi-uniforme dans le bleu (3700–6500 Å) qui s'effondre vers le rouge. C'est la pente globale du continuum, directement reliée à la température effective. Les étoiles chaudes (types A-F) contribuent positivement ; les étoiles froides (types K-M) négativement.
+
+**PC2 (31,8 %) — Montée infrarouge (étoiles froides) :**
+Capture la montée progressive du flux vers le proche infrarouge (> 6500 Å). C'est la signature distinctive des étoiles froides de type K-M dont l'émission de corps noir est déplacée vers le rouge.
+
+**PC3 (12,9 %) — Transition instrumentale bleue/rouge :**
+Isole une transition abrupte autour de 6500–7000 Å, correspondant à la coupure instrumentale de LAMOST entre les bras bleu et rouge du spectrographe. C'est un artefact instrumental, non une propriété physique.
+
+:::caution[Artefact PC3]
+La présence d'un artefact instrumental dans PC3 (coupure LAMOST 6500–7000 Å) illustre une limite fondamentale de la PCA non supervisée : elle maximise la variance *totale*, incluant les variations instrumentales qui peuvent masquer les signaux physiques. Ce problème ne disparaît pas dans les 183 descripteurs, mais est dilué sur les composantes tardives.
+:::
+
+**Référence figure :** `pca_eigenspectra.png`
+
+---
+
+## Projection PC1/PC2 et interprétation physique
+
+### Corrélations de Spearman avec les paramètres Gaia DR3
+
+Le tableau suivant quantifie l'alignement entre les axes principaux et les paramètres astrophysiques indépendants de Gaia DR3 (N = 43 019). L'intensité de couleur est proportionnelle à |ρ| — survoler une cellule pour l'interprétation.
+
+<GaiaCorrelations />
+
+**Lecture des résultats :**
+
+La corrélation ρ(PC1, Teff) = +0,831 n'est pas anodine : elle signifie que la **température effective est la source de variance dominante** dans l'espace des 183 descripteurs. C'est cohérent avec le schéma de classification MK — la force des raies de Balmer et la pente du continuum varient massivement entre les types O et M, bien au-delà des effets de métallicité.
+
+La corrélation ρ(PC1, [Fe/H]) = −0,548 indique une corrégulation naturelle : les étoiles froides (K-M) tendent à être plus riches en métaux que les étoiles chaudes (A-F), ce que la PCA linéaire mélange dans le même axe.
+
+### Projection PC1/PC2 colorée par Teff
+
+La coloration par Teff dans l'espace PC1/PC2 confirme visuellement la nature thermique de PC1 : les étoiles chaudes (> 7 000 K, types A-F) occupent le côté positif de PC1 ; les étoiles froides (< 5 000 K, types K-M) le côté négatif ; avec un gradient continu le long de la séquence principale.
+
+La coloration par log g révèle une branche distincte des sous-géantes et géantes (log g < 3,5) dans la partie haute de la projection — PC2 encode partiellement la classe de luminosité.
+
+**Référence figures :** `pca_scores_classes.png`, `pca_scores_grid.png`, `pca_correlation_heatmap.png`
+
+---
+
+## Contribution par famille spectroscopique aux axes PCA
+
+La décomposition de la variance de PC1 et PC2 par famille de descripteurs révèle les contributions relatives de chaque groupe de raies. Les barres ★ identifient la famille dominante de chaque axe.
+
+<FamilyContributions />
+
+---
+
+## Les 5 premiers *loadings* absolus de PC1 et PC2
+
+Les *loadings* $w_{kj}$ mesurent la corrélation entre le $j$-ième descripteur et la $k$-ième composante principale. Plus $|w_{kj}|$ est grand, plus ce descripteur contribue à définir l'axe. Les barres signées montrent la direction (positive = vers étoiles chaudes pour PC1, vers métaux pour PC2) et l'amplitude.
+
+<LoadingsBars />
+
+**PC1 — W(Hα) en tête** : la largeur équivalente de Hα est l'un des indicateurs de température les plus robustes de la classification spectrale MK. Son signe positif signifie que les étoiles *chaudes* (Hα fort) ont un score PC1 élevé.
+
+**PC2 — tous des indices de métallicité** : les cinq premiers *loadings* de PC2 sont tous des indices de composition chimique — confirmation cohérente de l'interprétation comme axe de composition.
+
+**Référence figures :** `pca_loadings_pc1.png`, `pca_loadings_pc2.png`, `pca_loadings_heatmap.png`
+
+---
+
+## Diagramme HR coloré par PC1
+
+La corrélation ρ(PC1, Teff) = +0,831 peut être visualisée directement sur le diagramme de Hertzsprung-Russell (Teff vs log g). Le gradient de couleur de PC1 suit parfaitement la séquence principale de droite (froide, PC1 négatif) à gauche (chaude, PC1 positif), **validant visuellement l'interprétation thermique de PC1**.
+
+Les étoiles évoluées (log g < 3) présentent des valeurs de PC1 intermédiaires — elles ont quitté la séquence principale et leur spectre présente une combinaison de caractéristiques thermiques et de gravité qui n'est pas capturée linéairement par PC1 seul. C'est une limite concrète de l'estimateur linéaire optimal qu'est la PCA.
+
+**Référence figures :** `hr_diagram_pca_pc1.png`, `hr_diagram_pca_pc2.png`
+
+---
+
+## Limites de la PCA
+
+**Linéarité.** La PCA est aveugle à toute structure non linéaire. Les relations entre Teff, log g et [Fe/H] dans l'espace spectral ne sont pas strictement linéaires — c'est pourquoi UMAP et t-SNE révèlent des structures supplémentaires (clusters de sous-géantes, bifurcation naines/géantes) que la PCA aplatit en une projection continue.
+
+**Optimalité L₂ seulement.** Le théorème d'Eckart-Young garantit que la troncature PCA est la meilleure approximation de rang K au sens de la norme de Frobenius — pas au sens de la préservation des voisinages locaux ou de la séparation des clusters.
+
+**Sensibilité aux outliers sur les composantes tardives.** PC1 et PC2 sont robustes car elles maximisent la variance globale. En revanche, les composantes tardives (PC80–PC183) sont sensibles aux spectres aberrants qui maximisent la variance résiduelle.
+
+**Mélange physique dans PC1.** La corrélation ρ(PC1, [Fe/H]) = −0,548 (modérée) révèle que PC1 n'est pas un axe de température *pur* : la covariation naturelle Teff/[Fe/H] (les étoiles froides K-M sont généralement plus riches en métaux que les A-F) est inévitablement absorbée dans le premier axe.
+
+---
+
+## Pages connexes
+
+- [Catalogue des 183 descripteurs](./features-list-183) — définitions des *loadings* et familles
+- [Réduction de dimension](./dimensionality-reduction) — UMAP, t-SNE, stabilité Procrustes
+- [Dataset PHY-3500](./dataset-dimred) — composition du jeu, filtres, standardisation
+- [XGBoost — comparaison supervisée](./xgboost-comparison) — 87 % de précision sur les mêmes 183 descripteurs

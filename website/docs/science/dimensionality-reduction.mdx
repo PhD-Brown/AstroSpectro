@@ -1,0 +1,316 @@
+---
+id: dimensionality-reduction
+title: Réduction de dimension — PCA, UMAP, t-SNE
+sidebar_label: Réduction de dimension
+sidebar_position: 3
+description: >
+  Comparaison complète de trois méthodes de réduction de dimension sur 43 019
+  spectres stellaires LAMOST DR5 : PCA (linéaire), UMAP (topologique) et
+  t-SNE (probabiliste). Hyperparamètres, résultats, stabilité Procrustes et
+  clusters HDBSCAN.
+tags: [pca, umap, tsne, hdbscan, reduction-dimension, stabilite, lamost]
+---
+
+import MethodComparison from '@site/src/components/MethodComparison';
+import ProcrustesStability from '@site/src/components/ProcrustesStability';
+import HDBSCANClusters from '@site/src/components/HDBSCANClusters';
+import HyperparamSensitivity from '@site/src/components/HyperparamSensitivity';
+import DimRedPipeline from '@site/src/components/DimRedPipeline';
+
+# Réduction de dimension — PCA, UMAP, t-SNE
+
+Cette page documente la comparaison de trois méthodes de réduction de dimension appliquées aux **183 descripteurs spectroscopiques** de N = 43 019 spectres LAMOST DR5 × Gaia DR3. Elle couvre les fondements algorithmiques de chaque méthode, leurs hyperparamètres, leurs résultats quantitatifs et la comparaison de stabilité entre exécutions indépendantes.
+
+:::info[Question centrale]
+Dans quelle mesure les approches **linéaire** (PCA), **topologique** (UMAP) et **probabiliste** (t-SNE) sont-elles équivalentes pour capturer l'information physique stellaire lors d'une projection de 183 dimensions vers 2 dimensions ? Quels en sont les compromis numériques et physiques ?
+:::
+
+---
+
+## Flux du pipeline
+
+Avant d'entrer dans les détails de chaque méthode, voici le flux complet des données à travers le pipeline de réduction de dimension :
+
+<DimRedPipeline />
+
+---
+
+## Synthèse comparative
+
+<MethodComparison />
+
+---
+
+## 1. PCA — Analyse en Composantes Principales
+
+### Principe et algorithme
+
+La PCA cherche les directions $\mathbf{w}_k$ qui maximisent la variance projetée. Pour $N = 43 019$ et $p = 183$, la SVD tronquée est calculée par **l'algorithme de Lanczos** (méthode de Krylov, complexité $\mathcal{O}(Kp^2 + KNp)$). Au-delà d'un seuil de taille, scikit-learn active automatiquement la **SVD randomisée** (Halko et al., 2011), réduisant la complexité à $\mathcal{O}(NpK)$ avec une erreur contrôlée.
+
+Le **théorème d'Eckart-Young** garantit l'optimalité de la troncature : la reconstruction à K composantes est la meilleure approximation de rang K de $\mathbf{X}$ au sens de la norme de Frobenius.
+
+### Hyperparamètres utilisés
+
+```python
+from sklearn.decomposition import PCA
+
+pca = PCA(n_components=91, random_state=42)   # seuil 95 % de variance
+Z_pca = pca.fit_transform(X_scaled)           # (43019, 91)
+```
+
+Le choix $K = 91$ n'est pas arbitraire : c'est le nombre de composantes nécessaires pour capturer **95 % de la variance totale** des 183 descripteurs.
+
+### Résultats quantitatifs
+
+- **PC1** : 16,9 % de variance ($\lambda_1 = 30,19$), axe thermique, ρ(Teff) = **+0,831**
+- **PC2** : 12,0 % de variance ($\lambda_2 = 21,39$), axe métallicité/SNR
+- **Cumulé PC1+PC2** : 28,8 % — deux composantes ne capturent que ~30 % de l'information
+- **95 % de variance** requiert K = **91 composantes**
+
+Pour l'interprétation complète des axes (loadings, corrélations Gaia, eigenspectra), voir [Interprétation physique de la PCA](./pca-physical-interpretation).
+
+---
+
+## 2. UMAP — Uniform Manifold Approximation and Projection
+
+### Principe
+
+UMAP (McInnes, Healy & Melville, 2018) repose sur l'hypothèse que les données sont distribuées sur une variété riemannienne de faible dimension. L'algorithme construit une représentation floue de la topologie locale dans l'espace original, puis optimise une représentation basse dimension qui préserve au mieux cette topologie.
+
+### Construction du graphe flou
+
+Pour chaque point $\mathbf{x}_i$, soit $\rho_i$ la distance à son plus proche voisin et $\sigma_i > 0$ un paramètre de lissage. Le poids de la connexion $i \to j$ est :
+
+$$
+w_{ij} = \exp\left(-\frac{\max(0, d(\mathbf{x}_i,\mathbf{x}_j) - \rho_i)}{\sigma_i}\right)
+$$
+
+Le terme $\rho_i$ garantit une connexion unitaire au voisin le plus proche. Les poids sont symétriques via l'union floue : $\bar{w}_{ij} = w_{ij} + w_{ji} - w_{ij} \cdot w_{ji}$.
+
+La construction du graphe k-NN par arbres à projections aléatoires (RP trees, Dasgupta & Freund, 2008) est en $\mathcal{O}(N \log N)$.
+
+### Optimisation basse dimension
+
+Les poids en 2D sont modélisés par une courbe de la famille de Cauchy :
+
+$$
+\tilde{w}_{ij}(\mathbf{y}) = \frac{1}{1 + a\|\mathbf{y}_i - \mathbf{y}_j\|^{2b}}
+$$
+
+où $a, b$ sont ajustés depuis `min_dist`. On minimise la divergence d'entropie croisée par **descente de gradient stochastique (SGD) avec échantillonnage négatif**.
+
+### Hyperparamètres utilisés
+
+```python
+import umap
+
+reducer = umap.UMAP(
+    n_components=2,
+    n_neighbors=15,       # compromis local/global — optimal dans [15, 50]
+    min_dist=0.1,         # compacité des clusters
+    n_epochs=200,
+    metric='euclidean',
+    random_state=42,
+)
+Z_umap = reducer.fit_transform(Z_pca)   # entrée : 91 composantes PCA
+```
+
+**Temps de calcul :** 40,1 s (Ryzen 9 5950X, 32 fils)
+
+### Sensibilité aux hyperparamètres
+
+<HyperparamSensitivity />
+
+### Résultats : structure en «continent continu»
+
+UMAP produit une structure en **«continent continu»** — à l'opposé de l'«archipel» de t-SNE. La séquence de Harvard (M-K-G-F-A) se déploie de manière continue ; les étoiles chaudes (types A-F) forment une «péninsule» dans le coin supérieur gauche de la projection.
+
+**Colorations physiques de la projection UMAP :**
+- **Par type spectral** : séquence de Harvard visible sans supervision
+- **Par Teff** : gradient continu le long de la structure principale, ρ(UMAP ax.1, Teff) = +0,464
+- **Par log g** : une bande de sous-géantes/géantes (log g ≈ 2,5–3,5) distincte des naines
+- **Par [Fe/H]** : gradient de métallicité lisible le long de la structure principale
+- **Par G_BP − G_RP** : cohérent avec Teff
+
+**Référence figures :** `umap_classes.png`, `umap_all_classes_pair.png`, `umap_grid.png`
+
+### Contrôle négatif
+
+UMAP appliqué à des données dont les colonnes sont permutées aléatoirement produit un nuage compact homogène sans structure discernable. **La structure observée est d'origine physique, non un artefact algorithmique.**
+
+**Référence figure :** `umap_negative_control.png`
+
+### Clusters HDBSCAN
+
+HDBSCAN (*Hierarchical Density-Based Spatial Clustering of Applications with Noise*, Campello et al., 2013) est appliqué dans l'espace UMAP pour identifier les groupes denses.
+
+```python
+import hdbscan
+
+clusterer = hdbscan.HDBSCAN(
+    min_cluster_size=75,
+    min_samples=20,
+)
+labels = clusterer.fit_predict(Z_umap)
+```
+
+<HDBSCANClusters />
+
+:::tip[Résultat astrophysique original]
+La **séquence de Harvard émerge spontanément** dans UMAP et t-SNE sans aucune étiquette de supervision. C'est la démonstration directe que les 183 descripteurs encodent suffisamment d'information physique pour que les méthodes de préservation des voisinages restituent la structure connue de la classification MK.
+:::
+
+---
+
+## 3. t-SNE — t-distributed Stochastic Neighbor Embedding
+
+### Principe
+
+t-SNE (van der Maaten & Hinton, 2008) modélise les similarités par des probabilités dans les deux espaces. Dans l'espace original, un noyau gaussien centré sur chaque point donne des probabilités jointes symétriques $p_{ij}$ calculées une seule fois.
+
+### Problème d'encombrement et distribution de Student-t
+
+En grande dimension, les nombreux voisins à distance modérée ne peuvent être logés dans un plan 2D avec une distribution gaussienne. La distribution de Student-t à 1 degré de liberté (Cauchy) fournit en 2D une probabilité plus élevée pour les grandes distances, résolvant le problème d'encombrement (*crowding problem*) :
+
+$$
+q_{ij} = \frac{\left(1 + \|\mathbf{y}_i - \mathbf{y}_j\|^2\right)^{-1}}{\sum_{k \neq l}\left(1 + \|\mathbf{y}_k - \mathbf{y}_l\|^2\right)^{-1}}
+$$
+
+L'objectif de Kullback-Leibler $\text{KL}(P \| Q) = \sum_{i \neq j} p_{ij} \ln(p_{ij}/q_{ij})$ est minimisé par descente de gradient. L'approximation Barnes-Hut (van der Maaten, 2014) réduit la complexité de $\mathcal{O}(N^2)$ à $\mathcal{O}(N \log N)$.
+
+### Hyperparamètres utilisés
+
+```python
+from sklearn.manifold import TSNE
+
+tsne = TSNE(
+    n_components=2,
+    perplexity=30,          # nombre effectif de voisins — optimal dans [15, 50]
+    init='pca',             # initialisation PCA — clé pour la reproductibilité
+    n_iter=1000,
+    random_state=42,
+)
+Z_tsne = tsne.fit_transform(Z_pca)   # entrée : 91 composantes PCA
+```
+
+**Temps de calcul :** 80,2 s (soit 2× UMAP, Ryzen 9 5950X)
+
+t-SNE est **entièrement non paramétrique** : les coordonnées $\mathbf{y}_i$ ne généralisent pas hors échantillon.
+
+### Résultats : structure en «archipel»
+
+t-SNE produit une géométrie sensiblement différente d'UMAP. Plutôt qu'un manifold continu, t-SNE produit un **«archipel» de masses compactes et bien séparées** :
+
+- Les étoiles chaudes (Teff > 7 000 K, types A-F) forment un amas distinct en haut de la projection
+- La grande masse centrale regroupe les K et G de la séquence principale (4 500–6 500 K)
+- La coloration par log g révèle une tendance à isoler les sous-géantes (log g ~ 3–3,5) en clusters discrets, là où UMAP produit une transition continue
+
+**Différence fondamentale UMAP vs t-SNE :** UMAP préserve mieux les variations continues (gradients de Teff et [Fe/H] lisibles), tandis que t-SNE excelle dans la séparation nette des sous-populations discrètes. t-SNE comprime les variations graduelles au profit des discontinuités locales.
+
+**Référence figures :** `tsne_grid.png`, `hr_diagram_tsne_ax1.png`, `stability_tsne.png`
+
+---
+
+## 4. Comparaison de la stabilité — Procrustes
+
+### Métrique de Procrustes
+
+Deux projections indépendantes $Z_1, Z_2$ (graines aléatoires différentes) sont comparées après alignement optimal (rotation, réflexion, mise à l'échelle) :
+
+$$
+d_P = \min_{\Omega \in \mathcal{O}(2), c > 0} \|Z_1 - cZ_2\Omega\|_F^2
+$$
+
+$d_P = 0$ indique des projections identiques à une transformation isométrique près.
+
+### Résultats sur 4 graines indépendantes
+
+<ProcrustesStability />
+
+### Explication du résultat contre-intuitif
+
+Ce résultat est contre-intuitif : les deux méthodes minimisent un objectif non convexe par gradient stochastique. L'explication tient à deux facteurs :
+
+1. **Initialisation PCA de t-SNE** (`init='pca'`) : fixe une position de départ identique entre exécutions, indépendamment de la graine aléatoire.
+2. **Structure de la pénalité KL** : concentre l'énergie sur les voisins immédiats, rendant l'optimisation peu sensible à la graine pour les grandes structures.
+
+UMAP utilise une initialisation spectrale (décomposition du Laplacien) dont le résultat peut varier d'une graine à l'autre, et sa SGD avec échantillonnage négatif introduit une stochasticité plus marquée dans les forces répulsives.
+
+:::caution[Distances inter-clusters dans UMAP]
+La stabilité accrue de t-SNE ne signifie pas que t-SNE est «meilleur». Les distances *entre* clusters dans t-SNE ne sont pas interprétables — l'objectif KL pénalise uniquement les écarts locaux. UMAP offre un meilleur équilibre entre structure locale et globale, au prix d'une variabilité plus importante entre exécutions.
+:::
+
+**Référence figures :** `stability_umap.png`, `stability_tsne.png`
+
+---
+
+## 5. Métriques d'évaluation
+
+### Fidélité des voisinages — Trustworthiness T(k)
+
+La statistique de Venna & Kaski (2006) mesure quelle proportion des k plus proches voisins dans la projection étaient effectivement proches dans l'espace original :
+
+$$
+T(k) = 1 - \frac{2}{Nk(2N-3k-1)} \sum_{i=1}^{N}\sum_{j \in U_k(i)} (r(i,j) - k)
+$$
+
+où $U_k(i)$ regroupe les k voisins projetés qui n'étaient pas k-voisins originaux. $T(k) = 1$ est la fidélité parfaite.
+
+```python
+from sklearn.manifold import trustworthiness
+
+T_umap = trustworthiness(X_scaled, Z_umap, n_neighbors=15)
+T_tsne = trustworthiness(X_scaled, Z_tsne, n_neighbors=15)
+```
+
+**Référence figure :** `umap_trustworthiness.png`
+
+### Variance expliquée et MSE (PCA uniquement)
+
+$$
+V(K) = \frac{\sum_{k=1}^{K}\lambda_k}{\sum_{j}\lambda_j}, \quad \text{MSE}(K) = \frac{1}{p}\left(1 - V(K)\right)
+$$
+
+| Seuil V(K) | K requis | MSE correspondant |
+|:---:|:---:|:---:|
+| 80 % | 51 | 0,200 |
+| 90 % | 73 | 0,100 |
+| **95 %** | **91** | **0,050** |
+| 99 % | 100 | 0,010 |
+| K = 2 | — | 0,696 |
+
+---
+
+## 6. Limites de l'étude
+
+**Déséquilibre de classes.** Le jeu de données est dominé à 99,85 % par des étoiles. Les 63 galaxies et QSO sont trop rares pour évaluer leur comportement dans les projections et n'ont pas été intégrés à l'analyse HDBSCAN.
+
+**Pré-réduction par PCA.** UMAP et t-SNE opèrent sur les 91 composantes PCA, non sur les 183 descripteurs bruts. Toute non-linéarité à petite échelle déjà éliminée par la troncature linéaire est définitivement perdue — biais inhérent au pipeline.
+
+**Absence de critère objectif pour les hyperparamètres.** Pour UMAP et t-SNE, aucun critère théorique n'existe pour choisir `n_neighbors` ou la perplexité. Les analyses de sensibilité montrent que la structure qualitative est robuste pour $k \in [15, 50]$ et perplexité $\in [15, 50]$, mais la topologie fine varie. La PCA, en revanche, a un critère de troncature objectif et reproductible (seuil de variance ou coude du spectre).
+
+**Dimensionnalité intrinsèque.** Les 91 composantes nécessaires pour 95 % de variance indiquent que l'hypothèse d'une variété 2D est approximative. La projection 2D est nécessairement distordue ; l'émergence de la séquence de Harvard dans ces deux dimensions constitue un résultat astrophysique non trivial *précisément parce que* la compression est extrême.
+
+---
+
+## Implémentation dans AstroSpectro
+
+Les notebooks de réduction de dimension sont dans `notebooks/dimred/` :
+
+| Notebook | Contenu |
+|:---|:---|
+| `phy3500_01_pca.ipynb` | PCA sur descripteurs + flux bruts, loadings, eigenspectra |
+| `phy3500_02_umap_tsne.ipynb` | UMAP, t-SNE, HDBSCAN, stabilité Procrustes |
+| `phy3500_03_autoencoder.ipynb` | Autoencoder neuronal (non présenté dans le rapport) |
+
+La logique est encapsulée dans le package `src/dimred/` (v0.3.0) : `pca_analyzer.py`, `embedding.py`, `hdbscan_analyzer.py`, `dimred_visualizer.py`.
+
+---
+
+## Pages connexes
+
+- [Interprétation physique de la PCA](./pca-physical-interpretation) — variance, eigenspectra, corrélations Gaia
+- [Catalogue des 183 descripteurs](./features-list-183) — familles spectrales, loadings PC1/PC2
+- [Dataset PHY-3500](./dataset-dimred) — composition du jeu, filtres, standardisation
+- [XGBoost — comparaison supervisée](./xgboost-comparison) — cohérence avec la structure UMAP
+- [Guide de visualisation](../user-guides/visualization) — reproduire les figures

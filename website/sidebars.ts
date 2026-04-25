@@ -49,7 +49,12 @@ const sidebars: SidebarsConfig = {
       items: [
         'science/lamost-dr5-data',
         'science/methodology',
-        'science/results-analysis',
+        'science/features-list-183',
+        'science/pca-physical-interpretation',
+        'science/xgboost-comparison',
+        'science/dimensionality-reduction',
+        'science/dataset-dimred',
+        'science/results-analysis'
       ],
     },
 
