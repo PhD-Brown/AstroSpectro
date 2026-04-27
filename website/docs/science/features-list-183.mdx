@@ -16,6 +16,11 @@ import GaiaCorrelations from '@site/src/components/GaiaCorrelations';
 import MetalsTable from '@site/src/components/MetalsTable';
 import LickIndexTable from '@site/src/components/LickIndexTable';
 import MolecularBands from '@site/src/components/MolecularBands';
+import RelatedPages from '@site/src/components/RelatedPages';
+import SpectralLineRows from '@site/src/components/SpectralLineRows';
+import ContinuumDescriptors from '@site/src/components/ContinuumDescriptors';
+import FigureGallery from '@site/src/components/FigureGallery';
+import ExcludedVariables from '@site/src/components/ExcludedVariables';
 
 # Catalogue des 183 descripteurs spectraux
 
@@ -59,11 +64,7 @@ La visualisation ci-dessous montre où se situent les raies de chaque famille da
 
 Avant toute analyse, les variables suivantes ont été **supprimées** du jeu de données initial :
 
-| Variable | Raison d'exclusion |
-|:---:|:---|
-| `ra` | Coordonnée angulaire — biais géographique / systématique instrumental |
-| `dec` | Coordonnée angulaire — même raison |
-| `redshift` | Métadonnée instrumentale LAMOST — biais observationnel non physique |
+<ExcludedVariables />
 
 :::warning[Mode `spectro_only=True`]
 Dans le pipeline supervisé AstroSpectro, ces variables sont exclues via le paramètre `spectro_only=True` du `SpectralClassifier`. Elles constituent un exemple de fuite de données (*feature leakage*) : leur pouvoir discriminant provient du contexte d'observation, pas des propriétés physiques intrinsèques de l'étoile. Les résultats publiés (87 % de précision équilibrée, ROC-AUC ~0,964) utilisent exclusivement des descripteurs spectraux.
@@ -77,16 +78,23 @@ Dans le pipeline supervisé AstroSpectro, ces variables sont exclues via le para
 
 Les raies de la série de Balmer (transitions vers le niveau n=2 de l'hydrogène) sont les indicateurs de température les plus puissants de l'espace spectral LAMOST. **Elles contribuent à 31,5 % de la variance de PC1** (axe thermique) dans l'analyse PCA du jeu de 183 descripteurs.
 
-| Raie | λ (Å) | Descripteurs extraits |
-|:---:|:---:|:---|
-| Hα | 6562,8 | prominence, FWHM, W(Hα), présence, profil complet (10 métriques) |
-| Hβ | 4861,3 | prominence, FWHM, W(Hβ), présence |
-| Hγ | 4340,5 | W(Hγ), ratio γ/β |
-| Hδ | 4101,7 | W(Hδ), ratio δ/γ |
-| Hε | 3970,1 | prominence |
-| H8 | 3889,0 | prominence |
-| H9 | 3835,4 | prominence |
-| H10 | 3797,9 | prominence |
+export const balmerRows = [
+  { label: 'Hα',  lambda: 6562.8, desc: 'prominence, FWHM, W(Hα), présence, profil complet (10 métriques)', highlight: true },
+  { label: 'Hβ',  lambda: 4861.3, desc: 'prominence, FWHM, W(Hβ), présence' },
+  { label: 'Hγ',  lambda: 4340.5, desc: 'W(Hγ), ratio γ/β' },
+  { label: 'Hδ',  lambda: 4101.7, desc: 'W(Hδ), ratio δ/γ' },
+  { label: 'Hε',  lambda: 3970.1, desc: 'prominence' },
+  { label: 'H8',  lambda: 3889.0, desc: 'prominence' },
+  { label: 'H9',  lambda: 3835.4, desc: 'prominence' },
+  { label: 'H10', lambda: 3797.9, desc: 'prominence' },
+];
+
+<SpectralLineRows
+  color="#60A5FA"
+  columns={['Raie', 'λ (Å)', 'Position', 'Descripteurs extraits']}
+  rows={balmerRows}
+  footer="Position dans le spectre LAMOST 3690–9100 Å — Hα dans le rouge, H10 dans l'UV proche"
+/>
 
 **Ratios de raies de Balmer extraits :**
 - `feature_balmer_ratio_gamma_beta` : W(Hγ) / W(Hβ)
@@ -101,13 +109,20 @@ Les raies de la série de Balmer (transitions vers le niveau n=2 de l'hydrogène
 
 Les raies Ca II H (3968 Å) et K (3934 Å) sont des indicateurs de métallicité et de gravité de surface. Le triplet IR (8498, 8542, 8662 Å) est sensible à la chromosphère et à l'activité magnétique.
 
-| Raie | λ (Å) | Espèce | Descripteurs extraits |
-|:---:|:---:|:---:|:---|
-| Ca II K | 3933,7 | Ca II | prominence, FWHM, W(CaIIK), profil complet (10 métriques) |
-| Ca II H | 3968,5 | Ca II | prominence, FWHM, W(CaIIH) |
-| Ca 8498 | 8498,0 | Ca II | EW via indice `CaII_triplet` |
-| Ca 8542 | 8542,1 | Ca II | EW via indice `CaII_triplet` |
-| Ca 8662 | 8662,1 | Ca II | EW via indice `CaII_triplet` |
+export const caiiRows = [
+  { label: 'Ca II K',  lambda: 3933.7, tag: 'Ca II', desc: 'prominence, FWHM, W(CaIIK), profil complet (10 métriques)', highlight: true },
+  { label: 'Ca II H',  lambda: 3968.5, tag: 'Ca II', desc: 'prominence, FWHM, W(CaIIH)', highlight: true },
+  { label: 'Ca 8498',  lambda: 8498.0, tag: 'Ca II', desc: 'EW via indice CaII_triplet' },
+  { label: 'Ca 8542',  lambda: 8542.1, tag: 'Ca II', desc: 'EW via indice CaII_triplet' },
+  { label: 'Ca 8662',  lambda: 8662.1, tag: 'Ca II', desc: 'EW via indice CaII_triplet' },
+];
+
+<SpectralLineRows
+  color="#C084FC"
+  columns={['Raie', 'λ (Å)', 'Espèce', 'Position', 'Descripteurs extraits']}
+  rows={caiiRows}
+  footer="Raies H et K dans l'UV proche (bras bleu LAMOST) · Triplet IR dans le rouge profond (bras rouge)"
+/>
 
 **Indices composites Ca II :**
 - `EW_CaHK_sum` : W(Ca II K) + W(Ca II H) — proxy de métallicité global
@@ -122,12 +137,19 @@ Les raies Ca II H (3968 Å) et K (3934 Å) sont des indicateurs de métallicité
 
 Le triplet Mg b (autour de 5175 Å) et les indices α sont sensibles à la métallicité et à l'abondance relative des éléments α par rapport au fer — indicateur de l'histoire chimique de l'étoile (populations I/II).
 
-| Raie / Indice | λ (Å) | Descripteurs extraits |
-|:---|:---:|:---|
-| Mg b (triplet) | 5167, 5173, 5184 | prominence, FWHM, W(Mg b) |
-| Mg b — indice Lick | 5160–5190 Å | `feature_index_Mgb_index` |
-| Mg 1 — Lick | 5069–5135 Å | `feature_index_Mg_1` |
-| Mg 2 — Lick | 5154–5197 Å | `feature_index_Mg_2` |
+export const mgRows = [
+  { label: 'Mg b',        lambda: 5175.0, desc: 'prominence, FWHM, W(Mg b) — triplet 5167/5173/5184 Å', highlight: true },
+  { label: 'Mg b Lick',   lambda: 5175.0, desc: 'indice Lick feature_index_Mgb_index · fenêtre 5160–5190 Å' },
+  { label: 'Mg 1 Lick',   lambda: 5102.0, desc: 'feature_index_Mg_1 · fenêtre 5069–5135 Å' },
+  { label: 'Mg 2 Lick',   lambda: 5176.0, desc: 'feature_index_Mg_2 · fenêtre 5154–5197 Å' },
+];
+
+<SpectralLineRows
+  color="#34D399"
+  columns={['Raie / Indice', 'λ (Å)', 'Position', 'Descripteurs extraits']}
+  rows={mgRows}
+  footer="Triplet Mg b à ~5175 Å — visible milieu · indicateur [Mg/Fe] et populations stellaires"
+/>
 
 **Ratios impliquant Mg b :**
 - `feature_ratio_prom_Mgb_Hbeta` : prominence(Mg b) / prominence(Hβ)
@@ -162,43 +184,7 @@ Les descripteurs du continuum capturent la morphologie globale du spectre sans s
 
 #### Pentes locales (sigma-clippées, σ = 2,5)
 
-| Descripteur | Fenêtre (Å) | Interprétation physique |
-|:---|:---:|:---|
-| `feature_slope_blue` | 3800–4200 | Pente UV — étoiles chaudes (négatif = spectre bleu) |
-| `feature_slope_green` | 4500–5500 | Pente visible milieu |
-| `feature_slope_red` | 5500–6500 | Pente visible rouge |
-| `feature_slope_deep_red` | 6500–7500 | Pente proche IR — étoiles froides |
-| `feature_continuum_slope_global` | 3800–7500 | Pente globale bleue/rouge |
-
-#### Courbures locales (Savitzky-Golay, dérivée seconde)
-
-| Descripteur | Centre (Å) | Interprétation |
-|:---|:---:|:---|
-| `feature_curvature_4000` | 4000 | Courbure au saut 4000 Å |
-| `feature_curvature_5000` | 5000 | Courbure visible milieu |
-| `feature_curvature_6000` | 6000 | Courbure rouge |
-
-#### Sauts spectraux
-
-| Descripteur | Description |
-|:---|:---|
-| `feature_paschen_jump_strength` | Saut Paschen (8120/8220 Å) — classe de luminosité |
-| `feature_break_4000A_strength` | Force du saut D4000 (gradient max vers 4000 Å) |
-| `feature_break_4000A_width` | Largeur du saut D4000 |
-| `feature_balmer_jump_strength` | NaN — hors couverture LAMOST (3646 Å) |
-| `feature_brackett_jump_strength` | NaN — hors couverture LAMOST (14 500 Å) |
-
-#### Asymétrie et couleurs synthétiques
-
-| Descripteur | Formule | Interprétation |
-|:---|:---|:---|
-| `feature_continuum_asymmetry` | (f_bleu − f_rouge) / (f_bleu + f_rouge) | Asymétrie bleue/rouge |
-| `feature_flux_ratio_blue_red` | f_bleu / f_rouge | Ratio de flux bleu/rouge |
-| `feature_UV_excess_3900` | f(3850–3950) / f(4400–4600) | Excès UV — étoiles A chaudes |
-| `feature_color_index_BlueRed` | dérivé du flux | Proxy de couleur globale |
-| `feature_color_gr` | magnitude g − r | Couleur LAMOST g−r |
-| `feature_color_ri` | magnitude r − i | Couleur LAMOST r−i |
-| `feature_synthetic_BV` | calculé depuis le spectre | Proxy B−V synthétique |
+<ContinuumDescriptors />
 
 ---
 
@@ -228,16 +214,48 @@ Extrait du rapport PHY-3500, Table 2. Les barres signées montrent la direction 
 
 ## Figures de référence
 
-Les figures suivantes, disponibles dans le repo, illustrent l'importance relative des familles de descripteurs :
+Les figures suivantes illustrent l'importance relative des familles de descripteurs et la structure des loadings PCA. Cliquer sur une image pour l'agrandir.
 
-| Fichier | Description |
-|:---|:---|
-| `pca_loadings_family_bar.png` | Contribution quadratique normalisée par famille (PC1 vs PC2) |
-| `pca_loadings_family_donut.png` | Répartition en donut par famille — PC1 et PC2 |
-| `pca_loadings_heatmap.png` | Heatmap complète des loadings (183 × K) |
-| `pca_loadings_pc1.png` | Top loadings PC1 détaillés |
-| `pca_loadings_pc2.png` | Top loadings PC2 détaillés |
-| `pca_eigenspectra.png` | Eigenspectra PCA sur flux bruts (3921 canaux) |
+export const pcaFigures = [
+  {
+    src: '/img/dimred/pca_loadings_family_bar.png',
+    title: 'Contributions par famille — PC1 vs PC2',
+    desc: 'Contribution quadratique normalisée — Balmer domine PC1, Fer/métaux domine PC2',
+    tag: 'PCA loadings',
+  },
+  {
+    src: '/img/dimred/pca_loadings_family_donut.png',
+    title: 'Répartition en donut par famille',
+    desc: 'Vue circulaire des contributions relatives PC1 (gauche) et PC2 (droite)',
+    tag: 'PCA loadings',
+  },
+  {
+    src: '/img/dimred/pca_eigenspectra.png',
+    title: 'Eigenspectra PCA sur flux bruts',
+    desc: 'PC1 = pente Teff · PC2 = montée IR étoiles froides · PC3 = coupure instrumentale',
+    tag: 'Flux bruts',
+  },
+  {
+    src: '/img/dimred/pca_loadings_pc1.png',
+    title: 'Top loadings PC1 — axe thermique',
+    desc: 'W(Hα) en tête (w = +0,173) · Balmer + Ca II + continuum dominent',
+    tag: 'PC1 · Teff',
+  },
+  {
+    src: '/img/dimred/pca_loadings_pc2.png',
+    title: 'Top loadings PC2 — axe métallicité',
+    desc: '[Fe/H]proxy en tête (w = +0,205) · Tous des indicateurs de composition chimique',
+    tag: 'PC2 · [Fe/H]',
+  },
+  {
+    src: '/img/dimred/pca_loadings_heatmap.png',
+    title: 'Heatmap complète des loadings',
+    desc: 'Matrice 183 descripteurs × K composantes — structure et décroissance du spectre',
+    tag: 'Heatmap 183×K',
+  },
+];
+
+<FigureGallery figures={pcaFigures} columns={3} />
 
 ---
 
@@ -277,10 +295,36 @@ clf.train_and_evaluate(features_df, spectro_only=True)
 
 ---
 
-## Pages connexes
-
-- [Dataset PHY-3500 — LAMOST DR5 × Gaia DR3](./dataset-dimred) — filtres qualité, composition du jeu final
-- [Interprétation physique de la PCA](./pca-physical-interpretation) — eigenspectra, corrélations, HR diagram
-- [Réduction de dimension](./dimensionality-reduction) — PCA, UMAP, t-SNE, HDBSCAN
-- [Extraction des features](../user-guides/feature-extraction) — guide pratique, paramètres
-- [API — FeatureEngineer](../api/feature-engineer) — référence complète de la classe
+<RelatedPages pages={[
+  {
+    href: './dataset-dimred',
+    title: 'Dataset PHY-3500',
+    desc: 'LAMOST DR5 × Gaia DR3 — filtres qualité, composition finale, standardisation',
+    category: 'science',
+  },
+  {
+    href: './pca-physical-interpretation',
+    title: 'Interprétation physique de la PCA',
+    desc: 'Eigenspectra, corrélations Gaia DR3, diagramme HR coloré par PC1',
+    category: 'science',
+    badge: 'ρ = +0,831',
+  },
+  {
+    href: './dimensionality-reduction',
+    title: 'Réduction de dimension',
+    desc: 'PCA, UMAP, t-SNE, HDBSCAN — les 183 descripteurs en action',
+    category: 'science',
+  },
+  {
+    href: '../user-guides/feature-extraction',
+    title: 'Extraction des features',
+    desc: 'Guide pratique — paramètres, pipeline, nouveaux spectres',
+    category: 'guides',
+  },
+  {
+    href: '../api/feature-engineer',
+    title: 'API — FeatureEngineer',
+    desc: 'Référence complète de la classe — méthodes, attributs, exemples',
+    category: 'api',
+  },
+]} />

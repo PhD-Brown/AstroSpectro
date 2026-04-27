@@ -16,6 +16,7 @@ import ProcrustesStability from '@site/src/components/ProcrustesStability';
 import HDBSCANClusters from '@site/src/components/HDBSCANClusters';
 import HyperparamSensitivity from '@site/src/components/HyperparamSensitivity';
 import DimRedPipeline from '@site/src/components/DimRedPipeline';
+import UMAP3DViewer from '@site/src/components/UMAP3DViewer';
 
 # Réduction de dimension — PCA, UMAP, t-SNE
 
@@ -133,6 +134,12 @@ UMAP produit une structure en **«continent continu»** — à l'opposé de l'«
 - **Par G_BP − G_RP** : cohérent avec Teff
 
 **Référence figures :** `umap_classes.png`, `umap_all_classes_pair.png`, `umap_grid.png`
+
+### Exploration interactive — UMAP 3D
+
+La projection en 3 dimensions révèle la structure du manifold stellaire avec une clarté impossible à atteindre en 2D. Les trois colorations physiques — types spectraux, T_eff et [Fe/H] — confirment que UMAP récupère simultanément la température et la composition chimique dans ses axes.
+
+<UMAP3DViewer />
 
 ### Contrôle négatif
 

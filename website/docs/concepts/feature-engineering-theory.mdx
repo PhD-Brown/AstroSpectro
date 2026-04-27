@@ -1,61 +1,227 @@
 ---
 id: feature-engineering-theory
 title: Théorie de l'Extraction de Features
-sidebar_label: Extraction de Features
+sidebar_label: Feature Engineering
+sidebar_position: 2
+description: >
+  Fondements théoriques de l'extraction de features spectroscopiques dans
+  AstroSpectro : approche Physics-Informed, les 6 familles de descripteurs,
+  le mode spectro_only, et la validation SHAP (97,9 % de features physiques).
+tags: [feature-engineering, spectroscopie, shap, physique, raies-spectrales, xgboost]
 ---
 
-{/* Complet for v1.0.0 release */}
+import PhysicsVsBlackBox from '@site/src/components/PhysicsVsBlackBox';
+import DescriptorFamilies from '@site/src/components/DescriptorFamilies';
+import RelatedPages from '@site/src/components/RelatedPages';
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faCubes, faAtom, faLightbulb, faRulerCombined, faSatelliteDish } from '@fortawesome/free-solid-svg-icons'
-import Admonition from '@theme/Admonition';
+# Théorie de l'Extraction de Features
 
-# <FontAwesomeIcon icon={faCubes} /> Théorie de l'Extraction de Features
+L'extraction de features (*feature engineering*) est l'étape fondatrice du pipeline AstroSpectro. Elle consiste à transformer un signal spectral complexe de haute dimension — un spectre de 3 921 canaux de flux — en un vecteur compact de **183 descripteurs numériques** que les algorithmes de machine learning peuvent exploiter de manière interprétable et scientifiquement valide.
 
-L'extraction de features (ou "feature engineering") est sans doute l'étape la plus cruciale de ce pipeline. Elle consiste à transformer un signal complexe et de haute dimension (un spectre de milliers de points) en un petit nombre de valeurs numériques pertinentes (un "vecteur de features") que le modèle de Machine Learning peut utiliser.
-
-## <FontAwesomeIcon icon={faLightbulb} /> Notre Approche : Physique d'Abord (Physics-Informed)
-
-Plutôt que d'adopter une approche "boîte noire" (comme donner directement le spectre brut à un réseau de neurones profond), notre pipeline utilise une approche **hybride et interprétable** :
-
-1.  **Informer par la Physique :** Nous utilisons notre connaissance de l'astrophysique pour identifier les régions les plus importantes d'un spectre : les **raies spectrales**.
-2.  **Quantifier l'Information :** Nous ne nous contentons pas de savoir qu'une raie existe, nous la transformons en plusieurs **features numériques** qui décrivent ses propriétés physiques.
-3.  **Apprentissage Supervisé :** Nous donnons ce vecteur de features, qui est beaucoup plus petit et plus riche en information que le spectre brut, à un modèle de ML classique (comme RandomForest ou XGBoost) pour qu'il apprenne les relations complexes entre ces features et le type spectral.
-
-<Admonition type="success" title="Avantages de cette approche">
-  <ul>
-    <li><strong>Interprétabilité :</strong> Il est beaucoup plus facile de comprendre pourquoi un modèle a pris une décision en regardant l'importance de la feature "Largeur de Hα" plutôt qu'en analysant des milliers de poids dans un réseau de neurones.</li>
-    <li><strong>Robustesse :</strong> En se concentrant sur des features physiques, le modèle est moins sensible au bruit et aux variations instrumentales du spectre brut.</li>
-    <li><strong>Efficacité :</strong> Les modèles classiques sont beaucoup plus rapides à entraîner sur quelques dizaines de features que des modèles profonds sur des spectres complets.</li>
-  </ul>
-</Admonition>
-
-## <FontAwesomeIcon icon={faAtom} /> Les Types de Features Utilisées
-
-Le pipeline **AstroSpectro** construit un vecteur de features riche en combinant trois familles d'informations complémentaires, ce qui a permis de faire passer la précision de notre modèle de 32% à plus de 80%.
-
-### <FontAwesomeIcon icon={faAtom} /> 1. Features Physiques des Raies
-
-Ce sont des mesures directes des propriétés des raies d'absorption clés (`Hα`, `Hβ`, `CaII K&H`, `Mg_b`, `Na_D`).
-
--   **Force (Prominence) :** Mesure la profondeur de la raie par rapport au continuum local. C'est un indicateur de la force de la transition atomique.
--   **Largeur (FWHM) :** La "Largeur à Mi-Hauteur" de la raie. En astrophysique, elle est souvent liée à la pression et à la gravité de surface de l'étoile, ce qui en fait un excellent indicateur.
-
-### <FontAwesomeIcon icon={faRulerCombined} /> 2. Features de Ratio et de Continuum
-
-Ces *features* ne décrivent pas une seule raie, mais les relations entre elles ou la forme globale du spectre.
-
--   **Ratios de Force :** Nous calculons des ratios entre les prominences de différentes raies (ex: `CaII K / Hβ`). Ces ratios sont d'excellents **proxies de la température** de l'étoile, car la force relative des raies métalliques et des raies de l'hydrogène change avec la température.
--   **Indice de Couleur :** Un ratio du flux moyen dans la partie bleue du spectre sur le flux dans la partie rouge. C'est une mesure simple de la pente du continuum, également directement liée à la température.
-
-### <FontAwesomeIcon icon={faSatelliteDish} /> 3. Features Contextuelles (Métadonnées)
-
-Notre analyse a montré que le contexte de l'observation est crucial. Nous incluons donc directement des métadonnées issues du header FITS comme *features*.
-
--   **Rapport Signal/Bruit (`snr_*`) :** Indique au modèle la qualité de la mesure.
--   **Redshift (`redshift`) :** Renseigne sur la cinématique de l'objet.
--   **Seeing :** Renseigne sur les conditions d'observation.
-
-:::tip[Le Succès de l'Approche Hybride]
-La clé de la haute performance de notre modèle réside dans la **synergie** entre ces trois types de *features*. En combinant les propriétés physiques des raies, la forme globale du spectre et le contexte de l'observation, nous donnons au modèle une vue complète et nuancée de chaque étoile.
+:::info[Résultat clé]
+La validation SHAP sur le modèle `spectro_only=True` confirme que **97,9 % des 30 descripteurs les plus importants sont des features spectrales physiques**. Le modèle a appris à classifier les étoiles exactement comme le font les astrophysiciens.
 :::
+
+---
+
+## Notre philosophie : Physics-Informed Machine Learning
+
+Plutôt qu'une approche "boîte noire" (donner les spectres bruts à un réseau de neurones), AstroSpectro adopte une approche **hybride et interprétable** en trois étapes :
+
+1. **Informer par la physique** — identifier les régions spectralement significatives (raies d'absorption, continuum, bandes moléculaires) à partir de la connaissance astrophysique
+2. **Quantifier l'information** — mesurer précisément les propriétés physiques de chaque raie (force, largeur, profil) plutôt que de simplement savoir qu'elle existe
+3. **Apprendre les relations** — donner ce vecteur riche et compact à XGBoost pour qu'il découvre les frontières de décision optimales entre types spectraux
+
+<PhysicsVsBlackBox />
+
+---
+
+## Les 6 familles de descripteurs V2
+
+Le pipeline V2 construit une matrice X ∈ ℝ^(43019 × 183) en combinant six familles de descripteurs complémentaires, chacune encodant un aspect distinct de la physique stellaire.
+
+<DescriptorFamilies />
+
+---
+
+## Extraction concrète — du spectre au vecteur
+
+### Raies spectrales : prominence, FWHM, largeur équivalente
+
+Pour chaque raie d'absorption définie dans le dictionnaire de raies (`feature_engineering.py`), trois métriques fondamentales sont extraites :
+
+```python
+from specutils.analysis import equivalent_width, gaussian_fwhm
+
+# Exemple pour Hα (6562.8 Å)
+window = SpectralRegion(6540 * u.AA, 6580 * u.AA)
+
+prominence_ha  = continuum - flux_minimum     # force de la raie
+fwhm_ha        = gaussian_fwhm(spectrum, window)  # largeur à mi-hauteur
+ew_ha          = equivalent_width(spectrum, window)  # largeur équivalente W(Hα)
+```
+
+**Interprétation physique :**
+- **Prominence** : profondeur de la raie → force de la transition atomique dans l'atmosphère
+- **FWHM** : largeur → pression atmosphérique, gravité de surface, vitesse thermique
+- **EW** — W(raie) : largeur équivalente → abondance de l'espèce ionique, température
+
+### Ratios de raies — proxies physiques composites
+
+Les ratios entre raies sont calculés car ils ont une signification physique directe :
+
+```python
+# Ca II K / Hβ — proxy de température (varie avec Teff)
+feature_ratio_CaK_Hbeta = prominence_CaII_K / prominence_Hbeta
+
+# W(Mg b) / W(Na D) — sensible à [Mg/Fe] et à la gravité
+feature_ratio_EW_MgB_NaD = ew_mgb / ew_nad
+
+# Indice de Balmer — gradient de température le long de la série
+feature_balmer_temperature_index = (ratio_gamma_beta + ratio_delta_gamma) / 2
+```
+
+**Pourquoi les ratios plutôt que les valeurs absolues ?**
+Les ratios sont invariants aux variations instrumentales (normalisation du flux, seeing) et encodent des différences *entre* populations plutôt que des niveaux absolus.
+
+### Continuum — morphologie globale du spectre
+
+La forme du continuum encode la température (pente de corps noir) et la classe de luminosité (sauts spectraux) :
+
+```python
+# Pentes locales (sigma-clippées, σ = 2,5 — robuste aux raies)
+feature_slope_blue      = fit_slope(flux, 3800, 4200)   # UV → bleu
+feature_slope_red       = fit_slope(flux, 5500, 6500)   # visible rouge
+feature_slope_deep_red  = fit_slope(flux, 6500, 7500)   # proche IR
+
+# Asymétrie bleue/rouge — proxy direct de Teff
+feature_continuum_asymmetry = (f_blue - f_red) / (f_blue + f_red)
+
+# Saut D4000 — indicateur d'âge et de métallicité
+feature_break_4000A_strength = flux_4050_4250 / flux_3750_3950
+```
+
+---
+
+## Mode `spectro_only=True` — L'essentiel scientifique
+
+Le mode `spectro_only=True` est la **condition requise** pour des résultats scientifiquement rigoureux. Il exclut toutes les variables non spectrales du vecteur de features.
+
+### Variables exclues et pourquoi
+
+| Variable | Type | Raison d'exclusion |
+|:---:|:---:|:---|
+| `ra`, `dec` | Coordonnées angulaires | Encodent *où* le spectre a été observé, non la physique de l'étoile |
+| `redshift` | Métadonnée LAMOST | Corrélé avec les programmes d'observation ciblés par type spectral |
+| `seeing`, `snr_*` | Conditions instrumentales | Liés à la qualité de la nuit, pas à la physique stellaire |
+| `parallax`, `teff_gspphot` | Colonnes Gaia | Fuite de données — ce sont des cibles/validations, pas des features |
+
+:::caution[Feature leakage]
+Sans `spectro_only=True`, `ra` et `dec` peuvent artificiellement augmenter la précision apparente : les programmes d'observation de LAMOST ciblent certaines régions du ciel selon le type spectral attendu. Un modèle apprend alors à classifier par *position dans le ciel* plutôt que par *physique stellaire*, ce qui ne généralise pas.
+:::
+
+### Implémentation dans le pipeline
+
+```python
+from src.pipeline.classifier import SpectralClassifier
+
+clf = SpectralClassifier(
+    model_type="XGBoost",
+    prediction_target="main_class",   # A / F / G / K / M
+)
+
+# spectro_only=True garantit que seules les 183 features spectrales sont utilisées
+clf.train_and_evaluate(features_df, spectro_only=True)
+
+# Résultat : 87 % balanced accuracy · ROC-AUC ~0,964
+```
+
+---
+
+## Validation SHAP — La physique confirmée
+
+L'analyse SHAP (*SHapley Additive exPlanations*) sur le modèle entraîné permet de vérifier *a posteriori* que les features utilisées sont bien physiques.
+
+### Résultat central
+
+| Métrique | Valeur |
+|:---|:---:|
+| Features spectrales physiques dans top-30 | **97,9 %** |
+| Features non physiques dans top-30 | 2,1 % |
+| Rang 1–5 SHAP | Ca II K prominence, EW, FWHM, Ca II H prominence, EW |
+
+### La découverte : Ca II > Balmer
+
+Les raies Ca II H&K dominent les décisions du classifieur, surpassant les raies de Balmer. Ce résultat en apparence surprenant est physiquement cohérent :
+
+- **PCA** cherche la direction de *variance maximale* → Balmer varie davantage *au sein de toute la population* → PC1 thermique
+- **XGBoost** cherche la frontière de *décision optimale* → Ca II varie davantage *entre classes* → meilleure séparation A/F/G/K/M
+
+```
+PCA  : Quelle feature varie le plus au total ?   → Balmer (T_eff)
+XGBoost : Quelle feature sépare le mieux les classes ? → Ca II ([Fe/H])
+```
+
+Ces deux résultats sont **cohérents et complémentaires** — ils répondent à des questions différentes sur la même physique.
+
+### Top features SHAP par classe spectrale
+
+| Classe | Features SHAP dominantes | Interprétation |
+|:---:|:---|:---|
+| **A** | Hα EW↓, Hβ FWHM↑, W(Hγ) fort | Balmer très larges — étoiles chaudes > 7 500 K |
+| **F** | Hα modéré, Ca II K naissant | Transition Balmer → Ca II (6 000–7 500 K) |
+| **G** | Ca II K+H forts, Mg b, W(Hα) | Étoile solaire — métallicité + T_eff intermédiaire |
+| **K** | Ca II K très fort, TiO naissant | Froides riches en métaux (3 700–5 200 K) |
+| **M** | TiO, VO, CaH bands, Balmer↓ | Bandes moléculaires caractéristiques < 3 700 K |
+
+---
+
+## Connexion avec les résultats PHY-3500
+
+Le jeu de 183 descripteurs est exactement celui utilisé dans le rapport Baker, Caillat & Jean (28 avril 2026). Les mêmes features alimentent simultanément :
+
+| Méthode | Usage des 183 features | Résultat |
+|:---|:---|:---|
+| PCA | Matrice de covariance 183×183 | PC1 = axe thermique (ρ(Teff) = +0,831) |
+| UMAP + t-SNE | Projection 183D → 91 PCA → 2D | Séquence Harvard émergente |
+| HDBSCAN | Clustering dans espace UMAP | 20 clusters · distinction naines/géantes |
+| XGBoost | 183 features → frontières de décision | 87 % balanced accuracy |
+| SHAP | Attribution par feature | Validation scientifique : 97,9 % physiques |
+
+---
+
+<RelatedPages pages={[
+  {
+    href: '../../science/features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Liste exhaustive des features — 6 familles, loadings PCA, positions λ',
+    category: 'science',
+    badge: '183 features',
+  },
+  {
+    href: './feature-extraction',
+    title: 'Guide — Extraction des features',
+    desc: 'Utilisation pratique de FeatureEngineer — paramètres, spectro_only, post-merge',
+    category: 'guides',
+  },
+  {
+    href: '../../science/xgboost-comparison',
+    title: 'XGBoost — comparaison supervisée',
+    desc: 'Résultats complets 87 % · SHAP top-10 · cohérence UMAP',
+    category: 'science',
+    badge: '87 % BA',
+  },
+  {
+    href: '../../science/results-analysis',
+    title: 'Analyse des Résultats',
+    desc: 'Résultats PCA/UMAP/t-SNE/XGBoost/SHAP sur les 183 descripteurs',
+    category: 'science',
+  },
+  {
+    href: '../../science/pca-physical-interpretation',
+    title: 'Interprétation physique de la PCA',
+    desc: 'PC1 thermique · PC2 métallicité · eigenspectra · corrélations Gaia',
+    category: 'science',
+    badge: 'ρ = +0,831',
+  },
+]} />

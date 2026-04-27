@@ -1,57 +1,205 @@
 ---
 id: model-training
-title: Entraînement du modèle
+title: Guide — Entraînement du Modèle
 sidebar_label: Entraînement
+sidebar_position: 5
+description: >
+  Guide complet pour entraîner un classifieur spectral avec SpectralClassifier :
+  modèles disponibles (XGBoost, LightGBM, CatBoost, ExtraTrees…), tuning
+  GridSearchCV et Optuna, suivi W&B, mode spectro_only, artefacts de session.
+tags: [entraînement, xgboost, lightgbm, optuna, wandb, classification, spectro-only]
 ---
 
-{/* Complet for v1.0.0 release */}
+import ModelSelector from '@site/src/components/ModelSelector';
+import TrainingPipelineFlow from '@site/src/components/TrainingPipelineFlow';
+import ArtifactsTree from '@site/src/components/ArtifactsTree';
+import ClassifierMetrics from '@site/src/components/ClassifierMetrics';
+import RelatedPages from '@site/src/components/RelatedPages';
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faBrain, faCogs, faSave } from '@fortawesome/free-solid-svg-icons'
-import Admonition from '@theme/Admonition';
+# Guide : Entraînement du Modèle
 
-# <FontAwesomeIcon icon={faBrain} /> Guide : Entraînement du Modèle
+Une fois le jeu de features extrait, la classe `SpectralClassifier` orchestre l'entraînement, l'optimisation et l'évaluation du modèle de classification. Elle encapsule un pipeline `scikit-learn` / `imblearn` complet, supporte une douzaine de modèles, et logue automatiquement les résultats dans Weights & Biases.
 
-Une fois que vous disposez d'un jeu de données avec des *features* extraites (généré à l'étape précédente), vous pouvez entraîner un modèle de Machine Learning pour la classification spectrale.
+:::info[Point de départ]
+Toute la logique d'entraînement est dans [`src/pipeline/classifier.py`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/classifier.py). Le notebook d'orchestration est `00_master_pipeline.ipynb`.
+:::
 
-> Toute la logique d'entraînement, d'optimisation et d'évaluation est encapsulée dans la classe [`SpectralClassifier`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/classifier.py).
+---
 
-## <FontAwesomeIcon icon={faCogs} /> Le Processus d'Entraînement
+## Démarrage rapide
 
-Le processus, orchestré dans le notebook `00_master_pipeline.ipynb`, est un pipeline `scikit-learn` complet et robuste.
+```python
+from src.pipeline.classifier import SpectralClassifier
 
-### 1. Préparation des Données
+# Entraînement XGBoost en mode spectroscopique pur
+clf = SpectralClassifier(model_type="XGBoost", prediction_target="main_class")
+clf, feature_cols, X, y = clf.train_and_evaluate(
+    features_df,
+    spectro_only=True,    # exclut ra, dec, redshift, Gaia — mode publication
+)
 
-Avant l'entraînement, la classe `SpectralClassifier` prépare automatiquement les données :
--   **Chargement :** Le DataFrame `pandas` contenant les *features* est pris en entrée.
--   **Nettoyage :** Les entrées sans label (`subclass`) valide et les classes spectrales trop rares (moins de 10 exemples) sont retirées pour garantir un apprentissage stable.
--   **Sélection des Features :** Les colonnes pertinentes (celles commençant par `feature_` et les métadonnées clés comme `redshift`, `snr_*`) sont automatiquement sélectionnées.
--   **Séparation :** Les données sont divisées en une matrice de *features* `X` et un vecteur de labels `y`.
+# Sauvegarder les artefacts
+clf.save_model("data/models/spectral_classifier_xgboost.pkl")
+```
 
-### 2. Entraînement, Validation et Tuning
+**Résultat de référence atteint en mode `spectro_only=True` :**
 
-C'est ici que la magie opère. Au lieu d'un simple entraînement, le `SpectralClassifier` exécute un processus rigoureux :
+<ClassifierMetrics />
 
--   **Pipeline Intégré :** Un `Pipeline` `scikit-learn` est utilisé pour enchaîner plusieurs étapes de manière sécurisée :
-    1.  **Imputation :** Remplacement des valeurs manquantes (`NaN`) par zéro.
-    2.  **Mise à l'échelle (Scaling) :** Standardisation des *features* pour qu'elles aient une moyenne de 0 et un écart-type de 1.
-    3.  **Sur-échantillonnage (SMOTE) :** Création d'échantillons synthétiques pour les classes minoritaires afin de rééquilibrer le jeu de données.
-    4.  **Classification :** Entraînement du modèle final (`RandomForest` ou `XGBoost`).
+---
 
--   **Tuning d'Hyperparamètres (`GridSearchCV`) :** Le pipeline ne se contente pas d'entraîner un seul modèle. Il teste systématiquement de multiples combinaisons d'hyperparamètres (ex: `max_depth`, `n_estimators`) en utilisant une **validation croisée stratifiée** pour trouver la configuration la plus performante.
+## 1. Modèles disponibles
 
--   **Évaluation Finale :** Le meilleur modèle trouvé est ensuite évalué sur un jeu de test mis de côté au préalable, garantissant une mesure honnête de sa capacité à généraliser sur de nouvelles données.
+`SpectralClassifier` supporte 11 classificateurs via le paramètre `model_type`. Changer de modèle est trivial — le pipeline, le tuning et le logging W&B s'adaptent automatiquement.
 
-<Admonition type="info" title="Benchmark de Modèles : RandomForest vs. XGBoost">
-  <p>
-    Depuis la version <strong>v1.0.0</strong>, le pipeline <strong>AstroSpectro</strong> supporte deux modèles de pointe : <code>RandomForest</code> et <code>XGBoost</code>. L'interface interactive du notebook de production permet de choisir quel modèle entraîner, facilitant ainsi la comparaison et l'expérimentation. Nos <a href="/AstroSpectro/docs/science/results-analysis">résultats</a> montrent que <strong>XGBoost</strong> offre actuellement les meilleures performances sur notre jeu de <em>features</em>.
-  </p>
-</Admonition>
+<ModelSelector />
 
-## <FontAwesomeIcon icon={faSave} /> Sauvegarde du Modèle et Reporting
+---
 
-Une fois l'entraînement terminé, le pipeline automatise les dernières étapes cruciales pour la reproductibilité :
+## 2. Le processus d'entraînement
 
--   **Sauvegarde du Modèle :** Le `SpectralClassifier` entraîné (qui contient le pipeline complet avec le scaler et le meilleur modèle) est sauvegardé dans un fichier `.pkl` dans `data/models/`. Le nom du fichier inclut le type de modèle et la date pour une traçabilité facile.
--   **Mise à jour du Journal :** Les spectres utilisés pour cet entraînement sont ajoutés au log `data/catalog/trained_spectra.csv`.
--   **Rapport de Session :** Un fichier JSON détaillé est créé dans `data/reports/`, contenant toutes les informations de la session : les hyperparamètres finaux, le rapport de classification complet, la matrice de confusion, et le hash du modèle.
+### Préparation des données
+
+`SpectralClassifier` prépare automatiquement les données avant l'entraînement :
+
+1. **Nettoyage :** Spectres sans `subclass` valide et classes avec < 10 échantillons sont exclus.
+2. **Sélection des features :** En mode `spectro_only=True`, toutes les colonnes non spectrales sont filtrées.
+3. **Séparation train/test :** 80/20 stratifiée sur les classes.
+
+### Pipeline et suivi W&B
+
+<TrainingPipelineFlow />
+
+### Tuning d'hyperparamètres
+
+**Option A — GridSearchCV (défaut) :**
+
+```python
+# Validation croisée stratifiée k=5 · métrique : balanced_accuracy
+clf.train_and_evaluate(features_df, spectro_only=True)
+```
+
+**Option B — Optuna (optimisation Bayésienne) :**
+
+L'infrastructure Optuna est déployée pour l'exploration à grande échelle. Particulièrement utile pour explorer `n_estimators`, `max_depth`, `learning_rate`, `colsample`, `subsample`, `reg_alpha`/`lambda` sur les ~139k spectres disponibles.
+
+```python
+clf.train_and_evaluate(
+    features_df,
+    spectro_only=True,
+    tuner="optuna",
+    n_trials=200,
+)
+```
+
+---
+
+## 3. Mode `spectro_only=True`
+
+:::caution[Obligatoire pour les publications]
+Activer ce mode pour tous les résultats scientifiques rigoureux. Il garantit que le modèle apprend à classifier les étoiles à partir de leur **physique intrinsèque uniquement**, sans aucun biais observationnel.
+:::
+
+```python
+clf.train_and_evaluate(features_df, spectro_only=True)
+```
+
+**Features exclues automatiquement :**
+- Coordonnées angulaires : `ra`, `dec`
+- Conditions d'observation : `redshift`, `seeing`, `snr_*`, `jd`, `fiber_id`, `magnitude_*`
+- Colonnes Gaia : `parallax`, `bp_rp`, `teff_gspphot`, `logg_gspphot`, `M_G`, `v_tan_kms`, etc.
+
+La progression de 84 % → 87 % *en supprimant* ces features s'explique par l'élimination du **bruit de fuite de données** : `ra`/`dec`/`redshift` apportaient un signal corrélé avec les types spectraux via les biais observationnels de LAMOST (programmes d'observation ciblés par type), pas via la physique stellaire réelle.
+
+---
+
+## 4. Sauvegarde et artefacts
+
+À la fin de chaque run, le pipeline génère automatiquement les fichiers suivants :
+
+<ArtifactsTree />
+
+### Charger et prédire
+
+```python
+clf_loaded = SpectralClassifier.load_model(
+    "data/models/spectral_classifier_xgboost_20260213T225019Z.pkl"
+)
+
+# Le pipeline chargé inclut le scaler et l'imputer
+# Aucune préparation supplémentaire des données n'est nécessaire
+predictions   = clf_loaded.model_pipeline.predict(X_new)
+probabilities = clf_loaded.model_pipeline.predict_proba(X_new)
+```
+
+---
+
+## 5. Évaluation complète
+
+Après l'entraînement, `clf.evaluate()` génère automatiquement :
+
+```python
+clf.evaluate(X_test, y_test, plot=True)
+```
+
+| Sortie | Description |
+|:---|:---|
+| Rapport de classification | Precision / Recall / F1 par classe (A, F, G, K, M) |
+| Matrice de confusion | Normalisée — visible la confusion F/G attendue |
+| Courbes ROC et PR | One-vs-rest par classe |
+| Score ECE | Expected Calibration Error — qualité des probabilités |
+| Importance features | Gain XGBoost ou permutation importance |
+
+---
+
+## 6. Réproductibilité
+
+Chaque run produit un identifiant ISO timestamp unique. Pour reproduire un run exact :
+
+```python
+# Retrouver le fichier source d'entraînement
+import json
+with open("data/reports/20260213T225019Z/spectral_classifier_xgboost_20260213T225019Z_meta.json") as f:
+    meta = json.load(f)
+
+print(meta["trained_on_file"])     # → features_20251217T160120Z.csv
+print(meta["best_params_"])        # → hyperparamètres finaux
+print(meta["n_features_used"])     # → 183
+print(meta["balanced_accuracy"])   # → 0.87
+```
+
+---
+
+<RelatedPages pages={[
+  {
+    href: './feature-extraction',
+    title: 'Extraction des features',
+    desc: 'Préparer le DataFrame d\'entrée — FeatureEngineer, spectro_only',
+    category: 'guides',
+  },
+  {
+    href: '../api/classifier',
+    title: 'API — SpectralClassifier',
+    desc: 'Référence complète — méthodes, paramètres, attributs',
+    category: 'api',
+  },
+  {
+    href: '../science/xgboost-comparison',
+    title: 'XGBoost — comparaison supervisée',
+    desc: 'Résultats détaillés 87 % · SHAP · cohérence UMAP',
+    category: 'science',
+    badge: '87 % BA',
+  },
+  {
+    href: '../science/results-analysis',
+    title: 'Analyse des Résultats',
+    desc: 'Résultats complets PCA/UMAP/t-SNE/XGBoost/SHAP',
+    category: 'science',
+  },
+  {
+    href: 'https://docs.wandb.ai',
+    title: 'Documentation W&B',
+    desc: 'Weights & Biases — visualisation des 85+ runs AstroSpectro',
+    category: 'external',
+  },
+]} />

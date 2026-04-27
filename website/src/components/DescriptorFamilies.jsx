@@ -236,7 +236,7 @@ export default function DescriptorFamilies() {
         }}
       >
         183 descripteurs · 6 familles spectroscopiques ·{' '}
-        <a href="./features-list-183" style={{ color: 'inherit', textDecoration: 'underline dotted' }}>
+        <a href="/AstroSpectro/docs/science/features-list-183" style={{ color: 'inherit', textDecoration: 'underline dotted' }}>
           catalogue exhaustif →
         </a>
       </div>

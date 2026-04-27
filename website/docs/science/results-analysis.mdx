@@ -2,138 +2,243 @@
 id: results-analysis
 title: Analyse des Résultats
 sidebar_label: Analyse des Résultats
+sidebar_position: 3
+description: >
+  Résultats complets d'AstroSpectro : réduction de dimension (PCA, UMAP, t-SNE,
+  HDBSCAN), classification supervisée XGBoost (87 % balanced accuracy, ROC-AUC
+  ~0,964) et validation SHAP (97,9 % de features physiques dans le top-30).
+tags: [résultats, pca, umap, tsne, hdbscan, xgboost, shap, lamost]
 ---
 
-{/* Complet for v1.0.0 release */}
-
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faChartBar, faSearch, faFlask, faPersonDigging, faMagnifyingGlassChart } from '@fortawesome/free-solid-svg-icons'
-
-# <FontAwesomeIcon icon={faMagnifyingGlassChart} /> Analyse des Résultats
+import ResultsHero from '@site/src/components/ResultsHero';
+import MethodComparison from '@site/src/components/MethodComparison';
+import ProcrustesStability from '@site/src/components/ProcrustesStability';
+import HDBSCANClusters from '@site/src/components/HDBSCANClusters';
+import SHAPTop10 from '@site/src/components/SHAPTop10';
+import FigureGallery from '@site/src/components/FigureGallery';
+import RelatedPages from '@site/src/components/RelatedPages';
+import ClassifierMetrics from '@site/src/components/ClassifierMetrics';
+import ProgressionPipeline from '@site/src/components/ProgressionPipeline';
+import PCAvsXGBoost from '@site/src/components/PCAvsXGBoost';
+import PCAVarianceMilestones from '@site/src/components/PCAVarianceMilestones';
 
 # Analyse des Résultats
 
-Cette section présente les résultats obtenus par le pipeline de classification **AstroSpectro**. L'approche adoptée est **itérative** : nous sommes partis d'une baseline simple pour progressivement enrichir les *features* et optimiser les modèles, en mesurant l'impact de chaque changement.
+Cette page présente les résultats obtenus par le pipeline AstroSpectro sur N = 43 019 spectres LAMOST DR5 × Gaia DR3 décrits par p = 183 descripteurs spectroscopiques. Les résultats couvrent deux axes complémentaires : l'analyse non supervisée par réduction de dimension (PCA, UMAP, t-SNE, HDBSCAN) et la classification supervisée (XGBoost avec validation SHAP).
 
-Les résultats présentés ici sont basés sur des entraînements et des évaluations rigoureuses, utilisant une **validation croisée stratifiée** et un **tuning des hyperparamètres** pour garantir leur fiabilité.
+<ResultsHero />
 
-## Le Voyage : De 32% à 84% de Précision
+---
 
-Notre démarche a suivi un parcours d'optimisation en plusieurs actes, démontrant l'importance cruciale du *feature engineering* guidé par la physique et l'analyse de données.
+## Axe 1 — Réduction de dimension non supervisée
 
-```mermaid
-graph LR
-    A[Baseline<br/><b>32%</b>] -->|"Force (Prominence)"| B(Itération 1<br/><b>40%</b>);
-    B -->|Ratios Spectraux| C(Itération 2<br/><b>50%</b>);
-    C -->|"Métadonnées (SNR, z)"| D(Itération 3<br/><b>75%</b>);
-    D -->|Modèle XGBoost| E(Résultat Final<br/><b>84%</b>);
+### PCA — La référence linéaire
 
-    classDef default fill:#222,stroke:#555,stroke-width:2px,color:#fff;
-    class A,B,C,D,E default;
+La PCA sur les 183 descripteurs standardisés révèle une **haute dimensionnalité intrinsèque** : il faut 91 composantes pour capturer 95 % de la variance, sans coude net dans le spectre des valeurs propres.
 
-    style A fill:#D32F2F
-    style B fill:#E65100
-    style C fill:#F9A825
-    style D fill:#9E9D24
-    style E fill:#43A047
-```
+| Seuil V(K) | Composantes K | Interprétation |
+|:---:|:---:|:---|
+| 28,8 % | 2 | PC1 + PC2 uniquement — visualisation |
+| 80 % | 51 | Analyse rapide |
+| **95 %** | **91** | **Seuil retenu pour UMAP/t-SNE** |
+| 99 % | 100 | Quasi-totalité de la variance |
 
-- **De 32% à 50% :** L'introduction de features physiques de base (force et ratios des raies) a permis de construire une fondation solide, améliorant le score de **+18 points**.
-- **La Percée à 75% :** Le bond le plus spectaculaire (**+25 points !**) est venu de l'ajout des métadonnées contextuelles (``redshift, SNR``). C'est la preuve que le modèle performe mieux quand il connaît non seulement le signal (le spectre) mais aussi le contexte de la mesure.
-- **L'Optimisation Finale à 84% :** Le passage à un algorithme plus puissant, ``XGBoost``, a permis de gratter **+9 points** supplémentaires en exploitant plus finement les relations complexes entre toutes nos features.
+<PCAVarianceMilestones />
 
-## Benchmark des Modèles : RandomForest vs. XGBoost
+**PC1 (16,9 %, λ₁ = 30,19) — Axe thermique :** ρ(PC1, Teff) = +0,831. Dominé par les raies de Balmer (31,5 %) et le calcium ionisé (22,4 %). Les étoiles chaudes (A-F, > 7 000 K) occupent le côté positif ; les étoiles froides (K-M, < 5 000 K) le côté négatif.
 
-Nous avons testé deux algorithmes de classification principaux sur notre jeu de *features* final, qui combine des mesures physiques des raies spectrales (force, largeur), des ratios et des métadonnées contextuelles.
+**PC2 (12,0 %, λ₂ = 21,39) — Axe métallicité (partiellement contaminé) :** Dominé par le fer et les métaux (43,3 %). La corrélation ρ(PC2, SNRr) = −0,310 révèle une contamination instrumentale — PC2 n'est pas un axe de métallicité pur.
 
-### 1. RandomForest Optimisé
+| K composantes | MSE(K) | Variance capturée |
+|:---:|:---:|:---:|
+| 2 | 0,696 | 30,4 % |
+| 10 | 0,494 | 50,6 % |
+| 50 | 0,196 | 80,4 % |
+| **91** | **~0,050** | **95,0 %** |
 
-Le `RandomForestClassifier` a servi de cheval de bataille tout au long de notre développement. Après un tuning rigoureux via `GridSearchCV`, il a atteint une performance très respectable.
+**Eigenspectra sur flux bruts (10 000 spectres, 3 921 canaux) :** Trois composantes suffisent à expliquer 91,3 % de la variance des flux bruts (vs 91 composantes pour les 183 descripteurs). PC1_flux = pente de couleur (Teff) · PC2_flux = montée infrarouge étoiles froides · PC3_flux = coupure instrumentale bleue/rouge.
 
-<details>
-  <summary>Cliquez pour voir les résultats détaillés du RandomForest</summary>
-  <br/>
-  
-  *   **Précision (Validation Croisée) :** 79.5%
-  *   **Précision (Test Final) :** 81%
+Pour l'interprétation complète, voir [Interprétation physique de la PCA](./pca-physical-interpretation).
 
-  **Rapport de Classification :**
-  ```
-  precision    recall  f1-score   support
-       A       0.79      0.90      0.84        29
-       F       0.76      0.67      0.71        97
-       G       0.79      0.77      0.78       154
-       K       0.75      0.86      0.80       104
-       M       0.88      0.80      0.84        46
-       N       0.99      0.99      0.99        67
+export const pcaFigures = [
+  { src: '/img/dimred/pca_variance_explained.png',    title: 'Variance expliquée', desc: 'Individuelle + cumulée · seuils 80/90/95/99 %', tag: 'PCA' },
+  { src: '/img/dimred/pca_eigenspectra.png',          title: 'Eigenspectra flux bruts', desc: 'PC1 = T_eff · PC2 = IR · PC3 = coupure instrument.', tag: 'PCA' },
+  { src: '/img/dimred/pca_scores_classes.png',        title: 'Projection PC1/PC2', desc: 'Colorée par type spectral LAMOST', tag: 'PCA' },
+  { src: '/img/dimred/pca_reconstruction_error.png',  title: 'Erreur MSE(K)', desc: 'Décroissance de la reconstruction en fonction de K', tag: 'PCA' },
+  { src: '/img/dimred/hr_diagram_pca_pc1.png',        title: 'Diagramme HR coloré PC1', desc: 'Gradient Teff le long de la séquence principale', tag: 'HR' },
+  { src: '/img/dimred/pca_scores_grid.png',           title: 'Grille PC1/PC2/PC3', desc: 'Projections croisées des 3 premières composantes', tag: 'PCA' },
+];
 
-  accuracy                         0.81       497
- macro avg     0.82     0.83      0.82       497
- weighted avg  0.81     0.81      0.81       497
-```
- **Matrice de Confusion :**
-![Matrice de Confusion RandomForest](/img/matrice_rf_final.png)
+<FigureGallery figures={pcaFigures} columns={3} />
 
-</details>
+---
 
-### 2. XGBoost : Le Challenger Haute Performance
+### UMAP — Structure topologique et clusters HDBSCAN
 
-Pour pousser les performances à leur maximum, nous avons testé un modèle de Gradient Boosting, `XGBoost`, réputé pour son efficacité sur les données tabulaires.
+UMAP est appliqué aux 91 composantes PCA avec `n_neighbors=15`, `min_dist=0.1`, 200 époques (t = 40,1 s, Ryzen 9 5950X). La projection révèle une structure en **«continent continu»** où la séquence de Harvard (M-K-G-F-A) se déploie sans supervision.
 
-<details>
-  <summary>Cliquez pour voir les résultats détaillés du XGBoost (Meilleur Modèle)</summary>
-  <br/>
+**Corrélations :** ρ(UMAP axe 1, Teff) = +0,464. La classe de luminosité (naines vs géantes) induit une bifurcation topologique visible dans la coloration par log g.
 
-*   **Précision (Validation Croisée) :** 82.3%
-*   **Précision (Test Final) :** 84%
+**Contrôle négatif :** UMAP appliqué aux données avec colonnes permutées aléatoirement → nuage compact homogène sans structure. La structure observée est d'**origine physique**, non un artefact algorithmique.
 
-**Rapport de Classification :**
-```
-precision    recall  f1-score   support
-       A       0.85      0.79      0.82        29
-       F       0.79      0.79      0.79        98
-       G       0.82      0.80      0.81       143
-       K       0.77      0.85      0.81       101
-       M       0.94      0.82      0.88        57
-       N       0.97      1.00      0.99        69
+#### Clusters HDBSCAN — 20 groupes sans aucune étiquette
 
-  accuracy                         0.84       497
- macro avg     0.86      0.84      0.85       497
-weighted avg   0.84      0.84      0.84       497
-```
+<HDBSCANClusters />
 
-**Matrice de Confusion :**
-![Matrice de Confusion XGBoost](/img/matrice_finale_xgboost.png)
-</details>
+:::tip[Résultat astrophysique original]
+Sans aucune étiquette ni information sur log g, UMAP organise les spectres de sorte que HDBSCAN **récupère la distinction naines/sous-géantes à Teff fixée**. Les clusters C19, C1 et C12 se distinguent spectralement par des raies Ca II renforcées et des raies de Balmer affaiblies — signature d'une pression de radiation plus basse à la surface des géantes.
+:::
 
-**Conclusion du benchmark :** Avec une précision de **84%** contre **81%** pour le ``RandomForest`` sur le même jeu de données, **XGBoost s'est avéré être le modèle le plus performant**. Il démontre une meilleure capacité à séparer les classes spectrales complexes, en particulier dans la région ``G/K/M``.
+export const umapFigures = [
+  { src: '/img/dimred/umap_classes.png',                   title: 'UMAP coloré par type spectral', desc: 'Séquence Harvard émergente sans supervision', tag: 'UMAP' },
+  { src: '/img/dimred/umap_hdbscan_clusters.png',          title: 'Clusters HDBSCAN', desc: '20 clusters · 6,14 % bruit · C11 = 16 716 étoiles', tag: 'HDBSCAN' },
+  { src: '/img/dimred/umap_hdbscan_hr.png',                title: 'Clusters sur diagramme HR', desc: 'C19/C1/C12 = sous-géantes · C13 = naines K', tag: 'HR' },
+  { src: '/img/dimred/umap_negative_control.png',          title: 'Contrôle négatif', desc: 'Données permutées → nuage homogène sans structure', tag: 'Validation' },
+  { src: '/img/dimred/umap_hdbscan_feature_heatmap.png',   title: 'Heatmap features par cluster', desc: 'Profils spectraux distinctifs de chaque cluster', tag: 'HDBSCAN' },
+  { src: '/img/dimred/synthesis_pca_umap_ae.png',          title: 'Synthèse PCA/UMAP/AE', desc: 'Comparaison des 3 espaces latents', tag: 'Synthèse' },
+];
 
-## L'Anatomie de la Décision : Importance des Features
+<FigureGallery figures={umapFigures} columns={3} />
 
-Comprendre *pourquoi* un modèle fonctionne est aussi important que de mesurer sa performance. Le graphique ci-dessous montre les *features* que notre meilleur modèle (``XGBoost``) a jugées les plus importantes pour prendre ses décisions.
+---
 
-![Graphique d'Importance des Features Final](/img/importance_features_final_xgboost.png)
+### t-SNE — Structure probabiliste et stabilité
 
-### Observations Clés :
+t-SNE est appliqué aux mêmes 91 composantes PCA avec `perplexity=30`, `init='pca'`, 1 000 itérations (t = 80,2 s, soit 2× UMAP). La projection produit un **«archipel» de masses compactes séparées**, à l'opposé de la structure continue d'UMAP.
 
--   **Le Contexte est Roi :** Les métadonnées comme l'**erreur sur le redshift** et l'**indice de couleur** (qui est un proxy de la température) sont les indicateurs les plus puissants. Cela démontre que le contexte de l'observation est crucial.
--   **La Physique Valide l'IA :** Les *features* que nous avons construites, comme la **largeur (FWHM)** et la **force (prominence)** des raies, figurent en bonne place. Le modèle a bien appris à utiliser ces indicateurs physiques.
--   **Synergie :** La meilleure performance est atteinte en combinant le contexte de l'observation avec les propriétés physiques du spectre.
+- Les étoiles chaudes (A-F, Teff > 7 000 K) forment un amas distinct isolé
+- La masse centrale regroupe les K-G de la séquence principale
+- La coloration par log g révèle des clusters de sous-géantes partiellement isolés
 
-## Prochaines Étapes
+t-SNE excelle dans la **séparation nette des sous-populations discrètes**, tandis qu'UMAP préserve mieux les **gradients continus** (Teff, [Fe/H]).
 
-Ces résultats valident notre approche et notre architecture. Le pipeline AstroSpectro est maintenant une plateforme solide pour de futures recherches. Les prochaines étapes, détaillées dans notre [**Roadmap**](/docs/community/roadmap), se concentreront sur :
+---
 
--   L'ajout de *features* spécifiques aux étoiles les plus froides (bandes moléculaires de ``TiO``).
--   L'exploration de l'IA explicable (``XAI``) avec des outils comme SHAP pour comprendre les prédictions individuelles.
--   Le passage à des architectures de Deep Learning (``CNN 1D``) pour exploiter l'intégralité du signal spectral.
+### Comparaison de la stabilité — Procrustes
 
-## Limites et Points à Surmonter
+<ProcrustesStability />
 
-Malgré l'amélioration spectaculaire des scores, cette étude présente certaines limites qui constituent des axes de recherche futurs passionnants :
+---
 
-*   **Biais du Dataset :** La distribution des classes reste déséquilibrée. Bien que des techniques comme ``SMOTE`` aient été utilisées, la performance sur les classes stellaires intrinsèquement rares reste un défi.
-*   **Qualité des Données :** Certains spectres présentent des artefacts instrumentaux ou des zones de faible signal/bruit qui n'ont pas été corrigées de manière systématique. Un prétraitement plus avancé (comme la correction du continuum) pourrait encore améliorer la robustesse.
-*   **Feature Engineering Manuel :** Beaucoup de nos *features* restent "faites main". Une exploration systématique via des techniques de *feature selection* automatisée ou d'AutoML pourrait révéler des combinaisons d'indicateurs encore plus performantes.
+### Synthèse comparative — PCA · UMAP · t-SNE
 
-Nous poursuivons nos efforts pour lever ces verrous dans les prochaines versions du pipeline.
+<MethodComparison />
+
+export const tsneFigures = [
+  { src: '/img/dimred/tsne_grid.png',                     title: 'Projection t-SNE', desc: 'Archipel coloré par type spectral, T_eff, log g, [Fe/H]', tag: 't-SNE' },
+  { src: '/img/dimred/hr_diagram_tsne_ax1.png',           title: 'Diagramme HR coloré axe 1 t-SNE', desc: 'Corrélation thermique dans l\'espace t-SNE', tag: 'HR' },
+  { src: '/img/dimred/tsne_sensitivity_perplexity.png',   title: 'Sensibilité à la perplexité', desc: 'Robuste pour perplexité ∈ [15, 50]', tag: 'Sensibilité' },
+  { src: '/img/dimred/stability_umap.png',                title: 'Stabilité UMAP (4 graines)', desc: 'd_P ~ 0,030 — variabilité importante entre runs', tag: 'Procrustes' },
+  { src: '/img/dimred/stability_tsne.png',                title: 'Stabilité t-SNE (4 graines)', desc: 'd_P ~ 5×10⁻⁴ — 60× plus stable qu\'UMAP', tag: 'Procrustes' },
+  { src: '/img/dimred/umap_all_classes_pair.png',         title: 'UMAP vs t-SNE côte-à-côte', desc: 'Continent continu vs archipel compact', tag: 'Comparaison' },
+];
+
+<FigureGallery figures={tsneFigures} columns={3} />
+
+---
+
+## Axe 2 — Classification supervisée XGBoost
+
+### Performance globale (mode `spectro_only=True`)
+
+Le classifieur XGBoost entraîné sur les **mêmes 183 descripteurs spectraux** (sans Gaia, sans `ra`/`dec`/`redshift`) atteint :
+
+<ClassifierMetrics />
+
+### Progression historique du pipeline
+
+<ProgressionPipeline />
+
+### Cohérence supervisé / non supervisé
+
+La géographie des prédictions XGBoost dans l'espace UMAP est cohérente avec la structure émergente non supervisée : étoiles A en «péninsule» chaude, G au centre, K en périphérie froide. Les deux approches capturent la **même structure physique** — la projection UMAP est un espace de validation qualitative pour le classifieur.
+
+export const xgbFigures = [
+  { src: '/img/dimred/umap_xgboost_predictions.png',   title: 'Prédictions XGBoost dans UMAP', desc: 'Cohérence géographique supervisé/non-supervisé', tag: 'XGBoost' },
+  { src: '/img/dimred/umap_xgboost_FG_confusion.png',  title: 'Confusion F/G', desc: 'Zone de transition continue à 5500–6200 K', tag: 'XGBoost' },
+];
+
+<FigureGallery figures={xgbFigures} columns={2} />
+
+---
+
+## Axe 3 — Validation SHAP
+
+### Résultat central
+
+L'analyse SHAP (*SHapley Additive exPlanations*) sur le modèle `spectro_only=True` révèle que **97,9 % des 30 descripteurs les plus importants sont des features spectrales physiques**. C'est la **validation scientifique centrale** du pipeline AstroSpectro : le modèle a appris à classifier les étoiles en utilisant exactement les mêmes informations spectroscopiques que les astrophysiciens utilisent manuellement.
+
+<SHAPTop10 />
+
+### PCA vs XGBoost — deux questions complémentaires
+
+<PCAvsXGBoost />
+
+### Top features SHAP par classe
+
+| Classe | Features dominantes | Interprétation physique |
+|:---:|:---|:---|
+| **A** | Hα EW faible, Hβ FWHM large | Raies de Balmer très larges — étoiles chaudes |
+| **F** | Hα EW intermédiaire, Ca II K modéré | Transition Balmer → Ca II |
+| **G** | Ca II K + H fort, Mg b | Métallicité + température solaire |
+| **K** | Ca II K très fort, TiO naissant | Étoiles froides riches en métaux |
+| **M** | TiO/VO/CaH bands, Balmer faible | Bandes moléculaires caractéristiques |
+
+export const shapFigures = [
+  { src: '/img/dimred/class_feature_heatmap.png',       title: 'Heatmap features par classe', desc: 'Importance SHAP relative — Ca II domine A/F/G/K', tag: 'SHAP' },
+  { src: '/img/dimred/class_specific_importance.png',   title: 'Importance spécifique par classe', desc: 'Top features discriminants de chaque type spectral', tag: 'SHAP' },
+  { src: '/img/dimred/caIIK_prom_vs_mh.png',            title: 'Ca II K prominence vs [Fe/H]', desc: 'Corrélation Ca II K avec la métallicité Gaia DR3', tag: 'SHAP' },
+];
+
+<FigureGallery figures={shapFigures} columns={3} />
+
+---
+
+## Limites et perspectives
+
+**Déséquilibre de classes :** Galaxies (56) et QSO (7) sont trop rares pour l'analyse HDBSCAN et ne sont pas intégrés à la classification 5 classes.
+
+**Dimensionnalité intrinsèque :** Les 91 composantes nécessaires pour 95 % de variance indiquent que la variété spectrale est réellement haute-dimensionnelle. La projection 2D est une compression extrême (183 → 2), et l'émergence de la séquence de Harvard dans ces deux dimensions est un résultat non trivial.
+
+**Prochaines étapes :**
+- Caractérisation des 20 clusters HDBSCAN par croisement avec des catalogues d'objets rares (étoiles variables, géantes RGB, binaires spectrales)
+- Optimisation Optuna à grande échelle sur l'ensemble des ~139k fichiers FITS disponibles
+- Analyse d'anomalies : intersection HDBSCAN bruit ∩ top 1 % MSE autoencoder
+- Extension à LAMOST DR10 (~10⁷ spectres) ou SDSS
+
+---
+
+<RelatedPages pages={[
+  {
+    href: './pca-physical-interpretation',
+    title: 'Interprétation physique de la PCA',
+    desc: 'Variance, eigenspectra, corrélations Gaia DR3, diagramme HR coloré par PC1',
+    category: 'science',
+    badge: 'ρ = +0,831',
+  },
+  {
+    href: './dimensionality-reduction',
+    title: 'Réduction de dimension',
+    desc: 'Méthodes, hyperparamètres, sensibilité, stabilité Procrustes',
+    category: 'science',
+  },
+  {
+    href: './xgboost-comparison',
+    title: 'XGBoost — comparaison supervisée',
+    desc: 'Détails complets des résultats 87 % · SHAP · cohérence UMAP',
+    category: 'science',
+    badge: '87 % BA',
+  },
+  {
+    href: './features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Top loadings PCA, familles spectrales, features SHAP top-30',
+    category: 'science',
+  },
+  {
+    href: '../user-guides/model-training',
+    title: 'Guide — Entraînement du modèle',
+    desc: 'SpectralClassifier, tuning GridSearchCV/Optuna, W&B, artefacts',
+    category: 'guides',
+  },
+]} />

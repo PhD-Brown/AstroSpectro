@@ -56,6 +56,7 @@ from __future__ import annotations
 
 import os
 from typing import Dict, Tuple
+import time
 
 import numpy as np
 import pandas as pd
@@ -231,7 +232,7 @@ def _bulk_crossmatch(
         )
 
     def run_cm_on_chunk(chunk_df: pd.DataFrame) -> pd.DataFrame:
-        """Run the TAP_UPLOAD query for one batch and return a DataFrame."""
+        """Run the TAP_UPLOAD query for one batch with explicit manual polling."""
         t = as_table(chunk_df)
         q = f"""
         SELECT
@@ -246,12 +247,39 @@ def _bulk_crossmatch(
                  CIRCLE('ICRS', g.ra, g.dec, {radius_deg})
                )
         """
-        job = Gaia.launch_job_async(
+        if debug:
+            print("\n    [ESA TAP] Envoi de la requête au serveur...")
+
+        # On utilise launch_job (synchrone) pour contrôler la boucle d'attente
+        job = Gaia.launch_job(
             q, upload_resource=t, upload_table_name="src", dump_to_file=False
         )
+
+        if debug:
+            print(
+                f"    [ESA TAP] Job créé (ID: {job.jobid}). Phase initiale: {job.get_phase()}"
+            )
+
+        # Boucle de polling (interrogation manuelle du serveur)
+        while True:
+            phase = job.get_phase()
+            if phase in ("COMPLETED", "ERROR", "ABORTED"):
+                if debug:
+                    print(f"    [ESA TAP] Job terminé avec le statut: {phase}")
+                break
+
+            if debug:
+                print(
+                    f"    [ESA TAP] Job en file d'attente ou en cours (statut: {phase}) - attente de 5s..."
+                )
+            time.sleep(5)
+
+        if job.get_phase() != "COMPLETED":
+            raise RuntimeError(f"Le job TAP a échoué avec le statut: {job.get_phase()}")
+
         return job.get_results().to_pandas()
 
-    # Batched loop with retry logic
+    # --- Batched loop with retry logic ---
     all_rows = []
     batch_size = 400
     i = 0
@@ -260,17 +288,30 @@ def _bulk_crossmatch(
         part = df.iloc[i:j]
         try:
             if debug:
-                print(f"[bulk] lot {i}:{j} size={len(part)}")
+                print("\n[BULK] ----------------------------------------------------")
+                print(
+                    f"[BULK] Traitement du lot de sources {i} à {j} (taille={len(part)})"
+                )
+
             all_rows.append(run_cm_on_chunk(part))
             i = j
+
         except Exception as e:
             if debug:
-                print(f"[bulk] error on {i}:{j} → retrying smaller ({e})")
+                print(f"[ERREUR] Échec sur le lot {i}:{j} → {e}")
+
             if batch_size <= 50:
-                # give up on this batch (will be covered by 'cone' fallback)
+                if debug:
+                    print(
+                        "[ABANDON] Impossible de passer ce lot même à petite taille. On l'ignore."
+                    )
                 i = j
             else:
                 batch_size //= 2
+                if debug:
+                    print(
+                        f"[RETRY] On réduit la taille du lot à {batch_size} et on recommence."
+                    )
 
     df_cm = (
         pd.concat(all_rows, ignore_index=True)
@@ -296,11 +337,14 @@ def _bulk_crossmatch(
     ap_risky = ["radius_gspphot", "mass_gspphot", "age_gspphot"]
     ap_cols = ap_base + (ap_risky if include_risky else [])
     if ap_cols and not df_best.empty:
+        unique_source_ids = df_best["source_id"].dropna().unique().astype("int64")
+
         ids_tbl = Table(
-            [df_best["source_id"].astype("int64").values],
+            [unique_source_ids],
             names=("source_id",),
             dtype=("int64",),
         )
+
         sel_ap = ",".join([f"ap.{c}" for c in ap_cols])
         q_ap = f"""
         SELECT i.source_id, {sel_ap}
@@ -416,6 +460,7 @@ def enrich_catalog_with_gaia(
     gaia_table: str = GAIA_MAIN,
     gaia_user: str | None = None,
     gaia_pass: str | None = None,
+    verbose: bool = True,
 ) -> Tuple[pd.DataFrame, Dict[str, object]]:
     """Enrich a catalog (RA/Dec) with Gaia DR3 photometry and astrometry.
 
@@ -468,7 +513,7 @@ def enrich_catalog_with_gaia(
         try:
             print("  > Attempting cross-match in 'bulk' mode…")
             df_gaia = _bulk_crossmatch(
-                df_src, search_radius_arcsec, gaia_table, include_risky
+                df_src, search_radius_arcsec, gaia_table, include_risky, debug=verbose
             )
         except Exception as e:
             print(f"  > 'bulk' mode failed: {e}. Switching to 'cone' mode.")

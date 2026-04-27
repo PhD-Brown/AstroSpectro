@@ -15,6 +15,8 @@ import SpectralClasses from '@site/src/components/SpectralClasses';
 import SHAPTop10 from '@site/src/components/SHAPTop10';
 import ProgressionPipeline from '@site/src/components/ProgressionPipeline';
 import PCAvsXGBoost from '@site/src/components/PCAvsXGBoost';
+import TrainingConfig from '@site/src/components/TrainingConfig';
+import UMAPPredictions from '@site/src/components/UMAPPredictions';
 
 # XGBoost — comparaison sur les mêmes 183 descripteurs
 
@@ -51,15 +53,7 @@ Cette restriction garantit que le modèle apprend à classifier les étoiles à 
 
 ### Données d'entraînement
 
-| Paramètre | Valeur |
-|:---|:---|
-| Jeu de données | LAMOST DR5 × Gaia DR3, N = 43 019 |
-| Descripteurs utilisés | 183 (mode `spectro_only=True`) |
-| Classes cibles | A, F, G, K, M (5 types spectraux stellaires) |
-| Métrique d'optimisation | `balanced_accuracy` |
-| Séparation train/test | 80/20, stratifiée |
-
-### Hyperparamètres XGBoost
+<TrainingConfig />
 
 ```python
 from src.pipeline.classifier import SpectralClassifier
@@ -68,24 +62,7 @@ clf = SpectralClassifier(
     model_type="XGBoost",
     prediction_target="main_class",
 )
-
-clf.train_and_evaluate(
-    features_df,
-    spectro_only=True,
-)
-```
-
-Les meilleurs paramètres retenus lors du run de référence (`20260213T225019Z`) :
-
-```json
-{
-  "n_estimators": 600,
-  "max_depth": 6,
-  "learning_rate": 0.1,
-  "colsample_bytree": 0.8,
-  "subsample": 0.8,
-  "tree_method": "hist"
-}
+clf.train_and_evaluate(features_df, spectro_only=True)
 ```
 
 ---
@@ -112,19 +89,9 @@ La projection UMAP des prédictions XGBoost permet une **validation qualitative*
 
 ### Résultats
 
-La distribution des prédictions dans l'espace UMAP montre une cohérence géographique remarquable :
-
-| Type prédit | Localisation dans UMAP | Cohérence |
-|:---:|:---|:---:|
-| A | «Péninsule» supérieure gauche (étoiles chaudes) | ✓ |
-| F | Transition chaude — zone intermédiaire haute | ✓ |
-| G | Masse centrale principale | ✓ |
-| K | Périphérie froide de la masse centrale | ✓ |
-| M | Extrémité froide — branche inférieure | ✓ |
+<UMAPPredictions />
 
 Cette correspondance directe entre la structure émergente de UMAP (sans étiquettes) et la classification XGBoost (avec étiquettes) démontre que les deux approches capturent la **même structure physique sous-jacente** : la séquence de température effective de la classification MK de Harvard.
-
-**Référence figures :** `umap_xgboost_predictions.png`, `umap_xgboost_FG_confusion.png`
 
 ---
 
