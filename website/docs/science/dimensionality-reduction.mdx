@@ -17,6 +17,7 @@ import HDBSCANClusters from '@site/src/components/HDBSCANClusters';
 import HyperparamSensitivity from '@site/src/components/HyperparamSensitivity';
 import DimRedPipeline from '@site/src/components/DimRedPipeline';
 import UMAP3DViewer from '@site/src/components/UMAP3DViewer';
+import RelatedPages from '@site/src/components/RelatedPages';
 
 # Réduction de dimension — PCA, UMAP, t-SNE
 
@@ -314,10 +315,39 @@ La logique est encapsulée dans le package `src/dimred/` (v0.3.0) : `pca_analyze
 
 ---
 
-## Pages connexes
-
-- [Interprétation physique de la PCA](./pca-physical-interpretation) — variance, eigenspectra, corrélations Gaia
-- [Catalogue des 183 descripteurs](./features-list-183) — familles spectrales, loadings PC1/PC2
-- [Dataset PHY-3500](./dataset-dimred) — composition du jeu, filtres, standardisation
-- [XGBoost — comparaison supervisée](./xgboost-comparison) — cohérence avec la structure UMAP
-- [Guide de visualisation](../user-guides/visualization) — reproduire les figures
+<RelatedPages pages={[
+  {
+    href: './pca-physical-interpretation',
+    title: 'Interprétation physique de la PCA',
+    desc: 'Variance expliquée, eigenspectra, corrélations Gaia DR3, diagramme HR',
+    category: 'science',
+    badge: 'ρ = +0,831',
+  },
+  {
+    href: './features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Familles spectrales, loadings PC1/PC2, contributions UMAP',
+    category: 'science',
+    badge: '183 features',
+  },
+  {
+    href: './dataset-dimred',
+    title: 'Dataset PHY-3500',
+    desc: 'Composition du jeu N = 43 019 · filtres qualité · standardisation',
+    category: 'science',
+    badge: '43 019 spectres',
+  },
+  {
+    href: './xgboost-comparison',
+    title: 'XGBoost — comparaison supervisée',
+    desc: 'Cohérence des prédictions supervisées avec la structure UMAP',
+    category: 'science',
+    badge: '87 % BA',
+  },
+  {
+    href: '../user-guides/visualization',
+    title: 'Guide de visualisation',
+    desc: 'Reproduire les figures UMAP, t-SNE, HR — scripts et paramètres',
+    category: 'guides',
+  },
+]} />

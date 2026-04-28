@@ -1,84 +1,245 @@
 ---
 id: preprocessing
-title: Prétraitement
+title: Guide — Prétraitement des Spectres
 sidebar_label: Prétraitement
+sidebar_position: 2
+description: >
+  Guide complet du prétraitement des spectres LAMOST DR5 dans AstroSpectro :
+  reconstruction de la grille λ, normalisation médiane, filtres qualité SNR/RUWE,
+  et préparation du vecteur de 183 descripteurs.
+tags: [prétraitement, normalisation, wavelength, fits, snr, pipeline, lamost]
 ---
 
-{/* Complet for v1.0.0 release */}
+import PreprocessingFlow from '@site/src/components/PreprocessingFlow';
+import WavelengthReconstruction from '@site/src/components/WavelengthReconstruction';
+import NormalizationDemo from '@site/src/components/NormalizationDemo';
+import FigureGallery from '@site/src/components/FigureGallery';
+import RelatedPages from '@site/src/components/RelatedPages';
 
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faMagicWandSparkles, faCogs, faEye } from '@fortawesome/free-solid-svg-icons'
-import Admonition from '@theme/Admonition';
+# Guide : Prétraitement des Spectres
 
-# <FontAwesomeIcon icon={faMagicWandSparkles} /> Guide : Prétraitement des Spectres
+Un spectre brut issu du télescope LAMOST n'est pas directement exploitable pour le machine learning. Chaque spectre encode à la fois la **physique réelle de l'étoile** et des **artefacts instrumentaux** : variations de brillance absolue entre étoiles, bruit photonique, pixels cosmiques, différences de conditions d'observation. Le prétraitement est l'étape qui élimine ces biais tout en préservant l'information physique pertinente.
 
-> Un spectre brut issu d'un télescope n'est pas directement utilisable pour le Machine Learning. Ce guide explique comment le pipeline **AstroSpectro** nettoie, normalise et prépare chaque spectre pour l'extraction de *features*.
+:::info[Module principal]
+Toute la logique de prétraitement est encapsulée dans [`SpectraPreprocessor`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/preprocessor.py). L'orchestration est assurée par `spectra_manager.py` qui applique le pipeline en parallèle sur les ~250 000 spectres téléchargés.
+:::
 
-## <FontAwesomeIcon icon={faCogs} /> Le Module `SpectraPreprocessor`
+---
 
-Toute la logique de prétraitement est encapsulée dans la classe [`SpectraPreprocessor`](https://github.com/PhD-Brown/AstroSpectro/blob/main/src/pipeline/preprocessor.py). Le pipeline principal orchestre le traitement en appelant les méthodes de cette classe pour chaque spectre du lot.
+## Vue d'ensemble du pipeline
 
-Le processus se déroule en deux étapes principales.
+Le pipeline de prétraitement se déroule en cinq étapes séquentielles, de la lecture du fichier FITS brut jusqu'au vecteur de 183 descripteurs prêt pour l'entraînement. Cliquer sur chaque étape pour voir les détails.
 
-### Étape 1 : Chargement Robuste du Spectre
+<PreprocessingFlow />
 
-La première étape consiste à lire le fichier `.fits.gz` et à en extraire les informations essentielles : la longueur d'onde, le flux, et l'inverse de la variance (une mesure de l'incertitude).
+---
 
--   **Extraction des Données :** Le flux (l'intensité lumineuse) et l'inverse de la variance sont extraits de la matrice de données du fichier FITS.
--   **Reconstruction Adaptative de la Longueur d'Onde :** Les relevés comme LAMOST n'utilisent pas toujours la même méthode pour stocker l'axe des longueurs d'onde. Notre `preprocessor` est **robuste** et sait gérer plusieurs formats :
-    -   Il cherche d'abord les mots-clés `COEFF0` et `COEFF1` pour reconstruire une échelle log-linéaire.
-    -   Si cela échoue, il cherche une colonne de données `loglam`.
-    -   Cette flexibilité garantit que le pipeline peut traiter des spectres de différentes campagnes d'observation sans modification.
+## Étape 1 — Reconstruction de la grille de longueurs d'onde
 
-```python title="src/pipeline/preprocessor.py - Exemple simplifié de chargement"
-def load_spectrum(self, hdul):
-    # La logique réelle est plus complexe pour gérer plusieurs formats
-    header = hdul[0].header
-    data = hdul[0].data
-    
-    flux = data[0]
-    invvar = data[1]
+La grille λ n'est pas stockée explicitement dans les fichiers LAMOST : elle doit être **reconstruite** depuis les métadonnées de l'en-tête FITS. Le `SpectraPreprocessor` implémente une chaîne de fallback robuste pour gérer les différentes conventions utilisées selon la campagne d'observation.
 
-    loglam = header['COEFF0'] + np.arange(len(flux)) * header['COEFF1']
-    wavelength = 10**loglam
-    
-    return wavelength, flux, invvar
-```
+<WavelengthReconstruction />
 
-### Étape 2 : Normalisation du Flux
+**Résultat :** un vecteur de 3 921 longueurs d'onde couvrant **3 690–9 100 Å**, avec un pas logarithmique de Δlog(λ) ≈ 0,0001 (soit ~1,36 Å/pixel à 5 500 Å).
 
-Les étoiles ont des brillances intrinsèques et des distances très différentes. Pour les comparer sur une base équitable, il est essentiel de normaliser leurs spectres.
+---
 
-- Méthode : Le pipeline applique une normalisation simple mais robuste en divisant l'ensemble du flux par sa valeur médiane.
-- Objectif : Cette opération ramène le "continuum" (le niveau de base du spectre) à une valeur proche de 1.0. Cela permet d'atténuer les différences de magnitude absolue et de se concentrer sur la forme et la profondeur relatives des raies spectrales, qui sont les véritables signatures physiques du type d'étoile.
+## Étape 2 — Normalisation du flux
 
-```python title="src/pipeline/preprocessor.py - Normalisation"
-def normalize_spectrum(self, flux):
-    median_flux = np.median(flux)
+Les étoiles ont des brillances absolues et des distances très différentes — une étoile type A à 500 pc peut avoir un flux apparent 1 000 fois plus élevé qu'une naine M voisine. Sans normalisation, ces différences de magnitude dominent les features et masquent les différences de type spectral.
+
+<NormalizationDemo />
+
+### Pourquoi la normalisation par la médiane suffit
+
+La normalisation médiane est délibérément **simple** : elle répond à la question «ce continuum est-il au-dessus ou en dessous de son niveau moyen ?» sans tenter de modéliser la forme du continuum. Cette simplicité est une force :
+
+1. **Robustesse** — insensible aux raies d'émission et aux artefacts
+2. **Reproductibilité** — un seul paramètre, aucun choix arbitraire
+3. **Équité entre descripteurs** — le StandardScaler appliqué ensuite à la matrice de features achève la normalisation statistique (moyenne 0, variance 1)
+
+```python
+# Extrait de SpectraPreprocessor.normalize_spectrum()
+def normalize_spectrum(self, flux: np.ndarray) -> np.ndarray:
+    """Normalise le flux par la médiane — robuste aux outliers."""
+    positive_flux = flux[flux > 0]
+    if len(positive_flux) == 0:
+        return flux   # spectre entièrement masqué — retourner tel quel
+    median_flux = np.median(positive_flux)
     if median_flux > 0:
         return flux / median_flux
     return flux
 ```
 
+---
 
-<FontAwesomeIcon icon={faEye} /> Visualisation de l'Impact
-<Admonition type="info" title="Avant / Après Normalisation">
-<p>L'image ci-dessous illustre l'effet de la normalisation. À gauche, deux spectres bruts d'étoiles de magnitudes différentes. À droite, les mêmes deux spectres après normalisation. On peut maintenant comparer directement la forme de leurs raies.</p>
-![alt text](/img/avant_apres_normalisation.png)
+## Étape 3 — Ajustement du continuum pour les pentes
 
+Pour extraire les **pentes locales du continuum** (Famille 6 — ~65 descripteurs), une étape supplémentaire de sigma-clipping est appliquée localement dans chaque fenêtre spectrale :
 
-(Conseil : Crée une petite image simple montrant deux spectres avant/après normalisation avec Matplotlib et sauvegarde-la dans static/img/)
+```python
+from astropy.stats import sigma_clip
 
-</Admonition>
-<br/>
+def fit_local_slope(wavelength, flux, wl_min, wl_max, sigma=2.5):
+    """
+    Ajustement linéaire sigma-clippé du continuum local.
+    σ = 2,5 élimine les raies d'absorption sans biaiser la pente.
+    """
+    mask = (wavelength >= wl_min) & (wavelength <= wl_max)
+    wl_local  = wavelength[mask]
+    fl_local  = flux[mask]
 
+    # Sigma-clipping — élimine les raies et les artefacts
+    clipped = sigma_clip(fl_local, sigma=sigma, maxiters=3)
 
-:::note[Pistes d'Amélioration Futures]
+    # Régression linéaire sur le continuum propre
+    coeffs = np.polyfit(wl_local[~clipped.mask], fl_local[~clipped.mask], deg=1)
+    return coeffs[0]   # pente en unités flux/Å
+```
 
-Le prétraitement actuel est conçu pour être rapide et robuste. La Roadmap du projet prévoit des améliorations futures comme :
+**Cinq pentes sont extraites :** UV (3800–4200 Å), visible vert (4500–5500 Å), visible rouge (5500–6500 Å), proche IR (6500–7500 Å), et pente globale (3800–7500 Å).
 
-- Un ajustement plus fin du continuum avec des méthodes polynomiales.
-- Des filtres de débruitage (denoising) comme Savitzky-Golay appliqués de manière plus systématique.
-- La correction de l'extinction interstellaire pour les analyses les plus fines.
+Les courbures locales (dérivée seconde Savitzky-Golay) suivent le même principe :
 
-:::
+```python
+from scipy.signal import savgol_filter
+
+def compute_curvature(flux, wavelength, center_wl, window=50, polyorder=3):
+    """Courbure du continuum (dérivée seconde) en Ångströms⁻²."""
+    idx = np.argmin(np.abs(wavelength - center_wl))
+    window_pts = min(window, idx, len(flux) - idx - 1)
+    smooth = savgol_filter(flux, window_length=2*window_pts+1, polyorder=polyorder, deriv=2)
+    return smooth[idx]
+```
+
+---
+
+## Étape 4 — Filtres qualité
+
+Deux filtres séquentiels garantissent que seuls les spectres exploitables scientifiquement entrent dans l'analyse :
+
+### Filtre 1 — Rapport signal/bruit
+
+```python
+# SNR dans la bande rouge LAMOST (~6000–7000 Å)
+mask_snr = catalog['snr_r'] > 10
+```
+
+**Justification :** En dessous de SNR = 10, la prominence des raies faibles (Fe, Mg b) devient comparable au bruit — les descripteurs seraient dominés par des artefacts statistiques. Le seuil de 10 est le minimum pour que les mesures de largeur équivalente soient fiables.
+
+### Filtre 2 — Qualité astrométrique RUWE (Gaia DR3)
+
+```python
+# RUWE (Re-normalised Unit Weight Error) — qualité solution astrométrique Gaia
+mask_ruwe = catalog['ruwe'] < 1.4
+```
+
+**Justification :** RUWE > 1,4 indique une solution de mouvement propre défaillante — typiquement une **étoile double non résolue** ou un artefact de mesure. Les étoiles doubles ont des spectres composites qui brouillent les raies de classification.
+
+### Impact des filtres
+
+| Étape | Spectres | Notes |
+|:---|:---:|:---|
+| Téléchargés | ~250 000 | Fichiers FITS bruts |
+| Après SNR_r > 10 | ~180 000 | Spectres utilisables |
+| Après RUWE < 1,4 | ~150 000 | Sources simples fiables |
+| Après croisement Gaia 1″ | **43 019** | Jeu final avec paramètres de référence |
+
+---
+
+## Étape 5 — Extraction des 183 descripteurs
+
+Une fois le spectre normalisé et validé, `FeatureEngineer.extract_features()` calcule le vecteur de 183 descripteurs physiques :
+
+```python
+from src.pipeline.feature_engineering import FeatureEngineer
+
+fe = FeatureEngineer()
+
+# Pour chaque spectre propre
+vec = fe.extract_features(
+    matched_lines,   # raies détectées par peak_detector.py
+    wavelength,      # grille λ reconstruite (3921 points)
+    flux_norm,       # flux normalisé par la médiane
+    invvar,          # inverse de la variance (masquage des pixels)
+)
+# vec : np.ndarray de forme (183,)
+```
+
+**Débit de traitement mesuré :** ~340 000 spectres/heure (Ryzen 9 5950X, 32 fils, parallélisation joblib).
+
+---
+
+## Figures de référence
+
+export const prepFigures = [
+  {
+    src: '/img/dimred/snr_quality_check.png',
+    title: 'Distribution SNR par bande',
+    desc: 'SNR_r > 10 — seuil de filtrage qualité retenu pour les 43 019 spectres',
+    tag: 'Contrôle qualité',
+  },
+  {
+    src: '/img/dimred/color_indices.png',
+    title: 'Indices de couleur — f_bleu / f_rouge',
+    desc: 'Distribution des indices de continuum — proxy de T_eff par pente',
+    tag: 'Continuum',
+  },
+  {
+    src: '/img/dimred/ha_fwhm_vs_teff.png',
+    title: 'FWHM(Hα) vs T_eff Gaia DR3',
+    desc: 'Validation de la mesure de largeur — corrélation attendue avec la température',
+    tag: 'Validation',
+  },
+];
+
+<FigureGallery figures={prepFigures} columns={3} />
+
+---
+
+## Pistes d'amélioration futures
+
+Le prétraitement actuel est conçu pour être **rapide et robuste** sur les ~250 000 spectres disponibles. La [Roadmap](../community/roadmap) du projet prévoit :
+
+- **Ajustement polynomial du continuum** — méthode iterative pour les étoiles à fort continuum UV
+- **Débruitage systématique** — Savitzky-Golay appliqué au spectre complet avant l'extraction des raies faibles
+- **Correction de l'extinction interstellaire** — A_G × R_V pour les étoiles à fort rougissement
+- **Traitement des spectres binaires** — déconvolution des profils de raies composites pour les clusters C19/C1/C12 identifiés par HDBSCAN
+
+---
+
+<RelatedPages pages={[
+  {
+    href: '../science/lamost-dr5-data',
+    title: 'Données LAMOST DR5',
+    desc: 'Structure FITS, reconstruction λ, organisation data/, SmartDownloader',
+    category: 'science',
+  },
+  {
+    href: './feature-extraction',
+    title: 'Guide — Extraction des features',
+    desc: 'Utilisation de FeatureEngineer — spectro_only, post-merge, API complète',
+    category: 'guides',
+  },
+  {
+    href: '../concepts/feature-engineering-theory',
+    title: 'Théorie du Feature Engineering',
+    desc: 'Philosophie Physics-Informed · 183 descripteurs V2 · validation SHAP',
+    category: 'concepts',
+    badge: '97,9 % physiques',
+  },
+  {
+    href: '../science/features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Liste exhaustive — 6 familles, loadings PCA, positions λ',
+    category: 'science',
+    badge: '183 features',
+  },
+  {
+    href: '../science/dataset-dimred',
+    title: 'Dataset PHY-3500',
+    desc: 'Composition finale N = 43 019 · filtres qualité · standardisation z-score',
+    category: 'science',
+    badge: '43 019 spectres',
+  },
+]} />

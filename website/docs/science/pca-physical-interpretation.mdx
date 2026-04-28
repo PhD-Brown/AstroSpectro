@@ -16,6 +16,7 @@ import FamilyContributions from '@site/src/components/FamilyContributions';
 import EigenspectraContrast from '@site/src/components/EigenspectraContrast';
 import GaiaCorrelations from '@site/src/components/GaiaCorrelations';
 import LoadingsBars from '@site/src/components/LoadingsBars';
+import RelatedPages from '@site/src/components/RelatedPages';
 
 # Interprétation physique de la PCA
 
@@ -154,9 +155,32 @@ Les étoiles évoluées (log g < 3) présentent des valeurs de PC1 intermédiair
 
 ---
 
-## Pages connexes
-
-- [Catalogue des 183 descripteurs](./features-list-183) — définitions des *loadings* et familles
-- [Réduction de dimension](./dimensionality-reduction) — UMAP, t-SNE, stabilité Procrustes
-- [Dataset PHY-3500](./dataset-dimred) — composition du jeu, filtres, standardisation
-- [XGBoost — comparaison supervisée](./xgboost-comparison) — 87 % de précision sur les mêmes 183 descripteurs
+<RelatedPages pages={[
+  {
+    href: './features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Définitions des loadings PC1/PC2 · 6 familles spectrales · positions λ',
+    category: 'science',
+    badge: '183 features',
+  },
+  {
+    href: './dimensionality-reduction',
+    title: 'Réduction de dimension',
+    desc: 'UMAP, t-SNE — structures non linéaires au-delà de la PCA · stabilité Procrustes',
+    category: 'science',
+  },
+  {
+    href: './dataset-dimred',
+    title: 'Dataset PHY-3500',
+    desc: 'Composition du jeu N = 43 019 · filtres qualité · standardisation z-score',
+    category: 'science',
+    badge: '43 019 spectres',
+  },
+  {
+    href: './xgboost-comparison',
+    title: 'XGBoost — comparaison supervisée',
+    desc: '87 % de précision sur les mêmes 183 descripteurs · validation SHAP',
+    category: 'science',
+    badge: '87 % BA',
+  },
+]} />

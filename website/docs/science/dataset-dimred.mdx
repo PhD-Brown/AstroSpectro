@@ -14,6 +14,7 @@ import DatasetStats from '@site/src/components/DatasetStats';
 import ClassDistribution from '@site/src/components/ClassDistribution';
 import DescriptorFamilies from '@site/src/components/DescriptorFamilies';
 import QualityPipeline from '@site/src/components/QualityPipeline';
+import RelatedPages from '@site/src/components/RelatedPages';
 
 # Dataset — LAMOST DR5 × Gaia DR3
 
@@ -156,10 +157,37 @@ Le téléchargement automatisé des spectres FITS est géré par `dr5_downloader
 
 ---
 
-## Pages connexes
-
-- [Catalogue des 183 descripteurs](./features-list-183) — définitions physiques complètes
-- [Réduction de dimension](./dimensionality-reduction) — PCA, UMAP, t-SNE sur ce dataset
-- [Interprétation physique de la PCA](./pca-physical-interpretation) — variance, eigenspectra, corrélations Gaia
-- [Guide de téléchargement](../user-guides/downloading-data) — récupérer les spectres LAMOST DR5
-- [Guide de prétraitement](../user-guides/preprocessing) — normalisation, lissage, contrôle qualité
+<RelatedPages pages={[
+  {
+    href: './features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Définitions physiques complètes — 6 familles, loadings PCA, positions λ',
+    category: 'science',
+    badge: '183 features',
+  },
+  {
+    href: './dimensionality-reduction',
+    title: 'Réduction de dimension',
+    desc: 'PCA, UMAP, t-SNE, HDBSCAN — appliqués sur ce dataset',
+    category: 'science',
+  },
+  {
+    href: './pca-physical-interpretation',
+    title: 'Interprétation physique de la PCA',
+    desc: 'Variance expliquée, eigenspectra, corrélations Gaia DR3',
+    category: 'science',
+    badge: 'ρ = +0,831',
+  },
+  {
+    href: '../user-guides/downloading-data',
+    title: 'Guide de téléchargement',
+    desc: 'Récupérer les spectres LAMOST DR5 avec SmartDownloader',
+    category: 'guides',
+  },
+  {
+    href: '../user-guides/preprocessing',
+    title: 'Guide de prétraitement',
+    desc: 'Normalisation médiane, reconstruction λ, filtres SNR/RUWE',
+    category: 'guides',
+  },
+]} />

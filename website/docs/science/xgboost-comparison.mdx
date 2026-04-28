@@ -17,6 +17,7 @@ import ProgressionPipeline from '@site/src/components/ProgressionPipeline';
 import PCAvsXGBoost from '@site/src/components/PCAvsXGBoost';
 import TrainingConfig from '@site/src/components/TrainingConfig';
 import UMAPPredictions from '@site/src/components/UMAPPredictions';
+import RelatedPages from '@site/src/components/RelatedPages';
 
 # XGBoost — comparaison sur les mêmes 183 descripteurs
 
@@ -149,10 +150,37 @@ Le meta JSON contient les hyperparamètres finaux, la liste des 59 features sél
 
 ---
 
-## Pages connexes
-
-- [Réduction de dimension](./dimensionality-reduction) — UMAP, structure géographique utilisée pour la validation
-- [Catalogue des 183 descripteurs](./features-list-183) — définitions des features SHAP top-30
-- [Dataset PHY-3500](./dataset-dimred) — le même jeu de données
-- [Guide d'entraînement du modèle](../user-guides/model-training) — entraîner un nouveau classifieur
-- [API — Classifier](../api/classifier) — référence complète de `SpectralClassifier`
+<RelatedPages pages={[
+  {
+    href: './dimensionality-reduction',
+    title: 'Réduction de dimension',
+    desc: 'UMAP — structure géographique utilisée pour la validation qualitative',
+    category: 'science',
+  },
+  {
+    href: './features-list-183',
+    title: 'Catalogue des 183 descripteurs',
+    desc: 'Définitions des features SHAP top-30 · 6 familles spectrales',
+    category: 'science',
+    badge: '183 features',
+  },
+  {
+    href: './dataset-dimred',
+    title: 'Dataset PHY-3500',
+    desc: 'Le même jeu de données N = 43 019 · filtres qualité · standardisation',
+    category: 'science',
+    badge: '43 019 spectres',
+  },
+  {
+    href: '../user-guides/model-training',
+    title: 'Guide — Entraînement du modèle',
+    desc: 'SpectralClassifier, tuning GridSearchCV/Optuna, W&B, artefacts',
+    category: 'guides',
+  },
+  {
+    href: '../api/classifier',
+    title: 'API — SpectralClassifier',
+    desc: 'Référence complète de la classe — méthodes, paramètres, attributs',
+    category: 'api',
+  },
+]} />

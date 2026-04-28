@@ -51,6 +51,7 @@ const sidebars: SidebarsConfig = {
         'science/methodology',
         'science/features-list-183',
         'science/pca-physical-interpretation',
+        'science/autoencoder',
         'science/xgboost-comparison',
         'science/dimensionality-reduction',
         'science/dataset-dimred',
