@@ -1509,8 +1509,51 @@ class MasterPipeline:
                 # Record the latest run timestamp and refresh the runs table
                 if run_dir:
                     try:
-                        ts = Path(run_dir).name
+                        # run_dir est en fait le chemin du session_report JSON
+                        _rp = Path(run_dir)
+                        ts = _rp.parent.name if _rp.is_file() else _rp.name
                         self._last_run_ts = ts
+                        # ── Lecture des métriques depuis le session_report ──
+                        try:
+                            import json as _json
+
+                            if _rp.is_file():
+                                _rep = _json.loads(_rp.read_text(encoding="utf-8"))
+                            else:
+                                _jsons = sorted(_rp.glob("session_report_*.json"))
+                                _rep = (
+                                    _json.loads(_jsons[0].read_text(encoding="utf-8"))
+                                    if _jsons
+                                    else None
+                                )
+                            if _rep:
+                                _cr = _rep.get("classification_report", {})
+                                _sel = _rep.get("selected_features") or []
+                                _macro = _cr.get("macro avg", {})
+                                _skip = {"accuracy", "macro avg", "weighted avg"}
+                                _per = {
+                                    k: v
+                                    for k, v in _cr.items()
+                                    if k not in _skip and isinstance(v, dict)
+                                }
+                                self._last_session_info = {
+                                    "model": _rep.get("model_type", model_type),
+                                    "acc": _rep.get("accuracy"),
+                                    "bal_acc": _rep.get("balanced_accuracy"),
+                                    "f1_macro": _macro.get("f1-score"),
+                                    "auc_macro": _rep.get("roc_auc_macro"),
+                                    "n_train": _rep.get("training_set_size", "?"),
+                                    "n_features_selected": (
+                                        len(_sel)
+                                        if _sel
+                                        else len(_rep.get("feature_columns", []))
+                                    ),
+                                    "per_class": _per,
+                                }
+                            else:
+                                self._last_session_info = None
+                        except Exception as _ei:
+                            self._last_session_info = None
                         self._refresh_runs_table(highlight_ts=ts)
                     except Exception:
                         pass
@@ -1636,7 +1679,102 @@ class MasterPipeline:
         # Create a global output area so helpers can use it
         out = _W.Output()
 
-        # --- internal helpers ---
+        # ── UI : injection CSS globale + bannière ─────────────────────────────
+        _AS_CSS = """
+        <style>
+        .as-banner {
+            background: linear-gradient(135deg, #03050f 0%, #0d1228 60%, #111830 100%);
+            border: 1px solid #1e2a4a; border-left: 4px solid #4f8eff;
+            border-radius: 10px; padding: 16px 22px; margin-bottom: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 16px; flex-wrap: wrap;
+        }
+        .as-banner-title { font-family: 'Courier New', monospace; font-size: 18px;
+            font-weight: 700; color: #eef2ff; letter-spacing: -0.5px; }
+        .as-banner-title span { color: #4f8eff; }
+        .as-banner-sub { font-family: 'Courier New', monospace; font-size: 10px;
+            color: #5a6a90; letter-spacing: 2px; margin-top: 2px; }
+        .as-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+        .as-pill { background: #0d1228; border: 1px solid #1e2a4a; border-radius: 20px;
+            padding: 4px 12px; font-family: 'Courier New', monospace;
+            font-size: 11px; color: #8898bb; }
+        .as-pill b { color: #4f8eff; }
+        .as-preview {
+            background: #050810; border: 1px solid #1a2040; border-radius: 6px;
+            padding: 12px 16px; font-family: 'Courier New', monospace; font-size: 11px;
+            color: #5a6a90; line-height: 1.9; margin-top: 10px;
+            white-space: pre-wrap; word-break: break-all;
+        }
+        .as-kw { color: #4f8eff; } .as-str { color: #f0a500; }
+        .as-num { color: #00e5b0; } .as-bool-t { color: #00e5b0; } .as-bool-f { color: #ff4f7a; }
+        .as-runs-table { width: 100%; border-collapse: collapse;
+            font-family: 'Courier New', monospace; font-size: 11px; background: #050810; }
+        .as-runs-table th { background: #0d1228; color: #5a6a90; padding: 8px 10px;
+            text-align: left; letter-spacing: 1px; font-size: 10px;
+            border-bottom: 1px solid #1e2a4a; text-transform: uppercase; }
+        .as-runs-table td { padding: 7px 10px; border-bottom: 1px solid #0d1228; color: #8898bb; }
+        .as-runs-table tr:hover td { background: #0a0f1e; }
+        .as-runs-table tr.best td { background: #071520 !important; }
+        .as-runs-table .val-acc { color: #4f8eff; font-weight: 700; }
+        .as-runs-table .val-best { color: #00e5b0; font-weight: 700; }
+        .as-runs-table .val-f1  { color: #b388ff; }
+        .as-runs-table .val-auc { color: #f0a500; }
+        .as-runs-table .val-ap  { color: #64b5f6; }
+        .as-runs-table .model-xgb { color: #f0a500; }
+        .as-runs-table .model-rf  { color: #00e5b0; }
+        .as-runs-table .model-sv  { color: #ff4f7a; }
+        .as-bar-wrap { background: #1a2040; border-radius: 99px; height: 5px; width: 70px;
+            display: inline-block; vertical-align: middle; margin-left: 6px; }
+        .as-bar-fill { height: 100%; border-radius: 99px; background: #4f8eff; }
+        .as-metric-card { background: #080c1e; border: 1px solid #1e2a4a;
+            border-radius: 10px; padding: 18px 20px; margin-top: 8px; }
+        .as-metric-card-title { font-family: 'Courier New', monospace; font-size: 10px;
+            color: #5a6a90; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+        .as-metric-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+        .as-metric-item { text-align: center; }
+        .as-metric-val { font-family: 'Courier New', monospace; font-size: 26px;
+            font-weight: 700; line-height: 1; }
+        .as-metric-lbl { font-family: 'Courier New', monospace; font-size: 9px;
+            color: #5a6a90; letter-spacing: 2px; text-transform: uppercase; margin-top: 3px; }
+        .as-per-class { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+        .as-cls-badge { background: #0d1228; border-radius: 6px; padding: 8px 12px;
+            text-align: center; min-width: 70px; border: 1px solid #1a2040; }
+        .as-cls-letter { font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; }
+        .as-cls-f1 { font-family: 'Courier New', monospace; font-size: 11px; color: #8898bb; margin-top: 2px; }
+        </style>
+        """
+        _as_df_info = ""
+        try:
+            _df = getattr(self, "features_df", None)
+            if _df is not None and not _df.empty:
+                _n = len(_df)
+                _p = _df.select_dtypes(include=["number"]).shape[1]
+                _as_df_info = (
+                    f"<span class='as-pill'>Dataset <b>{_n:,}</b> lignes</span>"
+                    f"<span class='as-pill'><b>{_p}</b> features numériques</span>"
+                )
+        except Exception:
+            pass
+        display(
+            HTML(
+                _AS_CSS
+                + f"""
+            <div class="as-banner">
+                <div>
+                    <div class="as-banner-title">Astro<span>Spectro</span></div>
+                    <div class="as-banner-sub">LAMOST DR5 × GAIA DR3 · ML PIPELINE v0.3.0</div>
+                </div>
+                <div class="as-pills">
+                    {_as_df_info}
+                    <span class='as-pill'>XGBoost best <b>87.8%</b> bal.acc</span>
+                    <span class='as-pill'>W&amp;B <b>85+</b> runs</span>
+                </div>
+            </div>
+            """
+            )
+        )
+
+        # --- helpers internes ---
         def _parse_json(txt_widget):
             """Parse JSON widget content; return None on failure."""
             try:
@@ -2159,7 +2297,82 @@ class MasterPipeline:
             description="Summary",
             layout=_W.Layout(width="100%", height="120px"),
         )
-        tab_run = _W.VBox([tab_presets, run_btn, summary, out])
+        # ── Live code preview ───────────────────────────────────────────────────────
+        _live_preview = _W.HTML(value="")
+
+        def _update_live_preview(*_):
+            try:
+                _m = model.value
+                _t = target.value
+                _ne = n_estim.value
+                _sc = scaler.value
+                _sm = sampler.value if sampler.value != "none" else None
+                _se = search.value
+                _sc2 = scoring.value
+                _ni = n_iter.value
+                _ts = round(test_size.value, 2)
+                _cv = cv_folds.value
+                _fs = fs_enable.value
+                _bw = balanced.value
+                _ge = es.value
+
+                def _s(v):
+                    return f'<span class="as-str">"{v}"</span>'
+
+                def _n(v):
+                    return f'<span class="as-num">{v}</span>'
+
+                def _b(v):
+                    return (
+                        f'<span class="as-bool-t">{v}</span>'
+                        if v
+                        else f'<span class="as-bool-f">{v}</span>'
+                    )
+
+                _none_html = '<span class="as-bool-f">None</span>'
+
+                html = (
+                    '<div class="as-preview">'
+                    f'<span class="as-kw">pipeline</span>.run_training_session(\n'
+                    f"    model_type            = {_s(_m)},\n"
+                    f"    n_estimators          = {_n(_ne)},\n"
+                    f"    prediction_target     = {_s(_t)},\n"
+                    f"    scaler_type           = {_s(_sc)},\n"
+                    f"    sampler               = {_s(_sm) if _sm else _none_html},\n"
+                    f"    test_size             = {_n(_ts)},\n"
+                    f"    cv_folds              = {_n(_cv)},\n"
+                    f"    use_feature_selection = {_b(_fs)},\n"
+                    f"    use_balanced_weights  = {_b(_bw)},\n"
+                    f"    search                = {_s(_se) if _se else _none_html},\n"
+                    f"    scoring               = {_s(_sc2)},\n"
+                    f"    n_iter                = {_n(_ni)},\n"
+                    f"    early_stopping        = {_b(_ge)},\n"
+                    f"    save_and_log          = {_b(True)},\n"
+                    ")</div>"
+                )
+                _live_preview.value = html
+            except Exception:
+                pass
+
+        for _w in (
+            model,
+            target,
+            n_estim,
+            scaler,
+            sampler,
+            search,
+            scoring,
+            n_iter,
+            test_size,
+            cv_folds,
+            fs_enable,
+            balanced,
+            es,
+        ):
+            _w.observe(_update_live_preview, "value")
+        _update_live_preview()
+
+        tab_run = _W.VBox([tab_presets, run_btn, summary, _live_preview, out])
 
         # --- Hyper-parameter templates ---
         template_dropdown = _W.Dropdown(
@@ -2574,17 +2787,6 @@ class MasterPipeline:
                 return
             df = df.copy()
 
-            # Clickable link to the run directory ('run_dir' column expected)
-            def _mk_link(p):
-                try:
-                    return f'<a href="file:///{Path(p).as_posix()}" target="_blank">{Path(p).name}</a>'
-                except Exception:
-                    return ""
-
-            if "run_dir" in df.columns:
-                df["run"] = df["run_dir"].map(_mk_link)
-
-            # Columns to show first
             wanted = [
                 "ts",
                 "exp",
@@ -2595,43 +2797,108 @@ class MasterPipeline:
                 "f1_macro",
                 "auc_macro",
                 "ap_macro",
-                "run",
+                "run_dir",
             ]
             cols = [c for c in wanted if c in df.columns]
+            df = df[cols].copy()
 
-            # Style: highlight best bal_acc
-            if "bal_acc" in df.columns:
-                best = df["bal_acc"].max()
+            best_bal = df["bal_acc"].max() if "bal_acc" in df.columns else None
 
-                def _hl(v):
-                    return (
-                        "background-color:#c3f7c3;font-weight:bold" if v == best else ""
-                    )
+            rows_html = ""
+            for _, row in df.iterrows():
+                is_best = "bal_acc" in row.index and row.get("bal_acc") == best_bal
+                row_cls = ' class="best"' if is_best else ""
 
-                styler = (
-                    df[cols]
-                    .style.map(
-                        lambda v: (
-                            "background-color:#c3f7c3;font-weight:bold"
-                            if (
-                                isinstance(v, (int, float)) and v == df["bal_acc"].max()
-                            )
-                            else ""
-                        ),
-                        subset=pd.IndexSlice[:, ["bal_acc"]],
-                    )
-                    .format(precision=3)
+                def _cell(val, cls=""):
+                    tag = f'<td class="{cls}">' if cls else "<td>"
+                    return f"{tag}{val}</td>"
+
+                def _bar(v, color="#4f8eff"):
+                    try:
+                        pct = min(100, max(0, float(v) * 100))
+                        return (
+                            f'<span style="color:{color};font-weight:700">{float(v):.3f}</span>'
+                            f'<span class="as-bar-wrap"><span class="as-bar-fill"'
+                            f' style="width:{pct:.0f}%;background:{color}"></span></span>'
+                        )
+                    except Exception:
+                        return str(v)
+
+                def _model_cls(m):
+                    m = str(m)
+                    if "XGB" in m or "xgb" in m:
+                        return "model-xgb"
+                    if "Forest" in m or "Extra" in m:
+                        return "model-rf"
+                    if "SVM" in m or "SV" in m:
+                        return "model-sv"
+                    return ""
+
+                def _link(p):
+                    try:
+                        from pathlib import Path as _P
+
+                        name = _P(p).name
+                        return (
+                            f'<a href="file:///{_P(p).as_posix()}" target="_blank"'
+                            f' style="color:#4f8eff;text-decoration:none;font-family:monospace;font-size:10px">{name}</a>'
+                        )
+                    except Exception:
+                        return str(p)
+
+                ts_val = str(row.get("ts", ""))[:16]
+                exp_val = str(row.get("exp", "")) or "\u2014"
+                model_val = str(row.get("model", ""))
+                feats_val = str(row.get("features", ""))
+                acc_val = _bar(row.get("acc", 0), "#64b5f6")
+                bal_val = _bar(
+                    row.get("bal_acc", 0), "#00e5b0" if is_best else "#4f8eff"
                 )
-            else:
-                styler = df[cols].style.format(precision=3)
-
-            display(
-                styler.hide(axis="index").set_table_attributes(
-                    'class="dataframe table table-striped"'
+                f1_val = _bar(row.get("f1_macro", 0), "#b388ff")
+                auc_val = _bar(row.get("auc_macro", 0), "#f0a500")
+                dir_val = (
+                    _link(row.get("run_dir", "")) if "run_dir" in row.index else ""
                 )
+
+                star = " \u2605" if is_best else ""
+
+                rows_html += (
+                    f"<tr{row_cls}>"
+                    f'<td style="color:#3a4a6a;font-size:10px">{ts_val}</td>'
+                    f'<td style="color:#8898bb;max-width:140px;overflow:hidden;text-overflow:ellipsis">{exp_val}</td>'
+                    f'<td class="{_model_cls(model_val)}">{model_val}{star}</td>'
+                    f'<td style="color:#5a6a90">{feats_val}</td>'
+                    f"<td>{acc_val}</td>"
+                    f"<td>{bal_val}</td>"
+                    f"<td>{f1_val}</td>"
+                    f"<td>{auc_val}</td>"
+                    f"<td>{dir_val}</td>"
+                    f"</tr>"
+                )
+
+            header_cols = [
+                "Timestamp",
+                "Exp",
+                "Mod\u00e8le",
+                "Features",
+                "Acc",
+                "Bal.Acc",
+                "F1",
+                "AUC",
+                "Dossier",
+            ]
+            headers = "".join(f"<th>{h}</th>" for h in header_cols)
+
+            table_html = (
+                f'<div style="overflow-x:auto;margin-top:8px">'
+                f'<table class="as-runs-table">'
+                f"<thead><tr>{headers}</tr></thead>"
+                f"<tbody>{rows_html}</tbody>"
+                f"</table></div>"
             )
+            display(HTML(table_html))
 
-        # === Explore runs =====================================================================
+        # === Explorer de runs =====================================================================
 
         # Widgets
         runs_refresh_btn = _W.Button(
@@ -2921,8 +3188,76 @@ class MasterPipeline:
                 except Exception:
                     pass
 
+                # ── Carte de métriques post-entraînement ─────────────────
                 with out:
-                    print("Done.")
+                    clear_output(wait=True)
+                    try:
+                        _rpt = getattr(self, "_last_session_info", None)
+                        if _rpt:
+                            _acc = _rpt.get("acc", "??")
+                            _bal = _rpt.get("bal_acc", "??")
+                            _f1 = _rpt.get("f1_macro", "??")
+                            _auc = _rpt.get("auc_macro", "??")
+                            _mod = _rpt.get("model", cfg.get("model_type", "?"))
+                            _n = _rpt.get("n_train", "?")
+                            _feat = _rpt.get("n_features_selected", "?")
+                            _per_cls = _rpt.get("per_class", {})
+
+                            def _pct(v):
+                                try:
+                                    return f"{float(v) * 100:.1f}%"
+                                except Exception:
+                                    return str(v)
+
+                            def _color_f1(v):
+                                try:
+                                    f = float(v)
+                                    if f >= 0.85:
+                                        return "#00e5b0"
+                                    if f >= 0.70:
+                                        return "#f0a500"
+                                    return "#ff4f7a"
+                                except Exception:
+                                    return "#5a6a90"
+
+                            cls_badges = ""
+                            for _cls, _cm in (
+                                _per_cls.items() if isinstance(_per_cls, dict) else []
+                            ):
+                                _f = (
+                                    _cm.get("f1-score", _cm.get("f1", 0))
+                                    if isinstance(_cm, dict)
+                                    else 0
+                                )
+                                _col = _color_f1(_f)
+                                cls_badges += (
+                                    f'<div class="as-cls-badge">'
+                                    f'<div class="as-cls-letter" style="color:{_col}">{_cls}</div>'
+                                    f'<div class="as-cls-f1">{_pct(_f)}</div>'
+                                    f"</div>"
+                                )
+
+                            if not cls_badges:
+                                cls_badges = '<span style="color:#3a4a6a;font-size:11px;font-family:monospace">Per-class: non disponible</span>'
+
+                            card = (
+                                '<div class="as-metric-card">'
+                                '<div class="as-metric-card-title">✓ Entraînement terminé — '
+                                f"{_mod} | {_n} spectres | {_feat} features</div>"
+                                '<div class="as-metric-grid">'
+                                f'<div class="as-metric-item"><div class="as-metric-val" style="color:#4f8eff">{_pct(_acc)}</div><div class="as-metric-lbl">Accuracy</div></div>'
+                                f'<div class="as-metric-item"><div class="as-metric-val" style="color:#00e5b0">{_pct(_bal)}</div><div class="as-metric-lbl">Bal. Acc</div></div>'
+                                f'<div class="as-metric-item"><div class="as-metric-val" style="color:#b388ff">{_pct(_f1)}</div><div class="as-metric-lbl">F1 Macro</div></div>'
+                                f'<div class="as-metric-item"><div class="as-metric-val" style="color:#f0a500">{_pct(_auc)}</div><div class="as-metric-lbl">ROC-AUC</div></div>'
+                                "</div>"
+                                f'<div class="as-per-class">{cls_badges}</div>'
+                                "</div>"
+                            )
+                            display(HTML(card))
+                        else:
+                            print("Terminé.")
+                    except Exception as _e:
+                        print(f"Terminé. (carte: {_e})")
 
             finally:
                 # Restore button

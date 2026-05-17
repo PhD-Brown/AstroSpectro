@@ -1,0 +1,12 @@
+# Docusaurus build output
+website/build/** linguist-generated
+website/.docusaurus/** linguist-generated
+
+# Documentation sources (excluded from language stats)
+website/docs/** linguist-documentation
+website/src/** linguist-documentation
+*.md linguist-documentation
+*.mdx linguist-documentation
+
+# Generated figures / exports
+website/static/img/** linguist-documentation

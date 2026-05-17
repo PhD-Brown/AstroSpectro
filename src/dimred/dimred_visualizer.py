@@ -1769,6 +1769,186 @@ class DimRedVisualizer:
         self._save(fig, save_path, "umap_hdbscan_present")
         return fig, axes
 
+    def plot_hdbscan_present_split(
+        self,
+        Z: np.ndarray,
+        hdb,
+        meta: "pd.DataFrame",
+        save_path_umap: Optional[str] = None,
+        save_path_hr: Optional[str] = None,
+    ):
+        """
+        Sépare plot_hdbscan_presentation en deux figures standalone haute résolution.
+
+        Figure 1 : UMAP coloré par cluster HDBSCAN (présentation, grand format).
+        Figure 2 : Diagramme HR amélioré — points plus grands, axes stellaires propres,
+                annotations avec effectif, couleurs identiques à la figure UMAP.
+
+        Returns
+        -------
+        fig_umap, fig_hr : (plt.Figure, plt.Figure)
+        """
+        ids = hdb.ids_pres_
+        lp = hdb.labels_pres_
+        nc = hdb.n_clusters_pres_
+        cmap = hdb.color_map_pres_
+        nn = int((lp == -1).sum())
+        noise = lp == -1
+        pct_noise = 100 * nn / len(lp)
+
+        teff_col, logg_col = "teff_gspphot", "logg_gspphot"
+        has_hr = teff_col in meta.columns and logg_col in meta.columns
+        if has_hr:
+            teff = meta[teff_col].values.astype(float)
+            logg = meta[logg_col].values.astype(float)
+            valid_hr = np.isfinite(teff) & np.isfinite(logg)
+
+        # ── Figure 1 : UMAP ────────────────────────────────────────────────────
+        fig_umap, ax = plt.subplots(figsize=(10, 9), dpi=self.dpi)
+
+        ax.scatter(
+            Z[noise, 0],
+            Z[noise, 1],
+            c="lightgray",
+            s=1.5,
+            alpha=0.3,
+            rasterized=True,
+            linewidths=0,
+            zorder=1,
+            label=f"Bruit (n={nn})",
+        )
+        for cid in ids:
+            mask = lp == cid
+            ax.scatter(
+                Z[mask, 0],
+                Z[mask, 1],
+                c=[cmap[cid]],
+                s=3,
+                alpha=0.82,
+                rasterized=True,
+                linewidths=0,
+                zorder=2,
+                label=f"C{cid} (n={mask.sum()})",
+            )
+            cx, cy = Z[mask].mean(axis=0)
+            ax.text(
+                cx,
+                cy,
+                f"C{cid}",
+                fontsize=9,
+                fontweight="bold",
+                ha="center",
+                va="center",
+                color="white",
+                bbox=dict(boxstyle="round,pad=0.2", fc=cmap[cid], ec="none", alpha=0.9),
+                zorder=5,
+            )
+        ax.legend(markerscale=4, fontsize=9, framealpha=0.9, loc="lower right", ncol=2)
+        ax.set_xlabel("UMAP axe 1", fontsize=12)
+        ax.set_ylabel("UMAP axe 2", fontsize=12)
+        ax.set_title(
+            f"HDBSCAN — {nc} populations stellaires\n"
+            f"{nn} anomalies ({pct_noise:.1f}%) · LAMOST DR5 × Gaia DR3",
+            fontsize=13,
+            fontweight="bold",
+        )
+        ax.grid(True, alpha=0.2)
+        ax.set_aspect("equal", "box")
+        plt.tight_layout()
+        self._save(fig_umap, save_path_umap, "umap_hdbscan_present_umap")
+
+        # ── Figure 2 : HR diagram amélioré ─────────────────────────────────────
+        fig_hr = None
+        if has_hr:
+            fig_hr, ax2 = plt.subplots(figsize=(10, 9), dpi=self.dpi)
+
+            # Bruit en fond: très discret pour ne pas noyer les clusters.
+            ax2.scatter(
+                teff[noise & valid_hr],
+                logg[noise & valid_hr],
+                c="#cccccc",
+                s=1,
+                alpha=0.12,
+                rasterized=True,
+                linewidths=0,
+                zorder=1,
+            )
+            for cid in ids:
+                m = (lp == cid) & valid_hr
+                if m.sum() == 0:
+                    continue
+                ax2.scatter(
+                    teff[m],
+                    logg[m],
+                    c=[cmap[cid]],
+                    s=8,
+                    alpha=0.82,
+                    rasterized=True,
+                    linewidths=0,
+                    zorder=2,
+                    label=f"C{cid} (n={m.sum()})",
+                )
+                if m.sum() >= 30:
+                    ax2.text(
+                        np.median(teff[m]),
+                        np.median(logg[m]),
+                        f"C{cid}\nn={m.sum()}",
+                        fontsize=8.5,
+                        fontweight="bold",
+                        ha="center",
+                        va="center",
+                        color="white",
+                        bbox=dict(
+                            boxstyle="round,pad=0.28",
+                            fc=cmap[cid],
+                            ec="white",
+                            linewidth=0.6,
+                            alpha=0.93,
+                        ),
+                        zorder=5,
+                    )
+
+            # Axes stellaires: T_eff décroissant (sens physique), log g inversé.
+            ax2.invert_xaxis()
+            ax2.invert_yaxis()
+
+            # Limites réalistes: exclut les outliers Gaia extrêmes.
+            all_teff_valid = teff[valid_hr]
+            all_logg_valid = logg[valid_hr]
+            teff_lo = max(2500, float(np.nanpercentile(all_teff_valid, 0.5)))
+            teff_hi = min(40000, float(np.nanpercentile(all_teff_valid, 99.5)))
+            logg_lo = max(-0.5, float(np.nanpercentile(all_logg_valid, 0.2)))
+            logg_hi = min(5.8, float(np.nanpercentile(all_logg_valid, 99.8)))
+            ax2.set_xlim(teff_hi, teff_lo)  # inversé
+            ax2.set_ylim(logg_hi, logg_lo)  # inversé
+
+            # Formatage T_eff: espaces comme séparateur des milliers.
+            from matplotlib.ticker import FuncFormatter
+
+            ax2.xaxis.set_major_formatter(
+                FuncFormatter(lambda x, _: f"{int(x):,}".replace(",", "\u202f"))
+            )
+
+            ax2.set_xlabel(r"$T_{\rm eff}$ (K)", fontsize=13)
+            ax2.set_ylabel(r"$\log\,g$ (dex)", fontsize=13)
+            ax2.set_title(
+                f"Diagramme HR — {nc} populations HDBSCAN\n" f"LAMOST DR5 × Gaia DR3",
+                fontsize=13,
+                fontweight="bold",
+            )
+            ax2.legend(
+                markerscale=3,
+                fontsize=9,
+                framealpha=0.9,
+                loc="upper left",
+                ncol=2,
+            )
+            ax2.grid(True, alpha=0.25, linewidth=0.6)
+            plt.tight_layout()
+            self._save(fig_hr, save_path_hr, "umap_hdbscan_present_hr")
+
+        return fig_umap, fig_hr
+
     def plot_hdbscan_feature_heatmap(
         self,
         cluster_means: "pd.DataFrame",
@@ -2799,3 +2979,245 @@ class DimRedVisualizer:
         )
         self._save(fig, save_path, "synthesis_pca_umap_ae")
         return fig
+
+    def plot_hr_teff_regions(
+        self,
+        meta: "pd.DataFrame",
+        save_path=None,
+    ):
+        """
+        Diagramme HR coloré par T_eff (plasma) avec régions stellaires annotées.
+
+        Les régions sont calculées à partir des limites réelles des données
+        (T_HI, T_LO, G_LO, G_HI) pour garantir que labels et polygones
+        restent à l'intérieur des axes.
+
+        Returns
+        -------
+        fig, ax : (plt.Figure, plt.Axes)
+        """
+        import matplotlib.patheffects as pe
+        from matplotlib.patches import Polygon as MplPolygon
+        from matplotlib.ticker import FuncFormatter
+
+        teff_col, logg_col = "teff_gspphot", "logg_gspphot"
+        if teff_col not in meta.columns or logg_col not in meta.columns:
+            logger.warning("plot_hr_teff_regions : colonnes Gaia manquantes.")
+            return None, None
+
+        teff = meta[teff_col].values.astype(float)
+        logg = meta[logg_col].values.astype(float)
+        valid = np.isfinite(teff) & np.isfinite(logg)
+
+        # ── Limites réelles calculées sur les données ────────────────────────
+        # T_HI = bord gauche du plot (T_eff élevée, axe inversé)
+        # G_LO = bord supérieur du plot (log g faible, axe inversé)
+        T_HI = float(np.nanpercentile(teff[valid], 99.0))  # ~9 000-10 000 K
+        T_LO = float(np.nanpercentile(teff[valid], 1.0))  # ~3 500 K
+        G_LO = float(np.nanpercentile(logg[valid], 0.5))  # ~1.5-2.0
+        G_HI = float(np.nanpercentile(logg[valid], 99.5))  # ~5.0-5.5
+        # Marges légères pour que les polygones ne touchent pas exactement le bord.
+        T_PAD = (T_HI - T_LO) * 0.01
+        G_PAD = (G_HI - G_LO) * 0.01
+
+        # ── Régions stellaires définies à partir des limites calculées ───────
+        # Toutes les coordonnées (T_eff, log g) restent dans [T_LO, T_HI] × [G_LO, G_HI].
+        #
+        # Repère : T_HI est à gauche (chaud), T_LO à droite (froid).
+        #          G_LO est en haut (géantes), G_HI en bas (naines).
+        #
+        # Séquence principale : bande diagonale log g ≈ 3.9-5.1, T_eff ≈ 3500-9500 K
+        MS_G_HOT = G_LO + (G_HI - G_LO) * 0.54  # ~4.0 à T_eff chaud
+        MS_G_COOL = G_LO + (G_HI - G_LO) * 0.72  # ~4.7 à T_eff froid
+        MS_W = (G_HI - G_LO) * 0.17  # largeur de la bande ~0.55 dex
+
+        # Géantes : bande haute log g ≈ G_LO → G_LO+0.50 sur toute la plage T_eff
+        GB_G_BOT = G_LO + (G_HI - G_LO) * 0.47  # ~3.5 (limite basse géantes)
+
+        # Sous-géantes : bande intermédiaire entre géantes et SP
+        SG_G_TOP = G_LO + (G_HI - G_LO) * 0.46  # juste au-dessus du bas des géantes
+        REGIONS = [
+            # ── Séquence principale ────────────────────────────────────────
+            {
+                "label": "Séquence\nprincipale",
+                "color": "#2166AC",
+                "alpha": 0.13,
+                "lw": 1.4,
+                "label_pos": (
+                    T_LO + (T_HI - T_LO) * 0.35,  # ~5 500 K
+                    MS_G_HOT + MS_W * 0.6,  # milieu de la bande
+                ),
+                "poly": [
+                    (T_HI - T_PAD, MS_G_HOT),
+                    (
+                        T_LO + (T_HI - T_LO) * 0.55,
+                        MS_G_HOT + (MS_G_COOL - MS_G_HOT) * 0.35,
+                    ),
+                    (T_LO + (T_HI - T_LO) * 0.25, MS_G_COOL - 0.10),
+                    (T_LO + T_PAD, G_HI - T_PAD * 2),
+                    (T_LO + T_PAD, G_HI - G_PAD),
+                    (T_LO + (T_HI - T_LO) * 0.20, MS_G_COOL + MS_W * 0.6),
+                    (
+                        T_LO + (T_HI - T_LO) * 0.50,
+                        MS_G_HOT + (MS_G_COOL - MS_G_HOT) * 0.35 + MS_W,
+                    ),
+                    (T_HI - T_PAD, MS_G_HOT + MS_W),
+                ],
+            },
+            # ── Sous-géantes ───────────────────────────────────────────────
+            {
+                "label": "Sous-géantes",
+                "color": "#1A9850",
+                "alpha": 0.14,
+                "lw": 1.4,
+                "label_pos": (
+                    T_LO + (T_HI - T_LO) * 0.60,
+                    SG_G_TOP - (G_HI - G_LO) * 0.06,
+                ),
+                "poly": [
+                    (T_HI - T_PAD, G_LO + (G_HI - G_LO) * 0.42),
+                    (T_LO + (T_HI - T_LO) * 0.55, G_LO + (G_HI - G_LO) * 0.44),
+                    (T_LO + (T_HI - T_LO) * 0.30, G_LO + (G_HI - G_LO) * 0.47),
+                    (T_LO + (T_HI - T_LO) * 0.20, MS_G_HOT),  # rejoint haut SP
+                    (T_HI - T_PAD, MS_G_HOT),
+                ],
+            },
+            # ── Géantes (branche rouge + branche horizontale) ──────────────
+            {
+                "label": "Géantes",
+                "color": "#D6604D",
+                "alpha": 0.13,
+                "lw": 1.4,
+                "label_pos": (
+                    T_LO + (T_HI - T_LO) * 0.28,
+                    G_LO + (G_HI - G_LO) * 0.22,
+                ),
+                "poly": [
+                    (T_LO + (T_HI - T_LO) * 0.48, G_LO + G_PAD),
+                    (T_LO + T_PAD, G_LO + G_PAD),
+                    (T_LO + T_PAD, GB_G_BOT),
+                    (T_LO + (T_HI - T_LO) * 0.25, GB_G_BOT - (G_HI - G_LO) * 0.04),
+                    (T_LO + (T_HI - T_LO) * 0.45, GB_G_BOT - (G_HI - G_LO) * 0.10),
+                    (T_LO + (T_HI - T_LO) * 0.48, GB_G_BOT - (G_HI - G_LO) * 0.14),
+                ],
+            },
+            # ── Étoiles chaudes (types A/B) ────────────────────────────────
+            {
+                "label": "Types A/B\n(chaudes)",
+                "color": "#762A83",
+                "alpha": 0.12,
+                "lw": 1.4,
+                "label_pos": (
+                    T_HI - (T_HI - T_LO) * 0.10,
+                    G_LO + (G_HI - G_LO) * 0.75,
+                ),
+                "poly": [
+                    (T_HI - T_PAD, G_LO + (G_HI - G_LO) * 0.42),
+                    (T_HI - T_PAD, G_HI - G_PAD),
+                    (T_LO + (T_HI - T_LO) * 0.78, G_HI - G_PAD),
+                    (T_LO + (T_HI - T_LO) * 0.78, MS_G_HOT + MS_W),
+                    (T_LO + (T_HI - T_LO) * 0.82, MS_G_HOT),
+                    (T_LO + (T_HI - T_LO) * 0.85, G_LO + (G_HI - G_LO) * 0.42),
+                ],
+            },
+        ]
+
+        # ── Figure ──────────────────────────────────────────────────────────
+        fig, ax = plt.subplots(figsize=(11, 10), dpi=self.dpi)
+
+        # Points sans valeur Gaia en gris discret.
+        if (~valid).any():
+            ax.scatter(
+                teff[~valid],
+                logg[~valid],
+                c="#eeeeee",
+                s=1,
+                alpha=0.06,
+                rasterized=True,
+                linewidths=0,
+                zorder=1,
+            )
+
+        # Scatter coloré par T_eff (plasma).
+        sc = ax.scatter(
+            teff[valid],
+            logg[valid],
+            c=teff[valid],
+            cmap="plasma",
+            vmin=np.nanpercentile(teff[valid], 1),
+            vmax=np.nanpercentile(teff[valid], 99),
+            s=5,
+            alpha=0.72,
+            rasterized=True,
+            linewidths=0,
+            zorder=2,
+        )
+        cbar = plt.colorbar(sc, ax=ax, fraction=0.038, pad=0.02)
+        cbar.set_label(r"$T_{\rm eff}$ (K)", fontsize=12)
+        cbar.ax.tick_params(labelsize=9)
+
+        # ── Régions stellaires ───────────────────────────────────────────────
+        for region in REGIONS:
+            patch = MplPolygon(
+                np.array(region["poly"]),
+                closed=True,
+                facecolor=region["color"],
+                alpha=region["alpha"],
+                edgecolor=region["color"],
+                linewidth=region["lw"],
+                linestyle="--",
+                zorder=3,
+            )
+            ax.add_patch(patch)
+            lx, ly = region["label_pos"]
+            ax.text(
+                lx,
+                ly,
+                region["label"],
+                fontsize=10.5,
+                fontweight="bold",
+                color=region["color"],
+                ha="center",
+                va="center",
+                zorder=7,
+                path_effects=[pe.withStroke(linewidth=3.5, foreground="white")],
+            )
+
+        # ── Note Supergéantes hors plage ─────────────────────────────────────
+        # Les supergéantes (log g < ~1.5) sont au-dessus du bord supérieur du plot.
+        ax.annotate(
+            "← Supergéantes\n(log g < {:.1f})".format(G_LO),
+            xy=(T_LO + (T_HI - T_LO) * 0.5, G_LO),
+            xytext=(T_LO + (T_HI - T_LO) * 0.5, G_LO + (G_HI - G_LO) * 0.07),
+            fontsize=9,
+            color="#B2182B",
+            fontweight="bold",
+            ha="center",
+            va="bottom",
+            arrowprops=dict(arrowstyle="-|>", color="#B2182B", lw=1.2),
+            path_effects=[pe.withStroke(linewidth=2.5, foreground="white")],
+            zorder=8,
+        )
+
+        # ── Axes stellaires ──────────────────────────────────────────────────
+        ax.invert_xaxis()
+        ax.invert_yaxis()
+        ax.set_xlim(T_HI + T_PAD * 5, T_LO - T_PAD * 5)
+        ax.set_ylim(G_HI + G_PAD * 5, G_LO - G_PAD * 5)
+
+        ax.xaxis.set_major_formatter(
+            FuncFormatter(lambda x, _: f"{int(x):,}".replace(",", "\u202f"))
+        )
+        ax.set_xlabel(r"$T_{\rm eff}$ (K)", fontsize=13)
+        ax.set_ylabel(r"$\log\,g$ (dex)", fontsize=13)
+        ax.set_title(
+            "Diagramme de Hertzsprung-Russell\n"
+            r"LAMOST DR5 $\times$ Gaia DR3  ·  43 019 étoiles",
+            fontsize=13,
+            fontweight="bold",
+        )
+        ax.grid(True, alpha=0.20, linewidth=0.6)
+        plt.tight_layout()
+
+        self._save(fig, save_path, "hr_teff_regions")
+        return fig, ax

@@ -590,6 +590,167 @@ class EmbeddingEngine:
             "umap_3d_fit_time": engine_3d.fit_time_,
         }
 
+    def compute_tsne3d(
+        self,
+        scores_95: np.ndarray,
+        meta: "pd.DataFrame",
+        y: np.ndarray,
+        figures_dir,
+        random_state: int = 42,
+        perplexity: float = 30.0,
+        n_subsample: int = 20_000,
+    ) -> dict:
+        """
+        Calcule t-SNE 3D, corrélations physiques et exporte les figures Plotly.
+
+        Miroir de compute_umap3d pour t-SNE. Le calcul est plus long (~3-5 min
+        sur 43k points) — les corrélations physiques confirment si le 3e axe
+        encode un paramètre indépendant de T_eff.
+
+        Returns
+        -------
+        dict avec les clés : Z_tsne3, axis3_best_param, axis3_best_corr,
+        path_3d_html, path_3d_teff, tsne_3d_fit_time.
+        """
+        from pathlib import Path as _Path
+        from scipy.stats import spearmanr
+        import time
+
+        try:
+            import plotly.express as px
+        except ImportError:
+            raise ImportError("Plotly non installé → pip install plotly")
+
+        figures_dir = _Path(figures_dir)
+
+        # t-SNE 3D — réutilise les scores PCA 95% comme entrée (même que 2D).
+        from sklearn.manifold import TSNE as _TSNE
+
+        logger.info("Calcul t-SNE 3D (n_components=3, perplexity=%.0f)...", perplexity)
+        t0 = time.perf_counter()
+        tsne_3d = _TSNE(
+            n_components=3,
+            perplexity=perplexity,
+            random_state=random_state,
+            n_jobs=-1,
+            verbose=1,
+        )
+        Z_tsne3 = tsne_3d.fit_transform(scores_95)
+        fit_time = time.perf_counter() - t0
+        logger.info("t-SNE 3D terminé en %.1fs | shape : %s", fit_time, Z_tsne3.shape)
+
+        # Corrélations axes ↔ paramètres physiques (même protocole que UMAP 3D).
+        phys_params = [
+            ("teff_gspphot", "T_eff (K)"),
+            ("logg_gspphot", "log g"),
+            ("mh_gspphot", "[Fe/H]"),
+            ("bp_rp", "G_BP-G_RP"),
+            ("phot_g_mean_mag", "G mag"),
+            ("parallax", "Parallaxe"),
+        ]
+        axis3_best_corr, axis3_best_param = 0.0, "?"
+        for col, label in phys_params:
+            if col not in meta.columns:
+                continue
+            vals = meta[col].values.astype(float)
+            valid = np.isfinite(vals)
+            if valid.sum() < 100:
+                continue
+            r3, _ = spearmanr(Z_tsne3[valid, 2], vals[valid])
+            if abs(r3) > abs(axis3_best_corr):
+                axis3_best_corr, axis3_best_param = r3, label
+
+        # DataFrame Plotly.
+        import pandas as _pd
+
+        df_3d = _pd.DataFrame(
+            {
+                "tSNE1": Z_tsne3[:, 0],
+                "tSNE2": Z_tsne3[:, 1],
+                "tSNE3": Z_tsne3[:, 2],
+                "Classe": y,
+            }
+        )
+        for col, label in phys_params:
+            if col in meta.columns:
+                df_3d[label] = meta[col].values
+
+        rng = np.random.default_rng(random_state)
+        N_PLOT = min(n_subsample, len(df_3d))
+        df_plot = df_3d.iloc[rng.choice(len(df_3d), N_PLOT, replace=False)].copy()
+
+        # Figure 1 : classes LAMOST.
+        COLOR_MAP = {"STAR": "#4C72B0", "GALAXY": "#DD8452", "QSO": "#55A868"}
+        fig_class = px.scatter_3d(
+            df_plot,
+            x="tSNE1",
+            y="tSNE2",
+            z="tSNE3",
+            color="Classe",
+            color_discrete_map=COLOR_MAP,
+            opacity=0.6,
+            title=(
+                f"Variété stellaire t-SNE 3D — LAMOST DR5<br>"
+                f"perplexity={perplexity:.0f} · axe3 ↔ {axis3_best_param} "
+                f"ρ={axis3_best_corr:+.2f}"
+            ),
+        )
+        fig_class.update_traces(marker=dict(size=2))
+        fig_class.update_layout(
+            scene=dict(
+                xaxis_title="t-SNE 1",
+                yaxis_title="t-SNE 2",
+                zaxis_title=f"t-SNE 3 (↔ {axis3_best_param})",
+            ),
+            margin=dict(l=0, r=0, b=0, t=50),
+        )
+        path_html = figures_dir / "tsne3d_classes.html"
+        fig_class.write_html(str(path_html))
+
+        # Figure 2 : T_eff (plasma) — la figure principale demandée.
+        path_teff = None
+        if "T_eff (K)" in df_plot.columns:
+            fig_teff = px.scatter_3d(
+                df_plot.dropna(subset=["T_eff (K)"]),
+                x="tSNE1",
+                y="tSNE2",
+                z="tSNE3",
+                color="T_eff (K)",
+                color_continuous_scale="plasma",
+                range_color=[
+                    float(df_plot["T_eff (K)"].quantile(0.02)),
+                    float(df_plot["T_eff (K)"].quantile(0.98)),
+                ],
+                opacity=0.65,
+                title="Variété stellaire t-SNE 3D — T_eff · LAMOST DR5 × Gaia DR3",
+            )
+            fig_teff.update_traces(marker=dict(size=2))
+            fig_teff.update_layout(
+                scene=dict(
+                    xaxis_title="t-SNE 1",
+                    yaxis_title="t-SNE 2",
+                    zaxis_title=f"t-SNE 3 (↔ {axis3_best_param})",
+                    bgcolor="rgb(15,15,25)",
+                    xaxis=dict(backgroundcolor="rgb(15,15,25)", gridcolor="#333"),
+                    yaxis=dict(backgroundcolor="rgb(15,15,25)", gridcolor="#333"),
+                    zaxis=dict(backgroundcolor="rgb(15,15,25)", gridcolor="#333"),
+                ),
+                paper_bgcolor="rgb(15,15,25)",
+                font=dict(color="white"),
+                margin=dict(l=0, r=0, b=0, t=50),
+            )
+            path_teff = figures_dir / "tsne3d_teff.html"
+            fig_teff.write_html(str(path_teff))
+
+        return {
+            "Z_tsne3": Z_tsne3,
+            "axis3_best_param": axis3_best_param,
+            "axis3_best_corr": axis3_best_corr,
+            "path_3d_html": str(path_html),
+            "path_3d_teff": str(path_teff) if path_teff else None,
+            "tsne_3d_fit_time": fit_time,
+        }
+
 
 def compare_embeddings(
     X: np.ndarray,

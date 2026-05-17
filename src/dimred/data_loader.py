@@ -341,28 +341,66 @@ class DimRedDataLoader:
     # ------------------------------------------------------------------
 
     def _load_features(self) -> pd.DataFrame:
-        """Charge le CSV de features en ignorant les colonnes inutiles."""
+        """Charge le CSV de features en ignorant les colonnes inutiles.
+
+        Résilience CSV
+        --------------
+        Le parser C (défaut) lève ``ParserError`` si certaines lignes ont un
+        nombre de champs différent du header.  Cela arrive quand des colonnes
+        de texte libre LAMOST (``tcomment``, ``obscomm``, ``objname``…) contiennent
+        des virgules non échappées.  En cas d'échec on bascule sur le parser
+        Python plus tolérant avec ``on_bad_lines='warn'`` pour ne perdre aucune
+        donnée correcte.
+        """
         if not self.features_path.exists():
             raise FileNotFoundError(
                 f"Fichier features introuvable : {self.features_path}\n"
                 "Lancer d'abord le pipeline AstroSpectro (master.py ou 00_master_pipeline.ipynb)."
             )
-        # low_memory=False évite des dtypes incohérents sur gros CSV hétérogènes.
-        df = pd.read_csv(self.features_path, low_memory=False)
+        # Tentative 1 : parser C rapide (défaut).
+        try:
+            df = pd.read_csv(self.features_path, low_memory=False)
+        except pd.errors.ParserError as exc:
+            logger.warning(
+                "ParserError (parser C) sur %s — %s\n"
+                "→ Retry avec engine='python' + on_bad_lines='warn'.",
+                self.features_path.name,
+                exc,
+            )
+            # Tentative 2 : parser Python, plus lent mais tolère les lignes
+            # avec trop de champs (les skip en loggant un avertissement).
+            df = pd.read_csv(
+                self.features_path,
+                engine="python",
+                on_bad_lines="warn",
+            )
+            logger.warning(
+                "Chargé via engine='python' : %d lignes (%d colonnes). "
+                "Certaines lignes malformées ont été ignorées.",
+                len(df),
+                df.shape[1],
+            )
         logger.info(
             "Features chargées : %s — %d colonnes", self.features_path.name, df.shape[1]
         )
         return df
 
     def _load_catalog(self) -> pd.DataFrame:
-        """Charge le catalog Gaia cross-matché."""
+        """Charge le catalog Gaia cross-matché (résilient aux CSV malformés)."""
         if not self.catalog_path.exists():
             raise FileNotFoundError(
                 f"Catalog Gaia introuvable : {self.catalog_path}\n"
                 "Vérifier le chemin ou lancer gaia_crossmatcher.py."
             )
-        # Chargement brut du catalogue; les filtres sont appliqués plus tard.
-        df = pd.read_csv(self.catalog_path, low_memory=False)
+        try:
+            df = pd.read_csv(self.catalog_path, low_memory=False)
+        except pd.errors.ParserError as exc:
+            logger.warning("ParserError catalog (%s) — retry engine='python'.", exc)
+            df = pd.read_csv(
+                self.catalog_path,
+                engine="python",
+                on_bad_lines="warn",
+            )
         logger.info("Catalog Gaia chargé : %d objets", len(df))
         return df
 
