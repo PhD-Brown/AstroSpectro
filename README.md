@@ -512,9 +512,6 @@ Feel free to reach out for collaborations, methodology questions, or graduate re
 - **[CDS / VizieR](https://vizier.cds.unistra.fr/)** — Centre de Données astronomiques de Strasbourg, for the robust cross-matching service.
 - **[Astropy Project](https://www.astropy.org/)** — The community-developed core Python package for astronomy.
 - **[Weights & Biases](https://wandb.ai/)** — For experiment tracking and model reproducibility.
-- **Prof. Antoine Allard** (Université Laval) — PHY-3500 course supervision and encouragement.
-- **Prof. Carmelle Robert** (Université Laval) — Scientific mentorship and guidance in stellar astrophysics.
-- **Laurent Drissen** (Université Laval / SIGNALS) — For the inspiring discussions on spectral imaging.
 
 ---
 
