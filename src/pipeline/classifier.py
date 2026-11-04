@@ -944,9 +944,67 @@ class SpectralClassifier:
         ]
 
         # --- Spectro-only mode: keep only flux-derived columns ----------
+        # Removes every column that requires Gaia photometry, astrometry,
+        # parallax, or LAMOST photometric bands.  Uses an explicit denylist
+        # (catches renamed / aliased columns) plus a prefix-based safety net.
         n_before_spectro = len(cols_to_exclude)
         if spectro_only:
-            non_spectro_prefixes = (
+            # ── Explicit denylist ──────────────────────────────────────────
+            _spectro_non_spectroscopic = [
+                # LAMOST photometric bands
+                "magnitude_u",
+                "magnitude_g",
+                "magnitude_r",
+                "magnitude_i",
+                "magnitude_z",
+                "magnitude_j",
+                "magnitude_h",
+                # Raw Gaia fluxes
+                "phot_g_mean_flux",
+                "phot_bp_mean_flux",
+                "phot_rp_mean_flux",
+                # Gaia quality / astrometric metrics
+                "phot_bp_rp_excess_factor",
+                "astrometric_excess_noise",
+                "is_good_ruwe",
+                # Gaia extinction / reddening
+                "ag_gspphot",
+                "ebpminrp_gspphot",
+                # Gaia absolute magnitudes (require parallax → not pure spectro)
+                "M_BP",
+                "M_G",
+                "M_RP",
+                # Main-sequence offset (requires a parallax-based fit)
+                "delta_ms",
+                # Parallax-derived features
+                "parallax_snr",
+                "parallax_snr_log10",
+                # Kinematic features (require parallax + proper motions)
+                "v_tan_kms",
+                "v_tan_kms_log10",
+                # Dereddened Gaia colour (requires Gaia photometry)
+                "bp_rp0",
+                # LAMOST instrument correction (not spectral physics)
+                "radial_velocity_corr",
+                # Photometric colour features derived from Gaia photometry
+                "feature_bp_g",
+                "feature_g_rp",
+                # Photometric colour features derived from LAMOST photometry
+                "feature_color_ug",
+                "feature_color_iz",
+                "feature_color_gr",
+                "feature_color_ri",
+                "feature_synthetic_BV",
+                # Composite features that mix photometry with spectroscopy
+                "feature_Q_parameter",
+                "feature_X_parameter",
+            ]
+            cols_to_exclude = cols_to_exclude + [
+                c for c in _spectro_non_spectroscopic if c not in cols_to_exclude
+            ]
+
+            # ── Prefix-based safety net (catches any remaining variants) ──
+            _non_spectro_prefixes = (
                 "parallax",
                 "pmra",
                 "pmdec",
@@ -962,20 +1020,24 @@ class SpectralClassifier:
                 "fe_h",
                 "alpha_fe",
                 "dist_",
-                "v_",
+                "v_tan",
                 "J_",
                 "H_",
                 "K_",
                 "l_",
                 "b_",
             )
-            cols_to_exclude += [
+            cols_to_exclude = cols_to_exclude + [
                 c
                 for c in df_trainable.columns
-                if c.startswith(non_spectro_prefixes) and c not in cols_to_exclude
+                if c.startswith(_non_spectro_prefixes) and c not in cols_to_exclude
             ]
+
+            _n_excluded = len(cols_to_exclude) - n_before_spectro
             print(
-                f"  > spectro_only=True  \u279c  {len(cols_to_exclude) - n_before_spectro} extra columns excluded"
+                f"  [spectro_only=True] {_n_excluded} non-spectroscopic features "
+                f"excluded ({len(_spectro_non_spectroscopic)} explicit + "
+                f"{_n_excluded - len(_spectro_non_spectroscopic)} via prefix)."
             )
 
         candidate_cols = [

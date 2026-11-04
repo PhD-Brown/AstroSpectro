@@ -96,7 +96,7 @@ The project has two studies on **two different datasets**. Their numbers must no
 | Features | 207 candidates → 99 selected |
 
 > [!WARNING]
-> Run v6 (`ST_350k_xgb_AFGKM_v6`) was trained with `spectro_only` enabled, but its 99 selected features include four Gaia/photometric columns (`M_G`, `M_BP`, `M_RP`, `ag_gspphot`). Its metrics are therefore not purely spectroscopic; see the [Data Leakage Audit](https://phd-brown.github.io/research-docs/docs/astrospectro/concepts/data-leakage-audit). The cause is the prefix-based `spectro_only` exclusion in `src/pipeline/classifier.py`; a corrected exclusion list and a complete spectroscopic-only reference run are planned.
+> Run v6 (`ST_350k_xgb_AFGKM_v6`) was trained with `spectro_only` enabled, but its 99 selected features include four Gaia/photometric columns (`M_G`, `M_BP`, `M_RP`, `ag_gspphot`). Its metrics are therefore not purely spectroscopic; see the [Data Leakage Audit](https://phd-brown.github.io/research-docs/docs/astrospectro/concepts/data-leakage-audit). The cause is the prefix-based `spectro_only` exclusion in `src/pipeline/classifier.py`; The exclusion now uses an explicit denylist in `src/pipeline/classifier.py`; a complete spectroscopic-only reference run is still to come.
 
 On this run, **96.8 %** of the total SHAP importance falls on spectroscopic features (3.2 % on the Gaia/photometric ones); the three most important features are the Mg b equivalent width, the CaH2 molecular band and the deep-red continuum slope.
 
