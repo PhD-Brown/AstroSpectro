@@ -61,10 +61,7 @@ tmp/
 .idea/
 *.iml
 
-# Node / Docusaurus
-node_modules/
-**/node_modules/
-.docusaurus/
+# Build artefacts / caches
 build/
 .cache/
 

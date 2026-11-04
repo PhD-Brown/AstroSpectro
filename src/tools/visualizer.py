@@ -3057,7 +3057,7 @@ class AstroVisualizer:
         2) normalised flux ("After normalisation")
 
         If `save_path` is omitted, the figure is saved by default to:
-            <PROJECT_ROOT>/website/static/img/avant_apres_normalisation.png
+            <REPORTS_DIR>/figures/avant_apres_normalisation.png
 
         Parameters
         ----------
@@ -3180,12 +3180,10 @@ class AstroVisualizer:
 
         # --- Save -----------------------------------------------------------
         if save_path is None:
-            # Default path in website/static/img/
+            # Default path: data/reports/figures/ (gitignored)
             save_path = os.path.join(
-                self.paths.get("PROJECT_ROOT", "."),
-                "website",
-                "static",
-                "img",
+                self.paths.get("REPORTS_DIR", os.path.join(".", "data", "reports")),
+                "figures",
                 "avant_apres_normalisation.png",
             )
 
