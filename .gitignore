@@ -64,6 +64,8 @@ tmp/
 # Build artefacts / caches
 build/
 .cache/
+.pytest_cache/
+test-results/
 
 # === Weights & Biases ===
 wandb/
