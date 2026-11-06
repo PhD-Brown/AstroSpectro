@@ -46,6 +46,9 @@ dependencies = [
     "python-dateutil"
 ]
 
+[project.optional-dependencies]
+test = ["pytest"]
+
 [project.urls]
 Homepage = "https://github.com/PhD-Brown/AstroSpectro"
 

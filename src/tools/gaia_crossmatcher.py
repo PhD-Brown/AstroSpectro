@@ -21,8 +21,8 @@ strategies are provided:
        Reference: https://www.cosmos.esa.int/web/gaia/news#WorkaroundArchive
 
    A **retry** logic halves the batch size (with exponential backoff) when
-   the service returns an error; batches that fail below 50 sources are
-   skipped and logged.
+   the service returns an error; a batch that still fails at the minimum
+   size raises an explicit error instead of returning an incomplete catalog.
 
 2. *cone* — Individual cone searches (**star by star**) via
    ``Gaia.cone_search_async``.  Slower but robust when ``TAP_UPLOAD``
@@ -163,8 +163,10 @@ _XMATCH_COL_MAP = {
     # These were already returned by XMatch but not mapped — fixed Apr 2026.
     "Teff": "teff_gspphot",  # effective temperature [K]
     "logg": "logg_gspphot",  # surface gravity [log cgs]
-    "__M_H_": "mh_gspphot",  # metallicity [M/H] (VizieR encoding)
-    "MH": "mh_gspphot",  # alternate VizieR column name
+    "__M_H_": "mh_gspphot",  # metallicity [M/H] (VizieR FITS encoding: double-underscore)
+    "_M_H_": "mh_gspphot",  # alternate single-underscore encoding
+    "[M/H]": "mh_gspphot",  # literal brackets — some astroquery versions preserve them
+    "MH": "mh_gspphot",  # alternate short VizieR column name
     "Dist": "distance_gspphot",  # GSP-Phot distance [pc]
     "AG": "ag_gspphot",  # G-band extinction [mag]
     "E_BP-RP_": "ebpminrp_gspphot",  # BP-RP reddening [mag]
@@ -194,6 +196,19 @@ _GSPPHOT_BATCH_SIZE = 500
 
 
 # ----------------------------- Utilities -------------------------------------
+
+
+def _is_http_500(exc: Exception) -> bool:
+    """Prefer structured HTTP status; recognize Astroquery's legacy prefix."""
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", getattr(response, "status", None))
+    if status is None:
+        status = getattr(exc, "code", None)
+    if status is not None:
+        return str(status) == "500"
+    # Installed Astroquery TAP may discard the response and raise only this
+    # message. Never interpret an arbitrary occurrence of "500" as HTTP status.
+    return str(exc).lstrip().startswith("Error 500:")
 
 
 def _ensure_numeric_radec(df: pd.DataFrame) -> pd.DataFrame:
@@ -291,7 +306,7 @@ def _bulk_crossmatch(
       (replaces the ``CONTAINS(...CIRCLE(...))`` pattern that times out on
       the ESA archive since the Dec 2025 infrastructure upgrade).
     - **Retry**: on exception, halve the batch size with exponential
-      backoff; give up on a batch below 50 sources.
+      backoff; raise an error if a batch still fails at size <= 50.
 
     Notes
     -----
@@ -301,6 +316,8 @@ def _bulk_crossmatch(
     -------
     pd.DataFrame
         One row per matched ``objid`` (best match by angular distance).
+        Raises RuntimeError if any batch is permanently lost; valid empty responses
+        are treated as searches with no matches.
     """
     # Clean inputs: keep only rows with valid RA/Dec
     df = df_src.loc[
@@ -431,7 +448,12 @@ def _bulk_crossmatch(
             ]
         return df_raw
 
-    # --- Batched loop with retry + exponential backoff ---
+    # --- Batched loop with retry + exponential backoff + circuit breaker ---
+    # Circuit breaker: après _MAX_500_ERRORS consécutives Error 500,
+    # ESA TAP est globalement down — on abandonne immédiatement sans
+    # perdre du temps à retenter chaque lot.
+    _MAX_500_ERRORS = 2  # dès le 2e Error 500 consécutif → abandon
+    _consec_500 = 0
     all_rows: list[pd.DataFrame] = []
     batch_size = _INITIAL_BATCH_SIZE
     backoff_s = 10
@@ -446,18 +468,31 @@ def _bulk_crossmatch(
             all_rows.append(run_cm_on_chunk(part))
             i = j
             backoff_s = 10  # reset backoff after success
+            _consec_500 = 0  # reset circuit breaker after success
 
         except Exception as exc:
             logger.warning("[BULK] Échec lot %d:%d — %s", i, j, exc)
 
+            # Circuit breaker: Error 500 répétée = ESA TAP globalement indisponible
+            if _is_http_500(exc):
+                _consec_500 += 1
+                if _consec_500 >= _MAX_500_ERRORS:
+                    logger.warning(
+                        "[BULK] %d Error 500 consécutives — ESA TAP indisponible. "
+                        "Abandon immédiat du mode BULK (pas de retries inutiles).",
+                        _consec_500,
+                    )
+                    raise RuntimeError(
+                        f"ESA TAP indisponible ({_consec_500}× Error 500 consécutif)"
+                    ) from exc
+            else:
+                _consec_500 = 0  # reset sur erreur non-500 (timeout, etc.)
+
             if batch_size <= 50:
-                logger.warning(
-                    "[BULK] Lot ignoré (taille minimale atteinte). "
-                    "Sources %d–%d perdues.",
-                    i,
-                    j,
-                )
-                i = j  # skip and move on
+                raise RuntimeError(
+                    f"Échec du cross-match Gaia en mode BULK : lot {i}:{j} "
+                    "définitivement perdu à taille minimale ; catalogue incomplet."
+                ) from exc
             else:
                 batch_size //= 2
                 logger.info(
@@ -466,11 +501,11 @@ def _bulk_crossmatch(
                 time.sleep(backoff_s)
                 backoff_s = min(backoff_s * 2, 120)
 
-    df_cm = (
-        pd.concat(all_rows, ignore_index=True)
-        if all_rows
-        else pd.DataFrame(columns=["objid"])
-    )
+    if not all_rows:
+        raise RuntimeError(
+            "Échec du cross-match Gaia en mode BULK : aucun lot n'a abouti."
+        )
+    df_cm = pd.concat(all_rows, ignore_index=True)
     if df_cm.empty:
         return pd.DataFrame(columns=["objid"])
 
@@ -568,33 +603,48 @@ def _gaia_supplement_by_ids(
     include_risky: bool,
     debug: bool = False,
 ) -> pd.DataFrame:
-    """Fetch GSP-Phot + extra gaia_source columns using ``source_id IN (…)``.
+    """Fetch GSP-Phot + extra gaia_source columns by ``source_id``.
 
-    This does NOT use TAP_UPLOAD — it issues regular async ADQL queries with
-    an explicit IN() list, which are unaffected by the ESA TAP_UPLOAD outage.
+    Uses ESA TAP to join ``gaiadr3.gaia_source`` with
+    ``gaiadr3.astrophysical_parameters`` in batches of
+    ``source_id IN (...)`` queries, without ``TAP_UPLOAD``.
+    On the first failed batch (submission, polling or result retrieval),
+    remaining batches are abandoned and previously retrieved rows are kept.
+    There is no VizieR TAP fallback.
 
-    Columns fetched from ``gaiadr3.gaia_source``:
-        radial_velocity, astrometric_excess_noise
+    Columns fetched:
+        ``radial_velocity``, ``astrometric_excess_noise`` (from ``gaia_source``),
+        ``teff_gspphot``, ``logg_gspphot``, ``mh_gspphot``,
+        ``distance_gspphot``, ``ag_gspphot``, ``ebpminrp_gspphot``,
+        ``evolstage_gspphot``, ``lum_gspphot``
+        (+ radius/mass/age if *include_risky* is True)
 
-    Columns fetched from ``gaiadr3.astrophysical_parameters``:
-        teff_gspphot, logg_gspphot, mh_gspphot, distance_gspphot,
-        ag_gspphot, ebpminrp_gspphot, evolstage_gspphot, lum_gspphot
-        (+ radius/mass/age if include_risky=True)
+    The supplement may be partial or absent. Even when all batches finish,
+    returned rows do not guarantee valid astrophysical parameters.
+    Some GSP-Phot parameters may already be supplied by CDS XMatch,
+    depending on its response; their presence is not guaranteed.
 
     Parameters
     ----------
     source_ids : array-like of int64
         Unique Gaia DR3 source identifiers.
     include_risky : bool
-        Whether to fetch radius_gspphot, mass_gspphot, age_gspphot.
+        Whether to fetch radius_gspphot, mass_gspphot, age_gspphot (ESA only).
     debug : bool
         Emit INFO-level log messages.
 
     Returns
     -------
     pd.DataFrame
-        One row per source_id; NaN where parameters are unavailable.
+        Retrieved rows for source_id, possibly partial, with missing parameter
+        values allowed. If no rows are available, an empty DataFrame with
+        a source_id column is returned.
     """
+    ids_list = [int(x) for x in source_ids if not pd.isna(x)]
+    if not ids_list:
+        return pd.DataFrame(columns=["source_id"])
+
+    # ── ESA TAP (direct IN-list, no upload) ───────────────────────────
     ap_base = [
         "teff_gspphot",
         "logg_gspphot",
@@ -610,15 +660,11 @@ def _gaia_supplement_by_ids(
     )
     sel_ap = ", ".join(f"ap.{c}" for c in ap_cols)
 
-    ids_list = [int(x) for x in source_ids if not pd.isna(x)]
-    if not ids_list:
-        return pd.DataFrame(columns=["source_id"])
-
     all_rows: list[pd.DataFrame] = []
-    tap_is_broken = False  # short-circuit: bail after first 500 error
+    esa_tap_broken = False
 
     for i in range(0, len(ids_list), _GSPPHOT_BATCH_SIZE):
-        if tap_is_broken:
+        if esa_tap_broken:
             break
         batch = ids_list[i : i + _GSPPHOT_BATCH_SIZE]
         ids_str = ", ".join(str(x) for x in batch)
@@ -637,7 +683,7 @@ def _gaia_supplement_by_ids(
         try:
             if debug:
                 logger.info(
-                    "[GSP-Phot] Requête lot %d–%d (%d sources)…",
+                    "[GSP-Phot/ESA] Lot %d–%d (%d sources)…",
                     i,
                     i + len(batch),
                     len(batch),
@@ -646,16 +692,41 @@ def _gaia_supplement_by_ids(
             _poll_job(job, debug=debug)
             all_rows.append(job.get_results().to_pandas())
         except Exception as exc:
-            logger.warning("[GSP-Phot] Échec lot %d–%d : %s", i, i + len(batch), exc)
-            tap_is_broken = True  # ESA TAP indisponible — skip remaining batches
             logger.warning(
-                "[GSP-Phot] ESA TAP indisponible — supplement annulé. "
-                "Teff/logg/Dist déjà fournis par CDS XMatch."
+                "[GSP-Phot/ESA] Lot %d–%d échoué : %s", i, i + len(batch), exc
+            )
+            esa_tap_broken = True
+            logger.warning(
+                "[GSP-Phot/ESA] ESA TAP indisponible — abandon des lots restants."
             )
 
-    if all_rows:
-        return pd.concat(all_rows, ignore_index=True)
-    return pd.DataFrame(columns=["source_id"])
+    df_out = (
+        pd.concat(all_rows, ignore_index=True)
+        if all_rows
+        else pd.DataFrame(columns=["source_id"])
+    )
+    if not esa_tap_broken:
+        logger.info(
+            "[GSP-Phot/ESA] Traitement complet : %d lots terminés, %d lignes "
+            "renvoyées (paramètres éventuellement absents).",
+            len(all_rows),
+            len(df_out),
+        )
+    elif not df_out.empty:
+        logger.warning(
+            "[GSP-Phot/ESA] Supplément partiel : %d lots terminés, %d lignes "
+            "renvoyées (paramètres éventuellement absents).",
+            len(all_rows),
+            len(df_out),
+        )
+
+    if df_out.empty:
+        logger.warning(
+            "[GSP-Phot/ESA] Aucun supplément disponible. Certains paramètres "
+            "GSP-Phot peuvent déjà provenir de CDS XMatch, sans garantie."
+        )
+        return pd.DataFrame(columns=["source_id"])
+    return df_out
 
 
 def _xmatch_crossmatch(
@@ -731,6 +802,15 @@ def _xmatch_crossmatch(
     }
     drop = [k for k, v in _XMATCH_COL_MAP.items() if v is None and k in matched.columns]
     matched = matched.rename(columns=rename).drop(columns=drop, errors="ignore")
+    # Synonymous columns may coexist in a response. Keep the first received
+    # column deterministically, and report the ambiguity before selecting rows.
+    duplicates = matched.columns[matched.columns.duplicated()].unique().tolist()
+    if duplicates:
+        logger.warning(
+            "[XMATCH] Alias dupliqués pour %s : première colonne reçue conservée.",
+            duplicates,
+        )
+        matched = matched.loc[:, ~matched.columns.duplicated()]
 
     # Keep best match per objid (smallest angular distance)
     if "match_dist_arcsec" in matched.columns:
@@ -751,9 +831,9 @@ def _xmatch_crossmatch(
 
     # ── GSP-Phot + extra gaia_source columns (no TAP_UPLOAD needed) ──────────
     # Note: Since Apr 2026 ESA TAP is broken even for regular queries.
-    # Most GSP-Phot columns (Teff, logg, Dist, AG) are already present in
+    # Some GSP-Phot columns (Teff, logg, mh, Dist, AG) may already be present in
     # the XMatch result via VizieR I/355/gaiadr3 and mapped above.
-    # The supplement only adds mh_gspphot / evolstage / lum if TAP recovers.
+    # The optional ESA supplement adds columns absent from the XMatch response.
     if "source_id" in matched.columns:
         unique_ids = matched["source_id"].dropna().astype("int64").unique()
         if len(unique_ids) > 0:
@@ -772,7 +852,7 @@ def _xmatch_crossmatch(
                     if debug:
                         logger.info("[XMATCH] Supplement GSP-Phot TAP ajouté.")
             except Exception as exc:
-                # ESA TAP broken — XMatch already provides Teff/logg/Dist/AG
+                # Keep XMatch values, when present, if the ESA supplement fails.
                 if debug:
                     logger.warning(
                         "[XMATCH] Supplement GSP-Phot TAP ignoré (ESA TAP indisponible) : %s",
@@ -817,8 +897,14 @@ def _xmatch_crossmatch(
 def _cone_crossmatch(
     df_src: pd.DataFrame, radius_arcsec: float, include_risky: bool
 ) -> pd.DataFrame:
-    """Star-by-star cross-match via ``Gaia.cone_search_async`` (slow fallback)."""
+    """Star-by-star cross-match via ``Gaia.cone_search_async`` (slow fallback).
+
+    Raise RuntimeError if any attempted query fails. Valid empty responses
+    produce unmatched rows rather than a service failure.
+    """
     out = []
+    n_completed = 0
+    n_failed = 0
     radius = radius_arcsec * u.arcsec
     for _, row in tqdm(
         df_src.iterrows(), total=len(df_src), desc="↔ Matching LAMOST ↔ GAIA (cone)"
@@ -834,6 +920,7 @@ def _cone_crossmatch(
             j = Gaia.cone_search_async(coordinate=coord, radius=radius)
             r = j.get_results()
             if len(r) == 0:
+                n_completed += 1
                 out.append({"objid": objid})
                 continue
             r.sort("dist")
@@ -861,9 +948,16 @@ def _cone_crossmatch(
                     **features,
                 }
             )
+            n_completed += 1
         except Exception as exc:
+            n_failed += 1
             logger.debug("[CONE] Échec pour objid=%d : %s", objid, exc)
             out.append({"objid": objid})
+    if n_failed:
+        raise RuntimeError(
+            f"Échec du cross-match Gaia en mode CONE : {n_failed} requête(s) "
+            f"échouée(s) sur {n_completed + n_failed} ; catalogue incomplet."
+        )
     return pd.DataFrame(out)
 
 
@@ -965,7 +1059,8 @@ def enrich_catalog_with_gaia(
         Cross-match strategy.  ``auto`` tries xmatch → bulk → cone in order.
         ``xmatch`` uses the CDS X-Match service (recommended; no TAP_UPLOAD).
         ``bulk`` uses ESA TAP_UPLOAD (broken since Apr 2026; legacy fallback).
-        ``cone`` does individual star-by-star queries (slow but always works).
+        ``cone`` does individual star-by-star queries (slow; may also fail).
+        In ``auto``, cone searches are limited to at most 50 input sources.
     gaia_table : str, default=GAIA_MAIN
         Primary Gaia table to join (e.g. ``gaiadr3.gaia_source``).
     gaia_user, gaia_pass : str or None
@@ -1008,21 +1103,57 @@ def enrich_catalog_with_gaia(
     df_gaia = pd.DataFrame()
 
     # xmatch (CDS) — primary strategy, bypasses broken ESA TAP_UPLOAD
+    # Retente jusqu'à 3 fois sur les erreurs réseau transientes (ConnectionReset,
+    # Timeout, etc.) avant de passer en BULK.
+    _XMATCH_MAX_RETRIES = 3
+    _XMATCH_RETRY_DELAY = 20  # secondes entre deux tentatives
     if mode in ("auto", "xmatch"):
-        try:
-            logger.info("Cross-match en mode 'xmatch' (CDS X-Match + TAP GSP-Phot)…")
-            df_gaia = _xmatch_crossmatch(
-                df_src, search_radius_arcsec, include_risky, debug=verbose
-            )
-            mode_used = "xmatch"
-        except Exception as exc:
-            logger.warning("Mode 'xmatch' échoué : %s", exc)
-            if mode == "xmatch":
-                raise
-            df_gaia = pd.DataFrame()
+        for _attempt in range(1, _XMATCH_MAX_RETRIES + 1):
+            try:
+                _suffix = (
+                    f" [tentative {_attempt}/{_XMATCH_MAX_RETRIES}]"
+                    if _attempt > 1
+                    else ""
+                )
+                logger.info(
+                    "Cross-match en mode 'xmatch' (CDS X-Match + TAP GSP-Phot)%s…",
+                    _suffix,
+                )
+                df_gaia = _xmatch_crossmatch(
+                    df_src, search_radius_arcsec, include_risky, debug=verbose
+                )
+                mode_used = "xmatch"
+                break  # succès — sortir de la boucle de retry
+            except Exception as exc:
+                _transient_kw = (
+                    "connectionreset",
+                    "timeout",
+                    "timed out",
+                    "broken pipe",
+                    "10054",
+                    "10053",
+                    "connection aborted",
+                )
+                _is_transient = any(kw in str(exc).lower() for kw in _transient_kw)
+                if _attempt < _XMATCH_MAX_RETRIES and _is_transient:
+                    logger.warning(
+                        "Mode 'xmatch' tentative %d/%d — erreur transiente, retry dans %ds : %s",
+                        _attempt,
+                        _XMATCH_MAX_RETRIES,
+                        _XMATCH_RETRY_DELAY,
+                        exc,
+                    )
+                    time.sleep(_XMATCH_RETRY_DELAY)
+                else:
+                    logger.warning("Mode 'xmatch' échoué définitivement : %s", exc)
+                    if mode == "xmatch":
+                        raise
+                    df_gaia = pd.DataFrame()
+                    break
 
     # bulk (TAP_UPLOAD) — legacy fallback; may fail if ESA TAP_UPLOAD is broken
-    if df_gaia.empty and mode in ("auto", "bulk"):
+    # An empty result with objid is a valid search with no matches.
+    if df_gaia.empty and "objid" not in df_gaia.columns and mode in ("auto", "bulk"):
         try:
             logger.info("Cross-match en mode 'bulk' (TAP_UPLOAD + BETWEEN box)…")
             df_gaia = _bulk_crossmatch(
@@ -1035,11 +1166,34 @@ def enrich_catalog_with_gaia(
                 raise
             df_gaia = pd.DataFrame()
 
-    # cone — individual queries, always works but very slow for large catalogs
-    if df_gaia.empty and mode in ("auto", "cone"):
-        logger.info("Cross-match en mode 'cone' (étoile par étoile)…")
-        df_gaia = _cone_crossmatch(df_src, search_radius_arcsec, include_risky)
-        mode_used = "cone"
+    # cone — individual queries; DÉSACTIVÉ en mode 'auto' pour > 50 sources
+    # (~1.8s/étoile → 2h30 pour 5000 sources, inacceptable).
+    # Uniquement utilisé si mode="cone" est explicitement demandé,
+    # ou pour de très petits ensembles de débogage.
+    _CONE_MAX_AUTO = 50
+    if df_gaia.empty and "objid" not in df_gaia.columns and mode in ("auto", "cone"):
+        if mode == "auto" and len(df_src) > _CONE_MAX_AUTO:
+            logger.warning(
+                "[CONE] Mode 'cone' ignoré en auto (%d sources > seuil %d). "
+                "CDS XMatch est la seule stratégie viable à grande échelle — "
+                "relancez lorsque la connexion CDS est disponible.",
+                len(df_src),
+                _CONE_MAX_AUTO,
+            )
+            # An explicit failure is raised below if no usable
+            # cross-match result was produced.
+        else:
+            logger.info("Cross-match en mode 'cone' (étoile par étoile)…")
+            df_gaia = _cone_crossmatch(df_src, search_radius_arcsec, include_risky)
+            mode_used = "cone"
+
+    # No usable cross-match result: fail explicitly instead of
+    # silently producing an invalid or empty Gaia catalogue.
+    if "objid" not in df_gaia.columns:
+        raise RuntimeError(
+            "Échec du cross-match Gaia : aucune stratégie n'a fourni "
+            "de résultat exploitable. Catalogue non sauvegardé."
+        )
 
     # 2) RUWE filter (soft nullification — keeps row, sets Gaia cols to NaN)
     ruwe_thr = None if ruwe_max is None else float(np.atleast_1d(ruwe_max)[0])
