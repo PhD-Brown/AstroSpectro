@@ -47,7 +47,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest==8.4.2", "pytest-socket==0.7.0", "PyYAML==6.0.3"]
 
 [project.urls]
 Homepage = "https://github.com/PhD-Brown/AstroSpectro"
@@ -59,3 +59,13 @@ py-modules = ["utils"]
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = '--strict-config --strict-markers --disable-socket -m "not slow and not network"'
+markers = [
+    "unit: isolated tests of a single component",
+    "integration: tests of interfaces between components using synthetic data",
+    "slow: expensive tests excluded from the default suite",
+    "network: tests requiring external services, excluded from the default suite",
+]

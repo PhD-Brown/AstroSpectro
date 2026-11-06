@@ -1,0 +1,7 @@
+# Quality-tool versions must match .pre-commit-config.yaml.
+black==24.4.2
+ruff==0.5.0
+# Pin the editable-build toolchain as well as runtime dependencies.
+pip==25.3
+setuptools==80.9.0
+wheel==0.45.1

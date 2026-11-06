@@ -285,6 +285,11 @@ Read the **[Contribution Guide](https://phd-brown.github.io/research-docs/docs/a
 
 ---
 
+## Testing and CI
+
+See [Python quality checks](docs/testing.md) for the reproducible Python 3.11
+environment, offline pytest suite, Black/Ruff commands and validation limits.
+
 ## 📝 Citing AstroSpectro
 
 If you use AstroSpectro in your research or coursework, please cite it:
