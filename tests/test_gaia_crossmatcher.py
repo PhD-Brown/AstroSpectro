@@ -10,11 +10,13 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call as mock_call, patch
+from urllib.error import HTTPError as UrllibHTTPError
 
 import numpy as np
 import pandas as pd
 from astropy.table import Table
+from requests import HTTPError, Response
 
 
 # Gaia's singleton retrieves status messages at import time. Suppress that GET
@@ -189,6 +191,123 @@ class GaiaCrossmatchTests(unittest.TestCase):
         launch.assert_not_called()
         self.assertEqual(list(result.columns), ["source_id"])
         self.assertTrue(result.empty)
+
+    def test_partial_bulk_failure_does_not_save_incomplete_catalog(self):
+        empty = pd.DataFrame({"objid": pd.Series(dtype="int64")})
+        with (
+            patch.object(gaia, "_INITIAL_BATCH_SIZE", 50),
+            patch.object(
+                gaia.Gaia,
+                "launch_job_async",
+                autospec=True,
+                side_effect=[completed_job(empty), RuntimeError("ESA unavailable")],
+            ) as launch,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "Échec du cross-match Gaia"):
+                self.enrich(mode="bulk", n=51)
+        self.assertEqual(launch.call_count, 2)
+        self.assertFalse(self.output.exists())
+
+    def test_partial_cone_failure_does_not_save_incomplete_catalog(self):
+        empty = pd.DataFrame({"source_id": pd.Series(dtype="int64")})
+        with patch.object(
+            gaia.Gaia,
+            "cone_search_async",
+            autospec=True,
+            side_effect=[completed_job(empty), RuntimeError("Cone unavailable")],
+        ) as cone:
+            with self.assertRaisesRegex(RuntimeError, "Échec du cross-match Gaia"):
+                self.enrich(mode="cone", n=2)
+        self.assertEqual(cone.call_count, 2)
+        self.assertFalse(self.output.exists())
+
+    def test_http_500_detection_prefers_status_and_limits_text_fallback(self):
+        cases = [
+            (HTTPError("Error 500:\narchive failure"), True),
+            (RuntimeError("500 sources requested"), False),
+            (RuntimeError("source_id=500"), False),
+            (RuntimeError("Error 5000: unrelated error"), False),
+            (
+                UrllibHTTPError("https://example.invalid", 500, "failure", {}, None),
+                True,
+            ),
+        ]
+        for status in (500, 404, 503):
+            response = Response()
+            response.status_code = status
+            cases.append(
+                (
+                    HTTPError("Error 500: misleading text", response=response),
+                    status == 500,
+                )
+            )
+        for error, expected in cases:
+            with self.subTest(error=error, response=getattr(error, "response", None)):
+                self.assertEqual(gaia._is_http_500(error), expected)
+
+    def test_bulk_circuit_breaker_stops_after_two_http_500_errors(self):
+        response = Response()
+        response.status_code = 500
+        for error in (
+            HTTPError("Server failure", response=response),
+            HTTPError("Error 500:\narchive failure"),
+        ):
+            with (
+                self.subTest(error=error),
+                patch.object(
+                    gaia.Gaia, "launch_job_async", autospec=True, side_effect=error
+                ) as launch,
+                patch.object(gaia.time, "sleep") as sleep,
+            ):
+                with self.assertRaisesRegex(RuntimeError, "ESA TAP indisponible"):
+                    self.enrich(mode="bulk", n=51)
+                self.assertEqual(launch.call_count, 2)
+                sleep.assert_called_once_with(10)
+                self.assertFalse(self.output.exists())
+
+    def test_xmatch_transient_failure_retries_then_succeeds(self):
+        result = pd.DataFrame({"objid": [0], "source_id": [101]})
+        with (
+            patch.object(
+                gaia,
+                "_xmatch_crossmatch",
+                side_effect=[TimeoutError("timed out"), result],
+            ) as xmatch,
+            patch.object(gaia.time, "sleep") as sleep,
+            patch.object(gaia, "_bulk_crossmatch") as bulk,
+        ):
+            _, stats = self.enrich(mode="auto", n=1)
+        self.assertEqual(xmatch.call_count, 2)
+        sleep.assert_called_once_with(20)
+        bulk.assert_not_called()
+        self.assertEqual(stats["mode_used"], "xmatch")
+        self.assertEqual(stats["matched"], 1)
+
+    def test_xmatch_retry_limit_raises_or_falls_back_by_mode(self):
+        for mode in ("xmatch", "auto"):
+            with (
+                self.subTest(mode=mode),
+                patch.object(
+                    gaia, "_xmatch_crossmatch", side_effect=TimeoutError("timed out")
+                ) as xmatch,
+                patch.object(gaia.time, "sleep") as sleep,
+                patch.object(
+                    gaia,
+                    "_bulk_crossmatch",
+                    return_value=pd.DataFrame(columns=["objid"]),
+                ) as bulk,
+            ):
+                if mode == "xmatch":
+                    with self.assertRaises(TimeoutError):
+                        self.enrich(mode=mode)
+                    bulk.assert_not_called()
+                    self.assertFalse(self.output.exists())
+                else:
+                    _, stats = self.enrich(mode=mode)
+                    bulk.assert_called_once()
+                    self.assertEqual(stats["mode_used"], "bulk")
+                self.assertEqual(xmatch.call_count, 3)
+                self.assertEqual(sleep.call_args_list, [mock_call(20), mock_call(20)])
 
     def test_auto_total_failure_raises_explicit_error_without_saving(self):
         with (

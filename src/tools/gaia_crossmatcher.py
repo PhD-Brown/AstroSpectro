@@ -21,8 +21,8 @@ strategies are provided:
        Reference: https://www.cosmos.esa.int/web/gaia/news#WorkaroundArchive
 
    A **retry** logic halves the batch size (with exponential backoff) when
-   the service returns an error; batches that fail below 50 sources are
-   skipped and logged.
+   the service returns an error; a batch that still fails at the minimum
+   size raises an explicit error instead of returning an incomplete catalog.
 
 2. *cone* — Individual cone searches (**star by star**) via
    ``Gaia.cone_search_async``.  Slower but robust when ``TAP_UPLOAD``
@@ -198,6 +198,19 @@ _GSPPHOT_BATCH_SIZE = 500
 # ----------------------------- Utilities -------------------------------------
 
 
+def _is_http_500(exc: Exception) -> bool:
+    """Prefer structured HTTP status; recognize Astroquery's legacy prefix."""
+    response = getattr(exc, "response", None)
+    status = getattr(response, "status_code", getattr(response, "status", None))
+    if status is None:
+        status = getattr(exc, "code", None)
+    if status is not None:
+        return str(status) == "500"
+    # Installed Astroquery TAP may discard the response and raise only this
+    # message. Never interpret an arbitrary occurrence of "500" as HTTP status.
+    return str(exc).lstrip().startswith("Error 500:")
+
+
 def _ensure_numeric_radec(df: pd.DataFrame) -> pd.DataFrame:
     """Ensure ``ra`` and ``dec`` are numeric (float64), NaN if invalid."""
     df = df.copy()
@@ -293,7 +306,7 @@ def _bulk_crossmatch(
       (replaces the ``CONTAINS(...CIRCLE(...))`` pattern that times out on
       the ESA archive since the Dec 2025 infrastructure upgrade).
     - **Retry**: on exception, halve the batch size with exponential
-      backoff; give up on a batch below 50 sources.
+      backoff; raise an error if a batch still fails at size <= 50.
 
     Notes
     -----
@@ -303,7 +316,7 @@ def _bulk_crossmatch(
     -------
     pd.DataFrame
         One row per matched ``objid`` (best match by angular distance).
-        Raises RuntimeError if no batch completes; valid empty responses
+        Raises RuntimeError if any batch is permanently lost; valid empty responses
         are treated as searches with no matches.
     """
     # Clean inputs: keep only rows with valid RA/Dec
@@ -461,7 +474,7 @@ def _bulk_crossmatch(
             logger.warning("[BULK] Échec lot %d:%d — %s", i, j, exc)
 
             # Circuit breaker: Error 500 répétée = ESA TAP globalement indisponible
-            if "500" in str(exc):
+            if _is_http_500(exc):
                 _consec_500 += 1
                 if _consec_500 >= _MAX_500_ERRORS:
                     logger.warning(
@@ -476,13 +489,10 @@ def _bulk_crossmatch(
                 _consec_500 = 0  # reset sur erreur non-500 (timeout, etc.)
 
             if batch_size <= 50:
-                logger.warning(
-                    "[BULK] Lot ignoré (taille minimale atteinte). "
-                    "Sources %d–%d perdues.",
-                    i,
-                    j,
-                )
-                i = j  # skip and move on
+                raise RuntimeError(
+                    f"Échec du cross-match Gaia en mode BULK : lot {i}:{j} "
+                    "définitivement perdu à taille minimale ; catalogue incomplet."
+                ) from exc
             else:
                 batch_size //= 2
                 logger.info(
@@ -889,7 +899,7 @@ def _cone_crossmatch(
 ) -> pd.DataFrame:
     """Star-by-star cross-match via ``Gaia.cone_search_async`` (slow fallback).
 
-    Raise RuntimeError if all attempted queries fail. Valid empty responses
+    Raise RuntimeError if any attempted query fails. Valid empty responses
     produce unmatched rows rather than a service failure.
     """
     out = []
@@ -943,9 +953,10 @@ def _cone_crossmatch(
             n_failed += 1
             logger.debug("[CONE] Échec pour objid=%d : %s", objid, exc)
             out.append({"objid": objid})
-    if n_failed and not n_completed:
+    if n_failed:
         raise RuntimeError(
-            "Échec du cross-match Gaia en mode CONE : aucune requête n'a abouti."
+            f"Échec du cross-match Gaia en mode CONE : {n_failed} requête(s) "
+            f"échouée(s) sur {n_completed + n_failed} ; catalogue incomplet."
         )
     return pd.DataFrame(out)
 
