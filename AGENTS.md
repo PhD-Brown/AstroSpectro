@@ -1,6 +1,6 @@
 # AGENTS.md — Protocole de travail AstroSpectro (humain + IA)
 
-> Guide opérationnel commun aux assistants (v1.2 — fusion GPT + Claude). Les instructions de projets ChatGPT/Claude et `CLAUDE.md` renvoient à ce fichier et ne dupliquent pas ses règles.
+> Guide opérationnel commun aux assistants (v1.3 — protocole partagé et conventions scientifiques ; base v1.2 GPT + Claude). Les instructions de projets ChatGPT/Claude et `CLAUDE.md` renvoient à ce fichier et ne dupliquent pas ses règles.
 > Lecture directe, sans connecteur : `https://raw.githubusercontent.com/PhD-Brown/AstroSpectro/main/AGENTS.md`
 
 ## 0. Principe directeur
@@ -90,6 +90,26 @@ Les valeurs, IDs de runs et listes de variables vivent dans `research-docs/FACTS
 - **Issues** : titre `type: action concrète` ; corps en 5 rubriques — *Problème (avec preuve fichier:ligne) · Pourquoi · Attendu · Vérification · Hors scope* (modèles dans `.github/ISSUE_TEMPLATE/`).
 - **Labels** : `bug` `enhancement` `science` `tests` `infra` `documentation` `idea` + priorité `P0` (validité/sécurité) · `P1` (essentiel cassé) · `P2` (amélioration).
 - **Backlog** : un seul assistant crée les issues à la fois, après vérification qu'aucun doublon n'existe.
+
+### Code scientifique et docstrings (Python)
+
+- **Langue** : identifiants Python, commentaires techniques, docstrings, messages d'erreur et textes destinés aux développeurs **en anglais**. Les discussions GitHub, comptes rendus et textes d'interface destinés aux utilisateurs peuvent rester en français.
+- **Lisibilité** : noms explicites, responsabilités limitées, annotations de types utiles aux interfaces, gestion claire des erreurs ; pas d'`except Exception: pass` masquant un échec scientifique. Préserver les API et comportements existants sauf nécessité démontrée par l'issue.
+- **Docstrings** : style **NumPy** pour les classes, fonctions et méthodes publiques non triviales. Décrire `Parameters`, `Returns` / `Yields`, `Raises` selon le cas, ainsi que les effets de bord significatifs ; éviter les descriptions qui répètent seulement le nom de la fonction.
+- **Contrat physique** : expliciter, quand pertinent, unités, référentiel (air/vide, observateur/repos), conventions de signe, hypothèses numériques, traitement des `NaN`/masques et limites de validité. Ne pas attribuer une signification physique non vérifiée à une variable ou un résultat.
+- **Formatage et analyse** : respecter **Black** et **Ruff** selon `.pre-commit-config.yaml` et `pyproject.toml` (ne pas figer leurs versions dans ce guide). Sur les fichiers concernés, privilégier les contrôles non modifiants `black --check` et `ruff check` lorsque disponibles ; `ruff --fix` et les hooks pre-commit peuvent réécrire des fichiers.
+- **Diff minimal** : ne pas reformater ou réécrire des modules et notebooks hors du périmètre de l'issue, ni supprimer des outputs/artefacts scientifiques sans revue.
+
+### Méthodologie des tests et preuves
+
+- **Principe** : avec **pytest**, définir les résultats attendus à partir d'un contrat, d'une référence indépendante ou d'une loi physique, **pas du seul comportement actuel**. Choisir les catégories adaptées au risque ; toutes ne sont pas requises pour chaque modification.
+- **U — unitaires** : cas nominal, bornes, données manquantes, types invalides, exceptions et messages d'erreur.
+- **I — intégration** : interfaces entre modules, formats de données, FITS → prétraitement → features → catalogue, ou sauvegarde → chargement → prédictions.
+- **P — physiques / numériques** : résultats analytiques, invariants, unités, référentiels et signes. Justifier les tolérances avec l'échantillonnage, la précision numérique ou l'incertitude expérimentale ; ne pas choisir un seuil uniquement pour faire passer le test.
+- **S — scientifiques** : absence de fuite train/test et de chevauchement d'objets, provenance réelle des features, reproductibilité d'un protocole, validation indépendante sur données appropriées. Ces preuves peuvent exiger des runs séparés de la CI.
+- **Isolation et déterminisme** : préférer des jeux synthétiques petits et des graines explicites ; utiliser `tmp_path`, fixtures et mocks pour le disque et les services. La suite rapide ne doit ni dépendre de secrets, du réseau, de W&B, de données non versionnées ou d'un GPU, ni modifier les données réelles. Exécuter et documenter séparément les tests réseau/lourds lorsqu'ils sont nécessaires.
+- **Régression** : si possible, démontrer un test échouant avant le correctif puis passant après ; conserver ce test dans le dépôt. Ne pas modifier un test ou une valeur scientifique pour masquer un défaut. La couverture de lignes aide à trouver des angles morts, mais **100 % de couverture ne prouve pas la justesse**.
+- **Traçabilité par PR** : préciser tests ajoutés, commandes réellement lancées, résultats (réussites, échecs, exclusions), environnement/versions et SHA testé ; écrire « non exécuté » quand c'est le cas. Une CI verte ne prouve que les vérifications configurées. Les marqueurs pytest ou commandes de CI mentionnés dans les issues ne sont disponibles qu'après leur configuration effective (voir #19 et #43).
 
 ## 9. Commandes usuelles (selon les outils installés)
 
