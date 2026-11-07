@@ -9,14 +9,22 @@ The complete 892-line `src/dimred/data_loader.py` was read, including both
 classes, all 15 methods/functions, constants, CSV fallback and nested FITS worker.
 Production reference: [`main@35c2105a6373e9ca5820f08e33acd383e79afc06`](https://github.com/PhD-Brown/AstroSpectro/blob/35c2105a6373e9ca5820f08e33acd383e79afc06/src/dimred/data_loader.py).
 Tests: [`2b083b324609e582c5c905425f1e3c41278cd474`](https://github.com/PhD-Brown/AstroSpectro/commit/2b083b324609e582c5c905425f1e3c41278cd474),
-branch `audit/43-dimred-data-loading`. Production has no changes relative to main.
+branch `audit/43-dimred-data-loading`. During publication main advanced to
+`2f2a444fb5b03e1085c8d439cb3825cee5b1c766` when the owner merged #48 externally.
+`git merge --no-edit origin/main` incorporated that accepted work without
+rewriting history, producing tested commit `1987ef0e5985a4d11d88591a682d0b4203574991`.
+The loader, dependency pins and existing Gaia/environment tests are unchanged
+between the two main references. The PR diff contains only these four new
+audit/test files, with no production, notebook or CI changes.
 
 Preparation included current main `AGENTS.md` v1.3, #43 and all 10 comments,
 the [consolidated M1 matrix](https://github.com/PhD-Brown/AstroSpectro/issues/43#issuecomment-6699300347)
 and cross-review, the historical audit (especially D1, T3 and its unreviewed scope),
 #21–#24 and their comments, #34/#35, open PRs and remote branch heads.
 The current #43 mandate supersedes the historical backup-cleaner mission.
-Only PR #48 was open at preparation; its branch remains at `f531205ff830d43764e4237a4370773ea42ee09a`.
+Only PR #48 was open at preparation; its local branch ref was preserved at
+`f531205ff830d43764e4237a4370773ea42ee09a`. The remote branch was subsequently
+removed externally after its merge; no M2.1 action edited that branch or main.
 
 The initial checkout was clean on that branch. The existing local branch `test`
 prevents creating `test/43-...` (Git ref namespace collision). The failed switch
@@ -138,7 +146,8 @@ Actual environment: author's Windows PC, `.venv`, Python **3.11.9** (MSC v1938
 **24.4.2**, Ruff **0.5.0**. No dependency download or environment installation.
 Commands below use repository-root CWD. Initial executions were on main's
 production SHA with the added uncommitted tests; they were then repeated on
-the exact committed test SHA linked above. JUnit artifacts are local/ignored
+the exact committed test SHA linked above, then on merge commit `1987ef0` after
+the external main update. JUnit artifacts are local/ignored
 under `test-results/`, not scientific data or versioned evidence substitutes.
 
 | Exact command | Result |
@@ -146,9 +155,9 @@ under `test-results/`, not scientific data or versioned evidence substitutes.
 | `.venv/Scripts/python.exe -c "import sys,importlib.metadata as m; print(sys.version); print('\n'.join(p+'=='+m.version(p) for p in ['pytest','pytest-socket','numpy','pandas','scipy','astropy','scikit-learn','black','ruff']))"` | Versions above. |
 | `.venv/Scripts/python.exe -m pip check` | No broken requirements found. |
 | `.venv/Scripts/python.exe -m pytest -q tests/test_dimred_data_loader.py --junitxml=test-results/m21-green.xml` | **51 PASS**, no skip/xfail/warning. |
-| `.venv/Scripts/python.exe -m pytest --junitxml=test-results/m21-fast.xml` | **74 PASS**, no skip/xfail/deselection; 7 existing Gaia/pandas Pandas4Warning messages (#16). |
+| `.venv/Scripts/python.exe -m pytest --junitxml=test-results/m21-fast.xml` | **74 PASS** on `2b083b3`, then **134 PASS** on `1987ef0`; no skip/xfail/deselection; 7 existing Gaia/pandas Pandas4Warning messages (#16). |
 | `.venv/Scripts/python.exe -m pytest -q tests/proofs_dimred_data_loader.py --tb=line --junitxml=test-results/m21-proofs.xml` | **30 FAIL**, exit 1, no skips/xfails; expected audit evidence, not a successful suite. |
-| `.venv/Scripts/python.exe -m black --check src tests scripts app.py` | **29 files unchanged**. |
+| `.venv/Scripts/python.exe -m black --check src tests scripts app.py` | **29 files unchanged** on `2b083b3`, then **30 unchanged** on `1987ef0` including the accepted storage tests. |
 | `.venv/Scripts/python.exe -m ruff check src tests scripts app.py` | All checks passed. |
 | `git diff --check` / `git diff --cached --check` | Passed. Commit hooks Black/Ruff also passed on the three test files. |
 
@@ -159,10 +168,11 @@ additional boundary and worker cases. Red proofs first ran 27 FAIL and then
 30 FAIL after adding three invalid-grid cases. No red assertion was deleted.
 
 Default pytest configuration blocks sockets and excludes slow/network markers;
-the 74 collected cases have no marker-based deselections. The 30 proof cases
+the 134 final collected cases have no marker-based deselections. The 30 proof cases
 are **not automatically discovered** by filename and are separately executed.
-Historical 83 tests on PR #48 include its 60 storage tests; this main-based
-delivery has the 23 main tests plus 51 new cases. It does not claim to rerun #48.
+The initial 74-case run comprised 23 original main tests plus 51 new cases.
+After the external #48 merge the final 134-case run also includes its 60
+accepted storage tests, unchanged. This does not claim to modify or re-review #48.
 
 Hosted CI evidence will be linked in the Draft PR and #43 handoff with its head
 SHA. This document's PASS/FAIL counts are local evidence. No numeric line/branch
