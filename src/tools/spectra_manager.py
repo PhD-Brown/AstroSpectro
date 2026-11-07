@@ -32,7 +32,7 @@ Inputs :
 Outputs / Side-effects :
     - ``.fits.gz`` files downloaded into ``data/raw/<PLAN>/``,
     - per-session text logs under ``logs/download_log_YYYYMMDDTHHMMSSZ.txt``,
-    - optionally: a ``data/raw_backup/`` before cleaning ``data/raw/``.
+    - optionally: a unique ``data/raw_backup_<timestamp>_<id>/`` before cleanup.
 
 Public API
 ----------
@@ -55,12 +55,17 @@ Examples
 from __future__ import annotations
 
 import os
+import hashlib
 import re
 import shlex
 import sys
 import shutil
 import subprocess
+import stat
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
 
 import ipywidgets as widgets
 from IPython.display import display, clear_output, Markdown
@@ -76,6 +81,187 @@ PRESETS = {
         workers=24, scrape=12, fast=True, validate=False, per_plan=0, dry_run=False
     ),
 }
+
+
+def _reject_links(path: Path) -> None:
+    """Reject symlinks and Windows reparse points, including path ancestors."""
+    for component in (path, *path.parents):
+        try:
+            info = component.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or (
+            getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        ):
+            raise ValueError(f"Link or reparse point is unsafe: {component}")
+
+
+def _backup_paths(raw_dir: str | Path, backup_dir: str | Path) -> tuple[Path, Path]:
+    """Validate sibling paths before creating or removing anything."""
+    raw, backup = Path(raw_dir), Path(backup_dir)
+    if not raw.is_absolute() or not backup.is_absolute():
+        raise ValueError("Source and backup paths must be absolute.")
+    _reject_links(raw)
+    _reject_links(backup)
+    raw, backup = raw.resolve(strict=True), backup.resolve()
+    if raw.is_relative_to(backup) or backup.is_relative_to(raw):
+        raise ValueError("Source and backup paths must not overlap.")
+    if raw.parent != backup.parent:
+        raise ValueError("Source and backup must be sibling directories.")
+    if not raw.is_dir() or not backup.parent.is_dir():
+        raise ValueError("Source and backup parent must be existing directories.")
+    if backup.exists() and not backup.is_dir():
+        raise ValueError("The previous backup path must be a directory.")
+    if Path.cwd().resolve().is_relative_to(raw):
+        raise ValueError("Source must not contain the working directory.")
+    return raw, backup
+
+
+def _tree_manifest(root: Path) -> dict:
+    """Inventory regular files by relative path, byte size and SHA-256."""
+    _reject_links(root)
+    manifest = {}
+    pending = [root]
+    while pending:
+        path = pending.pop()
+        _reject_links(path)
+        info = path.lstat()
+        relative = path.relative_to(root)
+        if stat.S_ISDIR(info.st_mode):
+            if path != root:
+                manifest[relative] = ("directory",)
+            # Unlike Path.rglob on Python 3.11, scandir does not hide failures
+            # to enumerate a directory (e.g. PermissionError).
+            with os.scandir(path) as entries:
+                pending.extend(Path(entry.path) for entry in entries)
+        elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:
+            with path.open("rb") as stream:
+                digest = hashlib.file_digest(stream, "sha256").hexdigest()
+                after = os.fstat(stream.fileno())
+            if (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns) != (
+                after.st_dev,
+                after.st_ino,
+                after.st_size,
+                after.st_mtime_ns,
+            ):
+                raise ValueError(f"File changed while reading: {path}")
+            manifest[relative] = ("file", info.st_size, digest)
+        else:
+            raise ValueError(f"Only regular files without hard links are safe: {path}")
+    return manifest
+
+
+def backup_and_clean_raw(
+    raw_dir: str | Path, backup_dir: str | Path, *, confirmation: str
+) -> Path | None:
+    """Verify and finalize a unique backup before removing source contents.
+
+    Parameters
+    ----------
+    raw_dir : str or pathlib.Path
+        Absolute source directory. No downloads or other writers may run during
+        this operation. Links, reparse points and hard-linked files are rejected.
+    backup_dir : str or pathlib.Path
+        Absolute sibling backup base, typically ``data/raw_backup``. Any existing
+        directory here is preserved. New backups use a timestamp and UUID suffix.
+    confirmation : str
+        Must be exactly ``"CONFIRM"``; checked before filesystem access.
+
+    Returns
+    -------
+    pathlib.Path or None
+        Finalized backup directory, or None for an empty source (no writes).
+
+    Raises
+    ------
+    ValueError
+        If confirmation, paths or source entries are unsafe.
+    RuntimeError
+        If copying, verification, finalization or cleanup fails. The message
+        identifies preserved files, retained temporary data and recovery paths.
+
+    Notes
+    -----
+    Copies to a temporary sibling on the same filesystem, verifies relative
+    paths, directories, sizes and SHA-256, then finalizes with directory rename
+    (atomic where supported, including Windows). Previous backups are never
+    replaced. The source directory itself is retained. Cleanup is not atomic:
+    an error may leave only some originals; restore from the complete backup.
+    This is not a filesystem snapshot, writer lock or power-loss durability
+    guarantee. Stop all writers and review recovery before any retry.
+    """
+    if confirmation != "CONFIRM":
+        raise ValueError('Explicit confirmation must be exactly "CONFIRM".')
+    try:
+        raw, backup_base = _backup_paths(raw_dir, backup_dir)
+        source_identity = raw.stat()
+        original = _tree_manifest(raw)
+    except OSError as error:
+        raise RuntimeError(f"Originals preserved; preflight failed: {error}") from error
+    if not original:
+        return None
+
+    staging = None
+    finalized = None
+    deleting = False
+    try:
+        staging = Path(tempfile.mkdtemp(prefix=".raw_backup-", dir=raw.parent))
+        shutil.copytree(raw, staging, dirs_exist_ok=True, symlinks=True)
+        if _tree_manifest(staging) != original or _tree_manifest(raw) != original:
+            raise ValueError(
+                "Backup verification failed or source changed during copy."
+            )
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        destination = backup_base.with_name(
+            f"{backup_base.name}_{timestamp}_{uuid4().hex}"
+        )
+        if destination.exists():
+            raise FileExistsError(f"Backup destination already exists: {destination}")
+        staging.rename(destination)
+        finalized, staging = destination, None
+
+        # Recheck both trees and source identity immediately before deletion.
+        _backup_paths(raw, backup_base)
+        current_identity = raw.stat()
+        if (
+            (source_identity.st_dev, source_identity.st_ino)
+            != (current_identity.st_dev, current_identity.st_ino)
+            or _tree_manifest(raw) != original
+            or _tree_manifest(finalized) != original
+        ):
+            raise ValueError("Source or finalized backup changed; cleanup refused.")
+        deleting = True
+        for child in raw.iterdir():
+            if child.is_dir():
+                shutil.rmtree(child)
+            else:
+                child.unlink()
+        if any(raw.iterdir()):
+            raise OSError("Source is not empty after cleanup.")
+        return finalized
+    except (OSError, ValueError, shutil.Error) as error:
+        if deleting:
+            message = (
+                f"Cleanup incomplete: {error}. Some originals may be missing from "
+                f"'{raw}'. Verified backup preserved at '{finalized}'. "
+                f"Restore its contents into '{raw}' after stopping all writers; "
+                "keep the backup until recovery has been checked."
+            )
+        else:
+            message = f"Originals preserved at '{raw}'; cleanup not started: {error}."
+            if finalized is not None:
+                message += f" Finalized backup retained at '{finalized}'."
+        message += f" Previous backups preserved (base: '{backup_base}')."
+        if staging is not None:
+            try:
+                _tree_manifest(staging)
+                shutil.rmtree(staging)
+            except (OSError, ValueError, shutil.Error) as cleanup_error:
+                message += (
+                    f" Temporary backup retained at '{staging}'; "
+                    f"manual inspection required: {cleanup_error}."
+                )
+        raise RuntimeError(message) from error
 
 
 class SpectraManager:
@@ -398,23 +584,23 @@ class SpectraManager:
 
         Display a small interactive tool that:
 
-        1. **backs up** the current ``data/raw/`` contents into
-           ``data/raw_backup/`` (overwritten on each run),
-        2. asks for **explicit confirmation**,
+        1. asks for **explicit confirmation**,
+        2. copies and verifies the current ``data/raw/`` contents into a unique
+           ``data/raw_backup_<timestamp>_<id>/``, preserving older backups,
         3. then **deletes** the contents of ``data/raw/``.
 
         This is useful for starting fresh before a large download session
         while preventing accidental deletion.
 
-        Raises
-        ------
-        OSError
-            If a copy or deletion operation fails.
+        Errors and recovery paths are displayed by the callback. Stop downloads
+        and all other writers before using this tool.
         """
         display(Markdown("### 2. Cleanup Option"))
         display(
             Markdown(
-                "This option can empty `data/raw/` after making a backup copy into `data/raw_backup/`. **Type `CONFIRM`** then click the button."
+                "Stop downloads and all other writers first. This option empties "
+                "`data/raw/` only after verifying a unique `data/raw_backup_<timestamp>_<id>/`. "
+                "Older backups are preserved. **Type `CONFIRM`** then click the button."
             )
         )
 
@@ -432,37 +618,27 @@ class SpectraManager:
                     print("Incorrect confirmation. Cleanup cancelled.")
                     return
 
-                raw_dir = self.paths["RAW_DATA_DIR"]
-                data_dir = os.path.dirname(raw_dir)
-                backup_dir = os.path.join(data_dir, "raw_backup")
-
-                # Minimal safeguards
-                if not os.path.isdir(raw_dir) or not os.path.isdir(data_dir):
-                    print("Invalid paths; aborted.")
-                    return
-                if os.path.abspath(raw_dir) == os.path.abspath(backup_dir):
-                    print("Backup and raw are identical — aborted.")
-                    return
-
+                raw_dir = Path(self.paths["RAW_DATA_DIR"])
+                backup_dir = raw_dir.parent / "raw_backup"
+                clean_btn.disabled = True
                 try:
-                    print(f"Backing up '{raw_dir}' -> '{backup_dir}'...")
-                    # Remove old backup if it exists
-                    if os.path.exists(backup_dir):
-                        shutil.rmtree(backup_dir)
-
-                    # Only copy if raw is not empty (otherwise backup is pointless)
-                    if os.listdir(raw_dir):
-                        shutil.copytree(raw_dir, backup_dir, dirs_exist_ok=True)
+                    backup = backup_and_clean_raw(
+                        raw_dir, backup_dir, confirmation=confirm.value.strip()
+                    )
+                    if backup is None:
+                        print(
+                            "Source empty. Nothing changed; previous backups preserved."
+                        )
                     else:
-                        print("(raw is empty, no backup needed)")
-
-                    print("Cleaning 'raw'...")
-                    shutil.rmtree(raw_dir, ignore_errors=True)
-                    os.makedirs(raw_dir, exist_ok=True)
-
-                    print("OK: 'raw' cleaned. (Backup available)")
-                except Exception as e:  # noqa: BLE001
+                        print(
+                            f"OK: '{raw_dir}' cleaned. Verified backup: '{backup}'. "
+                            f"To recover, copy its contents into '{raw_dir}'; keep the backup."
+                        )
+                except (OSError, ValueError, RuntimeError) as e:
                     print(f"Error during cleanup: {e}")
+                finally:
+                    confirm.value = ""
+                    clean_btn.disabled = False
 
         clean_btn.on_click(on_clean)
 
