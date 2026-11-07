@@ -179,6 +179,9 @@ def backup_and_clean_raw(
     RuntimeError
         If copying, verification, finalization or cleanup fails. The message
         identifies preserved files, retained temporary data and recovery paths.
+    BaseException
+        Interruptions and unexpected exceptions are re-raised unchanged with a
+        recovery note. Unverified copies must not be used for restoration.
 
     Notes
     -----
@@ -196,13 +199,22 @@ def backup_and_clean_raw(
         raw, backup_base = _backup_paths(raw_dir, backup_dir)
         source_identity = raw.stat()
         original = _tree_manifest(raw)
-    except OSError as error:
-        raise RuntimeError(f"Originals preserved; preflight failed: {error}") from error
+    except BaseException as error:
+        message = (
+            f"Cleanup not started for '{raw_dir}'; no new backup created. "
+            "Existing backups unchanged."
+        )
+        if isinstance(error, OSError):
+            raise RuntimeError(f"{message} Preflight failed: {error}") from error
+        error.add_note(message)
+        raise
     if not original:
         return None
 
     staging = None
+    destination = None
     finalized = None
+    backup_status = "UNVERIFIED (reverification incomplete)"
     deleting = False
     try:
         staging = Path(tempfile.mkdtemp(prefix=".raw_backup-", dir=raw.parent))
@@ -220,16 +232,26 @@ def backup_and_clean_raw(
         staging.rename(destination)
         finalized, staging = destination, None
 
-        # Recheck both trees and source identity immediately before deletion.
-        _backup_paths(raw, backup_base)
+        # Classify the backup independently, even if the source also changed.
+        try:
+            if _tree_manifest(finalized) != original:
+                raise ValueError("Finalized backup differs from the original inventory")
+        except Exception:
+            backup_status = "FAILED verification"
+            raise
+        backup_status = "VERIFIED"
+
+        # The manifest rejects source/ancestor links; identity protects a new
+        # directory with identical contents. Repeating _backup_paths adds no
+        # distinct contract once the absolute sibling paths have been fixed.
         current_identity = raw.stat()
-        if (
-            (source_identity.st_dev, source_identity.st_ino)
-            != (current_identity.st_dev, current_identity.st_ino)
-            or _tree_manifest(raw) != original
-            or _tree_manifest(finalized) != original
+        if (source_identity.st_dev, source_identity.st_ino) != (
+            current_identity.st_dev,
+            current_identity.st_ino,
         ):
-            raise ValueError("Source or finalized backup changed; cleanup refused.")
+            raise ValueError("Source identity changed; cleanup refused")
+        if _tree_manifest(raw) != original:
+            raise ValueError("Source contents changed; cleanup refused")
         deleting = True
         for child in raw.iterdir():
             if child.is_dir():
@@ -239,7 +261,29 @@ def backup_and_clean_raw(
         if any(raw.iterdir()):
             raise OSError("Source is not empty after cleanup.")
         return finalized
-    except (OSError, ValueError, shutil.Error) as error:
+    except BaseException as error:
+        status_warning = ""
+        if finalized is not None and backup_status == "FAILED verification":
+            quarantined = finalized.with_name(finalized.name + "_UNVERIFIED")
+            try:
+                if quarantined.exists():
+                    raise FileExistsError(
+                        f"Quarantine path already exists: {quarantined}"
+                    )
+                finalized.rename(quarantined)
+                finalized = quarantined
+            except BaseException as marking_error:
+                status_warning = (
+                    f" Could not mark the backup UNVERIFIED: {marking_error}. "
+                    f"Inspect '{finalized}' and '{quarantined}'; "
+                    "do not use either for recovery."
+                )
+                if not isinstance(marking_error, Exception):
+                    marking_error.add_note(
+                        f"Originals preserved at '{raw}'; cleanup not started. "
+                        f"Backup FAILED verification.{status_warning}"
+                    )
+                    raise
         if deleting:
             message = (
                 f"Cleanup incomplete: {error}. Some originals may be missing from "
@@ -250,18 +294,46 @@ def backup_and_clean_raw(
         else:
             message = f"Originals preserved at '{raw}'; cleanup not started: {error}."
             if finalized is not None:
-                message += f" Finalized backup retained at '{finalized}'."
+                if backup_status == "VERIFIED":
+                    message += (
+                        f" Verified snapshot of the original inventory retained at "
+                        f"'{finalized}'; later source changes are not included."
+                    )
+                else:
+                    message += (
+                        f" Backup {backup_status} at '{finalized}'; "
+                        "do not use for recovery."
+                    )
+        message += status_warning
         message += f" Previous backups preserved (base: '{backup_base}')."
-        if staging is not None:
+        handled_error = isinstance(error, (OSError, ValueError, shutil.Error))
+        if staging is not None and handled_error:
             try:
                 _tree_manifest(staging)
                 shutil.rmtree(staging)
-            except (OSError, ValueError, shutil.Error) as cleanup_error:
+            except BaseException as cleanup_error:
                 message += (
                     f" Temporary backup retained at '{staging}'; "
-                    f"manual inspection required: {cleanup_error}."
+                    f"UNVERIFIED, do not use for recovery: {cleanup_error}."
                 )
-        raise RuntimeError(message) from error
+                if not isinstance(cleanup_error, Exception):
+                    cleanup_error.add_note(message)
+                    raise
+        elif staging is not None:
+            # Respect cancellation: do not start a long scan/cleanup on abort.
+            message += (
+                f" Temporary backup location: '{staging}'; "
+                "UNVERIFIED, do not use for recovery. Inspect it manually."
+            )
+            if destination is not None:
+                message += (
+                    f" Finalization may have moved it to '{destination}'; inspect "
+                    "both paths. The finalization candidate is also UNVERIFIED."
+                )
+        if handled_error:
+            raise RuntimeError(message) from error
+        error.add_note(message)
+        raise
 
 
 class SpectraManager:
@@ -634,8 +706,12 @@ class SpectraManager:
                             f"OK: '{raw_dir}' cleaned. Verified backup: '{backup}'. "
                             f"To recover, copy its contents into '{raw_dir}'; keep the backup."
                         )
-                except (OSError, ValueError, RuntimeError) as e:
+                except BaseException as e:
                     print(f"Error during cleanup: {e}")
+                    for note in getattr(e, "__notes__", []):
+                        print(note)
+                    if not isinstance(e, (OSError, ValueError, RuntimeError)):
+                        raise
                 finally:
                     confirm.value = ""
                     clean_btn.disabled = False

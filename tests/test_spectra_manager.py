@@ -306,6 +306,9 @@ def test_source_changed_during_copy_aborts(folders, monkeypatch):
             (raw / "new.fits").write_bytes(b"new observation")
 
     monkeypatch.setattr(manager.shutil, "copytree", changing_copy)
+    monkeypatch.setattr(
+        Path, "rename", lambda *a, **k: pytest.fail("Changed source must not finalize")
+    )
     with pytest.raises(RuntimeError, match="Originals preserved"):
         clean(raw, old)
     assert (raw / "new.fits").read_bytes() == b"new observation"
@@ -404,7 +407,7 @@ def test_directory_enumeration_error_cannot_be_hidden(folders, monkeypatch, phas
 
     with monkeypatch.context() as patch:
         patch.setattr(manager.os, "scandir", fail_scandir)
-        with pytest.raises(RuntimeError, match="Originals preserved") as error:
+        with pytest.raises(RuntimeError, match="[Cc]leanup not started") as error:
             clean(raw, old)
         assert "simulated enumeration denied" in str(error.value)
     assert snapshot(raw) == original
@@ -418,7 +421,7 @@ def test_no_previous_backup_is_required(folders):
     assert not list(raw.iterdir())
 
 
-@pytest.mark.parametrize("change", ["source", "backup"])
+@pytest.mark.parametrize("change", ["source", "backup", "both"])
 def test_change_after_finalization_prevents_deletion(folders, monkeypatch, change):
     raw, old = folders
     populate(raw)
@@ -428,6 +431,8 @@ def test_change_after_finalization_prevents_deletion(folders, monkeypatch, chang
         result = rename(path, target)
         changed = raw if change == "source" else Path(target)
         (changed / "catalog.txt").write_bytes(b"changed after rename")
+        if change == "both":
+            (raw / "catalog.txt").write_bytes(b"source also changed")
         return result
 
     monkeypatch.setattr(Path, "rename", changing_rename)
@@ -436,6 +441,14 @@ def test_change_after_finalization_prevents_deletion(folders, monkeypatch, chang
     backup = next(raw.parent.glob("raw_backup_*"))
     assert str(backup) in str(error.value)
     assert (raw / "plan" / "spectrum.fits").read_bytes() == b"synthetic spectrum"
+    if change in {"backup", "both"}:
+        assert "FAILED verification" in str(error.value)
+        assert "do not use for recovery" in str(error.value)
+        assert backup.name.endswith("_UNVERIFIED")
+    else:
+        assert "Source contents changed" in str(error.value)
+        assert "Verified snapshot" in str(error.value)
+        assert not backup.name.endswith("_UNVERIFIED")
     assert_no_staging(raw)
 
 
@@ -454,3 +467,283 @@ def test_windows_junction_rejected(folders, location):
         clean(source, target)
     assert (old / "previous.fits").read_bytes() == b"previous observation"
     assert_no_staging(raw)
+
+
+@pytest.mark.parametrize("phase", ["copy", "deletion"])
+@pytest.mark.parametrize(
+    "exception_type", [KeyboardInterrupt, SystemExit, RuntimeError]
+)
+def test_interruption_has_recovery_note(folders, monkeypatch, phase, exception_type):
+    raw, old = folders
+    populate(raw)
+    original, previous = snapshot(raw), snapshot(old)
+    interruption = exception_type("simulated interruption")
+
+    def interrupt(*args, **kwargs):
+        if phase == "copy":
+            (Path(args[1]) / "partial").write_bytes(b"partial")
+        else:
+            (raw / "catalog.txt").unlink(missing_ok=True)
+        raise interruption
+
+    target = "copytree" if phase == "copy" else "rmtree"
+    monkeypatch.setattr(manager.shutil, target, interrupt)
+    with pytest.raises(exception_type) as caught:
+        clean(raw, old)
+    assert caught.value is interruption  # Preserve cancellation/exit semantics.
+    diagnostic = "\n".join(getattr(caught.value, "__notes__", []))
+    assert str(raw) in diagnostic
+    assert snapshot(old) == previous
+    if phase == "copy":
+        assert snapshot(raw) == original
+        staging = next(raw.parent.glob(".raw_backup-*"))
+        assert str(staging) in diagnostic
+        assert "UNVERIFIED" in diagnostic
+        assert "do not use for recovery" in diagnostic
+        assert "Originals preserved" in diagnostic
+    else:
+        backup = next(raw.parent.glob("raw_backup_*"))
+        assert snapshot(backup) == original
+        assert not (raw / "catalog.txt").exists()
+        assert str(backup) in diagnostic
+        assert "Cleanup incomplete" in diagnostic
+        assert "Restore" in diagnostic
+
+
+def test_source_replaced_by_identical_directory_is_not_deleted(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    rename = Path.rename
+    moved = raw.parent / "original_source"
+
+    def replacing_rename(path, target):
+        result = rename(path, target)
+        if path.name.startswith(".raw_backup-"):
+            rename(raw, moved)
+            shutil.copytree(moved, raw)
+        return result
+
+    monkeypatch.setattr(Path, "rename", replacing_rename)
+    with pytest.raises(RuntimeError, match="[Ss]ource.*changed"):
+        clean(raw, old)
+    assert snapshot(raw) == original
+    assert snapshot(moved) == original
+    assert_no_staging(raw)
+
+
+def test_file_changed_while_hashing_is_rejected(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    previous = snapshot(old)
+    file_digest = manager.hashlib.file_digest
+    target = raw / "catalog.txt"
+
+    def changing_digest(stream, algorithm):
+        result = file_digest(stream, algorithm)
+        if Path(stream.name) == target:
+            before = target.stat()
+            target.write_bytes(b"X" * before.st_size)
+            os.utime(
+                target, ns=(before.st_atime_ns, before.st_mtime_ns + 2_000_000_000)
+            )
+        return result
+
+    monkeypatch.setattr(manager.hashlib, "file_digest", changing_digest)
+    with pytest.raises(ValueError, match="changed while reading"):
+        clean(raw, old)
+    assert target.read_bytes() == b"X" * len(b"synthetic catalog")
+    assert (raw / "plan" / "spectrum.fits").read_bytes() == b"synthetic spectrum"
+    assert snapshot(old) == previous
+    assert_no_staging(raw)
+
+
+def test_nonempty_source_after_cleanup_reports_failure(folders, monkeypatch):
+    raw, old = folders
+    (raw / "spectrum.fits").write_bytes(b"synthetic")
+    original = snapshot(raw)
+    unlink = Path.unlink
+
+    def recreating_unlink(path, **kwargs):
+        unlink(path, **kwargs)
+        if path.parent == raw:
+            path.write_bytes(b"synthetic")
+
+    monkeypatch.setattr(Path, "unlink", recreating_unlink)
+    with pytest.raises(RuntimeError, match="Cleanup incomplete"):
+        clean(raw, old)
+    assert snapshot(raw) == original
+    assert snapshot(next(raw.parent.glob("raw_backup_*"))) == original
+
+
+def test_source_containing_cwd_rejected_before_copy(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    monkeypatch.chdir(raw / "plan")
+    monkeypatch.setattr(
+        manager.shutil, "copytree", lambda *a, **k: pytest.fail("CWD must be protected")
+    )
+    with pytest.raises(ValueError, match="working directory"):
+        clean(raw, old)
+    assert snapshot(raw) == original
+    assert_no_staging(raw)
+
+
+def test_source_link_substituted_after_rename_is_rejected(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    rename = Path.rename
+    moved = raw.parent / "original_source"
+    probe = raw.parent / "link_probe"
+    try:
+        probe.symlink_to(raw, target_is_directory=True)
+    except OSError as error:
+        pytest.skip(f"Symbolic links unavailable: {error}")
+    probe.unlink()
+
+    def linked_rename(path, target):
+        result = rename(path, target)
+        if path.name.startswith(".raw_backup-"):
+            rename(raw, moved)
+            raw.symlink_to(moved, target_is_directory=True)
+        return result
+
+    monkeypatch.setattr(Path, "rename", linked_rename)
+    with pytest.raises(RuntimeError, match="[Ll]ink|[Rr]eparse"):
+        clean(raw, old)
+    assert snapshot(moved) == original
+    assert_no_staging(raw)
+
+
+def test_widget_success_prints_real_verified_backup(folders, monkeypatch, capsys):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    confirmation, button = cleaner_widgets(monkeypatch, raw)
+    confirmation.value = "CONFIRM"
+    button.click()
+    backup = next(raw.parent.glob("raw_backup_*"))
+    output = capsys.readouterr().out
+    assert str(backup) in output
+    assert "OK:" in output
+    assert snapshot(backup) == original
+    assert not list(raw.iterdir())
+
+
+def test_widget_interruption_displays_recovery_and_propagates(
+    folders, monkeypatch, capsys
+):
+    raw, old = folders
+    populate(raw)
+
+    def interrupt(*args, **kwargs):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(manager.shutil, "rmtree", interrupt)
+    confirmation, button = cleaner_widgets(monkeypatch, raw)
+    confirmation.value = "CONFIRM"
+    with pytest.raises(KeyboardInterrupt):
+        button.click()
+    backup = next(raw.parent.glob("raw_backup_*"))
+    output = capsys.readouterr().out
+    assert "Cleanup incomplete" in output
+    assert str(backup) in output
+    assert "OK:" not in output
+    assert not button.disabled
+    assert confirmation.value == ""
+
+
+def test_failed_backup_marking_error_preserves_invalid_status(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    rename = Path.rename
+
+    def corrupt_then_refuse_marking(path, target):
+        if not path.name.startswith(".raw_backup-"):
+            raise PermissionError("simulated marking denied")
+        result = rename(path, target)
+        (Path(target) / "catalog.txt").write_bytes(b"corrupted")
+        return result
+
+    monkeypatch.setattr(Path, "rename", corrupt_then_refuse_marking)
+    with pytest.raises(RuntimeError) as error:
+        clean(raw, old)
+    backup = next(raw.parent.glob("raw_backup_*"))
+    assert str(backup) in str(error.value)
+    assert "FAILED verification" in str(error.value)
+    assert "do not use for recovery" in str(error.value)
+    assert "simulated marking denied" in str(error.value)
+    assert "Verified snapshot" not in str(error.value)
+    assert snapshot(raw) == original
+
+
+def test_reverification_interruption_never_claims_valid_backup(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    file_digest = manager.hashlib.file_digest
+
+    def interrupt_finalized_digest(stream, algorithm):
+        if Path(stream.name).relative_to(raw.parent).parts[0].startswith("raw_backup_"):
+            raise KeyboardInterrupt()
+        return file_digest(stream, algorithm)
+
+    monkeypatch.setattr(manager.hashlib, "file_digest", interrupt_finalized_digest)
+    with pytest.raises(KeyboardInterrupt) as error:
+        clean(raw, old)
+    backup = next(raw.parent.glob("raw_backup_*"))
+    diagnostic = "\n".join(error.value.__notes__)
+    assert str(backup) in diagnostic
+    assert "UNVERIFIED (reverification incomplete)" in diagnostic
+    assert "do not use for recovery" in diagnostic
+    assert "Verified snapshot" not in diagnostic
+    assert snapshot(raw) == original
+
+
+def test_interruption_during_staging_cleanup_has_diagnostic(folders, monkeypatch):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+
+    def fail_copy(*args, **kwargs):
+        raise OSError("simulated copy failure")
+
+    def interrupt_cleanup(*args, **kwargs):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(manager.shutil, "copytree", fail_copy)
+    monkeypatch.setattr(manager.shutil, "rmtree", interrupt_cleanup)
+    with pytest.raises(KeyboardInterrupt) as error:
+        clean(raw, old)
+    staging = next(raw.parent.glob(".raw_backup-*"))
+    diagnostic = "\n".join(error.value.__notes__)
+    assert str(staging) in diagnostic
+    assert "UNVERIFIED" in diagnostic
+    assert "Originals preserved" in diagnostic
+    assert snapshot(raw) == original
+
+
+def test_interruption_just_after_rename_reports_both_possible_paths(
+    folders, monkeypatch
+):
+    raw, old = folders
+    populate(raw)
+    original = snapshot(raw)
+    rename = Path.rename
+
+    def interrupt_after_rename(path, target):
+        rename(path, target)
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(Path, "rename", interrupt_after_rename)
+    with pytest.raises(KeyboardInterrupt) as error:
+        clean(raw, old)
+    backup = next(raw.parent.glob("raw_backup_*"))
+    diagnostic = "\n".join(error.value.__notes__)
+    assert str(backup) in diagnostic
+    assert "UNVERIFIED" in diagnostic
+    assert "do not use for recovery" in diagnostic
+    assert snapshot(raw) == original

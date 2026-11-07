@@ -21,12 +21,27 @@ source contents. The source directory itself stays in place.
 Copy, verification and rename failures preserve the originals and older backups.
 Temporary copies are removed when their safety checks and deletion succeed;
 otherwise the exception identifies the retained temporary path and error.
-A finalized backup is retained even if a later check refuses cleanup.
+A finalized backup is checked independently of the source. A copy that fails
+this check is labelled `FAILED verification`, retained with an `_UNVERIFIED`
+suffix when renaming succeeds, and explicitly excluded from recovery. If the
+suffix cannot be applied, the diagnostic identifies the original path and the
+marking error; its name alone does not establish validity. An interrupted check
+has status `UNVERIFIED (reverification incomplete)`. If only the source changes,
+the verified snapshot remains available but does not include later changes.
 Deletion failures raise `Cleanup incomplete`, never success. Some originals
 may already be missing: stop writers, inspect the remaining files and copy the
 verified backup's contents into the source. Keep the backup until recovery is
 checked. The widget displays the exception/recovery path, clears confirmation
 and re-enables the button.
+
+Interruptions such as `KeyboardInterrupt` and `SystemExit`, and unexpected
+exceptions, keep their original type and instance and carry a Python 3.11
+exception note with recovery paths. The widget prints these notes before
+propagating cancellation. Interrupting a copy leaves its temporary location
+explicitly UNVERIFIED; no long cleanup is started while handling cancellation.
+An interruption during finalization reports both possible locations. Never use
+a temporary or unverified copy for recovery. Interruption during deletion reports
+`Cleanup incomplete` and the verified backup; some originals may be missing.
 
 ## Proof and review
 
@@ -45,6 +60,19 @@ temporary cleanup, enumeration errors, source/backup changes during the
 operation, symbolic links, hard links and native Windows junctions. Link cases
 skip explicitly on hosts that cannot create symlinks; native junction tests
 are Windows-only. Command results and the tested commit are recorded in the PR.
+
+The independent review of `bcc8232` led to additional contracts: refuse to
+finalize a source changed during copying (M1); preserve a replacement source
+directory even with identical contents (M3); detect changes during a file read
+(M5); report an incomplete cleanup if files remain (M6); protect a source that
+contains the CWD (M10). The repeated general path validation after rename (M8)
+was removed as redundant: paths are already fixed absolute siblings, the final
+manifests reject links/reparse points in roots and ancestors, and source identity
+rejects directory substitution. A symlink substituted after rename is tested
+through those remaining contracts. The notebook's cells 7 and 9 now direct
+restoration to the exact verified path printed by the widget; outputs are
+preserved. Further cases cover real widget success, interruptions in copy,
+deletion, temporary cleanup and finalization, and invalid-backup marking errors.
 
 ```powershell
 .venv/Scripts/python.exe -m pytest -q tests/test_spectra_manager.py
