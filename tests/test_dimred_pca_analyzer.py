@@ -61,31 +61,36 @@ def test_fit_covariance_scores_and_variance(dimred_pca_class, pca_axes, solver):
     scores = model.transform(X)
     assert scores.shape == (6, 3)
     np.testing.assert_array_equal(X, original)
-    np.testing.assert_allclose(model.mean_, mean, atol=ATOL)
-    np.testing.assert_allclose(scores.mean(axis=0), 0, atol=ATOL)
-    np.testing.assert_allclose(model.loadings @ model.loadings.T, np.eye(3), atol=ATOL)
+    np.testing.assert_allclose(model.mean_, mean, atol=ATOL, rtol=0)
+    np.testing.assert_allclose(scores.mean(axis=0), 0, atol=ATOL, rtol=0)
+    np.testing.assert_allclose(
+        model.loadings @ model.loadings.T, np.eye(3), atol=ATOL, rtol=0
+    )
     covariance = (X - mean).T @ (X - mean) / 5
     eigenvalues = np.linalg.eigvalsh(covariance)[::-1]
-    np.testing.assert_allclose(eigenvalues, [18 / 5, 8 / 5, 2 / 5], atol=ATOL)
+    np.testing.assert_allclose(eigenvalues, [18 / 5, 8 / 5, 2 / 5], atol=ATOL, rtol=0)
     np.testing.assert_allclose(
-        model.sklearn_pca.explained_variance_, eigenvalues, atol=ATOL
+        model.sklearn_pca.explained_variance_, eigenvalues, atol=ATOL, rtol=0
     )
     np.testing.assert_allclose(
-        model.explained_variance_ratio, [9 / 14, 4 / 14, 1 / 14], atol=ATOL
+        model.explained_variance_ratio, [9 / 14, 4 / 14, 1 / 14], atol=ATOL, rtol=0
     )
     for i in range(3):
         np.testing.assert_allclose(
             np.outer(model.loadings[i], model.loadings[i]),
             np.outer(basis[i], basis[i]),
             atol=ATOL,
+            rtol=0,
         )
-        np.testing.assert_allclose(scores[:, i] ** 2, coords[:, i] ** 2, atol=ATOL)
-    np.testing.assert_allclose(scores, (X - mean) @ model.loadings.T, atol=ATOL)
+        np.testing.assert_allclose(
+            scores[:, i] ** 2, coords[:, i] ** 2, atol=ATOL, rtol=0
+        )
+    np.testing.assert_allclose(scores, (X - mean) @ model.loadings.T, atol=ATOL, rtol=0)
     assert model.sklearn_pca.get_params()["random_state"] == 19
     assert model.sklearn_pca.get_params()["svd_solver"] == solver
     assert np.all(np.diff(model.cumulative_variance) >= 0)
     np.testing.assert_allclose(
-        model.cumulative_variance, [9 / 14, 13 / 14, 1], atol=ATOL
+        model.cumulative_variance, [9 / 14, 13 / 14, 1], atol=ATOL, rtol=0
     )
     summary = model.variance_summary()
     assert summary.columns.tolist() == [
@@ -95,12 +100,15 @@ def test_fit_covariance_scores_and_variance(dimred_pca_class, pca_axes, solver):
         "valeur_propre",
     ]
     assert summary.PC.tolist() == ["PC1", "PC2", "PC3"]
-    np.testing.assert_allclose(summary.valeur_propre, eigenvalues, atol=ATOL)
+    np.testing.assert_allclose(summary.valeur_propre, eigenvalues, atol=ATOL, rtol=0)
     np.testing.assert_allclose(
-        summary.variance_individuelle, eigenvalues / eigenvalues.sum(), atol=ATOL
+        summary.variance_individuelle,
+        eigenvalues / eigenvalues.sum(),
+        atol=ATOL,
+        rtol=0,
     )
     np.testing.assert_allclose(
-        summary.variance_cumulee, [9 / 14, 13 / 14, 1], atol=ATOL
+        summary.variance_cumulee, [9 / 14, 13 / 14, 1], atol=ATOL, rtol=0
     )
 
 
@@ -122,23 +130,25 @@ def test_centering_does_not_standardize(dimred_pca_class):
     X = np.array([[100, 0], [-100, 0], [0, 1], [0, -1.0]]) + [12, 8]
     model = dimred_pca_class(2, svd_solver="full").fit(X)
     np.testing.assert_allclose(
-        model.explained_variance_ratio, [10000 / 10001, 1 / 10001], atol=ATOL
+        model.explained_variance_ratio, [10000 / 10001, 1 / 10001], atol=ATOL, rtol=0
     )
-    np.testing.assert_allclose(model.mean_, [12, 8], atol=ATOL)
+    np.testing.assert_allclose(model.mean_, [12, 8], atol=ATOL, rtol=0)
 
 
 @pytest.mark.unit
 def test_rank_deficient_and_equal_eigenvalue_subspaces(dimred_pca_class):
     X = np.array([[2, 0, 0], [-2, 0, 0], [0, 2, 0], [0, -2, 0.0]]) + [5, 8, 11]
     model = dimred_pca_class(2, svd_solver="full").fit(X)
-    np.testing.assert_allclose(model.explained_variance_ratio, [0.5, 0.5], atol=ATOL)
     np.testing.assert_allclose(
-        model.loadings.T @ model.loadings, np.diag([1, 1, 0]), atol=ATOL
+        model.explained_variance_ratio, [0.5, 0.5], atol=ATOL, rtol=0
     )
-    np.testing.assert_allclose(model.reconstruction_error(X), 0, atol=2e-12)
+    np.testing.assert_allclose(
+        model.loadings.T @ model.loadings, np.diag([1, 1, 0]), atol=ATOL, rtol=0
+    )
+    np.testing.assert_allclose(model.reconstruction_error(X), 0, atol=2e-12, rtol=0)
     # A new observation outside the training plane cannot be reconstructed.
     np.testing.assert_allclose(
-        model.reconstruction_error(np.array([[5, 8, 14.0]])), [3.0], atol=2e-12
+        model.reconstruction_error(np.array([[5, 8, 14.0]])), [3.0], atol=2e-12, rtol=0
     )
 
 
@@ -163,7 +173,7 @@ def test_reproducibility_translation_permutation_and_no_test_refit(
     one = dimred_pca_class(2, random_state=23, svd_solver="randomized")
     scores = one.fit_transform(X)
     other = dimred_pca_class(2, random_state=23, svd_solver="randomized").fit(X)
-    np.testing.assert_allclose(other.transform(X), scores, atol=ATOL)
+    np.testing.assert_allclose(other.transform(X), scores, atol=ATOL, rtol=0)
     before = (
         one.mean_.copy(),
         one.loadings.copy(),
@@ -171,20 +181,26 @@ def test_reproducibility_translation_permutation_and_no_test_refit(
     )
     new = X[:2] + [100, -200, 500]
     np.testing.assert_allclose(
-        one.transform(new), (new - X.mean(axis=0)) @ one.loadings.T, atol=ATOL
+        one.transform(new), (new - X.mean(axis=0)) @ one.loadings.T, atol=ATOL, rtol=0
     )
     for actual, expected in zip(
         (one.mean_, one.loadings, one.explained_variance_ratio), before
     ):
         np.testing.assert_array_equal(actual, expected)
     perm = np.array([5, 2, 0, 4, 1, 3])
-    np.testing.assert_allclose(one.transform(X[perm]), scores[perm], atol=ATOL)
+    np.testing.assert_allclose(one.transform(X[perm]), scores[perm], atol=ATOL, rtol=0)
     shifted = dimred_pca_class(2, svd_solver="full").fit(X[perm] + [9, 11, -8])
     np.testing.assert_allclose(
-        shifted.loadings.T @ shifted.loadings, one.loadings.T @ one.loadings, atol=ATOL
+        shifted.loadings.T @ shifted.loadings,
+        one.loadings.T @ one.loadings,
+        atol=ATOL,
+        rtol=0,
     )
     np.testing.assert_allclose(
-        shifted.explained_variance_ratio, one.explained_variance_ratio, atol=ATOL
+        shifted.explained_variance_ratio,
+        one.explained_variance_ratio,
+        atol=ATOL,
+        rtol=0,
     )
 
 
@@ -196,8 +212,10 @@ def test_refit_replaces_mean_dimensions_and_names(dimred_pca_class, pca_axes):
     model.fit(Y)
     assert model.feature_names_ == ["f0", "f1"]
     assert model.loadings.shape == (2, 2)
-    np.testing.assert_allclose(model.mean_, Y.mean(axis=0), atol=ATOL)
-    np.testing.assert_allclose(model.fit_transform(Y), model.transform(Y), atol=ATOL)
+    np.testing.assert_allclose(model.mean_, Y.mean(axis=0), atol=ATOL, rtol=0)
+    np.testing.assert_allclose(
+        model.fit_transform(Y), model.transform(Y), atol=ATOL, rtol=0
+    )
 
 
 @pytest.mark.unit
@@ -216,14 +234,16 @@ def test_loadings_labels_top_absolute_order_and_sign(dimred_pca_class, pca_axes)
     frame = model.loadings_dataframe()
     assert frame.index.tolist() == ["alpha", "beta", "gamma"]
     assert frame.columns.tolist() == ["PC1", "PC2"]
-    np.testing.assert_allclose(frame.to_numpy(), model.loadings.T, atol=ATOL)
+    np.testing.assert_allclose(frame.to_numpy(), model.loadings.T, atol=ATOL, rtol=0)
     # Reverse an axis explicitly: rankings unchanged and reported signs reversed.
-    model.sklearn_pca.components_[0] *= -1
+    model.sklearn_pca.components_[0] *= -np.sign(model.loadings[0] @ basis[0])
     sign = np.sign(model.loadings[0] @ basis[0])
     top = model.top_features_per_pc(0, 2)
     assert top.feature.tolist() == ["beta", "alpha"]
-    np.testing.assert_allclose(top.loading, sign * np.array([0.8, 0.6]), atol=ATOL)
-    np.testing.assert_allclose(top.abs_loading, [0.8, 0.6], atol=ATOL)
+    np.testing.assert_allclose(
+        top.loading, sign * np.array([0.8, 0.6]), atol=ATOL, rtol=0
+    )
+    np.testing.assert_allclose(top.abs_loading, [0.8, 0.6], atol=ATOL, rtol=0)
     assert top.PC.tolist() == ["PC1", "PC1"]
     assert len(model.top_features_per_pc(0, 99)) == 3
     assert model.top_features_per_pc(0, 0).empty
@@ -263,13 +283,15 @@ def test_family_squared_weights_aliases_overrides_colors(dimred_pca_class, pca_a
     for i, expected in enumerate(([0.36, 0.64, 0], [0.64, 0.36, 0], [0, 0, 1])):
         weights = out["contributions"][i].set_index("family").weight
         np.testing.assert_allclose(
-            weights.reindex(out["families"], fill_value=0), expected, atol=ATOL
+            weights.reindex(out["families"], fill_value=0), expected, atol=ATOL, rtol=0
         )
-        assert weights.sum() == pytest.approx(1, abs=ATOL)
+        assert weights.sum() == pytest.approx(1, abs=ATOL, rel=0)
         assert np.all(np.diff(weights) <= ATOL)
     names = ["Halpha", "Hbeta", "unknown"]
     override = model.loadings_family_breakdown(names, pc_indices=(0,))
-    assert override["contributions"][0].iloc[0].weight == pytest.approx(1, abs=ATOL)
+    assert override["contributions"][0].iloc[0].weight == pytest.approx(
+        1, abs=ATOL, rel=0
+    )
     assert model.feature_names_ == ["Halpha", "CaII", "unknown"]
     assert "contrib_pc2" not in override
     assert model.loadings_family_breakdown(pc_indices=())["contributions"] == {}
@@ -297,6 +319,7 @@ def test_family_squared_weights_aliases_overrides_colors(dimred_pca_class, pca_a
         result.set_index("family").weight.reindex(["A", "B"]),
         [9 / 25, 16 / 25],
         atol=ATOL,
+        rtol=0,
     )
     np.testing.assert_array_equal(raw, [[3, -4, 0]])
 
@@ -341,7 +364,7 @@ def test_correlations_analytic_positive_negative_zero_nonlinear(
     assert result.columns.tolist() == ["positive", "negative", "zero", "nonlinear"]
     assert result.index.tolist() == ["PC1"]
     np.testing.assert_allclose(
-        result.iloc[0], [1, -1, 0, expected_nonlinear], atol=ATOL
+        result.iloc[0], [1, -1, 0, expected_nonlinear], atol=ATOL, rtol=0
     )
     # The documented alignment is positional; paired permutation keeps it.
     order = np.roll(np.arange(60), 17)
@@ -351,7 +374,7 @@ def test_correlations_analytic_positive_negative_zero_nonlinear(
     )
     # Explicit scores take precedence over the stored fit population.
     reverse = model.correlations_with_params(meta, -x[:, None], method, 1)
-    np.testing.assert_allclose(reverse, -result, atol=ATOL)
+    np.testing.assert_allclose(reverse, -result, atol=ATOL, rtol=0)
 
 
 @pytest.mark.unit
@@ -364,7 +387,7 @@ def test_correlation_pair_count_boundary(dimred_pca_class, n, method):
     if n < 30:
         assert np.isnan(result.iloc[0, 0])
     else:
-        assert result.iloc[0, 0] == pytest.approx(1, abs=ATOL)
+        assert result.iloc[0, 0] == pytest.approx(1, abs=ATOL, rel=0)
 
 
 @pytest.mark.unit
@@ -387,7 +410,7 @@ def test_pairwise_nonfinite_mask_and_undefined_constants(dimred_pca_class, metho
             if method == "spearman"
             else centered_correlation(scores[valid, i], p[valid])
         )
-        assert result.iloc[i, 0] == pytest.approx(expected, abs=ATOL)
+        assert result.iloc[i, 0] == pytest.approx(expected, abs=ATOL, rel=0)
     with pytest.warns(ConstantInputWarning):
         constant = model.correlations_with_params(
             pd.DataFrame({"constant": np.ones(35)}), x[:, None], method
@@ -428,20 +451,22 @@ def test_reconstruction_projector_mse_and_curve(dimred_pca_class, pca_axes, new)
         residual = (Y - mean) @ (np.eye(3) - projector)
         expected = np.sum(residual**2, axis=1) / 3
         np.testing.assert_allclose(
-            model.reconstruction_error(Y, k), expected, atol=2e-12
+            model.reconstruction_error(Y, k), expected, atol=2e-12, rtol=0
         )
         values.append(expected)
     np.testing.assert_array_equal(Y, original)
     assert np.all(np.diff(np.array(values), axis=0) <= 2e-12)
-    np.testing.assert_allclose(model.reconstruction_error(Y), values[-1], atol=2e-12)
+    np.testing.assert_allclose(
+        model.reconstruction_error(Y), values[-1], atol=2e-12, rtol=0
+    )
     order = [2, 0, 2, 3, 1]
     curve = model.reconstruction_error_vs_n(Y, order)
     assert curve.n_components.tolist() == order
     np.testing.assert_allclose(
-        curve.mse_mean, [values[k].mean() for k in order], atol=2e-12
+        curve.mse_mean, [values[k].mean() for k in order], atol=2e-12, rtol=0
     )
     np.testing.assert_allclose(
-        curve.mse_std, [values[k].std(ddof=0) for k in order], atol=2e-12
+        curve.mse_std, [values[k].std(ddof=0) for k in order], atol=2e-12, rtol=0
     )
     default = model.reconstruction_error_vs_n(Y)
     assert default.n_components.tolist() == [1, 2, 3]
@@ -451,12 +476,16 @@ def test_reconstruction_projector_mse_and_curve(dimred_pca_class, pca_axes, new)
 def test_truncated_model_reconstruction_and_tail_variance(dimred_pca_class, pca_axes):
     X = pca_axes[0]
     model = dimred_pca_class(1, svd_solver="full").fit(X)
-    np.testing.assert_allclose(model.explained_variance_ratio, [9 / 14], atol=ATOL)
+    np.testing.assert_allclose(
+        model.explained_variance_ratio, [9 / 14], atol=ATOL, rtol=0
+    )
     expected = np.array([0, 0, 4 / 3, 4 / 3, 1 / 3, 1 / 3])
-    np.testing.assert_allclose(model.reconstruction_error(X), expected, atol=2e-12)
+    np.testing.assert_allclose(
+        model.reconstruction_error(X), expected, atol=2e-12, rtol=0
+    )
     # Mean squared residual = discarded sample eigenvalues * (N-1)/(N*D).
     assert model.reconstruction_error(X).mean() == pytest.approx(
-        (8 / 5 + 2 / 5) * 5 / 18, abs=2e-12
+        (8 / 5 + 2 / 5) * 5 / 18, abs=2e-12, rel=0
     )
 
 
@@ -469,7 +498,7 @@ def test_default_curve_stops_at_fifty_components(dimred_pca_class):
     result = model.reconstruction_error_vs_n(X)
     assert result.n_components.tolist() == list(range(1, 51))
     # At 50 dimensions only amplitudes 1 and 2 are discarded.
-    assert result.mse_mean.iloc[-1] == pytest.approx(10 / (104 * 52), abs=2e-12)
+    assert result.mse_mean.iloc[-1] == pytest.approx(10 / (104 * 52), abs=2e-12, rel=0)
 
 
 @pytest.mark.unit
@@ -478,11 +507,13 @@ def test_default_correlation_is_spearman_and_mask_count_is_pairwise(dimred_pca_c
     model = dimred_pca_class(1).fit(x[:, None])
     meta = pd.DataFrame({"p": x**3})
     assert model.correlations_with_params(meta, x[:, None]).iloc[0, 0] == pytest.approx(
-        1
+        1, rel=0, abs=ATOL
     )
     scores = x[:, None].copy()
     scores[0, 0] = np.inf
-    assert model.correlations_with_params(meta, scores).iloc[0, 0] == pytest.approx(1)
+    assert model.correlations_with_params(meta, scores).iloc[0, 0] == pytest.approx(
+        1, rel=0, abs=ATOL
+    )
     meta.loc[1, "p"] = np.nan
     assert np.isnan(model.correlations_with_params(meta, scores).iloc[0, 0])
 
@@ -507,10 +538,10 @@ def test_class_statistics_match_signed_analytic_coordinates(dimred_pca_class, pc
                 np.percentile(values, 25),
                 np.percentile(values, 75),
             ]
-            np.testing.assert_allclose(actual, expected, atol=ATOL)
+            np.testing.assert_allclose(actual, expected, atol=ATOL, rtol=0)
     order = [4, 0, 2, 5, 3, 1]
     pd.testing.assert_frame_equal(
-        result, model.class_separation(X[order], y[order], 3), atol=ATOL
+        result, model.class_separation(X[order], y[order], 3), atol=ATOL, rtol=0
     )
 
 
@@ -630,16 +661,18 @@ def test_loader_to_pca_preserves_rows_names_scores_and_correlations(
     scores = model.fit_transform(X, loader.get_feature_names())
     assert model.loadings_dataframe().index.tolist() == ["feature_b", "feature_a"]
     np.testing.assert_allclose(
-        model.sklearn_pca.inverse_transform(scores), X, atol=ATOL
+        model.sklearn_pca.inverse_transform(scores), X, atol=ATOL, rtol=0
     )
     raw = loader.inverse_transform(model.sklearn_pca.inverse_transform(scores))
-    np.testing.assert_allclose(raw, features[["feature_b", "feature_a"]], atol=2e-12)
+    np.testing.assert_allclose(
+        raw, features[["feature_b", "feature_a"]], atol=2e-12, rtol=0
+    )
     np.testing.assert_array_equal(y, meta["class"])
     np.testing.assert_array_equal(meta.teff_gspphot, 1000 + ids * 100)
     result = model.correlations_with_params(meta, scores, method="pearson", n_pcs=2)
     for i in range(2):
         expected = centered_correlation(scores[:, i], x)
-        assert result.iloc[i, 0] == pytest.approx(expected, abs=ATOL)
+        assert result.iloc[i, 0] == pytest.approx(expected, abs=ATOL, rel=0)
 
 
 @pytest.mark.integration
@@ -660,7 +693,7 @@ def test_reconstruction_dataframe_visualizer_contract(dimred_pca_class, pca_axes
         try:
             np.testing.assert_array_equal(ax.lines[0].get_xdata(), [0, 1, 2])
             np.testing.assert_allclose(
-                ax.lines[0].get_ydata(), curve.mse_mean, atol=ATOL
+                ax.lines[0].get_ydata(), curve.mse_mean, atol=ATOL, rtol=0
             )
         finally:
             plt.close(fig)

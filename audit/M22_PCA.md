@@ -55,7 +55,8 @@ Masking and the **implemented**, not universally optimal, 30-pair boundary
 are tested independently of the number of rows in the original table.
 
 Float64 absolute tolerances are 2e-13 for these small, well-conditioned linear
-algebra problems and 2e-12 for squared residuals/round trips. They allow
+algebra problems and 2e-12 for squared residuals/round trips, with relative
+tolerance explicitly zero in numerical comparisons. They allow
 accumulated roundoff while remaining far below the separated eigenvalues and
 nonzero MSEs. They are not tolerances for arbitrary spectra or ill-conditioned
 catalogs. No physical units, causal claims or independent astrophysical
@@ -164,6 +165,10 @@ renormalizing retained variance could escape a full-rank test; default
 correlation/cap behavior needed discriminating data. Added the explicit K=1
 9/14 assertion, nonlinear default-correlation and paired-count checks, and an
 analytic 52-dimensional fixture proving the default cap is 50. Final 78 cases.
+Final self-review also made relative tolerances explicitly zero and selected
+the negative analytic orientation in the top-loading test. Merely flipping
+sklearn's chosen sign would not guarantee a negative orientation on every
+backend. No production changes or additional contract assumptions were needed.
 
 The replay copies only required source/tests/config to a TemporaryDirectory,
 checks unique replacement sites, compiles candidates, clears only sandbox
@@ -195,11 +200,13 @@ of all possible numerical/backend failures. Replay and archived proofs are
 
 ## Execution ledger and environment
 
-Code/tests/scripts executed and frozen at archive SHA **a9c84a6**; the green
-integration contains those exact code/tests after removal of red files, plus
-this matrix. All production is identical to main@3604b3d. Commands below were
-actually run from the repository root with `.venv/Scripts/python.exe` (Python
-3.11.9, Windows). Final branch checks are also reported in the Draft PR.
+Red probes/fixtures executed and frozen at archive SHA **a9c84a6**. Green tests
+were subsequently strengthened with explicit absolute tolerances and a chosen
+negative orientation, then the targeted/full suites and mutation replay were
+repeated. Red probes and matching fixtures are unchanged. All production is
+identical to main@3604b3d. Commands below were actually run from the repository
+root with `.venv/Scripts/python.exe` (Python 3.11.9, Windows). The final tested
+branch SHA and repeated results are reported in the Draft PR.
 
 | Command (after interpreter prefix) | Observed result |
 |---|---|
@@ -209,6 +216,7 @@ actually run from the repository root with `.venv/Scripts/python.exe` (Python
 | `-m pytest -q tests/proofs_dimred_pca_analyzer.py --tb=line --junitxml=test-results/m22-proofs.xml` | 16 FAIL / 5 PASS; exit 1; no collection/fixture errors; explicit proof branch only |
 | At committed archive: `-m pytest -q tests/proofs_dimred_pca_analyzer.py --tb=no --junitxml=test-results/m22-archive-proofs.xml` | Same 16 FAIL / 5 PASS, exit 1 |
 | `audit/check_m22_mutations.py --output test-results/m22-mutations.json` | Baseline 78 PASS; 22 killed / 1 equivalent-on-supported-state survivor |
+| Same replay after final assertion strengthening, output `test-results/m22-mutations-final.json` | Baseline 78 PASS; same 22 killed / 1 equivalent survivor, unchanged input hashes verified |
 | `-m black --check src tests scripts app.py audit/check_m22_mutations.py` | 32 files unchanged when archive present; replay explicitly included |
 | `-m ruff check src tests scripts app.py audit/check_m22_mutations.py` | All checks passed |
 | `-m black --check tests/proofs_dimred_pca_analyzer.py audit/check_m22_mutations.py` and equivalent `ruff check` | Both archived probes and replay pass explicitly |
