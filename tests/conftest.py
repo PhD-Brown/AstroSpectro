@@ -1,0 +1,139 @@
+"""Synthetic CSV/FITS fixtures for the isolated dimred loader audit."""
+
+import importlib.util
+from itertools import count
+from pathlib import Path
+
+from astropy.io import fits
+import numpy as np
+import pandas as pd
+import pytest
+
+
+@pytest.fixture(scope="session")
+def dimred_loader_module():
+    # Load the actual source without executing dimred's optional Torch facade
+    # (known issue #21). This does not validate `import dimred`.
+    path = Path(__file__).resolve().parents[1] / "src/dimred/data_loader.py"
+    spec = importlib.util.spec_from_file_location("dimred_loader_audit", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def dimred_feature_loader(tmp_path, dimred_loader_module):
+    instances = count()
+
+    def make(features=None, catalog=None, **kwargs):
+        if features is None:
+            features = {
+                "obsid": [30, 10, 20, 40],
+                "class": ["STAR", "QSO", "STAR", "GALAXY"],
+                "snr_r": [30.0, 10.0, 9.0, 40.0],
+                "feature_b": [3.0, 1.0, 2.0, 4.0],
+                "feature_a": [9.0, 1.0, 4.0, 16.0],
+            }
+        if catalog is None:
+            catalog = {
+                "obsid": [10, 40, 30, 20],
+                "teff_gspphot": [1000.0, 4000.0, 3000.0, 2000.0],
+            }
+        case_dir = tmp_path / f"dimred-features-{next(instances)}"
+        case_dir.mkdir()
+        feature_path = case_dir / "features.csv"
+        catalog_path = case_dir / "catalog.csv"
+        pd.DataFrame(features).to_csv(feature_path, index=False)
+        pd.DataFrame(catalog).to_csv(catalog_path, index=False)
+        return dimred_loader_module.DimRedDataLoader(
+            feature_path, catalog_path, **kwargs
+        )
+
+    return make
+
+
+@pytest.fixture
+def dimred_fits_writer(tmp_path):
+    def write(
+        name="plan/spectrum.fits",
+        flux=None,
+        coeff0=None,
+        coeff1=0.001,
+        data=None,
+        header=None,
+    ):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if flux is None:
+            flux = np.arange(1.0, 11.0)
+        if coeff0 is None:
+            coeff0 = np.log10(4000.0)
+        wavelength = 10 ** (coeff0 + np.arange(len(flux)) * coeff1)
+        if data is None:
+            data = np.vstack([flux, np.ones(len(flux))])
+        hdu = fits.PrimaryHDU(data=data)
+        hdu.header["COEFF0"] = coeff0
+        hdu.header["COEFF1"] = coeff1
+        if header:
+            hdu.header.update(header)
+        hdu.writeto(path, overwrite=True)
+        return path, wavelength
+
+    return write
+
+
+@pytest.fixture
+def dimred_spectral_loader(tmp_path, dimred_loader_module):
+    instances = count()
+
+    def make(paths, grid, catalog=None, **kwargs):
+        if catalog is None:
+            catalog = {
+                "fits_name": [p.name for p in paths],
+                "class": ["STAR"] * len(paths),
+                "snr_r": [20.0] * len(paths),
+                "teff_gspphot": list(range(1000, 1000 + len(paths))),
+            }
+        case_dir = tmp_path / f"dimred-spectra-{next(instances)}"
+        case_dir.mkdir()
+        catalog_path = case_dir / "spectral_catalog.csv"
+        pd.DataFrame(catalog).to_csv(catalog_path, index=False)
+        return dimred_loader_module.SpectralMatrixLoader(
+            tmp_path, catalog_path, wl_grid=np.asarray(grid), n_jobs=1, **kwargs
+        )
+
+    return make
+
+
+@pytest.fixture
+def dimred_guarded_parallel(monkeypatch):
+    """Keep real loky workers offline without disabling their IPC machinery."""
+    import joblib
+
+    real_parallel = joblib.Parallel
+
+    def deny_worker_network():
+        import socket
+
+        def blocked(*args, **kwargs):
+            raise AssertionError("Network forbidden in spectral audit worker")
+
+        socket.socket.connect = blocked
+        socket.socket.connect_ex = blocked
+        socket.create_connection = blocked
+
+    def guarded_parallel(*args, **kwargs):
+        return real_parallel(*args, initializer=deny_worker_network, **kwargs)
+
+    def worker_has_network_guard():
+        import socket
+
+        return socket.create_connection.__name__ == "blocked"
+
+    monkeypatch.setattr(joblib, "Parallel", guarded_parallel)
+    assert all(
+        guarded_parallel(n_jobs=2, backend="loky")(
+            joblib.delayed(worker_has_network_guard)() for _ in range(2)
+        )
+    )
+    return guarded_parallel
