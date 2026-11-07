@@ -11,6 +11,35 @@ import pytest
 
 
 @pytest.fixture(scope="session")
+def dimred_pca_class():
+    # Exercise the real source; the optional-dependency facade is tracked in #21.
+    path = Path(__file__).resolve().parents[1] / "src/dimred/pca_analyzer.py"
+    spec = importlib.util.spec_from_file_location("dimred_pca_audit", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.PCAAnalyzer
+
+
+@pytest.fixture
+def pca_axes():
+    # Six paired observations: covariance eigenvalues 18/5, 8/5, 2/5.
+    # Rational rotation mixes features without imposing sklearn's axis signs.
+    basis = np.array([[0.6, 0.8, 0.0], [-0.8, 0.6, 0.0], [0.0, 0.0, 1.0]])
+    coordinates = np.array(
+        [
+            [3.0, 0, 0],
+            [-3.0, 0, 0],
+            [0, 2.0, 0],
+            [0, -2.0, 0],
+            [0, 0, 1.0],
+            [0, 0, -1.0],
+        ]
+    )
+    mean = np.array([10.0, -7.0, 4.0])
+    return mean + coordinates @ basis, basis, coordinates, mean
+
+
+@pytest.fixture(scope="session")
 def dimred_loader_module():
     # Load the actual source without executing dimred's optional Torch facade
     # (known issue #21). This does not validate `import dimred`.
