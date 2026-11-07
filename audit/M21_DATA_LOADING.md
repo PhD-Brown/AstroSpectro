@@ -1,5 +1,9 @@
 # M2.1 — data loading and preparation audit
 
+> Archived pre-review matrix. On the proof reference, the corrected per-test
+> classifications and outcomes in [M21_PROOFS.md](M21_PROOFS.md) supersede the
+> old findings/counts below. PR #56 carries the revised integration matrix.
+
 Date: 2026-11-07. Coordination: [Refs #43](https://github.com/PhD-Brown/AstroSpectro/issues/43).
 Status: delivered for independent review; no production correction or merge.
 
