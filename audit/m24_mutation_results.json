@@ -1,0 +1,1198 @@
+{
+  "schema": 1,
+  "base_sha": "749224fc5f3237290e005c6ff5a98423e06adf81",
+  "source_blob": "667a2985ea1b6b4f0a660a70f7635715730c0f78",
+  "hash_policy": "SHA-256, CRLF normalized to LF",
+  "content_hashes_lf": {
+    "src/dimred/hdbscan_analyzer.py": "a963478cb7ae605652082b2153ba330f3d6cb3d7d27a772bb77b736498802ded",
+    "src/dimred/data_loader.py": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+    "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
+    "tests/conftest.py": "3fedfe82f5f08149fbb3e00cf138a0e336cc3607dbf185d8cb781e88820bfc7a",
+    "tests/m24_support.py": "87780cdbe3ea3301442e85e4bd1f8adc5baa43d43bb26c78e7d6fbee5865129f",
+    "tests/test_dimred_hdbscan_analyzer.py": "3b29aad364d7ed636e66362e83de460c6cff57067f3962d133e75db082cb2b6e",
+    "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+    "audit/check_m24_mutations.py": "5f5444faba8260ca250922a5edf3aa9dd1548e254d40bfb00a3635eae14ac3fb"
+  },
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "pytest": "8.4.2",
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1"
+  },
+  "reverse": false,
+  "cases": [
+    {
+      "name": "baseline",
+      "kind": "baseline",
+      "site": null,
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    },
+    {
+      "name": "default_size",
+      "kind": "mutation",
+      "site": {
+        "function": "__init__",
+        "line": 66,
+        "old": "min_cluster_size: int = 75",
+        "new": "min_cluster_size: int = 74",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_initial_state_and_instance_isolation",
+        "test_fit_forwarding_and_success_state[False]"
+      ]
+    },
+    {
+      "name": "default_samples",
+      "kind": "mutation",
+      "site": {
+        "function": "__init__",
+        "line": 67,
+        "old": "min_samples: int = 20",
+        "new": "min_samples: int = 19",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_initial_state_and_instance_isolation",
+        "test_fit_forwarding_and_success_state[False]"
+      ]
+    },
+    {
+      "name": "fit_size_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit",
+        "line": 114,
+        "old": "min_cluster_size=self.min_cluster_size",
+        "new": "min_cluster_size=75",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_fit_forwarding_and_success_state[True]"
+      ]
+    },
+    {
+      "name": "fit_samples_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit",
+        "line": 115,
+        "old": "min_samples=self.min_samples",
+        "new": "min_samples=20",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_fit_forwarding_and_success_state[True]"
+      ]
+    },
+    {
+      "name": "fit_metric_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit",
+        "line": 116,
+        "old": "metric=self.metric",
+        "new": "metric=\"euclidean\"",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_fit_forwarding_and_success_state[True]"
+      ]
+    },
+    {
+      "name": "fit_selection_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit",
+        "line": 117,
+        "old": "cluster_selection_method=self.cluster_selection_method",
+        "new": "cluster_selection_method=\"eom\"",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_fit_forwarding_and_success_state[True]"
+      ]
+    },
+    {
+      "name": "fit_prediction_data",
+      "kind": "mutation",
+      "site": {
+        "function": "fit",
+        "line": 118,
+        "old": "            prediction_data=True,",
+        "new": "            prediction_data=False,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_fit_forwarding_and_success_state[False]",
+        "test_fit_forwarding_and_success_state[True]"
+      ]
+    },
+    {
+      "name": "fit_reverses_labels",
+      "kind": "mutation",
+      "site": {
+        "function": "fit",
+        "line": 121,
+        "old": "self.clusterer_.fit_predict(Z)",
+        "new": "self.clusterer_.fit_predict(Z)[::-1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels2]",
+        "test_profile_print_transmits_tables_without_mutating",
+        "test_loader_pca_cluster_profile_observation_identity",
+        "test_physical_group_local_change_and_noise_isolation"
+      ]
+    },
+    {
+      "name": "presentation_size_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 151,
+        "old": "min_cluster_size=min_cluster_size",
+        "new": "min_cluster_size=300",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels1]",
+        "test_presentation_is_separate[13-labels2]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_samples_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 152,
+        "old": "min_samples=self.min_samples",
+        "new": "min_samples=20",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels0]",
+        "test_presentation_is_separate[None-labels1]",
+        "test_presentation_is_separate[None-labels2]",
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels1]",
+        "test_presentation_is_separate[13-labels2]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_metric_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 153,
+        "old": "metric=self.metric",
+        "new": "metric=\"euclidean\"",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels0]",
+        "test_presentation_is_separate[None-labels1]",
+        "test_presentation_is_separate[None-labels2]",
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels1]",
+        "test_presentation_is_separate[13-labels2]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_selection_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 154,
+        "old": "cluster_selection_method=self.cluster_selection_method",
+        "new": "cluster_selection_method=\"eom\"",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels0]",
+        "test_presentation_is_separate[None-labels1]",
+        "test_presentation_is_separate[None-labels2]",
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels1]",
+        "test_presentation_is_separate[13-labels2]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_reverses_labels",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 156,
+        "old": "self.clusterer_pres_.fit_predict(Z)",
+        "new": "self.clusterer_pres_.fit_predict(Z)[::-1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_includes_noise",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 158,
+        "old": "set(self.labels_pres_) - {-1}",
+        "new": "set(self.labels_pres_)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels0]",
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_count_plus_one",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 159,
+        "old": "len(self.ids_pres_)",
+        "new": "len(self.ids_pres_)+1",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels0]",
+        "test_presentation_is_separate[None-labels1]",
+        "test_presentation_is_separate[None-labels2]",
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels1]",
+        "test_presentation_is_separate[13-labels2]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "presentation_wrong_palette_ids",
+      "kind": "mutation",
+      "site": {
+        "function": "fit_presentation",
+        "line": 162,
+        "old": "enumerate(self.ids_pres_)",
+        "new": "enumerate(self.cluster_ids_)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_presentation_is_separate[None-labels0]",
+        "test_presentation_is_separate[None-labels1]",
+        "test_presentation_is_separate[None-labels2]",
+        "test_presentation_is_separate[None-labels3]",
+        "test_presentation_is_separate[13-labels0]",
+        "test_presentation_is_separate[13-labels1]",
+        "test_presentation_is_separate[13-labels2]",
+        "test_presentation_is_separate[13-labels3]"
+      ]
+    },
+    {
+      "name": "stats_includes_noise",
+      "kind": "mutation",
+      "site": {
+        "function": "_compute_stats",
+        "line": 365,
+        "old": "set(self.labels_) - {-1}",
+        "new": "set(self.labels_)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_counts_and_palette_ids[labels0-ids0-3]",
+        "test_counts_and_palette_ids[labels2-ids2-1]",
+        "test_counts_and_palette_ids[labels4-ids4-2]",
+        "test_helpers_recompute_and_successive_fit_replace_state"
+      ]
+    },
+    {
+      "name": "stats_count_plus_one",
+      "kind": "mutation",
+      "site": {
+        "function": "_compute_stats",
+        "line": 366,
+        "old": "len(self.cluster_ids_)",
+        "new": "len(self.cluster_ids_)+1",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_counts_and_palette_ids[labels0-ids0-3]",
+        "test_counts_and_palette_ids[labels1-ids1-0]",
+        "test_counts_and_palette_ids[labels2-ids2-1]",
+        "test_counts_and_palette_ids[labels3-ids3-0]",
+        "test_counts_and_palette_ids[labels4-ids4-2]",
+        "test_helpers_recompute_and_successive_fit_replace_state"
+      ]
+    },
+    {
+      "name": "stats_noise_wrong",
+      "kind": "mutation",
+      "site": {
+        "function": "_compute_stats",
+        "line": 367,
+        "old": "self.labels_ == -1",
+        "new": "self.labels_ == 0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_counts_and_palette_ids[labels0-ids0-3]",
+        "test_counts_and_palette_ids[labels2-ids2-1]",
+        "test_counts_and_palette_ids[labels4-ids4-2]",
+        "test_helpers_recompute_and_successive_fit_replace_state"
+      ]
+    },
+    {
+      "name": "stats_loses_noncontiguous",
+      "kind": "mutation",
+      "site": {
+        "function": "_compute_stats",
+        "line": 365,
+        "old": "sorted(set(self.labels_) - {-1})",
+        "new": "list(range(len(set(self.labels_) - {-1})))",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_counts_and_palette_ids[labels1-ids1-0]",
+        "test_counts_and_palette_ids[labels2-ids2-1]",
+        "test_counts_and_palette_ids[labels3-ids3-0]",
+        "test_counts_and_palette_ids[labels4-ids4-2]",
+        "test_helpers_recompute_and_successive_fit_replace_state"
+      ]
+    },
+    {
+      "name": "palette_wrong_id",
+      "kind": "mutation",
+      "site": {
+        "function": "_build_palette",
+        "line": 373,
+        "old": "cid: cmap",
+        "new": "i: cmap",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_counts_and_palette_ids[labels1-ids1-0]",
+        "test_counts_and_palette_ids[labels2-ids2-1]",
+        "test_counts_and_palette_ids[labels3-ids3-0]",
+        "test_counts_and_palette_ids[labels4-ids4-2]",
+        "test_helpers_recompute_and_successive_fit_replace_state"
+      ]
+    },
+    {
+      "name": "palette_swapped_ranks",
+      "kind": "mutation",
+      "site": {
+        "function": "_build_palette",
+        "line": 374,
+        "old": "enumerate(self.cluster_ids_)",
+        "new": "enumerate(self.cluster_ids_[::-1])",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_counts_and_palette_ids[labels2-ids2-1]",
+        "test_counts_and_palette_ids[labels3-ids3-0]",
+        "test_counts_and_palette_ids[labels4-ids4-2]"
+      ]
+    },
+    {
+      "name": "centroid_ignores_mask",
+      "kind": "mutation",
+      "site": {
+        "function": "centroid",
+        "line": 361,
+        "old": "Z[mask].mean(axis=0)",
+        "new": "Z.mean(axis=0)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_centroid_analytic_subsets_and_translation[mask0-expected0]",
+        "test_centroid_analytic_subsets_and_translation[mask1-expected1]",
+        "test_centroid_analytic_subsets_and_translation[mask2-expected2]",
+        "test_centroid_invalid_mask_is_not_silently_accepted[mask0]"
+      ]
+    },
+    {
+      "name": "centroid_wrong_axis",
+      "kind": "mutation",
+      "site": {
+        "function": "centroid",
+        "line": 361,
+        "old": "mean(axis=0)",
+        "new": "mean(axis=1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_centroid_analytic_subsets_and_translation[mask0-expected0]",
+        "test_centroid_analytic_subsets_and_translation[mask1-expected1]",
+        "test_centroid_analytic_subsets_and_translation[mask2-expected2]"
+      ]
+    },
+    {
+      "name": "profile_shift_labels",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 214,
+        "old": "df_profile[\"cluster\"] = self.labels_",
+        "new": "df_profile[\"cluster\"] = np.roll(self.labels_,1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels2]",
+        "test_profile_print_transmits_tables_without_mutating",
+        "test_loader_pca_cluster_profile_observation_identity",
+        "test_physical_group_local_change_and_noise_isolation"
+      ]
+    },
+    {
+      "name": "profile_shift_classes",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 215,
+        "old": "df_profile[\"class_lamost\"] = y",
+        "new": "df_profile[\"class_lamost\"] = np.roll(y,1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]"
+      ]
+    },
+    {
+      "name": "profile_mean_std_swap",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 220,
+        "old": "agg([\"mean\", \"std\"])",
+        "new": "agg([\"std\", \"mean\"]).rename(columns={\"std\":\"mean\",\"mean\":\"std\"},level=1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels1]",
+        "test_profiles_noise_singleton_and_missing_physics[labels2]",
+        "test_profile_print_transmits_tables_without_mutating",
+        "test_loader_pca_cluster_profile_observation_identity",
+        "test_physical_group_local_change_and_noise_isolation",
+        "test_all_default_physical_columns_have_correct_units_and_moments"
+      ]
+    },
+    {
+      "name": "profile_population_ddof",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 220,
+        "old": "agg([\"mean\", \"std\"])",
+        "new": "agg([\"mean\", lambda x: x.std(ddof=0)]).rename(columns={\"<lambda_0>\":\"std\"},level=1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels1]",
+        "test_profiles_noise_singleton_and_missing_physics[labels2]",
+        "test_profile_print_transmits_tables_without_mutating",
+        "test_loader_pca_cluster_profile_observation_identity",
+        "test_all_default_physical_columns_have_correct_units_and_moments"
+      ]
+    },
+    {
+      "name": "profile_wrong_count",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 235,
+        "old": "\"n spectres\": int(counts.get(cid, 0)),",
+        "new": "\"n spectres\": int(counts.get(cid, 0))+1,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels1]",
+        "test_profiles_noise_singleton_and_missing_physics[labels2]",
+        "test_profiles_unavailable_columns_and_partial_missing_class"
+      ]
+    },
+    {
+      "name": "profile_wrong_cluster_mean",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 241,
+        "old": "mu = summary.loc[cid, m_col]",
+        "new": "mu = summary.loc[summary.index[0], m_col]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels2]",
+        "test_loader_pca_cluster_profile_observation_identity",
+        "test_physical_group_local_change_and_noise_isolation"
+      ]
+    },
+    {
+      "name": "profile_noise_wrong_mean",
+      "kind": "mutation",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 262,
+        "old": "vals = df_noise[col].dropna()",
+        "new": "vals = df_profile[col].dropna()",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_physical_profiles_analytic_statistics_and_identity[False]",
+        "test_physical_profiles_analytic_statistics_and_identity[True]",
+        "test_profiles_noise_singleton_and_missing_physics[labels1]",
+        "test_profile_print_transmits_tables_without_mutating",
+        "test_physical_group_local_change_and_noise_isolation"
+      ]
+    },
+    {
+      "name": "sensitivity_default_grid",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 407,
+        "old": "[50, 100, 150, 300, 500]",
+        "new": "[50, 100, 150, 300, 499]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]"
+      ]
+    },
+    {
+      "name": "sensitivity_default_samples",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 390,
+        "old": "min_samples: int = 20",
+        "new": "min_samples: int = 19",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_default_min_samples_and_property_independence"
+      ]
+    },
+    {
+      "name": "sensitivity_reverse_grid",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 410,
+        "old": "for mcs in min_sizes:",
+        "new": "for mcs in min_sizes[::-1]:",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]"
+      ]
+    },
+    {
+      "name": "sensitivity_loses_duplicates",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 410,
+        "old": "for mcs in min_sizes:",
+        "new": "for mcs in dict.fromkeys(min_sizes):",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[grid1]"
+      ]
+    },
+    {
+      "name": "sensitivity_samples_ignored",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 414,
+        "old": "min_samples=min_samples",
+        "new": "min_samples=20",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]",
+        "test_sensitivity_grid_forwarding_counts_and_rounding[grid1]"
+      ]
+    },
+    {
+      "name": "sensitivity_includes_noise",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 419,
+        "old": "len(set(cl)) - (1 if -1 in cl else 0)",
+        "new": "len(set(cl))",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]",
+        "test_sensitivity_grid_forwarding_counts_and_rounding[grid1]"
+      ]
+    },
+    {
+      "name": "sensitivity_noise_wrong",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 420,
+        "old": "cl == -1",
+        "new": "cl == 0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]",
+        "test_sensitivity_grid_forwarding_counts_and_rounding[grid1]",
+        "test_sensitivity_default_min_samples_and_property_independence"
+      ]
+    },
+    {
+      "name": "sensitivity_percent",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 426,
+        "old": "100 * nn / len(cl)",
+        "new": "nn / len(cl)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]",
+        "test_sensitivity_grid_forwarding_counts_and_rounding[grid1]",
+        "test_sensitivity_default_min_samples_and_property_independence"
+      ]
+    },
+    {
+      "name": "sensitivity_wrong_rounding",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_sensitivity",
+        "line": 426,
+        "old": "round(100 * nn / len(cl), 2)",
+        "new": "round(100 * nn / len(cl), 1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_sensitivity_grid_forwarding_counts_and_rounding[None]",
+        "test_sensitivity_grid_forwarding_counts_and_rounding[grid1]",
+        "test_sensitivity_default_min_samples_and_property_independence"
+      ]
+    },
+    {
+      "name": "feature_snr_strict",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 487,
+        "old": "df_raw[\"snr_r\"] >= 10.0",
+        "new": "df_raw[\"snr_r\"] > 10.0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_selection_matches_spectro_loader_on_controlled_population",
+        "test_scaler_receives_post_filter_population_and_default_options"
+      ]
+    },
+    {
+      "name": "feature_no_exclusions",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 524,
+        "old": "c not in EXCLUDE",
+        "new": "True",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_selection_matches_spectro_loader_on_controlled_population",
+        "test_scaler_receives_post_filter_population_and_default_options"
+      ]
+    },
+    {
+      "name": "feature_no_gaia_exclusions",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 518,
+        "old": "set(_GAIA_META_COLS) |",
+        "new": "set() |",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_selection_matches_spectro_loader_on_controlled_population"
+      ]
+    },
+    {
+      "name": "feature_no_instrument_exclusions",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 518,
+        "old": "set(_INSTRUMENTAL_COLS)",
+        "new": "set()",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_selection_matches_spectro_loader_on_controlled_population"
+      ]
+    },
+    {
+      "name": "feature_no_prefix_exclusions",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 525,
+        "old": "not c.startswith(_NON_SPECTRO_PREFIXES)",
+        "new": "True",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_selection_matches_spectro_loader_on_controlled_population"
+      ]
+    },
+    {
+      "name": "feature_accept_constants",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 527,
+        "old": "df_filt[c].nunique() > 1",
+        "new": "df_filt[c].nunique() > 0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_selection_matches_spectro_loader_on_controlled_population",
+        "test_feature_empty_population_refused[no_features]"
+      ]
+    },
+    {
+      "name": "feature_missing_strict",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 528,
+        "old": "isna().mean() <= 0.10",
+        "new": "isna().mean() < 0.10",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_missing_threshold_and_dropna[1]"
+      ]
+    },
+    {
+      "name": "feature_missing_too_permissive",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 528,
+        "old": "isna().mean() <= 0.10",
+        "new": "isna().mean() <= 0.20",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_missing_threshold_and_dropna[2]"
+      ]
+    },
+    {
+      "name": "feature_no_dropna",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 530,
+        "old": "df_filt[feat_cols].dropna()",
+        "new": "df_filt[feat_cols]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_missing_threshold_and_dropna[1]"
+      ]
+    },
+    {
+      "name": "feature_no_centering",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 549,
+        "old": "scaler = StandardScaler()",
+        "new": "scaler = StandardScaler(with_mean=False)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_profiles_independent_zscores_noise_reference[order0]",
+        "test_feature_profiles_independent_zscores_noise_reference[order1]",
+        "test_feature_selection_matches_spectro_loader_on_controlled_population",
+        "test_feature_missing_threshold_and_dropna[0]",
+        "test_feature_missing_threshold_and_dropna[1]",
+        "test_feature_missing_threshold_and_dropna[2]",
+        "test_feature_edge_populations[one_feature]",
+        "test_feature_edge_populations[constant_after_filter]",
+        "test_scaler_receives_post_filter_population_and_default_options",
+        "test_feature_paired_permutation_and_affine_unit_change"
+      ]
+    },
+    {
+      "name": "feature_no_scaling",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 549,
+        "old": "scaler = StandardScaler()",
+        "new": "scaler = StandardScaler(with_std=False)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_profiles_independent_zscores_noise_reference[order0]",
+        "test_feature_profiles_independent_zscores_noise_reference[order1]",
+        "test_feature_selection_matches_spectro_loader_on_controlled_population",
+        "test_feature_missing_threshold_and_dropna[0]",
+        "test_feature_missing_threshold_and_dropna[1]",
+        "test_feature_missing_threshold_and_dropna[2]",
+        "test_scaler_receives_post_filter_population_and_default_options",
+        "test_feature_paired_permutation_and_affine_unit_change"
+      ]
+    },
+    {
+      "name": "feature_reverse_columns",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 551,
+        "old": "columns=feat_cols)",
+        "new": "columns=feat_cols[::-1])",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_profiles_independent_zscores_noise_reference[order0]",
+        "test_feature_profiles_independent_zscores_noise_reference[order1]",
+        "test_feature_selection_matches_spectro_loader_on_controlled_population"
+      ]
+    },
+    {
+      "name": "feature_shift_cluster_labels",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 552,
+        "old": "X_std_df[\"cluster\"] = cluster_labels_aligned",
+        "new": "X_std_df[\"cluster\"] = np.roll(cluster_labels_aligned,1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_profiles_independent_zscores_noise_reference[order0]",
+        "test_feature_profiles_independent_zscores_noise_reference[order1]",
+        "test_feature_selection_matches_spectro_loader_on_controlled_population",
+        "test_feature_missing_threshold_and_dropna[0]",
+        "test_feature_missing_threshold_and_dropna[1]",
+        "test_feature_missing_threshold_and_dropna[2]",
+        "test_feature_paired_permutation_and_affine_unit_change"
+      ]
+    },
+    {
+      "name": "feature_includes_noise",
+      "kind": "mutation",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 556,
+        "old": "X_std_df[X_std_df[\"cluster\"] != -1]",
+        "new": "X_std_df",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 59,
+      "failures": [
+        "test_feature_profiles_independent_zscores_noise_reference[order0]",
+        "test_feature_profiles_independent_zscores_noise_reference[order1]",
+        "test_feature_edge_populations[all_noise]"
+      ]
+    },
+    {
+      "name": "equivalent_unique",
+      "kind": "control",
+      "site": {
+        "function": "_compute_stats",
+        "line": 365,
+        "old": "sorted(set(self.labels_) - {-1})",
+        "new": "sorted(c for c in np.unique(self.labels_) if c != -1)",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    },
+    {
+      "name": "neutral_comment",
+      "kind": "control",
+      "site": {
+        "function": "centroid",
+        "line": 361,
+        "old": "return Z[mask].mean(axis=0)",
+        "new": "# Independent neutral control\n        return Z[mask].mean(axis=0)",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    },
+    {
+      "name": "reject_feature_mismatch",
+      "kind": "control",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 534,
+        "old": "n_umap = len(Z_umap)",
+        "new": "n_umap = len(Z_umap)\n    if len(df_feat) != n_umap or len(cluster_labels) != n_umap:\n        raise ValueError(\"Observation alignment mismatch\")",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    },
+    {
+      "name": "return_standardized_frame",
+      "kind": "control",
+      "site": {
+        "function": "compute_feature_profiles",
+        "line": 561,
+        "old": "return df_feat, cluster_means, cluster_labels_aligned",
+        "new": "return X_std_df[feat_cols], cluster_means, cluster_labels_aligned",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    },
+    {
+      "name": "remove_physical_overclaims",
+      "kind": "control",
+      "site": {
+        "function": "physical_profile_table",
+        "line": 325,
+        "old": "\"Interpr\u00e9tation\": (",
+        "new": "\"Interpr\u00e9tation\": (\"Uncalibrated heuristic: \" +",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    },
+    {
+      "name": "normal_transaction_retention",
+      "kind": "control",
+      "site": {
+        "function": "fit",
+        "line": 113,
+        "old": "self.clusterer_ = hdbscan.HDBSCAN(",
+        "new": "candidate = hdbscan.HDBSCAN(",
+        "replacements": 2
+      },
+      "status": "PASS",
+      "tests": 59,
+      "failures": []
+    }
+  ],
+  "normalized_input_integrity": true,
+  "tracked_index_unchanged": true,
+  "temporary_copies_removed": true,
+  "historical_comparison": {
+    "schema": 1,
+    "base_sha": "749224fc5f3237290e005c6ff5a98423e06adf81",
+    "source_blob": "667a2985ea1b6b4f0a660a70f7635715730c0f78",
+    "hash_policy": "SHA-256, CRLF normalized to LF",
+    "content_hashes_lf": {
+      "src/dimred/hdbscan_analyzer.py": "a963478cb7ae605652082b2153ba330f3d6cb3d7d27a772bb77b736498802ded",
+      "src/dimred/data_loader.py": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+      "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
+      "tests/conftest.py": "3fedfe82f5f08149fbb3e00cf138a0e336cc3607dbf185d8cb781e88820bfc7a",
+      "tests/m24_support.py": "87780cdbe3ea3301442e85e4bd1f8adc5baa43d43bb26c78e7d6fbee5865129f",
+      "tests/test_dimred_hdbscan_analyzer.py": "3b29aad364d7ed636e66362e83de460c6cff57067f3962d133e75db082cb2b6e",
+      "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "audit/check_m24_mutations.py": "5f5444faba8260ca250922a5edf3aa9dd1548e254d40bfb00a3635eae14ac3fb"
+    },
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "versions": {
+      "pytest": "8.4.2",
+      "numpy": "2.4.6",
+      "pandas": "3.1.1",
+      "scipy": "1.17.1",
+      "scikit-learn": "1.9.1"
+    },
+    "reverse": false,
+    "cases": [
+      {
+        "name": "baseline",
+        "kind": "baseline",
+        "site": null,
+        "status": "PASS",
+        "tests": 56,
+        "failures": []
+      },
+      {
+        "name": "presentation_reverses_labels",
+        "kind": "mutation",
+        "site": {
+          "function": "fit_presentation",
+          "line": 156,
+          "old": "self.clusterer_pres_.fit_predict(Z)",
+          "new": "self.clusterer_pres_.fit_predict(Z)[::-1]",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 56,
+        "failures": []
+      },
+      {
+        "name": "feature_no_gaia_exclusions",
+        "kind": "mutation",
+        "site": {
+          "function": "compute_feature_profiles",
+          "line": 518,
+          "old": "set(_GAIA_META_COLS) |",
+          "new": "set() |",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 56,
+        "failures": []
+      }
+    ],
+    "tests_ref": "749224fc5f3237290e005c6ff5a98423e06adf81",
+    "historical_test_sha256_lf": "a38b8b77c463d9ee8b49aeea49b28f6ebe24307d9749a3b0f9050aed674de239",
+    "normalized_input_integrity": true,
+    "tracked_index_unchanged": true,
+    "temporary_copies_removed": true
+  }
+}

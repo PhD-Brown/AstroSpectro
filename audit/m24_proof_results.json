@@ -18,7 +18,7 @@
       "errors": "0",
       "failures": "10",
       "skipped": "0",
-      "tests": "33"
+      "tests": "34"
     },
     "cases": [
       {
@@ -34,12 +34,12 @@
       {
         "name": "test_failed_fit_state_is_coherent[True-fit]",
         "status": "FAIL",
-        "failure": "AssertionError: Estimator was replaced while cached labels survived\nassert <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000022D5AF41D90> is <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000022D5B228190>\n +  where <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000022D5AF41D90> = getattr(<m24_hdbscan.HDBSCANAnalyzer object at 0x0000022D5B213FD0>, 'clusterer_')"
+        "failure": "AssertionError: Estimator was replaced while cached labels survived\nassert <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000016130065AD0> is <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000016130098F50>\n +  where <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000016130065AD0> = getattr(<m24_hdbscan.HDBSCANAnalyzer object at 0x0000016130098E10>, 'clusterer_')"
       },
       {
         "name": "test_failed_fit_state_is_coherent[True-fit_presentation]",
         "status": "FAIL",
-        "failure": "AssertionError: Estimator was replaced while cached labels survived\nassert <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000022D5B210D90> is <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000022D598A9450>\n +  where <m24_support.hdbscan_backend.<locals>.Backend object at 0x0000022D5B210D90> = getattr(<m24_hdbscan.HDBSCANAnalyzer object at 0x0000022D5B211890>, 'clusterer_pres_')"
+        "failure": "AssertionError: Estimator was replaced while cached labels survived\nassert <m24_support.hdbscan_backend.<locals>.Backend object at 0x000001612FC6AD50> is <m24_support.hdbscan_backend.<locals>.Backend object at 0x000001612FFAB390>\n +  where <m24_support.hdbscan_backend.<locals>.Backend object at 0x000001612FC6AD50> = getattr(<m24_hdbscan.HDBSCANAnalyzer object at 0x000001612FCA4490>, 'clusterer_pres_')"
       },
       {
         "name": "test_feature_filter_cannot_reassign_labels[snr]",
@@ -64,7 +64,7 @@
       {
         "name": "test_no_available_physical_columns_has_explicit_outcome",
         "status": "FAIL",
-        "failure": "assert False\n +  where False = any(<generator object test_no_available_physical_columns_has_explicit_outcome.<locals>.<genexpr> at 0x0000022D0CB60A90>)"
+        "failure": "assert False\n +  where False = any(<generator object test_no_available_physical_columns_has_explicit_outcome.<locals>.<genexpr> at 0x00000161618E48B0>)"
       },
       {
         "name": "test_all_missing_classes_have_explicit_outcome",
@@ -157,6 +157,11 @@
         "failure": null
       },
       {
+        "name": "test_heterogeneous_temperatures_emit_an_unobserved_average_type",
+        "status": "PASS",
+        "failure": null
+      },
+      {
         "name": "test_current_heuristic_display_observation[7501.0-2.49--0.81-parts0]",
         "status": "PASS",
         "failure": null
@@ -210,7 +215,7 @@
   },
   "content_hashes_lf": {
     "src/dimred/hdbscan_analyzer.py": "a963478cb7ae605652082b2153ba330f3d6cb3d7d27a772bb77b736498802ded",
-    "tests/proofs_dimred_hdbscan_analyzer.py": "0c4cd3e8c222af14d01070f17778c7d0bb1b57d02a5b7a0210a017a017ad4169",
+    "tests/proofs_dimred_hdbscan_analyzer.py": "950bb583c5352efc82a24850c5f05079c3a1b01a844aa9871cff5f073a847fd0",
     "tests/m24_support.py": "87780cdbe3ea3301442e85e4bd1f8adc5baa43d43bb26c78e7d6fbee5865129f"
   }
 }

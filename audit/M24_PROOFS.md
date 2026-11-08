@@ -20,8 +20,9 @@ All CSVs/coordinates/metadata are synthetic; no scientific files are edited.
 Windows AMD64, Python 3.11.9, pytest8.4.2, numpy2.4.6, pandas3.1.1,
 scipy1.17.1, sklearn1.9.1; optional hdbscan0.8.44. Exact per-case failure
 messages, source/test hashes and version context are in `m24_proof_results.json`.
-Ordinary: **33 cases, 10 FAIL / 23 PASS / 0 ERROR/SKIP/XFAIL**, 2 optional
-cases deselected. Optional: **2 PASS**, 33 ordinary cases deselected.
+Ordinary: **34 cases, 10 FAIL / 24 PASS / 0 ERROR/SKIP/XFAIL**, 2 optional
+cases deselected. Optional: **2 PASS**; its earlier run deselected the then33
+ordinary cases. Final committed rerun is recorded in the integration matrix.
 Counts describe cases, not numbers of bugs. All ten failing causes were read.
 
 | Test (prefix `test_` omitted) | Cases/result | Classification and independent expectation |
@@ -38,6 +39,7 @@ Counts describe cases, not numbers of bugs. All ten failing causes were read.
 | `profile_open_policy_observations` | 7 PASS | OPEN tie, empty phys_cols fallback, duplicate phys_cols TypeError, duplicate obsids positional acceptance, strings TypeError, Inf→inf/nan, nullable-all-missing display. These observations preserve limitations, not future mandatory behavior. |
 | `sensitivity_zero_length_observation` | 1 PASS | OPEN defensive wrapper domain, artificial empty backend result→ZeroDivisionError. Real backend rejects N=0; no claim this is reachable via a successful real HDBSCAN fit. |
 | `algorithmic_noise_does_not_use_physical_measurements` | 1 PASS | NEW methodological/textual overclaim. Noise unconditionally receives an astrophysical anomaly label without spectra/errors/SNR/anomaly diagnostic. No independently established physical classification follows from -1. |
+| `heterogeneous_temperatures_emit_an_unobserved_average_type` | 1 PASS | Same interpretation limitation:4000K and8000K emit a solar-type group description from their6000K mean, although neither observation has that temperature. This demonstrates averaging, not a physical-class falsification with independently classified real stars. |
 | `current_heuristic_display_observation` | 6 PASS | Current threshold fidelity at/around4000,5500,7500K,2.5/3.5dex,-0.8/-0.3dex. These strings are descriptive observations in the archive, not astrophysical requirements in green CI. |
 | `real_failed_refit_state_observation` (slow) | 2 PASS | Real hdbscan0.8.44 confirms fresh estimator + stale labels after a single-row refit failure in each mode. Normal mode also rejected NaN in the initial probe; presentation without prediction_data can map a NaN row to noise, so NaN is NOT used as its failure precondition. |
 
@@ -49,6 +51,16 @@ No population of real stars, historical incidence or scientific severity P0 is
 inferred. Feature filtering follows the actual hardcoded SNR>=10 and missing
 fraction<=10%; valid equal-sized prefiltered inputs have separate green oracles.
 Equal sizes, `min(N_features,N_umap)` and old pandas indices cannot certify IDs.
+
+`audit/check_m24_proof_controls.py --output <json>` executes the59-case green
+suite alongside selected proofs on disposable candidates. Full coherent
+retention and full invalidation preserving configuration each PASS63cases;
+partial invalidation leaves4proofs FAIL and the59green cases PASS, as required.
+Explicit alignment refusal PASS63cases, missing-physics diagnostic PASS60cases,
+missing-class placeholder PASS60cases. All6oracle checks PASS, integrity/index
+unchanged. Results are in `m24_proof_control_results.json`. These are candidate
+compatibility checks, not approved corrections. No source file in the real
+checkout is changed. Snapshot arrays/lists/maps are copied by the state oracle.
 
 Missing classes and missing physics are distinct failure causes; none specifies
 a preferred missing-value policy. Duplicate physical-column semantics, Boolean

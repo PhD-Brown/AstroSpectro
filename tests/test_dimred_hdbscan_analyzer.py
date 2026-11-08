@@ -111,7 +111,7 @@ def test_helpers_recompute_and_successive_fit_replace_state(
     assert set(a.color_map_) == {-1, 3, 11}
 
 
-@pytest.mark.parametrize("labels", [[-1, -1, -1], [7, 2, 7], [7, 7, 7]])
+@pytest.mark.parametrize("labels", [[-1, -1, -1], [7, 2, 7], [7, 7, 7], [-1, 2, 7]])
 @pytest.mark.parametrize("size", [None, 13])
 def test_presentation_is_separate(hdbscan_module, hdbscan_backend, labels, size):
     a = fitted(
@@ -454,6 +454,7 @@ def test_feature_selection_matches_spectro_loader_on_controlled_population(
     # Mechanism characterization only: known #23 denylist is not a provenance certificate.
     for col in [
         "teff_gspphot",
+        "mh_gspphot",
         "source_id",
         "gaia_ra",
         "snr_g",
@@ -682,3 +683,32 @@ def test_print_empty_supplied_tables(hdbscan_module, capsys):
     hdbscan_module.HDBSCANAnalyzer().print_physical_profile(table, interp)
     assert "HDBSCAN" in capsys.readouterr().out
     assert table.empty and interp.empty
+
+
+def test_all_default_physical_columns_have_correct_units_and_moments(
+    hdbscan_module, hdbscan_backend
+):
+    a = fitted(hdbscan_module, hdbscan_backend, [2, 2])
+    meta = pd.DataFrame(
+        {
+            "teff_gspphot": [5000.0, 6000.0],
+            "logg_gspphot": [3.0, 5.0],
+            "mh_gspphot": [-1.0, 1.0],
+            "bp_rp": [1.0, 3.0],
+            "phot_g_mean_mag": [10.0, 14.0],
+            "distance_gspphot": [100.0, 300.0],
+        }
+    )
+    table, _ = a.physical_profile_table(meta, np.array(["G", "G"]))
+    expected = {
+        "T_eff (K)": "5500 ± 707",
+        "log g (dex)": "4.00 ± 1.41",
+        "G_BP-G_RP": "2.00 ± 1.41",
+        "G mag": "12.00 ± 2.83",
+        "Distance (pc)": "200.00 ± 141.42",
+    }
+    for col, value in expected.items():
+        assert table.loc["C2", col] == value
+    # Do not freeze the unresolved [M/H] versus [Fe/H] display terminology.
+    extra = set(table.columns) - set(expected) - {"n spectres", "Classe dom."}
+    assert len(extra) == 1 and table.loc["C2", extra.pop()] == "0.00 ± 1.41"

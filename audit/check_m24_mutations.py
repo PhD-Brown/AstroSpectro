@@ -385,6 +385,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reverse", action="store_true")
+    parser.add_argument(
+        "--tests-ref", help="Optional historical test file from a Git ref"
+    )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        help="Select named candidates (intact baseline always runs)",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     paths = [
@@ -404,6 +412,8 @@ def main():
     if not args.reverse:
         for kind, definitions in [("mutation", MUTATIONS), ("control", controls())]:
             for definition in definitions:
+                if args.only and definition[0] not in args.only:
+                    continue
                 # Transaction candidate needs two coordinated edits; controls are
                 # not single-site mutations and never enter the mutation count.
                 if definition[0] == "normal_transaction_retention":
@@ -439,6 +449,22 @@ def main():
                 target = sandbox / p
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(root / p, target)
+            if args.tests_ref:
+                historical = subprocess.check_output(
+                    [
+                        "git",
+                        "show",
+                        f"{args.tests_ref}:tests/test_dimred_hdbscan_analyzer.py",
+                    ],
+                    cwd=root,
+                )
+                (sandbox / "tests/test_dimred_hdbscan_analyzer.py").write_bytes(
+                    historical
+                )
+                report["tests_ref"] = args.tests_ref
+                report["historical_test_sha256_lf"] = hashlib.sha256(
+                    historical.replace(b"\r\n", b"\n")
+                ).hexdigest()
             if args.reverse:
                 with (sandbox / "tests/conftest.py").open(
                     "a", encoding="utf-8"

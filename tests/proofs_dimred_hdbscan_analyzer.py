@@ -16,6 +16,12 @@ import pytest
 def test_failed_fit_state_is_coherent(hdbscan_module, hdbscan_backend, mode, refit):
     """NEW state defect: accept full retention OR full invalidation, not mixing."""
     a = hdbscan_module.HDBSCANAnalyzer(3, 2)
+    configuration = (
+        a.min_cluster_size,
+        a.min_samples,
+        a.metric,
+        a.cluster_selection_method,
+    )
     normal = mode == "fit"
     names = (
         [
@@ -38,10 +44,21 @@ def test_failed_fit_state_is_coherent(hdbscan_module, hdbscan_backend, mode, ref
     if refit:
         hdbscan_backend[1].append([-1, 2, 2, 7, 7])
         getattr(a, mode)(np.ones((5, 2)))
-    old = {name: getattr(a, name) for name in names}
+    old = {}
+    for name in names:
+        value = getattr(a, name)
+        old[name] = (
+            value.copy() if isinstance(value, (np.ndarray, list, dict)) else value
+        )
     hdbscan_backend[1].append(ValueError("controlled failure"))
     with pytest.raises(ValueError, match="controlled failure"):
         getattr(a, mode)(np.ones((3, 2)))
+    assert (
+        a.min_cluster_size,
+        a.min_samples,
+        a.metric,
+        a.cluster_selection_method,
+    ) == configuration
     if getattr(a, names[0]) is None:
         assert getattr(a, names[1]) is None
         assert getattr(a, names[2]) == []
@@ -276,6 +293,18 @@ def test_algorithmic_noise_does_not_use_physical_measurements(
         == "anomalies spectrales, objets atypiques"
     )
     # The statement is emitted with no spectrum, uncertainty, SNR or anomaly diagnostic.
+
+
+def test_heterogeneous_temperatures_emit_an_unobserved_average_type(
+    hdbscan_module, hdbscan_backend
+):
+    """Methodological observation: averaging does not make a homogeneous class."""
+    hdbscan_backend[1].append([2, 2])
+    a = hdbscan_module.HDBSCANAnalyzer().fit(np.ones((2, 2)))
+    _, interp = a.physical_profile_table(
+        pd.DataFrame({"teff_gspphot": [4000.0, 8000.0]}), np.array(["K", "A"])
+    )
+    assert "type solaire" in interp.loc["C2", "Interprétation"]
 
 
 @pytest.mark.parametrize(
