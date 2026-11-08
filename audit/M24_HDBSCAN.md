@@ -66,7 +66,7 @@ sample std=sqrt(80000)=282.8427…→283; C7 6000/6200/6400 gives 6200±200.
 Gravity values 1/3 give 2±sqrt 2;4/5/NaN gives 4.5±sqrt(0.5). Dominant classes
 have unambiguous majorities, so no tie-break policy is frozen. Integer counts
 and string formatting are exact. Singleton/all missing dispersions are left
-undefined rather than replaced by zero. NullableFloat 64/float64 compare alike
+undefined rather than replaced by zero. Nullable Float64/float64 compare alike
 for the finite/missing cases tested; nullable-all missing display is archived.
 
 Feature example a=[0,2,6,8], b=[1,5,1,9], labels=[7,-1,2,2]. Population means
@@ -90,7 +90,7 @@ No monotonic cluster-count assertion and no sum-to-one probability assertion.
 Ordinary venv has no hdbscan. Installed **hdbscan 0.8.44** with
 `uv pip install --python ../AstroSpectro/.venv/Scripts/python.exe --target test-results/m24-optional-deps --no-deps hdbscan`.
 Only scoped PYTHONPATH selects it. Project venv/dependencies/CI unchanged.
-Windows 10 AMD 64/Python 3.11.9; numpy 2.4.6/scipy 1.17.1/sklearn 1.9.1.
+Windows 10 AMD64/Python 3.11.9; numpy 2.4.6/scipy 1.17.1/sklearn 1.9.1.
 Two 12-point Gaussian groups centered(-10,0)/(10,0), std 0.1, RNG 17, plus(0,100),
 with size 4/samples 2. Tiny dense fits use actual backend defaults, including
 core_dist_n_jobs=4/approx_min_span_tree=True, no GPU. No global random seed
@@ -158,7 +158,7 @@ At that committed checkout: **10 FAIL /24 PASS /2 optional deselected**, then
 separately **2 real observations PASS /34 ordinary deselected**. Zero collection/
 fixture errors, skips or xfails. The documentation-only descendant adds issue
 links; final archive ref/SHA is also recorded in the PR/handoff. Both archives
-and initial 749224 f remain ancestors of integration, without force-push.
+and initial `749224f` remain ancestors of integration, without force-push.
 
 | Finding / classification | Follow-up | Evidence and open remedy |
 |---|---|---|
@@ -181,25 +181,25 @@ hide errors. Red/green split preserves open decisions rather than fixing them.
 
 ### Mutations and oracle controls
 
-[Replay](check_m 24_mutations.py) uses AST-scoped function/line sites, exactly
+[Replay](check_m24_mutations.py) uses AST-scoped function/line sites, exactly
 one edit per mutation, syntax parsing, intact baseline, JUnit counts and
 failure names. Only disposable copies are changed. Input content hashes use
 CRLF→LF normalization, and the tracked index is checked before/after. Import,
 fixture/collection errors or differing case counts are INCONCLUSIVE, not kills.
 The complete successful run has no such errors; all real source hashes match.
 
-First 56-case campaign at 749224 f: **52 KILLED /2 SURVIVED** out of 54, plus 6
+First 56-case campaign at `749224f`: **52 KILLED /2 SURVIVED** out of 54, plus 6
 separate controls PASS. The survivors reverse symmetric presentation labels
 or remove a Gaia exclusion masked by other prefix exclusions. Added asymmetric
 labels and mh_gspphot (not caught by those prefixes), plus default physical
 column statistics. Current 59-case suite: **54 KILLED /0 SURVIVED /0 INCONCLUSIVE**,
 same 6 controls PASS. The two sites were explicitly replayed against the Git
-test file at 749224 f and both SURVIVED. This is a reproducible before/after
+test file at `749224f` and both SURVIVED. This is a reproducible before/after
 comparison, not a claim of exhaustive mutation coverage or scientific truth.
 
-Results in [m 24_mutation_results.json](m 24_mutation_results.json) contain final
+Results in [m24_mutation_results.json](m24_mutation_results.json) contain final
 site/failure metadata and the historical two-site comparison. Initial full
-results remain archived at 749224 f, outside the integration diff. Six controls:
+results remain archived at `749224f`, outside the integration diff. Six controls:
 equivalent np.unique IDs, neutral comment, mismatch refusal, standardized first
 return, prefix qualifying cluster heuristic prose, normal-fit retention. The
 prose-prefix control does **not** fix the unconditional noise description or
@@ -215,7 +215,7 @@ with intact real inputs/index. They do not approve a corrective API.
 
 Actual Python executable throughout:
 `C:/Users/alexb/Documents/Projets/AstroSpectro/.venv/Scripts/python.exe`.
-Windows `10.0.26300` AMD 64, Python 3.11.9, pytest 8.4.2/pytest-socket 0.7.0,
+Windows `10.0.26300` AMD64, Python 3.11.9, pytest 8.4.2/pytest-socket 0.7.0,
 numpy 2.4.6, pandas 3.1.1, scipy 1.17.1, sklearn 1.9.1, astropy 8.0.2,
 joblib 1.6.0, Matplotlib 3.11.2, Black 24.4.2, Ruff 0.5.0. Optional target 0.8.44.
 Commands below use that Python, from worktree root; outputs under ignored
@@ -232,7 +232,7 @@ Commands below use that Python, from worktree root; outputs under ignored
 | `audit/check_m24_mutations.py --tests-ref 749224fc5f3237290e005c6ff5a98423e06adf81 --only presentation_reverses_labels feature_no_gaia_exclusions --output test-results/m24-mutations-before.json` |56-case baseline PASS, both mutations SURVIVED |
 | `audit/check_m24_mutations.py --output test-results/m24-mutations-final.json` |59-case baseline PASS,54 mutations KILLED,6 controls PASS |
 | Archived `audit/check_m24_proof_controls.py --output test-results/m24-proof-controls-final.json` |6 oracle outcomes PASS, partial invalidation deliberately 4 FAIL; all green unaffected |
-| At committedd 402922: `-m pytest -q tests/proofs_dimred_hdbscan_analyzer.py --tb=no --junitxml=test-results/m24-proofs-at-d402922.xml` |10 FAIL/24 PASS/2 deselected/0 ERROR/SKIP/XFAIL |
+| At committed `d402922`: `-m pytest -q tests/proofs_dimred_hdbscan_analyzer.py --tb=no --junitxml=test-results/m24-proofs-at-d402922.xml` |10 FAIL/24 PASS/2 deselected/0 ERROR/SKIP/XFAIL |
 | Same committed archive, scoped optional target, proof file `-m slow -W error --junitxml=test-results/m24-real-proofs-at-d402922.xml` |2 PASS/34 deselected |
 | `-m black --check src tests scripts app.py audit/check_m24_mutations.py audit/check_m24_proof_controls.py` |37 files unchanged, archive script included |
 | Same Ruff scope; `-m pip check`; `git diff --check` |PASS, no broken requirements, clean diff |
@@ -279,8 +279,8 @@ No force-push/history rewrite. The proof ref is an ancestor of the final head.
 All six issues link the fixed executed d402922 proofs; a27028b adds their links
 to the manifest. Both are durable, not ephemeral references to a moving branch.
 
-The final diff versus starting main contains exactly eight paths: two green/
+The final diff versus starting main contains exactly seven paths: two green/
 optional test files, helper, conftest registration, matrix, mutation script and
-mutation JSON. The source blob remains667a2985ea1b6b4f0a660a70f7635715730c0f78.
+mutation JSON. The source blob remains `667a2985ea1b6b4f0a660a70f7635715730c0f78`.
 Final commit SHA and hosted CI are recorded in the PR/handoff so this document
 does not need a self-referential commit ID. M2.4 awaits independent review.
