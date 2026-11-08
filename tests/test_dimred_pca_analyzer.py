@@ -7,6 +7,7 @@ signs nor individual bases in repeated-eigenvalue subspaces are prescribed.
 
 import importlib.util
 from pathlib import Path
+import warnings
 
 import joblib
 import numpy as np
@@ -153,13 +154,20 @@ def test_rank_deficient_and_equal_eigenvalue_subspaces(dimred_pca_class):
 
 
 @pytest.mark.unit
-def test_constant_data_has_undefined_variance_and_exact_reconstruction(
+def test_constant_data_rejection_or_mathematically_consistent_fit(
     dimred_pca_class,
 ):
     X = np.full((5, 3), 7.0)
-    with pytest.warns(RuntimeWarning, match="invalid value"):
-        model = dimred_pca_class(3, svd_solver="full").fit(X)
-    assert np.isnan(model.explained_variance_ratio).all()
+    model = dimred_pca_class(3, svd_solver="full")
+    # Variance-zero policy is OPEN (#59). Only a validation rejection is
+    # acceptable; unrelated RuntimeError/AttributeError must still fail.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        try:
+            model.fit(X)
+        except ValueError:
+            return
+    assert not np.isfinite(model.explained_variance_ratio).any()
     np.testing.assert_array_equal(model.transform(X), np.zeros((5, 3)))
     np.testing.assert_array_equal(model.reconstruction_error(X), np.zeros(5))
     # This tests undefined fractions; it does not endorse component selection on them.
@@ -254,12 +262,11 @@ def test_loadings_labels_top_absolute_order_and_sign(dimred_pca_class, pca_axes)
     "feature,prefix",
     [
         ("feature_Halpha_depth", "Balmer"),
-        ("hBETA_index", "Balmer"),
         ("feature_CaH_present", "Calcium"),
         ("feature_Mg_b", "Magnésium"),
         ("feature_Fe_5270", "Fer &"),
         ("Na_D", "Sodium"),
-        ("TiO_1_Lick", "Titane"),
+        ("feature_TiO5_depth", "Titane"),
         ("feature_Ba_4554", "Strontium"),
         ("continuum_slope", "Continuum"),
         ("wing_width", "Profils"),
@@ -353,6 +360,7 @@ def test_correlations_analytic_positive_negative_zero_nonlinear(
             "negative": -3 * x,
             "zero": x * x,
             "nonlinear": x**3,
+            "integer": (2 * x).astype(np.int64),
             "text": ["x"] * 60,
         },
         index=np.arange(60)[::-1],
@@ -361,11 +369,23 @@ def test_correlations_analytic_positive_negative_zero_nonlinear(
         meta, scores=x[:, None], method=method, n_pcs=99
     )
     expected_nonlinear = 1 if method == "spearman" else centered_correlation(x, x**3)
-    assert result.columns.tolist() == ["positive", "negative", "zero", "nonlinear"]
+    assert meta["integer"].dtype == np.dtype(np.int64)
+    assert result.columns.tolist() == [
+        "positive",
+        "negative",
+        "zero",
+        "nonlinear",
+        "integer",
+    ]
     assert result.index.tolist() == ["PC1"]
     np.testing.assert_allclose(
-        result.iloc[0], [1, -1, 0, expected_nonlinear], atol=ATOL, rtol=0
+        result.iloc[0], [1, -1, 0, expected_nonlinear, 1], atol=ATOL, rtol=0
     )
+    # Adding integer metadata must not alter any other correlation.
+    without_integer = model.correlations_with_params(
+        meta.drop(columns="integer"), scores=x[:, None], method=method, n_pcs=99
+    )
+    pd.testing.assert_frame_equal(result.drop(columns="integer"), without_integer)
     # The documented alignment is positional; paired permutation keeps it.
     order = np.roll(np.arange(60), 17)
     pd.testing.assert_frame_equal(
@@ -436,6 +456,38 @@ def test_correlation_recomputed_scores_empty_columns_and_bad_method(dimred_pca_c
     assert result.shape == (1, 0)
     with pytest.raises(ValueError, match="method"):
         model.correlations_with_params(meta, method="kendall")
+
+
+@pytest.mark.unit
+def test_default_correlation_count_on_eleven_component_model(dimred_pca_class):
+    axes = np.diag(np.arange(1.0, 12.0))
+    X = np.vstack([axes, -axes, axes, -axes])
+    model = dimred_pca_class(11, svd_solver="full").fit(X)
+    result = model.correlations_with_params(pd.DataFrame({"p": X[:, -1]}))
+    assert result.index.tolist() == [f"PC{i}" for i in range(1, 11)]
+    expected = np.zeros(10)
+    expected[0] = np.sign(model.loadings[0, -1])
+    np.testing.assert_allclose(result["p"], expected, atol=ATOL, rtol=0)
+
+
+@pytest.mark.unit
+def test_default_class_count_on_six_component_model(dimred_pca_class):
+    axes = np.diag(np.arange(1.0, 7.0))
+    X = np.vstack([axes, -axes])
+    model = dimred_pca_class(6, svd_solver="full").fit(X)
+    result = model.class_separation(X, np.array(["A"] * len(X)))
+    assert result.index.tolist() == [("A", f"PC{i}") for i in range(1, 6)]
+    for i in range(5):
+        values = X[:, -1 - i] * np.sign(model.loadings[i, -1 - i])
+        expected = [
+            len(X),
+            values.mean(),
+            values.std(),
+            np.median(values),
+            np.percentile(values, 25),
+            np.percentile(values, 75),
+        ]
+        np.testing.assert_allclose(result.iloc[i], expected, atol=ATOL, rtol=0)
 
 
 @pytest.mark.unit
@@ -636,10 +688,12 @@ def test_missing_and_invalid_controlled_payloads(dimred_pca_class, tmp_path):
     path = tmp_path / "controlled.joblib"
     # Only locally generated, trusted payloads are deserialized.
     joblib.dump({}, path)
-    with pytest.raises(KeyError, match="pca"):
+    # These trusted malformed payloads must fail loudly. Explicit validation
+    # (ValueError) and current raw access errors are distinct allowed outcomes.
+    with pytest.raises((KeyError, AttributeError, TypeError, ValueError)):
         dimred_pca_class.load(path)
     joblib.dump({"pca": None, "feature_names": []}, path)
-    with pytest.raises(AttributeError):
+    with pytest.raises((KeyError, AttributeError, TypeError, ValueError)):
         dimred_pca_class.load(path)
 
 

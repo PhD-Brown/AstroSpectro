@@ -91,11 +91,49 @@ MUTATIONS = [
         '{"pca": self._pca, "feature_names": self.feature_names_}',
         '{"pca": self._pca, "feature_names": self.feature_names_[::-1]}',
     ),
-    # Known failure transaction: successful-fit contracts cannot detect this.
     (
-        "failed_fit_guard_still_inadequate",
-        "if self._pca is None:",
-        "if self._pca is None or not hasattr(self._pca, 'fit'):",
+        "integer_parameters_excluded",
+        "pd.api.types.is_numeric_dtype(meta[c])",
+        "pd.api.types.is_float_dtype(meta[c])",
+    ),
+    ("default_correlation_nine", "n_pcs: int = 10,", "n_pcs: int = 9,"),
+    ("default_class_four", "n_pcs: int = 5,", "n_pcs: int = 4,"),
+]
+
+# Compatibility controls are candidate remedies, not defect mutations or
+# scientific decisions. They must leave green contracts passing, and are
+# excluded from the mutation denominator. The former hasattr(PCA, 'fit')
+# no-op is removed entirely.
+CONTROLS = [
+    (
+        "zero_variance_validation",
+        "self._pca.fit(X)",
+        'if np.all(np.var(np.asarray(X, dtype=float), axis=0) == 0):\n            raise ValueError("zero total variance")\n        self._pca.fit(X)',
+    ),
+    (
+        "payload_schema_validation",
+        "obj = joblib.load(path)",
+        'obj = joblib.load(path)\n        if not isinstance(obj, dict) or not hasattr(obj.get("pca"), "components_"):\n            raise ValueError("invalid or unfitted PCAAnalyzer payload")',
+    ),
+    (
+        "lick_priority",
+        "for family, patterns in self._FAMILIES.items():",
+        'for family, patterns in sorted(self._FAMILIES.items(), key=lambda pair: not pair[0].startswith("Indices")):',
+    ),
+    (
+        "case_sensitive_tio",
+        'r"TiO|VO_|molecular|feature_Ti|CNO|CN_"',
+        'r"(?-i:TiO)|VO_|molecular|feature_Ti|CNO|CN_"',
+    ),
+    (
+        "class_count_clamp",
+        "scores = self._pca.transform(X)[:, :n_pcs]",
+        "n_pcs = min(n_pcs, self._pca.n_components_)\n        scores = self._pca.transform(X)[:, :n_pcs]",
+    ),
+    (
+        "class_count_validation",
+        "scores = self._pca.transform(X)[:, :n_pcs]",
+        'if n_pcs > self._pca.n_components_:\n            raise ValueError("too many PCs requested")\n        scores = self._pca.transform(X)[:, :n_pcs]',
     ),
 ]
 
@@ -125,7 +163,10 @@ def main():
             shutil.copyfile(root / relative, destination)
         source_path = sandbox / paths[0]
         source = source_path.read_text(encoding="utf-8")
-        for name, before, after in [("baseline", None, None)] + MUTATIONS:
+        candidates = [("baseline", "baseline", None, None)]
+        candidates += [("mutation", *case) for case in MUTATIONS]
+        candidates += [("compatibility_control", *case) for case in CONTROLS]
+        for kind, name, before, after in candidates:
             if before is not None and source.count(before) != 1:
                 raise RuntimeError(f"{name}: expected one replacement site")
             changed = source if before is None else source.replace(before, after)
@@ -174,10 +215,22 @@ def main():
             if name == "baseline" and failures:
                 raise RuntimeError(f"Baseline failed: {failures}")
             status = (
-                "PASS" if name == "baseline" else "KILLED" if failures else "SURVIVED"
+                "PASS"
+                if kind == "baseline"
+                else (
+                    ("CONTROL_FAILED" if failures else "CONTROL_PASS")
+                    if kind == "compatibility_control"
+                    else "KILLED" if failures else "SURVIVED"
+                )
             )
             report["cases"].append(
-                {"name": name, "status": status, "tests": tests, "failures": failures}
+                {
+                    "kind": kind,
+                    "name": name,
+                    "status": status,
+                    "tests": tests,
+                    "failures": failures,
+                }
             )
             print(f"{name}: {status} ({len(failures)} failing cases)", flush=True)
     assert hashes == {
@@ -186,6 +239,8 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Report: {args.output}")
+    if any(case["status"] == "CONTROL_FAILED" for case in report["cases"]):
+        raise RuntimeError("A compatibility control broke green contracts")
 
 
 if __name__ == "__main__":
