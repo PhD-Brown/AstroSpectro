@@ -1,295 +1,55 @@
 {
-  "source_hashes": {
+  "schema": 2,
+  "git_head": "2687043301e3857cea3db7d5ac19690629934b7f",
+  "hash_policy": "SHA-256 of UTF-8 text bytes with CRLF normalized to LF",
+  "content_hashes_lf": {
     "src/dimred/embedding.py": "a43bb1027d1117c6480b78d70fd91d2c35e5e3398cfcdc3f48fadd6635c5f5d1",
     "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
     "src/dimred/dimred_visualizer.py": "968207ab322c2eea40f8d1e3721c1e361a9d1f7912d511a48c5f6a2cb0f82b8a",
     "src/dimred/run_reporter.py": "b4a55744237076ec1a78293651623a701809ba85d1afc9160a2c6e69c326db29",
-    "tests/conftest.py": "701a51b6a959240f7ca74c117c5886ab764aea39a52da273a3a9caa3deee4e1d",
-    "tests/test_dimred_embedding.py": "130756f94e6145689671c6e849597ee125ed666f76994efc5a6ca7ac16d4ef97",
-    "pyproject.toml": "8cd8530992cee33f36be6df21499ff57ada45163eae6d76f5537630fc089bc00"
+    "tests/conftest.py": "6e538b4c283eee444f4b761356b4b604b1af596f28946eaa6db3a6c27053a3d3",
+    "tests/test_dimred_embedding.py": "4d795fcfb686a4ff5566a53a695344a27b8a1354d3733901203d4d3f6c6198bf",
+    "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+    "audit/check_m23_mutations.py": "346786318a763b129d8bbf81002f22636ece9d0fedd53e33cc7dcc3ee089ad6c"
   },
+  "head_git_blobs": {
+    "src/dimred/embedding.py": "57ecb8c8627c03bc02cec2eeff2258a01afda929",
+    "src/dimred/pca_analyzer.py": "4fd482b9c986dec5a5f6f96cfc0187ec808852e3",
+    "src/dimred/dimred_visualizer.py": "624b857bca5833c3401204b0a592b9ae6ffc2902",
+    "src/dimred/run_reporter.py": "b966d9b90f056baa37c0ccbb68135c71ff65de92",
+    "tests/conftest.py": "e8896c2960cbaa94184785a70132586db59b656d",
+    "tests/test_dimred_embedding.py": "6e709af5df080c48869d7bad229754a93537fa84",
+    "pyproject.toml": "95c1daca7bc20fffa5cc0d7e182a15815a039331",
+    "audit/check_m23_mutations.py": "6a5355ab5b89b8bee811376c85c2b86d3716cfe4"
+  },
+  "working_tree_before": "M audit/check_m23_mutations.py\n M tests/test_dimred_embedding.py\n?? audit/M23_PROOFS.md\n?? audit/m23_proof_results.json\n?? tests/proofs_dimred_embedding.py",
   "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "group": "all",
   "cases": [
     {
       "name": "baseline",
       "kind": "baseline",
+      "group": "baseline",
+      "site": null,
       "status": "PASS",
-      "tests": 94,
+      "tests": 104,
       "failures": []
     },
     {
-      "name": "seed_ignored",
+      "name": "seed_ignored__negative_control__occ0",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 307,
+        "old": "random_state=self.random_state,",
+        "new": "random_state=0,",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
-        "test_backend_defaults_and_successful_refit[umap]",
-        "test_backend_defaults_and_successful_refit[tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
-        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
-        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
-        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
-        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
-        "test_compare_order_dimensions_and_parameter_forwarding[None]",
-        "test_compare_order_dimensions_and_parameter_forwarding[methods1]",
-        "test_compare_order_dimensions_and_parameter_forwarding[methods2]",
-        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
-      ]
-    },
-    {
-      "name": "pca_off_by_one",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
-        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
-        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
-        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
-        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
-        "test_compare_order_dimensions_and_parameter_forwarding[None]",
-        "test_compare_order_dimensions_and_parameter_forwarding[methods1]",
-        "test_compare_order_dimensions_and_parameter_forwarding[methods2]",
-        "test_real_pca_to_tsne_reproducibility[2]",
-        "test_real_pca_to_tsne_reproducibility[3]"
-      ]
-    },
-    {
-      "name": "umap_overrides_ignored",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
-        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
-        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
-        "test_embeddings_reporter_round_trip"
-      ]
-    },
-    {
-      "name": "tsne_overrides_ignored",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
-        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
-        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
-        "test_real_pca_to_tsne_reproducibility[2]",
-        "test_real_pca_to_tsne_reproducibility[3]"
-      ]
-    },
-    {
-      "name": "umap_default_neighbors",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_backend_defaults_and_successful_refit[umap]"
-      ]
-    },
-    {
-      "name": "tsne_default_perplexity",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_backend_defaults_and_successful_refit[tsne]"
-      ]
-    },
-    {
-      "name": "fit_time_zero",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]"
-      ]
-    },
-    {
-      "name": "cache_wrong_embedding",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
-        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
-        "test_backend_defaults_and_successful_refit[umap]",
-        "test_backend_defaults_and_successful_refit[tsne]"
-      ]
-    },
-    {
-      "name": "transform_refits",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_transform_delegates_without_refit"
-      ]
-    },
-    {
-      "name": "stability_cap_4999",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
-      ]
-    },
-    {
-      "name": "stability_head_sampling",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
-      ]
-    },
-    {
-      "name": "stability_seed_ignored",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
-      ]
-    },
-    {
-      "name": "stability_reference_last",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
-      ]
-    },
-    {
-      "name": "stability_missing_seed",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
-        "test_alignment_failure_is_missing_not_false_zero"
-      ]
-    },
-    {
-      "name": "stability_false_zero",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
-        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
-        "test_alignment_failure_is_missing_not_false_zero"
-      ]
-    },
-    {
-      "name": "alignment_failure_false_zero",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_alignment_failure_is_missing_not_false_zero"
-      ]
-    },
-    {
-      "name": "negative_mutates_input",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
         "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
         "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
@@ -302,168 +62,960 @@
       ]
     },
     {
-      "name": "negative_row_shuffle",
+      "name": "seed_ignored__parameter_sensitivity__occ1",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "parameter_sensitivity",
+        "occurrence": 1,
+        "line": 350,
+        "old": "random_state=self.random_state,",
+        "new": "random_state=0,",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
-      ]
-    },
-    {
-      "name": "negative_permutation_seed_fixed",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
-      ]
-    },
-    {
-      "name": "negative_ignores_pca_count",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
-        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
-      ]
-    },
-    {
-      "name": "sensitivity_override_reversed",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
         "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
         "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
         "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
-        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]"
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[umap-min_dist-values0-0.4]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[tsne-early_exaggeration-values1-12.0]"
       ]
     },
     {
-      "name": "3d_wrong_axis",
+      "name": "seed_ignored___fit_umap__occ2",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "_fit_umap",
+        "occurrence": 2,
+        "line": 393,
+        "old": "random_state=self.random_state,",
+        "new": "random_state=0,",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
-        "test_3d_spearman_rank_not_pearson_and_population_permutation[umap]",
-        "test_3d_spearman_rank_not_pearson_and_population_permutation[tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_backend_defaults_and_successful_refit[umap]",
+        "test_stability_child_dimension_method_and_options[umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[umap-min_dist-values0-0.4]",
+        "test_compare_order_dimensions_and_parameter_forwarding[None]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods2]",
         "test_3d_tables_alignment_sampling_and_exports[0-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "seed_ignored___fit_tsne__occ3",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "_fit_tsne",
+        "occurrence": 3,
+        "line": 407,
+        "old": "random_state=self.random_state,",
+        "new": "random_state=0,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
+        "test_backend_defaults_and_successful_refit[tsne]",
+        "test_stability_child_dimension_method_and_options[tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[tsne-early_exaggeration-values1-12.0]",
+        "test_compare_order_dimensions_and_parameter_forwarding[None]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods1]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods2]"
+      ]
+    },
+    {
+      "name": "pca_off_by_one__fit_transform__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "fit_transform",
+        "occurrence": 0,
+        "line": 132,
+        "old": "X[:, :n_pca_components]",
+        "new": "X[:, :n_pca_components-1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[umap-min_dist-values0-0.4]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[tsne-early_exaggeration-values1-12.0]",
+        "test_compare_order_dimensions_and_parameter_forwarding[None]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods1]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods2]",
+        "test_real_pca_to_tsne_reproducibility[2]",
+        "test_real_pca_to_tsne_reproducibility[3]"
+      ]
+    },
+    {
+      "name": "pca_off_by_one__stability_report__occ1",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 1,
+        "line": 221,
+        "old": "X[:, :n_pca_components]",
+        "new": "X[:, :n_pca_components-1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_stability_child_dimension_method_and_options[umap]",
+        "test_stability_child_dimension_method_and_options[tsne]"
+      ]
+    },
+    {
+      "name": "umap_overrides_ignored___fit_umap__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "_fit_umap",
+        "occurrence": 0,
+        "line": 388,
+        "old": "{**self._UMAP_DEFAULTS, **self.extra_kwargs}",
+        "new": "dict(self._UMAP_DEFAULTS)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_stability_child_dimension_method_and_options[umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[umap-min_dist-values0-0.4]",
+        "test_embeddings_reporter_round_trip"
+      ]
+    },
+    {
+      "name": "tsne_overrides_ignored___fit_tsne__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "_fit_tsne",
+        "occurrence": 0,
+        "line": 403,
+        "old": "{**self._TSNE_DEFAULTS, **self.extra_kwargs}",
+        "new": "dict(self._TSNE_DEFAULTS)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
+        "test_stability_child_dimension_method_and_options[tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[tsne-early_exaggeration-values1-12.0]",
+        "test_real_pca_to_tsne_reproducibility[2]",
+        "test_real_pca_to_tsne_reproducibility[3]"
+      ]
+    },
+    {
+      "name": "umap_default_neighbors__module__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "module",
+        "occurrence": 0,
+        "line": 70,
+        "old": "\"n_neighbors\": 15,",
+        "new": "\"n_neighbors\": 14,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_backend_defaults_and_successful_refit[umap]"
+      ]
+    },
+    {
+      "name": "tsne_default_perplexity__module__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "module",
+        "occurrence": 0,
+        "line": 78,
+        "old": "\"perplexity\": 30,",
+        "new": "\"perplexity\": 29,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_backend_defaults_and_successful_refit[tsne]"
+      ]
+    },
+    {
+      "name": "fit_time_zero__fit_transform__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "fit_transform",
+        "occurrence": 0,
+        "line": 150,
+        "old": "self.fit_time_ = time.perf_counter() - t0",
+        "new": "self.fit_time_ = 0.0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]"
+      ]
+    },
+    {
+      "name": "cache_wrong_embedding__fit_transform__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "fit_transform",
+        "occurrence": 0,
+        "line": 152,
+        "old": "self._embedding = Z",
+        "new": "self._embedding = Z[::-1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
+        "test_backend_defaults_and_successful_refit[umap]",
+        "test_backend_defaults_and_successful_refit[tsne]"
+      ]
+    },
+    {
+      "name": "transform_refits__transform__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "transform",
+        "occurrence": 0,
+        "line": 178,
+        "old": "return self._model.transform(X_new)",
+        "new": "return self._model.fit_transform(X_new)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_transform_delegates_without_refit"
+      ]
+    },
+    {
+      "name": "stability_cap_4999__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 224,
+        "old": "min(len(X), 5000)",
+        "new": "min(len(X), 4999)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_head_sampling__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 226,
+        "old": "idx = rng.choice(len(X), size=n, replace=False)",
+        "new": "idx = np.arange(n)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_seed_ignored__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 238,
+        "old": "random_state=seed,",
+        "new": "random_state=self.random_state,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_stability_child_dimension_method_and_options[umap]",
+        "test_stability_child_dimension_method_and_options[tsne]"
+      ]
+    },
+    {
+      "name": "stability_reference_last__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 245,
+        "old": "Z_ref = embeddings[0]",
+        "new": "Z_ref = embeddings[-1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_missing_seed__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 233,
+        "old": "range(n_seeds)",
+        "new": "range(n_seeds - 1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_alignment_failure_is_missing_not_false_zero",
+        "test_stability_child_dimension_method_and_options[umap]",
+        "test_stability_child_dimension_method_and_options[tsne]"
+      ]
+    },
+    {
+      "name": "stability_false_zero__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 252,
+        "old": "_, _, dist = procrustes(Z_ref, Z)",
+        "new": "dist = 0.0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_alignment_failure_is_missing_not_false_zero"
+      ]
+    },
+    {
+      "name": "alignment_failure_false_zero__stability_report__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 255,
+        "old": "dist = np.nan",
+        "new": "dist = 0.0",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_alignment_failure_is_missing_not_false_zero"
+      ]
+    },
+    {
+      "name": "negative_mutates_input__negative_control__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 297,
+        "old": "X_perm = X.copy()",
+        "new": "X_perm = X",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
+        "test_negative_control_breaks_all_six_multivariable_associations[umap]",
+        "test_negative_control_breaks_all_six_multivariable_associations[tsne]"
+      ]
+    },
+    {
+      "name": "negative_row_shuffle__negative_control__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 301,
+        "old": "rng.shuffle(X_perm[:, j])",
+        "new": "rng.shuffle(X_perm, axis=0)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_breaks_all_six_multivariable_associations[umap]",
+        "test_negative_control_breaks_all_six_multivariable_associations[tsne]"
+      ]
+    },
+    {
+      "name": "negative_permutation_seed_fixed__negative_control__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 295,
+        "old": "self.random_state + 999",
+        "new": "999",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
+      ]
+    },
+    {
+      "name": "negative_ignores_pca_count__negative_control__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 310,
+        "old": "engine_neg.fit_transform(X_perm, n_pca_components=n_pca_components)",
+        "new": "engine_neg.fit_transform(X_perm)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
+      ]
+    },
+    {
+      "name": "sensitivity_override_reversed__parameter_sensitivity__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "parameter_sensitivity",
+        "occurrence": 0,
+        "line": 346,
+        "old": "{**self.extra_kwargs, param_name: val}",
+        "new": "{param_name: val, **self.extra_kwargs}",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[umap-min_dist-values0-0.4]",
+        "test_sensitivity_nondefault_key_and_trial_isolation[tsne-early_exaggeration-values1-12.0]"
+      ]
+    },
+    {
+      "name": "3d_wrong_axis__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 479,
+        "old": "[valid, 2]",
+        "new": "[valid, 1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_intermediate_spearman_value_has_independent_rank_oracle[umap]",
+        "test_3d_spearman_rank_not_pearson_and_population_permutation[umap]",
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "3d_wrong_axis__compute_tsne3d__occ1",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 659,
+        "old": "[valid, 2]",
+        "new": "[valid, 1]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_intermediate_spearman_value_has_independent_rank_oracle[tsne]",
+        "test_3d_spearman_rank_not_pearson_and_population_permutation[tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
-        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
         "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
       ]
     },
     {
-      "name": "3d_threshold_excludes_100",
+      "name": "3d_threshold_excludes_100__compute_umap3d__occ0",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 476,
+        "old": "if valid.sum() < 100:",
+        "new": "if valid.sum() <= 100:",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
-        "test_3d_correlation_threshold_and_missing_params[100-umap]",
+        "test_3d_correlation_threshold_and_missing_params[100-umap]"
+      ]
+    },
+    {
+      "name": "3d_threshold_excludes_100__compute_tsne3d__occ1",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 657,
+        "old": "if valid.sum() < 100:",
+        "new": "if valid.sum() <= 100:",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
         "test_3d_correlation_threshold_and_missing_params[100-tsne]"
       ]
     },
     {
-      "name": "3d_signed_ranking",
+      "name": "3d_signed_ranking__compute_umap3d__occ0",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 481,
+        "old": "if abs(r3) > abs(axis3_best_corr):",
+        "new": "if r3 > axis3_best_corr:",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
+        "test_3d_intermediate_spearman_value_has_independent_rank_oracle[umap]",
+        "test_3d_winner_is_later_negative_parameter[umap]",
         "test_3d_tables_alignment_sampling_and_exports[0-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[7-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[200-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[200-tsne]",
         "test_3d_correlation_threshold_and_missing_params[100-umap]",
-        "test_3d_correlation_threshold_and_missing_params[100-tsne]",
         "test_3d_correlation_threshold_and_missing_params[101-umap]",
+        "test_3d_constants_are_undefined_and_do_not_win[umap]"
+      ]
+    },
+    {
+      "name": "3d_signed_ranking__compute_tsne3d__occ1",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 660,
+        "old": "if abs(r3) > abs(axis3_best_corr):",
+        "new": "if r3 > axis3_best_corr:",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_intermediate_spearman_value_has_independent_rank_oracle[tsne]",
+        "test_3d_winner_is_later_negative_parameter[tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[100-tsne]",
         "test_3d_correlation_threshold_and_missing_params[101-tsne]",
-        "test_3d_constants_are_undefined_and_do_not_win[umap]",
         "test_3d_constants_are_undefined_and_do_not_win[tsne]"
       ]
     },
     {
-      "name": "3d_missing_parameter_mask",
+      "name": "3d_missing_parameter_mask__compute_umap3d__occ0",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 475,
+        "old": "valid = np.isfinite(vals)",
+        "new": "valid = np.ones(len(vals), dtype=bool)",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
         "test_3d_tables_alignment_sampling_and_exports[0-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[7-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[200-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[200-tsne]",
         "test_3d_correlation_threshold_and_missing_params[99-umap]",
-        "test_3d_correlation_threshold_and_missing_params[99-tsne]",
         "test_3d_correlation_threshold_and_missing_params[100-umap]",
+        "test_3d_correlation_threshold_and_missing_params[101-umap]"
+      ]
+    },
+    {
+      "name": "3d_missing_parameter_mask__compute_tsne3d__occ1",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 656,
+        "old": "valid = np.isfinite(vals)",
+        "new": "valid = np.ones(len(vals), dtype=bool)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[99-tsne]",
         "test_3d_correlation_threshold_and_missing_params[100-tsne]",
-        "test_3d_correlation_threshold_and_missing_params[101-umap]",
         "test_3d_correlation_threshold_and_missing_params[101-tsne]"
       ]
     },
     {
-      "name": "3d_plot_seed_fixed",
+      "name": "3d_plot_seed_fixed__compute_umap3d__occ0",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 501,
+        "old": "np.random.default_rng(random_state)",
+        "new": "np.random.default_rng(0)",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
-        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
-        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]"
       ]
     },
     {
-      "name": "3d_wrong_class_rows",
+      "name": "3d_plot_seed_fixed__compute_tsne3d__occ1",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 678,
+        "old": "np.random.default_rng(random_state)",
+        "new": "np.random.default_rng(0)",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
-        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
-        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]"
       ]
     },
     {
-      "name": "3d_wrong_metadata_rows",
+      "name": "3d_wrong_class_rows__compute_umap3d__occ0",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 492,
+        "old": "\"Classe\": y,",
+        "new": "\"Classe\": np.roll(y, 1),",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
-      "failures": [
-        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
-        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
-        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
-      ]
-    },
-    {
-      "name": "3d_wrong_cluster_labels",
-      "kind": "mutation",
-      "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
       "failures": [
         "test_3d_tables_alignment_sampling_and_exports[7-umap]",
         "test_3d_tables_alignment_sampling_and_exports[200-umap]"
       ]
     },
     {
-      "name": "3d_tsne_perplexity_ignored",
+      "name": "3d_wrong_class_rows__compute_tsne3d__occ1",
       "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 671,
+        "old": "\"Classe\": y,",
+        "new": "\"Classe\": np.roll(y, 1),",
+        "replacements": 1
+      },
       "status": "KILLED",
-      "tests": 94,
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "3d_wrong_metadata_rows__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 497,
+        "old": "df_3d[label] = meta[col].values",
+        "new": "df_3d[label] = np.roll(meta[col].values, 1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "3d_wrong_metadata_rows__compute_tsne3d__occ1",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 676,
+        "old": "df_3d[label] = meta[col].values",
+        "new": "df_3d[label] = np.roll(meta[col].values, 1)",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "3d_wrong_cluster_labels__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 499,
+        "old": "for c in cluster_labels]",
+        "new": "for c in np.roll(cluster_labels, 1)]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "3d_tsne_perplexity_ignored__compute_tsne3d__occ0",
+      "kind": "mutation",
+      "group": "legacy",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 633,
+        "old": "perplexity=perplexity,",
+        "new": "perplexity=5,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
       "failures": [
         "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
         "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
@@ -471,39 +1023,970 @@
       ]
     },
     {
-      "name": "comment_only",
-      "kind": "control",
+      "name": "R1_umap_kendall__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 436,
+        "old": "from scipy.stats import spearmanr",
+        "new": "from scipy.stats import kendalltau as spearmanr",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_intermediate_spearman_value_has_independent_rank_oracle[umap]"
+      ]
+    },
+    {
+      "name": "R1_umap_first_finite__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 481,
+        "old": "if abs(r3) > abs(axis3_best_corr):",
+        "new": "if axis3_best_param == '?' and np.isfinite(r3):",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_winner_is_later_negative_parameter[umap]"
+      ]
+    },
+    {
+      "name": "R3_umap_class_z_second_axis__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 512,
+        "old": "z=\"UMAP3\",",
+        "new": "z=\"UMAP2\",",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "R3_umap_temperature_color_class__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 543,
+        "old": "color=\"T_eff (K)\",",
+        "new": "color=\"Classe\",",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "R3_umap_temperature_full_population__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 539,
+        "old": "df_plot.dropna(subset=[\"T_eff (K)\"])",
+        "new": "df_3d.dropna(subset=[\"T_eff (K)\"])",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]"
+      ]
+    },
+    {
+      "name": "R1_tsne_kendall__compute_tsne3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 616,
+        "old": "from scipy.stats import spearmanr",
+        "new": "from scipy.stats import kendalltau as spearmanr",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_intermediate_spearman_value_has_independent_rank_oracle[tsne]"
+      ]
+    },
+    {
+      "name": "R1_tsne_first_finite__compute_tsne3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 660,
+        "old": "if abs(r3) > abs(axis3_best_corr):",
+        "new": "if axis3_best_param == '?' and np.isfinite(r3):",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_winner_is_later_negative_parameter[tsne]"
+      ]
+    },
+    {
+      "name": "R3_tsne_class_z_second_axis__compute_tsne3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 688,
+        "old": "z=\"tSNE3\",",
+        "new": "z=\"tSNE2\",",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "R3_tsne_temperature_color_class__compute_tsne3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 718,
+        "old": "color=\"T_eff (K)\",",
+        "new": "color=\"Classe\",",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "R3_tsne_temperature_full_population__compute_tsne3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 714,
+        "old": "df_plot.dropna(subset=[\"T_eff (K)\"])",
+        "new": "df_3d.dropna(subset=[\"T_eff (K)\"])",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]"
+      ]
+    },
+    {
+      "name": "R2_first_column_only__negative_control__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "negative_control",
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 299,
+        "old": "for j in range(X_perm.shape[1]):",
+        "new": "for j in range(min(1, X_perm.shape[1])):",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_negative_control_breaks_all_six_multivariable_associations[umap]",
+        "test_negative_control_breaks_all_six_multivariable_associations[tsne]"
+      ]
+    },
+    {
+      "name": "R4_stability_child_2d__stability_report__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "stability_report",
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 237,
+        "old": "n_components=self.n_components,",
+        "new": "n_components=2,",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_stability_child_dimension_method_and_options[umap]",
+        "test_stability_child_dimension_method_and_options[tsne]"
+      ]
+    },
+    {
+      "name": "R5_force_neighbors_key__parameter_sensitivity__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "parameter_sensitivity",
+        "function": "parameter_sensitivity",
+        "occurrence": 0,
+        "line": 341,
+        "old": "param_name = list(param_grid.keys())[0]",
+        "new": "param_name = 'n_neighbors' if self.method == 'umap' else list(param_grid.keys())[0]",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_sensitivity_nondefault_key_and_trial_isolation[umap-min_dist-values0-0.4]"
+      ]
+    },
+    {
+      "name": "R3_umap_class_color_cluster__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 513,
+        "old": "color=\"Classe\",",
+        "new": "color=\"Cluster\",",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "R3_umap_metallicity_range_temperature__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 570,
+        "old": "float(df_plot[\"[Fe/H]\"].quantile(0.02)),",
+        "new": "float(df_plot[\"T_eff (K)\"].quantile(0.02)),",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "R3_umap_metallicity_color_temperature__compute_umap3d__occ0",
+      "kind": "mutation",
+      "group": "review",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 566,
+        "old": "color=\"[Fe/H]\",",
+        "new": "color=\"T_eff (K)\",",
+        "replacements": 1
+      },
+      "status": "KILLED",
+      "tests": 104,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "R6a_reject_oversized_pca__fit_transform__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": "fit_transform",
+        "function": "fit_transform",
+        "occurrence": 0,
+        "line": 130,
+        "old": "if n_pca_components is not None:",
+        "new": "if n_pca_components is not None and n_pca_components > X.shape[1]:\n            raise ValueError('PCA count exceeds input width')\n        if n_pca_components is not None:",
+        "replacements": 1
+      },
       "status": "PASS",
-      "tests": 94,
+      "tests": 104,
       "failures": []
     },
     {
-      "name": "complete_core_metadata",
-      "kind": "control",
+      "name": "R6b_remove_forced_jobs___fit_tsne__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": "_fit_tsne",
+        "function": "_fit_tsne",
+        "occurrence": 0,
+        "line": 408,
+        "old": "            n_jobs=-1,\n",
+        "new": "",
+        "replacements": 1
+      },
       "status": "PASS",
-      "tests": 94,
+      "tests": 104,
       "failures": []
     },
     {
-      "name": "permit_jobs_override",
-      "kind": "control",
+      "name": "R6c_raise_alignment_domain_error__stability_report__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": "stability_report",
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 255,
+        "old": "dist = np.nan",
+        "new": "raise",
+        "replacements": 1
+      },
       "status": "PASS",
-      "tests": 94,
+      "tests": 104,
       "failures": []
     },
     {
-      "name": "skip_constant_correlations",
-      "kind": "control",
+      "name": "complete_core_metadata___fit_umap__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": null,
+        "function": "_fit_umap",
+        "occurrence": 0,
+        "line": 389,
+        "old": "self._params_used = params",
+        "new": "self._params_used = {**params, 'random_state': self.random_state, 'n_components': self.n_components}",
+        "replacements": 1
+      },
       "status": "PASS",
-      "tests": 94,
+      "tests": 104,
       "failures": []
     },
     {
-      "name": "reject_zero_plot_size",
-      "kind": "control",
+      "name": "complete_core_metadata___fit_tsne__occ1",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": null,
+        "function": "_fit_tsne",
+        "occurrence": 1,
+        "line": 404,
+        "old": "self._params_used = params",
+        "new": "self._params_used = {**params, 'random_state': self.random_state, 'n_components': self.n_components}",
+        "replacements": 1
+      },
       "status": "PASS",
-      "tests": 94,
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "permit_jobs_override___fit_tsne__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": "_fit_tsne",
+        "function": "_fit_tsne",
+        "occurrence": 0,
+        "line": 408,
+        "old": "n_jobs=-1,\n            **params,",
+        "new": "**{'n_jobs': -1, **params},",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "skip_constant_correlations__compute_umap3d__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 475,
+        "old": "valid = np.isfinite(vals)",
+        "new": "valid = np.isfinite(vals)\n            if np.unique(vals[valid]).size < 2:\n                continue",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "skip_constant_correlations__compute_tsne3d__occ1",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 656,
+        "old": "valid = np.isfinite(vals)",
+        "new": "valid = np.isfinite(vals)\n            if np.unique(vals[valid]).size < 2:\n                continue",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "reject_zero_plot_size__compute_umap3d__occ0",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": null,
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 502,
+        "old": "N_PLOT = min(n_subsample, len(df_3d))",
+        "new": "if n_subsample == 0:\n            raise ValueError('Empty plot requested')\n        N_PLOT = min(n_subsample, len(df_3d))",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "reject_zero_plot_size__compute_tsne3d__occ1",
+      "kind": "compatibility_control",
+      "group": "controls",
+      "site": {
+        "scope": null,
+        "function": "compute_tsne3d",
+        "occurrence": 1,
+        "line": 679,
+        "old": "N_PLOT = min(n_subsample, len(df_3d))",
+        "new": "if n_subsample == 0:\n            raise ValueError('Empty plot requested')\n        N_PLOT = min(n_subsample, len(df_3d))",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "comment_only__stability_report__occ0",
+      "kind": "neutral_control",
+      "group": "controls",
+      "site": {
+        "scope": "stability_report",
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 244,
+        "old": "# R\u00e9f\u00e9rence = premier embedding",
+        "new": "# First embedding is the reference",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "procrustes_arguments_reversed__stability_report__occ0",
+      "kind": "equivalent_control",
+      "group": "controls",
+      "site": {
+        "scope": "stability_report",
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 252,
+        "old": "procrustes(Z_ref, Z)",
+        "new": "procrustes(Z, Z_ref)",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "last_column_unshuffled__negative_control__occ0",
+      "kind": "equivalent_control",
+      "group": "controls",
+      "site": {
+        "scope": "negative_control",
+        "function": "negative_control",
+        "occurrence": 0,
+        "line": 299,
+        "old": "range(X_perm.shape[1])",
+        "new": "range(X_perm.shape[1] - 1)",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "stability_sample_sorted__stability_report__occ0",
+      "kind": "equivalent_control",
+      "group": "controls",
+      "site": {
+        "scope": "stability_report",
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 226,
+        "old": "idx = rng.choice(len(X), size=n, replace=False)",
+        "new": "idx = np.sort(rng.choice(len(X), size=n, replace=False))",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "stability_sample_permutation__stability_report__occ0",
+      "kind": "sampling_control",
+      "group": "controls",
+      "site": {
+        "scope": "stability_report",
+        "function": "stability_report",
+        "occurrence": 0,
+        "line": 226,
+        "old": "idx = rng.choice(len(X), size=n, replace=False)",
+        "new": "idx = rng.permutation(len(X))[:n]",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "umap_plot_sample_sorted__compute_umap3d__occ0",
+      "kind": "sampling_control",
+      "group": "controls",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 504,
+        "old": "rng.choice(len(df_3d), N_PLOT, replace=False)",
+        "new": "np.sort(rng.choice(len(df_3d), N_PLOT, replace=False))",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "umap_plot_sample_permutation__compute_umap3d__occ0",
+      "kind": "sampling_control",
+      "group": "controls",
+      "site": {
+        "scope": "compute_umap3d",
+        "function": "compute_umap3d",
+        "occurrence": 0,
+        "line": 504,
+        "old": "df_plot = df_3d.iloc[rng.choice(len(df_3d), N_PLOT, replace=False)].copy()",
+        "new": "if N_PLOT < 0:\n            raise ValueError('Negative subsample size')\n        df_plot = df_3d.iloc[rng.permutation(len(df_3d))[:N_PLOT]].copy()",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "tsne_plot_sample_sorted__compute_tsne3d__occ0",
+      "kind": "sampling_control",
+      "group": "controls",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 680,
+        "old": "rng.choice(len(df_3d), N_PLOT, replace=False)",
+        "new": "np.sort(rng.choice(len(df_3d), N_PLOT, replace=False))",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
+      "failures": []
+    },
+    {
+      "name": "tsne_plot_sample_permutation__compute_tsne3d__occ0",
+      "kind": "sampling_control",
+      "group": "controls",
+      "site": {
+        "scope": "compute_tsne3d",
+        "function": "compute_tsne3d",
+        "occurrence": 0,
+        "line": 680,
+        "old": "df_plot = df_3d.iloc[rng.choice(len(df_3d), N_PLOT, replace=False)].copy()",
+        "new": "if N_PLOT < 0:\n            raise ValueError('Negative subsample size')\n        df_plot = df_3d.iloc[rng.permutation(len(df_3d))[:N_PLOT]].copy()",
+        "replacements": 1
+      },
+      "status": "PASS",
+      "tests": 104,
       "failures": []
     }
-  ]
+  ],
+  "normalized_input_integrity": true,
+  "tracked_index_unchanged": true,
+  "temporary_copies_removed": true,
+  "pre_review_comparison": {
+    "schema": 2,
+    "git_head": "2687043301e3857cea3db7d5ac19690629934b7f",
+    "hash_policy": "SHA-256 of UTF-8 text bytes with CRLF normalized to LF",
+    "content_hashes_lf": {
+      "src/dimred/embedding.py": "a43bb1027d1117c6480b78d70fd91d2c35e5e3398cfcdc3f48fadd6635c5f5d1",
+      "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
+      "src/dimred/dimred_visualizer.py": "968207ab322c2eea40f8d1e3721c1e361a9d1f7912d511a48c5f6a2cb0f82b8a",
+      "src/dimred/run_reporter.py": "b4a55744237076ec1a78293651623a701809ba85d1afc9160a2c6e69c326db29",
+      "tests/conftest.py": "6e538b4c283eee444f4b761356b4b604b1af596f28946eaa6db3a6c27053a3d3",
+      "tests/test_dimred_embedding.py": "4d795fcfb686a4ff5566a53a695344a27b8a1354d3733901203d4d3f6c6198bf",
+      "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "audit/check_m23_mutations.py": "346786318a763b129d8bbf81002f22636ece9d0fedd53e33cc7dcc3ee089ad6c"
+    },
+    "head_git_blobs": {
+      "src/dimred/embedding.py": "57ecb8c8627c03bc02cec2eeff2258a01afda929",
+      "src/dimred/pca_analyzer.py": "4fd482b9c986dec5a5f6f96cfc0187ec808852e3",
+      "src/dimred/dimred_visualizer.py": "624b857bca5833c3401204b0a592b9ae6ffc2902",
+      "src/dimred/run_reporter.py": "b966d9b90f056baa37c0ccbb68135c71ff65de92",
+      "tests/conftest.py": "e8896c2960cbaa94184785a70132586db59b656d",
+      "tests/test_dimred_embedding.py": "6e709af5df080c48869d7bad229754a93537fa84",
+      "pyproject.toml": "95c1daca7bc20fffa5cc0d7e182a15815a039331",
+      "audit/check_m23_mutations.py": "6a5355ab5b89b8bee811376c85c2b86d3716cfe4"
+    },
+    "working_tree_before": "M audit/check_m23_mutations.py\n M tests/test_dimred_embedding.py\n?? audit/M23_PROOFS.md\n?? audit/m23_proof_results.json\n?? tests/proofs_dimred_embedding.py",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "group": "review",
+    "cases": [
+      {
+        "name": "baseline",
+        "kind": "baseline",
+        "group": "baseline",
+        "site": null,
+        "status": "PASS",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R1_umap_kendall__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 436,
+          "old": "from scipy.stats import spearmanr",
+          "new": "from scipy.stats import kendalltau as spearmanr",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R1_umap_first_finite__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 481,
+          "old": "if abs(r3) > abs(axis3_best_corr):",
+          "new": "if axis3_best_param == '?' and np.isfinite(r3):",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_umap_class_z_second_axis__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 512,
+          "old": "z=\"UMAP3\",",
+          "new": "z=\"UMAP2\",",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_umap_temperature_color_class__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 543,
+          "old": "color=\"T_eff (K)\",",
+          "new": "color=\"Classe\",",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_umap_temperature_full_population__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 539,
+          "old": "df_plot.dropna(subset=[\"T_eff (K)\"])",
+          "new": "df_3d.dropna(subset=[\"T_eff (K)\"])",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R1_tsne_kendall__compute_tsne3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_tsne3d",
+          "function": "compute_tsne3d",
+          "occurrence": 0,
+          "line": 616,
+          "old": "from scipy.stats import spearmanr",
+          "new": "from scipy.stats import kendalltau as spearmanr",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R1_tsne_first_finite__compute_tsne3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_tsne3d",
+          "function": "compute_tsne3d",
+          "occurrence": 0,
+          "line": 660,
+          "old": "if abs(r3) > abs(axis3_best_corr):",
+          "new": "if axis3_best_param == '?' and np.isfinite(r3):",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_tsne_class_z_second_axis__compute_tsne3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_tsne3d",
+          "function": "compute_tsne3d",
+          "occurrence": 0,
+          "line": 688,
+          "old": "z=\"tSNE3\",",
+          "new": "z=\"tSNE2\",",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_tsne_temperature_color_class__compute_tsne3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_tsne3d",
+          "function": "compute_tsne3d",
+          "occurrence": 0,
+          "line": 718,
+          "old": "color=\"T_eff (K)\",",
+          "new": "color=\"Classe\",",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_tsne_temperature_full_population__compute_tsne3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_tsne3d",
+          "function": "compute_tsne3d",
+          "occurrence": 0,
+          "line": 714,
+          "old": "df_plot.dropna(subset=[\"T_eff (K)\"])",
+          "new": "df_3d.dropna(subset=[\"T_eff (K)\"])",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R2_first_column_only__negative_control__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "negative_control",
+          "function": "negative_control",
+          "occurrence": 0,
+          "line": 299,
+          "old": "for j in range(X_perm.shape[1]):",
+          "new": "for j in range(min(1, X_perm.shape[1])):",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R4_stability_child_2d__stability_report__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "stability_report",
+          "function": "stability_report",
+          "occurrence": 0,
+          "line": 237,
+          "old": "n_components=self.n_components,",
+          "new": "n_components=2,",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R5_force_neighbors_key__parameter_sensitivity__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "parameter_sensitivity",
+          "function": "parameter_sensitivity",
+          "occurrence": 0,
+          "line": 341,
+          "old": "param_name = list(param_grid.keys())[0]",
+          "new": "param_name = 'n_neighbors' if self.method == 'umap' else list(param_grid.keys())[0]",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_umap_class_color_cluster__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 513,
+          "old": "color=\"Classe\",",
+          "new": "color=\"Cluster\",",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_umap_metallicity_range_temperature__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 570,
+          "old": "float(df_plot[\"[Fe/H]\"].quantile(0.02)),",
+          "new": "float(df_plot[\"T_eff (K)\"].quantile(0.02)),",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      },
+      {
+        "name": "R3_umap_metallicity_color_temperature__compute_umap3d__occ0",
+        "kind": "mutation",
+        "group": "review",
+        "site": {
+          "scope": "compute_umap3d",
+          "function": "compute_umap3d",
+          "occurrence": 0,
+          "line": 566,
+          "old": "color=\"[Fe/H]\",",
+          "new": "color=\"T_eff (K)\",",
+          "replacements": 1
+        },
+        "status": "SURVIVED",
+        "tests": 94,
+        "failures": []
+      }
+    ],
+    "tests_ref": "2687043301e3857cea3db7d5ac19690629934b7f",
+    "historical_test_sha256_lf": "130756f94e6145689671c6e849597ee125ed666f76994efc5a6ca7ac16d4ef97",
+    "normalized_input_integrity": true,
+    "tracked_index_unchanged": true,
+    "temporary_copies_removed": true
+  },
+  "legacy_definition_count": 30,
+  "legacy_site_count": 41,
+  "review_site_count": 16
 }

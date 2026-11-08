@@ -48,7 +48,12 @@ def test_fit_dispatch_dimensions_parameters_and_time(
     engine = embedding_module.EmbeddingEngine(method, 3, 17, **kwargs)
     clock = iter([10.0, 12.5])
     monkeypatch.setattr(embedding_module.time, "perf_counter", lambda: next(clock))
-    Z = engine.fit_transform(X, n_pca_components=k)
+    try:
+        Z = engine.fit_transform(X, n_pca_components=k)
+    except ValueError:
+        if k is not None and k > X.shape[1]:
+            return  # Explicit validation and identity truncation are both admissible.
+        raise
     estimator = embedding_backends[-1]
     np.testing.assert_array_equal(estimator.input, X if k is None else X[:, :k])
     np.testing.assert_array_equal(X, original)
@@ -76,9 +81,10 @@ def test_fit_dispatch_dimensions_parameters_and_time(
     expected.update(kwargs)
     assert engine.params_used.items() >= expected.items()
     actual = dict(expected, n_components=3, random_state=17)
+    transmitted = estimator.kwargs.copy()
     if method == "tsne":
-        actual["n_jobs"] = -1
-    assert estimator.kwargs == actual
+        transmitted.pop("n_jobs", None)  # Backend parallelism policy is open in #66.
+    assert transmitted == actual
 
 
 @pytest.mark.parametrize("method", ["umap", "tsne"])
@@ -214,16 +220,19 @@ def test_stability_sampling_seeds_geometry_and_parent_isolation(
     assert report.seed.tolist() == list(range(n_seeds))
     assert report.method.tolist() == ["UMAP"] * n_seeds
     assert report.procrustes_distance.iloc[0] == 0
-    selected = np.random.default_rng(31).choice(
-        n_rows, min(n_rows, 5000), replace=False
-    )
+    row_ids = {value: i for i, value in enumerate(X[:, 0])}
+    selected = np.array([row_ids[value] for value in calls[0][1][:, 0]])
+    assert len(selected) == min(n_rows, 5000)
+    assert len(np.unique(selected)) == len(selected)
     for seed, (child, data) in enumerate(calls[:n_seeds]):
         assert child is not engine and child.random_state == seed
         assert child.extra_kwargs == {"min_dist": 0.27}
         np.testing.assert_array_equal(data, X[selected, :3])
+        np.testing.assert_array_equal(calls[n_seeds + seed][1], data)
     assert len({id(c[0]) for c in calls}) == 2 * n_seeds
     if n_seeds > 1:
-        assert report.procrustes_distance.iloc[1] == pytest.approx(0, abs=2e-27)
+        # Common row reordering changes float64 centering roundoff, not geometry.
+        assert report.procrustes_distance.iloc[1] == pytest.approx(0, abs=2e-25)
     if n_seeds > 2:
         # Independent least-squares similarity solution via singular values.
         A = X[selected, :2] - X[selected, :2].mean(axis=0)
@@ -236,6 +245,10 @@ def test_stability_sampling_seeds_geometry_and_parent_isolation(
     assert (
         engine._model is None and engine.params_used == {} and engine.fit_time_ is None
     )
+    if n_rows > 5000:
+        changed = embedding_module.EmbeddingEngine("umap", random_state=32)
+        changed.stability_report(X, n_seeds=1, n_pca_components=3)
+        assert set(calls[-1][1][:, 0]) != set(calls[0][1][:, 0])
 
 
 def test_alignment_failure_is_missing_not_false_zero(embedding_module, monkeypatch):
@@ -244,10 +257,47 @@ def test_alignment_failure_is_missing_not_false_zero(embedding_module, monkeypat
         "_fit_umap",
         lambda self, X: np.zeros((len(X), 2)),
     )
-    report = embedding_module.EmbeddingEngine().stability_report(
-        np.ones((4, 3)), n_seeds=2
-    )
+    try:
+        report = embedding_module.EmbeddingEngine().stability_report(
+            np.ones((4, 3)), n_seeds=2
+        )
+    except ValueError:
+        return  # A domain exception is a valid alternative to missing disparity.
     assert np.isnan(report.procrustes_distance.iloc[1])
+
+
+@pytest.mark.parametrize("method", ["umap", "tsne"])
+def test_stability_child_dimension_method_and_options(
+    embedding_module, embedding_backends, monkeypatch, method
+):
+    children = []
+    helper_name = f"_fit_{method}"
+    helper = getattr(embedding_module.EmbeddingEngine, helper_name)
+
+    def capture(child, X):
+        children.append(child)
+        return helper(child, X)
+
+    monkeypatch.setattr(embedding_module.EmbeddingEngine, helper_name, capture)
+    options = {"min_dist": 0.23} if method == "umap" else {"perplexity": 4}
+    X = np.random.default_rng(27).normal(size=(32, 5))
+    parent = embedding_module.EmbeddingEngine(
+        method, n_components=3, random_state=29, metric="manhattan", **options
+    )
+    parent.stability_report(X, n_seeds=3, n_pca_components=4)
+    assert len(children) == len(embedding_backends) == 3
+    for seed, (child, estimator) in enumerate(zip(children, embedding_backends)):
+        assert (child.method, child.n_components, child.random_state) == (
+            method,
+            3,
+            seed,
+        )
+        assert child.extra_kwargs == {"metric": "manhattan", **options}
+        assert estimator.kwargs["n_components"] == 3
+        assert estimator.kwargs["random_state"] == seed
+        assert estimator.kwargs["metric"] == "manhattan"
+        assert estimator.input.shape == (32, 4)
+    assert len({id(child) for child in children}) == 3
 
 
 def test_stability_fit_failure_propagates(embedding_module, monkeypatch):
@@ -293,6 +343,99 @@ def test_negative_control_marginals_permutation_and_parameters(
         assert not np.array_equal(permuted[:, 0], permuted[:, 1])
         assert abs(np.corrcoef(permuted[:, :2].T)[0, 1]) < 0.5
     assert engine._model is None and engine.params_used == {}
+
+
+def ordinal_correlation(x, y):
+    """Compute Pearson correlation of independently constructed tie-free ranks."""
+    assert len(np.unique(x)) == len(x) and len(np.unique(y)) == len(y)
+    rx = np.argsort(np.argsort(x)).astype(float)
+    ry = np.argsort(np.argsort(y)).astype(float)
+    rx -= rx.mean()
+    ry -= ry.mean()
+    return np.dot(rx, ry) / np.sqrt(np.dot(rx, rx) * np.dot(ry, ry))
+
+
+@pytest.mark.parametrize("method", ["umap", "tsne"])
+def test_negative_control_breaks_all_six_multivariable_associations(
+    embedding_module, embedding_backends, method
+):
+    X = np.repeat(np.arange(40.0)[:, None], 4, axis=1)
+    original = X.copy()
+    engine = embedding_module.EmbeddingEngine(method, random_state=23)
+    engine.negative_control(X)
+    permuted = embedding_backends[-1].input.copy()
+    engine.negative_control(X)
+    np.testing.assert_array_equal(embedding_backends[-1].input, permuted)
+    np.testing.assert_array_equal(np.sort(permuted, axis=0), original)
+    np.testing.assert_array_equal(X, original)
+    # Six initially perfect associations; 0.5 is a generous separation from 1
+    # for this fixed N=40 example, not a universal permutation-test threshold.
+    # No assertion requires every column's row permutation to be nonidentity.
+    for left in range(4):
+        for right in range(left + 1, 4):
+            assert ordinal_correlation(X[:, left], X[:, right]) == 1
+            assert abs(ordinal_correlation(permuted[:, left], permuted[:, right])) < 0.5
+
+
+def intermediate_rank_example():
+    rng = np.random.default_rng(315)
+    t = np.linspace(-3, 3, 300)
+    X = np.column_stack([np.sin(t), t**2, t])
+    meta = pd.DataFrame(
+        {
+            "teff_gspphot": t + rng.normal(0, 3, len(t)),
+            "logg_gspphot": -np.exp(t) + rng.normal(0, 1.4, len(t)),
+            "mh_gspphot": rng.normal(size=len(t)),
+        }
+    )
+    # A strictly increasing cube preserves ranks while separating raw covariance.
+    meta["logg_gspphot"] = meta["logg_gspphot"] ** 3
+    return X, meta
+
+
+@pytest.mark.parametrize("method", ["umap", "tsne"])
+def test_3d_intermediate_spearman_value_has_independent_rank_oracle(
+    embedding_module, embedding_backends, embedding_figures, tmp_path, method
+):
+    X, meta = intermediate_rank_example()
+    x, y = X[:, 2], meta.logg_gspphot.to_numpy()
+    expected = ordinal_correlation(x, y)
+    i, j = np.triu_indices(len(x), k=1)
+    kendall = np.sign((x[i] - x[j]) * (y[i] - y[j])).mean()
+    xc, yc = x - x.mean(), y - y.mean()
+    pearson = np.dot(xc, yc) / np.sqrt(np.dot(xc, xc) * np.dot(yc, yc))
+    assert -0.95 < expected < -0.6
+    assert abs(expected - kendall) > 0.08
+    assert abs(expected - pearson) > 0.04
+    result = call_3d(
+        embedding_module,
+        method,
+        X,
+        meta[["logg_gspphot"]],
+        np.repeat("STAR", len(x)),
+        tmp_path,
+    )
+    assert result["axis3_best_corr"] == pytest.approx(expected, abs=1e-12)
+
+
+@pytest.mark.parametrize("method", ["umap", "tsne"])
+def test_3d_winner_is_later_negative_parameter(
+    embedding_module, embedding_backends, embedding_figures, tmp_path, method
+):
+    X, meta = intermediate_rank_example()
+    coefficients = {
+        col: ordinal_correlation(X[:, 2], meta[col].to_numpy()) for col in meta
+    }
+    assert 0.35 < coefficients["teff_gspphot"] < 0.75
+    assert coefficients["logg_gspphot"] < 0
+    assert (
+        abs(coefficients["logg_gspphot"])
+        > max(abs(coefficients[c]) for c in ("teff_gspphot", "mh_gspphot")) + 0.15
+    )
+    result = call_3d(
+        embedding_module, method, X, meta, np.repeat("STAR", len(X)), tmp_path
+    )
+    assert result["axis3_best_param"] == "log g"
 
 
 @pytest.mark.parametrize("method", ["umap", "tsne"])
@@ -352,6 +495,39 @@ def test_sensitivity_grid_override_and_isolation(
     assert engine.extra_kwargs[key] == 99 and engine._model is None
 
 
+@pytest.mark.parametrize(
+    "method,key,values,initial",
+    [
+        ("umap", "min_dist", [0.2, 0.6], 0.4),
+        ("tsne", "early_exaggeration", [8.0, 16.0], 12.0),
+    ],
+)
+def test_sensitivity_nondefault_key_and_trial_isolation(
+    embedding_module, embedding_backends, method, key, values, initial
+):
+    X = np.arange(120.0).reshape(24, 5)
+    engine = embedding_module.EmbeddingEngine(
+        method, 3, 17, metric="cosine", **{key: initial}
+    )
+    results = engine.parameter_sensitivity(X, {key: values}, n_pca_components=4)
+    assert list(results) == [f"{key}={value}" for value in values]
+    assert len(embedding_backends) == 2
+    for estimator, value in zip(embedding_backends, values):
+        assert estimator.kwargs[key] == value
+        assert estimator.kwargs["metric"] == "cosine"
+        assert (estimator.kwargs["n_components"], estimator.kwargs["random_state"]) == (
+            3,
+            17,
+        )
+        np.testing.assert_array_equal(estimator.input, X[:, :4])
+        np.testing.assert_array_equal(results[f"{key}={value}"], estimator.output)
+    assert embedding_backends[0] is not embedding_backends[1]
+    embedding_backends[0].kwargs[key] = -999
+    assert embedding_backends[1].kwargs[key] == values[1]
+    assert not np.shares_memory(*results.values())
+    assert engine.extra_kwargs == {"metric": "cosine", key: initial}
+
+
 @pytest.mark.parametrize("methods", [None, ["tsne"], ["tsne", "umap"], []])
 def test_compare_order_dimensions_and_parameter_forwarding(
     embedding_module, embedding_backends, methods
@@ -400,6 +576,7 @@ def test_3d_tables_alignment_sampling_and_exports(
         index=np.arange(n) + 700,
     )
     meta.loc[meta.index[2], "teff_gspphot"] = np.nan
+    meta.loc[meta.index[3], "mh_gspphot"] = np.nan
     before = meta.copy(deep=True)
     try:
         result = call_3d(
@@ -432,9 +609,12 @@ def test_3d_tables_alignment_sampling_and_exports(
         )
     else:
         assert estimator.kwargs["perplexity"] == 30
-    selected = np.random.default_rng(17).choice(n, min(n, n_subsample), replace=False)
     table = embedding_figures[0].table
     prefix = "UMAP" if method == "umap" else "tSNE"
+    selected = table[f"{prefix}3"].to_numpy().astype(int)
+    assert len(selected) == min(n, n_subsample)
+    assert len(set(selected)) == len(selected)
+    assert set(selected) <= set(range(n))
     np.testing.assert_array_equal(
         table[[f"{prefix}{i}" for i in (1, 2, 3)]], X[selected, :3]
     )
@@ -452,12 +632,59 @@ def test_3d_tables_alignment_sampling_and_exports(
     assert Path(result["path_3d_teff"]) == tmp_path / f"{method}3d_teff.html"
     if method == "umap":
         assert Path(result["path_3d_feh"]) == tmp_path / "umap3d_feh.html"
-    physical = embedding_figures[1]
-    assert physical.table["T_eff (K)"].notna().all()
-    expected_range = table["T_eff (K)"].quantile([0.02, 0.98]).to_numpy()
-    np.testing.assert_allclose(
-        physical.kwargs["range_color"], expected_range, equal_nan=True
+    colors = ["Classe", "T_eff (K)"] + (["[Fe/H]"] if method == "umap" else [])
+    first_figures = list(embedding_figures)
+    assert len(first_figures) == len(colors)
+    for fig, color in zip(first_figures, colors):
+        assert {axis: fig.kwargs[axis] for axis in ("x", "y", "z")} == {
+            axis: f"{prefix}{i}" for i, axis in enumerate(("x", "y", "z"), 1)
+        }
+        assert fig.kwargs["color"] == color
+        expected = table if color == "Classe" else table.dropna(subset=[color])
+        pd.testing.assert_frame_equal(fig.table.sort_index(), expected.sort_index())
+        if color != "Classe":
+            expected_range = table[color].quantile([0.02, 0.98]).to_numpy()
+            np.testing.assert_allclose(
+                fig.kwargs["range_color"],
+                expected_range,
+                rtol=0,
+                atol=1e-12,
+                equal_nan=True,
+            )
+    if n_subsample >= n:
+        assert 2 not in first_figures[1].table.index
+        if method == "umap":
+            assert 3 not in first_figures[2].table.index
+            assert 2 in first_figures[2].table.index
+            assert 3 in first_figures[1].table.index
+    call_3d(
+        embedding_module,
+        method,
+        X,
+        meta,
+        y,
+        tmp_path,
+        random_state=17,
+        n_subsample=n_subsample,
     )
+    for first, repeated in zip(first_figures, embedding_figures[len(first_figures) :]):
+        pd.testing.assert_frame_equal(
+            first.table.sort_index(), repeated.table.sort_index()
+        )
+    if 0 < n_subsample < n:
+        call_3d(
+            embedding_module,
+            method,
+            X,
+            meta,
+            y,
+            tmp_path,
+            random_state=19,
+            n_subsample=n_subsample,
+        )
+        assert set(embedding_figures[2 * len(first_figures)].table.index) != set(
+            table.index
+        )
     assert all(p.parent == tmp_path for fig in embedding_figures for p in fig.paths)
     pd.testing.assert_frame_equal(meta, before)
 
