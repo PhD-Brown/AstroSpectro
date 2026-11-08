@@ -19,6 +19,14 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
+from m24_review_candidates import (
+    SEMANTIC_MUTATIONS,
+    EXTRA_MUTATIONS,
+    REVIEW_CONTROLS,
+    full_invalidation_control,
+    uniform_finite_control,
+)
+
 
 # (name, owning function, exact single text replacement, replacement)
 MUTATIONS = [
@@ -386,6 +394,11 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reverse", action="store_true")
     parser.add_argument(
+        "--real",
+        action="store_true",
+        help="Run only optional real-backend cases for named controls",
+    )
+    parser.add_argument(
         "--tests-ref", help="Optional historical test file from a Git ref"
     )
     parser.add_argument(
@@ -400,17 +413,25 @@ def main():
         "src/dimred/data_loader.py",
         "src/dimred/pca_analyzer.py",
         "tests/conftest.py",
-        "tests/m24_support.py",
         "tests/test_dimred_hdbscan_analyzer.py",
+        "tests/test_dimred_hdbscan_real.py",
         "pyproject.toml",
         "audit/check_m24_mutations.py",
+        "audit/m24_review_candidates.py",
     ]
     hashes = {p: digest(root / p) for p in paths}
     index = git(root, "ls-files", "--stage", "--", *paths)
     original = (root / paths[0]).read_text(encoding="utf-8")
     scenarios = [dict(name="baseline", kind="baseline", source=original, site=None)]
     if not args.reverse:
-        for kind, definitions in [("mutation", MUTATIONS), ("control", controls())]:
+        definitions_by_group = [
+            ("legacy", "mutation", MUTATIONS),
+            ("review_six", "mutation", SEMANTIC_MUTATIONS),
+            ("extra_guards", "mutation", EXTRA_MUTATIONS),
+            ("legacy_controls", "control", controls()),
+            ("review_controls", "control", REVIEW_CONTROLS),
+        ]
+        for group, kind, definitions in definitions_by_group:
             for definition in definitions:
                 if args.only and definition[0] not in args.only:
                     continue
@@ -426,11 +447,51 @@ def main():
                 else:
                     candidate, site = mutate(original, definition)
                 scenarios.append(
-                    dict(name=definition[0], kind=kind, source=candidate, site=site)
+                    dict(
+                        name=definition[0],
+                        kind=(
+                            "admissible_palette"
+                            if definition[0] == "palette_swapped_ranks"
+                            else kind
+                        ),
+                        group=group,
+                        source=candidate,
+                        site=site,
+                    )
                 )
+        for name, builder in [
+            ("full_invalidation", full_invalidation_control),
+            ("uniform_finite_refusal", uniform_finite_control),
+        ]:
+            if not args.only or name in args.only:
+                candidate = builder(original)
+                ast.parse(candidate)
+                scenarios.append(
+                    dict(
+                        name=name,
+                        kind="control",
+                        group="review_controls",
+                        source=candidate,
+                        site=dict(
+                            function="fit and fit_presentation",
+                            replacements="decorator control",
+                        ),
+                    )
+                )
+    for scenario in scenarios:
+        scenario.setdefault("group", "baseline")
+    if args.only:
+        assert set(args.only) <= {
+            s["name"] for s in scenarios
+        }, "Unknown candidate selection"
     report = dict(
-        schema=1,
-        base_sha=git(root, "rev-parse", "HEAD"),
+        schema=2,
+        git_head_at_run=git(root, "rev-parse", "HEAD"),
+        working_tree_at_start=git(
+            root, "status", "--short", "--untracked-files=normal"
+        ),
+        head_role="Active Git HEAD, not an assertion that all inputs were committed; actual inputs are the normalized hashes",
+        working_content_git_blobs={p: git(root, "hash-object", p) for p in paths},
         source_blob=git(root, "hash-object", paths[0]),
         hash_policy="SHA-256, CRLF normalized to LF",
         content_hashes_lf=hashes,
@@ -440,6 +501,7 @@ def main():
             for p in ["pytest", "numpy", "pandas", "scipy", "scikit-learn"]
         },
         reverse=args.reverse,
+        optional_real_backend=args.real,
         cases=[],
     )
     try:
@@ -482,12 +544,18 @@ def main():
                     "-m",
                     "pytest",
                     "-q",
-                    "tests/test_dimred_hdbscan_analyzer.py",
+                    (
+                        "tests/test_dimred_hdbscan_real.py"
+                        if args.real
+                        else "tests/test_dimred_hdbscan_analyzer.py"
+                    ),
                     "-W",
                     "error",
                     "--tb=short",
                     f"--junitxml={junit}",
                 ]
+                if args.real:
+                    command.extend(["-m", "slow"])
                 result = subprocess.run(
                     command,
                     cwd=sandbox,
@@ -533,7 +601,7 @@ def main():
                         else ("FAIL" if failures else "PASS")
                     )
                 )
-                case = {k: scenario[k] for k in ["name", "kind", "site"]}
+                case = {k: scenario[k] for k in ["name", "kind", "group", "site"]}
                 case.update(
                     status=status,
                     tests=None if suite is None else int(suite.get("tests")),

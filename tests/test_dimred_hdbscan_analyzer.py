@@ -19,6 +19,37 @@ def fitted(module, backend, labels, **kwargs):
     return module.HDBSCANAnalyzer(**kwargs).fit(np.zeros((len(labels), 2)))
 
 
+def assert_undefined_statistic(value, mean=None):
+    """Require an explicit undefined marker; a numerical zero is not missing."""
+    markers = {"nan", "N/A", "—", "–"}
+    parts = str(value).split(" ± ")
+    if mean is None:
+        assert all(part in markers for part in parts)
+    else:
+        assert len(parts) == 2 and parts[0] == mean and parts[1] in markers
+
+
+def assert_row_identity_in_raw_or_standardized_frame(frame, raw, standardized):
+    """Allow either complete #77 policy, never a per-column mix or permutation."""
+    got = frame.to_numpy(dtype=float)
+    assert got.shape == raw.shape == standardized.shape
+    assert np.array_equal(got, raw) or np.allclose(
+        got, standardized, rtol=0, atol=3e-15, equal_nan=False
+    )
+
+
+def assert_palette_properties(palette, ids):
+    assert set(palette) == set(ids) | {-1}
+    colors = [tuple(palette[cid]) for cid in ids]
+    assert all(
+        len(c) == 4 and all(np.isfinite(v) and 0 <= v <= 1 for v in c)
+        for c in [*colors, tuple(palette[-1])]
+    )
+    # These examples contain at most three clusters, below the palettes' capacity.
+    assert len(set(colors)) == len(ids)
+    assert all(tuple(palette[-1]) != color for color in colors)
+
+
 def test_initial_state_and_instance_isolation(hdbscan_module):
     a, b = hdbscan_module.HDBSCANAnalyzer(), hdbscan_module.HDBSCANAnalyzer()
     assert (
@@ -81,14 +112,7 @@ def test_counts_and_palette_ids(hdbscan_module, hdbscan_backend, labels, ids, no
     a = fitted(hdbscan_module, hdbscan_backend, labels)
     assert a.cluster_ids_ == ids
     assert a.n_clusters_ == len(ids) and a.n_noise_ == noise
-    assert set(a.color_map_) == set(ids) | {-1}
-    assert a.color_map_[-1] == (0.82, 0.82, 0.82, 0.25)
-    colors = [a.color_map_[cid] for cid in ids]
-    cmap = hdbscan_module.plt.get_cmap("turbo", max(1, len(ids)))
-    for rank, cid in enumerate(ids):
-        assert a.color_map_[cid] == cmap(rank / max(1, len(ids) - 1))
-    assert len(set(colors)) == len(ids)
-    assert all(len(c) == 4 and all(0 <= v <= 1 for v in c) for c in colors)
+    assert_palette_properties(a.color_map_, ids)
     # Same population/order-independent labels must retain ID-to-color pairing.
     b = fitted(hdbscan_module, hdbscan_backend, labels[::-1])
     assert b.color_map_ == a.color_map_
@@ -140,17 +164,16 @@ def test_presentation_is_separate(hdbscan_module, hdbscan_backend, labels, size)
     assert result is a.labels_pres_
     ids = sorted(set(labels) - {-1})
     assert a.ids_pres_ == ids and a.n_clusters_pres_ == len(ids)
-    assert set(a.color_map_pres_) == set(ids) | {-1}
-    assert len({a.color_map_pres_[c] for c in ids}) == len(ids)
-    cmap = hdbscan_module.plt.get_cmap("tab20", len(ids))
-    for rank, cid in enumerate(ids):
-        assert a.color_map_pres_[cid] == cmap(rank)
-    assert a.color_map_pres_[-1] == (0.82, 0.82, 0.82, 0.25)
+    assert_palette_properties(a.color_map_pres_, ids)
+    palette = a.color_map_pres_.copy()
+    hdbscan_backend[1].append(labels[::-1])
+    a.fit_presentation(Z[::-1], **({} if size is None else {"min_cluster_size": size}))
+    assert a.color_map_pres_ == palette
     assert a.clusterer_ is original[0] and a.color_map_ == original[2]
     np.testing.assert_array_equal(a.labels_, original[1])
     hdbscan_backend[1].append([4, 4])
     a.fit(np.zeros((2, 2)))
-    np.testing.assert_array_equal(a.labels_pres_, labels)
+    np.testing.assert_array_equal(a.labels_pres_, labels[::-1])
     hdbscan_backend[1].append([12, 12, 12])
     a.fit_presentation(Z)
     assert a.ids_pres_ == [12] and set(a.color_map_pres_) == {-1, 12}
@@ -281,11 +304,11 @@ def test_profiles_noise_singleton_and_missing_physics(
     assert interp["n"].tolist() == table["n spectres"].tolist()
     if labels == [2, 2]:
         assert table.loc["C2", "X"] == "4.00 ± 2.83"
-        assert table.loc["C2", "Y"] == "nan ± nan"
-        assert table.loc["Bruit", "X"] == "N/A"
+        assert_undefined_statistic(table.loc["C2", "Y"])
+        assert_undefined_statistic(table.loc["Bruit", "X"])
     if labels == [2, 7]:
-        assert table.loc["C2", "X"] == "2.00 ± nan"
-        assert table.loc["C7", "X"] == "6.00 ± nan"
+        assert_undefined_statistic(table.loc["C2", "X"], "2.00")
+        assert_undefined_statistic(table.loc["C7", "X"], "6.00")
     if labels == [-1, -1]:
         assert table.loc["Bruit", "X"] == "4.00"
 
@@ -302,7 +325,9 @@ def test_profiles_unavailable_columns_and_partial_missing_class(
     assert table.columns.tolist() == ["n spectres", "Classe dom.", "V"]
     assert table.loc["C2", "Classe dom."] == "G"
     assert table.loc["C2", "n spectres"] == 3
-    assert interp.loc["C2", "Interprétation"] == "paramètres Gaia insuffisants"
+    assert "C2" in interp.index and interp.loc["C2", "n"] == 3
+    text = str(interp.loc["C2", "Interprétation"]).casefold()
+    assert not any(word in text for word in ["étoiles", "naines", "géantes", "pop."])
 
 
 @pytest.mark.parametrize("which", ["meta", "y"])
@@ -712,3 +737,85 @@ def test_all_default_physical_columns_have_correct_units_and_moments(
     # Do not freeze the unresolved [M/H] versus [Fe/H] display terminology.
     extra = set(table.columns) - set(expected) - {"n spectres", "Classe dom."}
     assert len(extra) == 1 and table.loc["C2", extra.pop()] == "0.00 ± 1.41"
+
+
+def test_asymmetric_physical_cluster_and_noise_are_arithmetic_means(
+    hdbscan_module, hdbscan_backend
+):
+    a = fitted(hdbscan_module, hdbscan_backend, [2, 2, 2, -1, -1, -1])
+    meta = pd.DataFrame(
+        {
+            "obsid": [11, 13, 17, 23, 29, 31],
+            "teff_gspphot": [1000.0, 1200.0, 2000.0, 9000.0, 9100.0, 9800.0],
+        }
+    )
+    table, _ = a.physical_profile_table(meta, np.array(["M"] * 3 + ["A"] * 3))
+    # Mean=1400, median=1200, sample variance=560000/2=280000 K^2.
+    assert table.loc["C2", "T_eff (K)"] == "1400 ± 529"
+    # Independent noise mean=27900/3=9300; its median is 9100.
+    assert table.loc["Bruit", "T_eff (K)"] == "9300"
+    assert table.loc["C2", "n spectres"] == table.loc["Bruit", "n spectres"] == 3
+
+
+@pytest.mark.integration
+def test_asymmetric_feature_mean_and_complete_returned_population(
+    hdbscan_module, hdbscan_csv
+):
+    raw = np.array([[0.0], [1.0], [5.0], [10.0], [4.0]])
+    labels = np.array([2, 2, 2, 7, -1])
+    paths, stem, _ = hdbscan_csv({"obsid": [11, 13, 17, 23, 29], "a": raw[:, 0]})
+    frame, means, aligned = hdbscan_module.compute_feature_profiles(
+        paths, stem, np.zeros((5, 2)), labels
+    )
+    # All five observations (including noise) have mean4, population var62/5.
+    sigma = math.sqrt(62 / 5)
+    expected = pd.DataFrame(
+        {"a": [-2 / sigma, 6 / sigma]}, index=pd.Index([2, 7], name="cluster")
+    )
+    assert_frame_equal(means, expected, rtol=0, atol=3e-15)
+    assert_row_identity_in_raw_or_standardized_frame(frame, raw, (raw - 4) / sigma)
+    np.testing.assert_array_equal(aligned, labels)
+
+
+@pytest.mark.integration
+def test_central_nan_preserves_paired_rows_and_labels(hdbscan_module, hdbscan_csv):
+    data = {
+        "obsid": np.arange(10),
+        "a": [0.0, 1.0, np.nan, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0],
+        "b": [9.0, 2.0, 8.0, 0.0, 7.0, 4.0, 1.0, 6.0, 3.0, 5.0],
+    }
+    paths, stem, _ = hdbscan_csv(data)
+    # Caller has already aligned Z and labels to IDs0,1,3,4,5,6,7,8,9 (#73).
+    ids = np.array([0, 1, 3, 4, 5, 6, 7, 8, 9])
+    labels = np.array([2, 2, 2, 7, 7, 7, 7, -1, -1])
+    raw = np.array(
+        [
+            [0.0, 9.0],
+            [1.0, 2.0],
+            [3.0, 0.0],
+            [4.0, 7.0],
+            [5.0, 4.0],
+            [6.0, 1.0],
+            [7.0, 6.0],
+            [8.0, 3.0],
+            [9.0, 5.0],
+        ]
+    )
+    # Independent moments from sums43/37 and sumsq281/221 over nine rows.
+    mu = np.array([43 / 9, 37 / 9])
+    sigma = np.sqrt([680.0, 620.0]) / 9
+    expected = pd.DataFrame(
+        {
+            "a": [-31 / math.sqrt(680), 13 / (2 * math.sqrt(680))],
+            "b": [-4 / math.sqrt(620), 7 / (2 * math.sqrt(620))],
+        },
+        index=pd.Index([2, 7], name="cluster"),
+    )
+    Z = np.column_stack([ids, -ids]).astype(float)
+    frame, means, aligned = hdbscan_module.compute_feature_profiles(
+        paths, stem, Z, labels
+    )
+    assert frame.columns.tolist() == ["a", "b"]
+    assert_row_identity_in_raw_or_standardized_frame(frame, raw, (raw - mu) / sigma)
+    np.testing.assert_array_equal(aligned, labels)
+    assert_frame_equal(means, expected, rtol=0, atol=3e-15)

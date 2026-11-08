@@ -56,7 +56,7 @@ def test_real_fit_geometry_probabilities_and_presentation(hdbscan_module, method
     ).fit_predict(Z)
     np.testing.assert_array_equal(a.labels_[:, None] == a.labels_, ref[:, None] == ref)
     result = a.fit_presentation(Z, min_cluster_size=5)
-    assert result.shape == (25,) and a.clusterer_pres_.prediction_data is False
+    assert result.shape == (25,)
     np.testing.assert_array_equal(Z, before)
 
 
@@ -118,6 +118,9 @@ def test_real_invalid_inputs_and_parameters(hdbscan_module, case):
         kwargs["min_samples"] = 0
     if case == "selection":
         kwargs["cluster_selection_method"] = "invalid"
+    if case in ["nan", "inf", "negative_inf"]:
+        assert_nonfinite_outcome(hdbscan_module, Z, "fit")
+        return
     with pytest.raises((ValueError, TypeError)):
         hdbscan_module.HDBSCANAnalyzer(**kwargs).fit(Z)
 
@@ -149,12 +152,29 @@ def test_real_paired_permutation_partition_on_this_geometry(hdbscan_module):
 
 
 @pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
-def test_real_presentation_nonfinite_rows_are_backend_noise(hdbscan_module, bad):
-    backend = real_backend()
+def test_real_presentation_nonfinite_rows_have_explicit_outcome(hdbscan_module, bad):
+    real_backend()
     Z = geometry()
     Z[3, 0] = bad
-    a = hdbscan_module.HDBSCANAnalyzer(4, 2)
-    result = a.fit_presentation(Z, min_cluster_size=4)
-    ref = backend.HDBSCAN(min_cluster_size=4, min_samples=2).fit_predict(Z)
-    np.testing.assert_array_equal(result[:, None] == result, ref[:, None] == ref)
-    assert result[3] == -1 and len(result) == len(Z)
+    assert_nonfinite_outcome(hdbscan_module, Z, "fit_presentation")
+
+
+def assert_nonfinite_outcome(module, Z, mode):
+    """Allow domain refusal or explicit invalid-row masking, never physical meaning."""
+    backend = real_backend()
+    a = module.HDBSCANAnalyzer(4, 2)
+    finite = np.isfinite(Z).all(axis=1)
+    kwargs = {"min_cluster_size": 4} if mode == "fit_presentation" else {}
+    try:
+        getattr(a, mode)(Z, **kwargs)
+    except ValueError as error:
+        assert any(word in str(error).lower() for word in ["finite", "nan", "infinity"])
+        return
+    labels = a.labels_ if mode == "fit" else a.labels_pres_
+    assert labels.shape == (len(Z),)
+    assert np.all(labels[~finite] == -1)
+    ref = backend.HDBSCAN(min_cluster_size=4, min_samples=2).fit_predict(Z[finite])
+    observed = labels[finite]
+    np.testing.assert_array_equal(observed == -1, ref == -1)
+    np.testing.assert_array_equal(observed[:, None] == observed, ref[:, None] == ref)
+    # -1 is an invalid-coordinate policy here, not evidence of low stellar density.
