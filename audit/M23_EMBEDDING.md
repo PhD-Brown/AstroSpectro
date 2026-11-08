@@ -135,7 +135,7 @@ limits, never tacit acceptance. Every method has more than nominal inspection.
 
 ## Defects, observations and decisions
 
-**Durable archive:** [`audit/43-dimred-embedding-proofs@c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b`](https://github.com/PhD-Brown/AstroSpectro/tree/c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b).
+**Initial durable archive (historical):** [`audit/43-dimred-embedding-proofs@c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b`](https://github.com/PhD-Brown/AstroSpectro/tree/c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b).
 [Executable proofs](https://github.com/PhD-Brown/AstroSpectro/blob/c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b/tests/proofs_dimred_embedding.py),
 [per-case manifest](https://github.com/PhD-Brown/AstroSpectro/blob/c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b/audit/M23_PROOFS.md),
 [JUnit-derived results](https://github.com/PhD-Brown/AstroSpectro/blob/c16571ecb55e12b9fa7b4dda2a62c7d96ff41b0b/audit/m23_proof_results.json)
@@ -307,3 +307,33 @@ candidate explicitly rejects it. No unrelated green assertion was relaxed.
 The first compatibility run exposed the too-tight near-zero centering tolerance
 above and this candidate-validation omission; the final complete run passes.
 Revised archive history and final Git/CI SHAs are linked in PR#72/#43.
+
+## Revised archive, issue qualifications and second-review boundary
+
+The existing durable ref advanced by fast-forward to
+**[9bf1e76821c266af218d84a8426badb1fb62ac2f](https://github.com/PhD-Brown/AstroSpectro/tree/9bf1e76821c266af218d84a8426badb1fb62ac2f)**:
+[proof source](https://github.com/PhD-Brown/AstroSpectro/blob/9bf1e76821c266af218d84a8426badb1fb62ac2f/tests/proofs_dimred_embedding.py),
+[revised manifest with full historical correspondence](https://github.com/PhD-Brown/AstroSpectro/blob/9bf1e76821c266af218d84a8426badb1fb62ac2f/audit/M23_PROOFS.md),
+[case results and oracle controls](https://github.com/PhD-Brown/AstroSpectro/blob/9bf1e76821c266af218d84a8426badb1fb62ac2f/audit/m23_proof_results.json).
+All three files were read back from GitHub before removing them from integration.
+Original c16571e remains an ancestor, no force-push or history rewrite. Normal
+proof execution repeated at committed9bf1e76:14 FAIL/15 PASS/2 optional deselected,
+no error/skip/xfail. Two optional real-UMAP observations are executed separately.
+New archive is retained as an ancestor of the final integration head.
+
+Qualification comments are published, with these fixed proof links:
+[#66 reserved grid-key collisions](https://github.com/PhD-Brown/AstroSpectro/issues/66#issuecomment-6725357087),
+[#67 complete state and real UMAP transform after failed refit](https://github.com/PhD-Brown/AstroSpectro/issues/67#issuecomment-6725357249),
+[#68 seed persistence and inferable dimensions](https://github.com/PhD-Brown/AstroSpectro/issues/68#issuecomment-6725357410),
+[#69 latent mask /33-of-40 disconnected UMAP fixture](https://github.com/PhD-Brown/AstroSpectro/issues/69#issuecomment-6725357559),
+[#70 None seed and TypeError-compatible metric removal](https://github.com/PhD-Brown/AstroSpectro/issues/70#issuecomment-6725357727),
+[#71 sequential comparison vs parallel prose](https://github.com/PhD-Brown/AstroSpectro/issues/71#issuecomment-6725357902).
+No new corrective issue or fix was created. In particular, NaN-output evidence
+uses a disconnection option absent from the current fixed3D helper configs;
+no incidence on these helpers or historical data is asserted.
+
+R1-R6 and N1-N5 are submitted for Claude's second review on the same DraftPR72.
+The12 inline threads are left unresolved for that review. No master-dashboard
+completion, production change, merge or M2.4 work. Final SHA, final local
+commands and the newly checked hosted CI are recorded in the PR and #43 handoff;
+the old42505611361 run is pre-review evidence only.
