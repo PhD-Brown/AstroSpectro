@@ -1,0 +1,76 @@
+{
+  "schema": 2,
+  "git_head_at_run": "1b9fa1157146eb508e9b590704ef0a7b214b87e6",
+  "working_tree_at_start": "?? audit/M24_PROOFS.md\n?? audit/m24_proof_control_results.json\n?? audit/m24_proof_results.json",
+  "content_hashes_lf": {
+    "src/dimred/hdbscan_analyzer.py": "a963478cb7ae605652082b2153ba330f3d6cb3d7d27a772bb77b736498802ded",
+    "src/dimred/data_loader.py": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+    "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
+    "tests/conftest.py": "185899289b2c46c9c30f82b0a1ed996b600315033d1f0706277bb3e39335619b",
+    "tests/test_dimred_hdbscan_analyzer.py": "833bf997a4b3b00a4b131ddd71901c18f8f407652ca652f4c3c4afe554c4df85",
+    "tests/proofs_dimred_hdbscan_analyzer.py": "fbf64fa1173da8c01c6d5159b13f1dcf1b2214044e594317f314724e7c6b6d9a",
+    "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+    "audit/check_m24_mutations.py": "143fa35eb4d5831122a7cfbca84f5b02f7eb5a9ba0ed464b0eb8f957ee6498f1",
+    "audit/m24_review_candidates.py": "6f4b87ccd2e5a3ee2a428669049658bcf6beebc3ce20eac0da7758b22040ecd0",
+    "audit/check_m24_proof_controls.py": "b1440385a736b27244402124eb2dca0b3c81662187d8a7c7541b87cde68e1a89"
+  },
+  "cases": [
+    {
+      "name": "state_retain",
+      "expected_proof_failures": 0,
+      "tests": 66,
+      "failures": [],
+      "status": "PASS"
+    },
+    {
+      "name": "state_invalidate",
+      "expected_proof_failures": 0,
+      "tests": 66,
+      "failures": [],
+      "status": "PASS"
+    },
+    {
+      "name": "state_partial",
+      "expected_proof_failures": 4,
+      "tests": 66,
+      "failures": [
+        "test_failed_fit_state_is_coherent[False-fit]",
+        "test_failed_fit_state_is_coherent[False-fit_presentation]",
+        "test_failed_fit_state_is_coherent[True-fit]",
+        "test_failed_fit_state_is_coherent[True-fit_presentation]"
+      ],
+      "status": "PASS"
+    },
+    {
+      "name": "state_invalidate_noise_palette",
+      "expected_proof_failures": 0,
+      "tests": 66,
+      "failures": [],
+      "status": "PASS"
+    },
+    {
+      "name": "alignment_refusal",
+      "expected_proof_failures": 0,
+      "tests": 66,
+      "failures": [],
+      "status": "PASS"
+    },
+    {
+      "name": "missing_physics_refusal",
+      "expected_proof_failures": 0,
+      "tests": 63,
+      "failures": [],
+      "status": "PASS"
+    },
+    {
+      "name": "missing_class_placeholder",
+      "expected_proof_failures": 0,
+      "tests": 63,
+      "failures": [],
+      "status": "PASS"
+    }
+  ],
+  "normalized_input_integrity": true,
+  "tracked_index_unchanged": true,
+  "temporary_copies_removed": true
+}

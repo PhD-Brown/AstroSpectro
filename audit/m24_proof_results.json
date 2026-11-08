@@ -1,0 +1,266 @@
+{
+  "schema": 2,
+  "git_head_at_execution": "1b9fa1157146eb508e9b590704ef0a7b214b87e6",
+  "historical_archive": "a27028bb9dfb617d5cddc2a7fac6eb08a195142a",
+  "historical_result_path": "audit/m24_proof_results.json",
+  "source_blob": "667a2985ea1b6b4f0a660a70f7635715730c0f78",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "pytest": "8.4.2",
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1"
+  },
+  "optional_hdbscan": "0.8.44",
+  "ordinary_proofs": {
+    "counts": {
+      "tests": "43",
+      "failures": "10",
+      "errors": "0",
+      "skipped": "0"
+    },
+    "cases": [
+      {
+        "name": "test_failed_fit_state_is_coherent[False-fit]",
+        "status": "FAIL",
+        "failure": "AssertionError: A first failed fit exposes an unfitted estimator\nassert False"
+      },
+      {
+        "name": "test_failed_fit_state_is_coherent[False-fit_presentation]",
+        "status": "FAIL",
+        "failure": "AssertionError: A first failed fit exposes an unfitted estimator\nassert False"
+      },
+      {
+        "name": "test_failed_fit_state_is_coherent[True-fit]",
+        "status": "FAIL",
+        "failure": "AssertionError: Estimator was replaced while cached labels survived\nassert <conftest.hdbscan_backend.<locals>.Backend object at 0x00000179C2D015D0> is <conftest.hdbscan_backend.<locals>.Backend object at 0x00000179C2E3FD10>\n +  where <conftest.hdbscan_backend.<locals>.Backend object at 0x00000179C2D015D0> = getattr(<m24_hdbscan.HDBSCANAnalyzer object at 0x00000179C2E3FBD0>, 'clusterer_')"
+      },
+      {
+        "name": "test_failed_fit_state_is_coherent[True-fit_presentation]",
+        "status": "FAIL",
+        "failure": "AssertionError: Estimator was replaced while cached labels survived\nassert <conftest.hdbscan_backend.<locals>.Backend object at 0x00000179C2E3C210> is <conftest.hdbscan_backend.<locals>.Backend object at 0x00000179C2E3C150>\n +  where <conftest.hdbscan_backend.<locals>.Backend object at 0x00000179C2E3C210> = getattr(<m24_hdbscan.HDBSCANAnalyzer object at 0x00000179C2E3C250>, 'clusterer_pres_')"
+      },
+      {
+        "name": "test_feature_filter_cannot_reassign_labels[snr]",
+        "status": "FAIL",
+        "failure": "AssertionError: \nArrays are not equal\n\nMismatched elements: 5 / 9 (55.6%)\nMismatch at indices:\n [4]: 104 (ACTUAL), 105 (DESIRED)\n [5]: 105 (ACTUAL), 106 (DESIRED)\n [6]: 106 (ACTUAL), 107 (DESIRED)\n [7]: 107 (ACTUAL), 108 (DESIRED)\n [8]: 108 (ACTUAL), 109 (DESIRED)\nMax absolute difference among violations: 1\nMax relative difference among violations: 0.00952381\n ACTUAL: array([100, 101, 102, 103, 104, 105, 106, 107, 108])\n DESIRED: array([100, 101, 102, 103, 105, 106, 107, 108, 109])"
+      },
+      {
+        "name": "test_feature_filter_cannot_reassign_labels[dropna]",
+        "status": "FAIL",
+        "failure": "AssertionError: \nArrays are not equal\n\nMismatched elements: 5 / 9 (55.6%)\nMismatch at indices:\n [4]: 104 (ACTUAL), 105 (DESIRED)\n [5]: 105 (ACTUAL), 106 (DESIRED)\n [6]: 106 (ACTUAL), 107 (DESIRED)\n [7]: 107 (ACTUAL), 108 (DESIRED)\n [8]: 108 (ACTUAL), 109 (DESIRED)\nMax absolute difference among violations: 1\nMax relative difference among violations: 0.00952381\n ACTUAL: array([100, 101, 102, 103, 104, 105, 106, 107, 108])\n DESIRED: array([100, 101, 102, 103, 105, 106, 107, 108, 109])"
+      },
+      {
+        "name": "test_joint_feature_embedding_and_label_mismatch[8]",
+        "status": "FAIL",
+        "failure": "Failed: DID NOT RAISE <class 'ValueError'>"
+      },
+      {
+        "name": "test_joint_feature_embedding_and_label_mismatch[12]",
+        "status": "FAIL",
+        "failure": "Failed: DID NOT RAISE <class 'ValueError'>"
+      },
+      {
+        "name": "test_no_available_physical_columns_has_explicit_outcome",
+        "status": "FAIL",
+        "failure": "assert False\n +  where False = any(<generator object test_no_available_physical_columns_has_explicit_outcome.<locals>.<genexpr> at 0x00000179F46FC8B0>)"
+      },
+      {
+        "name": "test_all_missing_classes_have_explicit_outcome",
+        "status": "FAIL",
+        "failure": "IndexError: index 0 is out of bounds for axis 0 with size 0"
+      },
+      {
+        "name": "test_equal_length_permuted_csv_is_not_identity_proof",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_equal_lengths_cannot_certify_identity[meta]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_equal_lengths_cannot_certify_identity[y]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_equal_lengths_cannot_certify_identity[labels]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_returned_features_are_raw_despite_standardized_docstring",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_centroid_undefined_domain_observation[empty]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_centroid_undefined_domain_observation[matrix_mask]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_centroid_undefined_domain_observation[nonfinite]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[tie]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[empty_phys]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[duplicate_phys]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[duplicate_ids]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[nonnumeric]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[infinite]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_profile_open_policy_observations[nullable_missing]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_sensitivity_zero_length_observation",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_algorithmic_noise_does_not_use_physical_measurements",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_heterogeneous_temperatures_emit_an_unobserved_average_type",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_current_heuristic_display_observation[7501.0-2.49--0.81-parts0]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_current_heuristic_display_observation[7500.0-2.5--0.8-parts1]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_current_heuristic_display_observation[5501.0-3.49--0.31-parts2]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_current_heuristic_display_observation[5500.0-3.5--0.3-parts3]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_current_heuristic_display_observation[4001.0-4.0-0.0-parts4]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_current_heuristic_display_observation[4000.0-4.0-0.0-parts5]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_equal_feature_embedding_length_rejects_ndarray_cardinality[8]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_equal_feature_embedding_length_rejects_ndarray_cardinality[12]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_series_cardinality_is_silently_index_aligned_observation[8]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_series_cardinality_is_silently_index_aligned_observation[12]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_equal_length_series_labels_use_index_not_position_observation",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_y_series_index_observation[shifted]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_y_series_index_observation[metadata_index]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_y_series_index_observation[overlong]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_physical_y_series_index_observation[unambiguous_shift]",
+        "status": "PASS",
+        "failure": null
+      }
+    ]
+  },
+  "real_backend_observations": {
+    "counts": {
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0"
+    },
+    "cases": [
+      {
+        "name": "test_real_failed_refit_state_observation[fit]",
+        "status": "PASS",
+        "failure": null
+      },
+      {
+        "name": "test_real_failed_refit_state_observation[fit_presentation]",
+        "status": "PASS",
+        "failure": null
+      }
+    ]
+  },
+  "content_hashes_lf": {
+    "src/dimred/hdbscan_analyzer.py": "a963478cb7ae605652082b2153ba330f3d6cb3d7d27a772bb77b736498802ded",
+    "tests/conftest.py": "185899289b2c46c9c30f82b0a1ed996b600315033d1f0706277bb3e39335619b",
+    "tests/proofs_dimred_hdbscan_analyzer.py": "fbf64fa1173da8c01c6d5159b13f1dcf1b2214044e594317f314724e7c6b6d9a"
+  }
+}

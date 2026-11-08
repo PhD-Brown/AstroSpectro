@@ -4,6 +4,40 @@
 Tests/audit only; submitted for independent Claude review and human decision.
 No M2.5 work. A green suite is not astrophysical validation.
 
+## Revision after Claude's first review R1–R10
+
+Read the [complete review 5820017025](https://github.com/PhD-Brown/AstroSpectro/pull/79#pullrequestreview-5820017025),
+all ten inline threads and [handoff](https://github.com/PhD-Brown/AstroSpectro/issues/43#issuecomment-6728219398),
+live AGENTS.md and #43. Both worktrees were clean, head/remote e11ad1b,
+main58180392, proof ref a27028b. Same worktree/branch/Draft PR79, no new audit
+branch, production change or thread resolution. This revision supersedes the
+initial AP claims for mean-versus-median discrimination and returned-row identity.
+
+| Review | Correction / independent expectation | Evidence / open policy |
+|---|---|---|
+| R1 | `asymmetric_physical_cluster_and_noise_are_arithmetic_means`: Teff1000/1200/2000 gives1400±529, noise9000/9100/9800 gives9300. `asymmetric_feature_mean_and_complete_returned_population`: x0/1/5/10/4, mean4,var62/5, scores−2/sqrt(62/5),6/sqrt(62/5). | Three separately scoped median substitutions detected. ddof1 physical vs ddof0 scaler preserved; no classification inferred. |
+| R2 | Two complete returned frames compared row-by-row to raw **or** independently standardized observations, one coherent policy for the whole frame. NaN at ID2 retains0,1,3,4,5,6,7,8,9; nonmonotone second feature protects pairing. | Reversed rows, independently sorted columns and head deletion detected; an additional mixed-units candidate is tested. Correct standardized #77 return and mismatch refusal #73 remain admissible. |
+| R3 | Explicit missing-statistic helper accepts nan/N/A/dashes, checks a defined mean exactly and refuses a numeric-zero singleton dispersion. | Alternate dash/N/A candidates remain green; undefined→0 is an incorrect guard candidate. No unique missing display required. |
+| R4 | Removed exact insufficient-Gaia prose. Checks cluster/count and absence of the existing unsupported taxonomy tokens when no physical parameter was selected. | Reformulated cautious text remains admissible. This lexical guard is not a universal validator of scientific language. |
+| R5 | RGBA validity, ID coverage, distinct colors for at most3clusters, dedicated noise, stability under paired order permutations in both modes. | No colormap/LUT/rank formula or exact grey. Original `palette_swapped_ranks` is now an admissible aesthetic alternative, excluded from incorrect-mutation totals; other original sites retained. |
+| R6 | Both modes accept relevant ValueError refusal or explicit−1 for invalid rows, with valid-row partition verified against a finite-only real backend fit. | No physical low-density interpretation of invalid coordinates. Normal prediction_data=True kept; presentation option OPEN. Real controls cover prediction_data=True and uniform finite refusal. |
+| R7 | Three M2.4 fixtures moved into conftest, standalone support/plugin removed. | Whole suite `--import-mode=importlib`385PASS on Windows, no path hack or pytest config change. Normal mode checked separately. |
+| R8 | Joint mismatch proofs renamed/qualified; new archive controls isolate equal features=Z with ndarray vsSeries lengths8/12, same-length shifted Series and physical y Series. | Wrong associations demonstrated for direct Series inputs; annotation/nominal loader remain ndarray. Extending supported Series behavior is OPEN and attached to#73. No green architectural promise. |
+| R9 | Primary paper confirms biased GSP-Phot[M/H] needs calibration/translation to LAMOST[Fe/H]; red-clump and hot-dwarf counterexamples qualify current thresholds. | Sources and scope below; no replacement taxonomy or physical threshold asserted by CI. Qualification attached to#78. |
+| R10 | New schema2 names `git_head_at_run`, working-tree state, actual content hashes and Git blobs. Historical payload retained separately, without changing749224f into a later run SHA. | Historical inputs match committed d402922; revised campaigns run on committed input snapshot1b9fa1157146eb508e9b590704ef0a7b214b87e6. Final ledger distinguishes executions. |
+
+Independent R2 central-NaN oracle: retained a sum43,sumsq281; b sum37,sumsq221.
+Means43/9,37/9; population variances680/81,620/81. Cluster2 averages yield
+−31/sqrt680 and−4/sqrt620; cluster7 yields13/(2sqrt680),7/(2sqrt620).
+The embedding encodes the retained identities; labels already match this valid
+population. Exact frame rows and aligned labels are checked together. Raw and
+standardized matrices are accepted as complete alternatives, not column-wise
+choices. Existing float64 tolerances3e−15 are unchanged.
+
+Historical results in the later initial-ledger sections describe pre-review
+executions only. New executions and corrected classifications are recorded in
+the final revision ledger below and the PR, never substituted into old runs.
+
 ## Reference and scope
 
 Audited `origin/main@58180392d16e06ad411073bc48011d076f9128f0`, fetched at
@@ -43,20 +77,20 @@ validated; B=blocked. U/I/P/S follow AGENTS.md. No line-coverage measurement.
 |---|---|---|---|
 | Constants/import boundary 1–45 | Six Gaia columns; numpy/pandas/Matplotlib; backend lazy. No catalog I/O on source import. | G initial/optional-import tests PASS U; real source blob checked. AP lazy HDBSCAN error, PA facade. | #21 packaging; names/units and spectral provenance not certified by denylist. |
 | `__init__`64–90 | Stores 75/20/euclidean/eom or configured values; normal and presentation estimators/labels initiallyNone, zero counters, empty instance-owned lists/maps. | G `initial_state_and_instance_isolation`, `fit_forwarding_and_success_state`: PASS U. AP named defaults/state. | Constructor itself does not validate types/ranges; backend checks on fit. |
-| `fit`94–132 | Z(N,2) positional numeric coordinates; HDBSCAN kwargs match configured size/samples/metric/selection, prediction_data=True; returnself, store estimator/labels then recompute stats/palette. No coordinate physical unit inferred. | G forwarding, preservation, successive fit, optional dependency/failure propagation PASS U. R actual EOM/leaf, degenerate/invalid/probability cases PASS I/P. AP successful wrapper contracts; PA failure-state coherence. | A four mock failures plus 2 real observations show replaced estimator with stale cache; transaction choice OPEN. Valid shapes beyond documented 2 D, sparse/precomputed/custom metrics not exhaustive. |
-| `fit_presentation`134–172 | Independent model and labels; size 300 default or override, same samples/metric/selection; sorted IDs without-1, tab 20 map; returns presentation labels. No prediction_data=True promise. | G `presentation_is_separate` PASS U; normal→presentation→normal→presentation replacement, exact ID/color mapping and unchanged opposite mode. R real presentation PASS I; nonfinite remapping compared directly. AP successful state, PA failure paths. | Empty/tiny real inputs fail; no empty-success contract inferred from mocks. No minimum granularity/count monotonicity guaranteed by changing size. |
+| `fit`94–132 | Z(N,2) positional numeric coordinates; HDBSCAN kwargs match configured size/samples/metric/selection, prediction_data=True; returnself, store estimator/labels then recompute stats/palette. No coordinate physical unit inferred. | G forwarding, preservation, successive fit, optional dependency/failure propagation PASS U. R actual EOM/leaf, degenerate/invalid/probability cases PASS I/P. AP successful wrapper contracts; PA failure-state coherence. | A four controlled failures plus2real observations show replaced estimator with stale cache; transaction choice OPEN. Valid shapes beyond documented 2 D, sparse/precomputed/custom metrics not exhaustive. |
+| `fit_presentation`134–172 | Independent model and labels; size 300 default or override, same samples/metric/selection; sorted IDs without-1, tab 20 map; returns presentation labels. No prediction_data=True promise. | G `presentation_is_separate` PASS U; normal→presentation→normal→presentation replacement, ID coverage, RGBA validity and stable pairing, with unchanged opposite mode. Real nonfinite outcomes admit refusal or explicit masking. AP successful state, PA failure paths. | Empty/tiny real inputs fail; no empty-success contract inferred from mocks. No minimum granularity/count monotonicity guaranteed by changing size. |
 | `_compute_stats`363–367 | Unique sorted labels except-1; countIDs; exact number of-1, not number of unassigned classes. | G `counts_and_palette_ids` all noise/no-noise/noncontiguous/multi/single plus `helpers_recompute_and_successive_fit_replace_state` PASS U/P. AP. | Labels assumed backend integer vector. Malformed synthetic backend values not a supported scientific input contract. |
-| `_build_palette`369–377 | turbo sampled in sorted-ID order; dedicated grey alpha 0.25 for-1; presentation tab 20 separately. | G counts/presentation check exact rank→color using external Matplotlib API, membership/dimensions/distinctness and order permutation PASS U. AP current mapping. | Exact palette colors are visualization conventions, not significance/class semantics; more than 20 presentation groups can repeat a tab 20 color. |
+| `_build_palette`369–377 | Current implementation uses turbo and tab20, with a noise entry. | G verifies ID coverage, finite RGBA, distinctness for small populations and permutation stability in both modes. AP these mapping properties. | Palette, grey and sampling formula are aesthetic choices, not fixed by green tests. No uniqueness claim beyond palette capacity. |
 | `centroid`358–361 | Arithmetic barycenter of selected points; no medoid/density/physical-center claim; inputs unchanged. | G 3 analytic subsets including singleton and elongated cloud; translation, wrong-length mask PASS U/P. AP valid 1D-mask arithmetic. A empty/2D-mask/Inf observations PASS. | PA empty/nonfinite/matrix-mask policy OPEN. Float coordinates describe representation space only. |
-| `physical_profile_table`176–338: preconditions/alignment | Requires labels, equal lengths; copied/reset-index meta then positional labels/y. Old pandas index is ignored. | G before-fit and length errors, identity markers with nonconsecutive indices, paired row permutation, arbitrary ID renaming PASS U/I/S. A independent meta/y/label permutations and duplicate IDs expose limitations. AP positional behavior, PA identity validation. | Same length cannot certify correspondence. API has no fit IDs, so independent permutation violates documented alignment precondition; no new guaranteed detection imposed. |
+| `physical_profile_table`176–338: preconditions/alignment | Requires labels; ndarray length mismatch is refused. meta index is reset; ndarray y assigns positionally, Series y aligns by pandas index (R8). | G before-fit and length errors, identity markers with nonconsecutive indices, paired row permutation, arbitrary ID renaming PASS U/I/S. A independent meta/y/label permutations and duplicate IDs expose limitations. AP positional behavior, PA identity validation. | Same length cannot certify correspondence. API has no fit IDs, so independent permutation violates documented alignment precondition; no new guaranteed detection imposed. |
 | physical statistics 220–276 | Group means and pandas sample std(ddof=1), exact counts and unique dominant class; NaN excluded from numeric moments; singleton std remainsundefined, noise row has mean only. | G `physical_profiles_analytic_statistics_and_identity` float+nullable; custom/noisy/all noise/singletons/missing columns/partial missing class, local-change/noise-isolation PASS U/P. AP named finite/missing numerical contracts. | All available physical columns absent triggers internal pandas ValueError; all class labels missing triggers IndexError. Tie/missing/Inf/non-numeric/duplicate-column handling remains PA with archive observations. No silent assertion of std=0 for singleton. |
 | physical formatting/interpretation 239–338 | Teff 0 decimals, others 2; noise mean, own count; interp same cluster index/count. Heuristics depend on mean Teff/logg/mh. | G manual expected strings/counts PASS U/P. A 6 exact-threshold display observations PASS. AP arithmetic/display fidelity; **NA astrophysical classification**. | Cluster mean can mix heterogeneous stars; gravity thresholds alone do not establish evolutionary stage. Noise→spectral anomaly is unproven. Gaia metallicity terminology requires qualification. No green assertion mandates heuristic prose. |
 | `print_physical_profile`340–354 | Prints supplied table and interpretation rows; returnsNone; no DataFrame modification. | G `profile_print_transmits_tables_without_mutating`, `print_empty_supplied_tables` PASS U. AP structure/data. | Scientific force of title/prose remains unvalidated; whitespace/borders not treated as contracts. |
 | `sensitivity_df`380–382 | Returns an empty DataFrame; module function has no analyzer reference and does not populate it. | G default property before/after sweep and after result mutation PASS U. AP existing independent state. | Placeholder/lacuna, not a persisted experiment table. Empty schema/ownership policy OPEN; no invented relationship. |
 | `compute_sensitivity`388–429 | Default 50,100,150,300,500 or caller order; each estimator gets samples 20(default), euclidean/eom; counts exclude-1, percent round(100*Nnoise/N,2). | G full/default/custom/duplicate/empty grids, all noise/no-noise/1 of 6/2 of 6 fractions, trial inputs and propagation PASS U/P; R direct-backend sweep PASS I. AP positive-N contracts. | Empty grid returns no-column frame, schema OPEN. Invalid entries delegated to backend; no monotonicity/determinism beyond selected examples. Artificial N=0 backend response divides by 0; real backend refuses N=0. |
 | `compute_feature_profiles`432–530: CSV/selection | Path stem.csv; lazy real StandardScaler/loader constants, fallback local import, FileNotFoundError. Active SNR>=10 includesboundary/excludesmissing; numeric variable columns, missing<=10%, metadata/prefix exclusions; dropna on retainedfeatures. | G curated exact columns vs spectro_only loader, thresholds 0/10/20%, SNR boundary, no SNR, empty/constant/Inf populations, missing file/fallback PASS U/I. AP observed mechanisms; PA spectral provenance. | Matches spectro_only=True on controlled population, not default loader (instrumental policy differs). Loader permits filters/classes/balancing/sampling/custom merge key; this function cannot inherit those. #23 denylist is not a provenance certificate; unknown plateid remains admitted. |
-| feature alignment 532–545 | Current code compares feature count with Z, truncates positionally on mismatch; no IDs accepted. | A SNR/dropna remove middle 104:2 FAIL, independent label lengths 8/12 vs 10:2 FAIL; equal-size permutation observation PASS S. **PA defect proven**, no AP provenance. | Wrong association demonstrated on synthetic mismatched populations; calling this “conservative intersection”/“perfect alignment” is unjustified. Reject mismatch or propagate IDs/selection record are alternatives. No historical rate measured. |
-| feature scaling 547–561 | Default centering and population std(ddof=0) fit on all retainedrows **including noise**; grouped z-score means exclude noise only at aggregation. Output feature order preserved. | G 2-feature analytic profiles, scaler boundary, affine units/paired permutation, feature order reversal, singlefeature/all noise/post-dropna constant PASS I/P. AP descriptive numeric contracts. | Full-population reference is descriptive, not a train/test evaluation. Train-only required if reused predictively; none is run here. df_feat returnedraw despite standardized docstring; output API choice OPEN, archive raw observation PASS. |
+| feature alignment 532–545 | Current code compares feature count with Z, truncates positionally on mismatch; no IDs accepted. | A SNR/dropna remove middle104:2FAIL; joint features/Z/label mismatch:2FAIL (redundant for label-cardinality validation). Equal-size ndarray mismatches are already refused; Series observations isolate index alignment. **PA defect proven**, no AP provenance. | Wrong association demonstrated on synthetic mismatched populations; calling this “conservative intersection”/“perfect alignment” is unjustified. Reject mismatch or propagate IDs/selection record are alternatives. No historical rate measured. |
+| feature scaling 547–561 | Default centering and population std(ddof=0) fit on all retainedrows **including noise**; grouped z-score means exclude noise only at aggregation. Column order and returned observation identities checked under either complete raw or standardized #77 policy. | G asymmetric means, exact returned populations including central NaN, scaler boundary, paired permutation, single feature/all-noise/post-dropna constant PASS I/P. AP descriptive numeric contracts. | Full-population reference is descriptive, not a train/test evaluation. Train-only required if reused predictively; none is run here. df_feat returnedraw despite standardized docstring; output API choice OPEN, archive raw observation PASS. |
 | Interfaces | Loader CSV→scaledX→realPCA→controlled clustering→physical/feature profiles; actual HDBSCAN separate. Visualizer/notebook accept normal/presentation arrays and sensitivity tables. | G `loader_pca_cluster_profile_observation_identity` PASS I with shuffled catalog join and 1000/1200 vs 6000/6200 K oracle. AP tested boundary. | No real UMAP→HDBSCAN→astrophysical validation, large data, notebook execution or visualizer rendering claim. M2.8 owns visualization audit. |
 
 ## Independent numerical oracles
@@ -105,10 +139,10 @@ assumption that leaf must also yield 2 was rejected). Assertions compare
 co-membership matrices, not literal label integers; each group stays in its
 separated cloud. Real 2 D fitting is not evidence of physical populations.
 
-Normal prediction_data=True rejects nonfinite input while generating prediction
-structures on this version; without it, presentation may map bad rows to-1.
-This difference is tested, not presented as a wrapper validation guarantee for
-other backend versions. Constant geometry yields 8 noise/0 clusters in this
+Observed before review: normal prediction_data=True rejects nonfinite input
+on 0.8.44, while presentation without it may map those rows to -1. Revised tests
+do not require this asymmetry: relevant refusal or explicitly masked invalid
+rows is admissible in either mode. Presentation prediction_data is OPEN. Constant geometry yields 8 noise/0 clusters in this
 fixture/version; no universal allconstant policy is inferred. Optional 2 real
 failed-refit observations confirm the cache defect on singleton failure.
 
@@ -121,12 +155,24 @@ docstring were inspected separately from mocks.
 
 Teff uses kelvin; logg is log 10 surface gravity in cgs; distance is pc; Gaia
 photometric colors/magnitudes are not embedding coordinate units. GSP-Phot
-parameter estimates have modeling assumptions, selection effects and systematic
-uncertainties. The [ESA methods](https://gea.esac.esa.int/archive/documentation/GDR3/Data_analysis/chap_cu8par/sec_cu8par_apsis/ssec_cu8par_apsis_gspphot.html)
-describe global[M/H]; the [source datamodel](https://gea.esac.esa.int/archive/documentation/GDR3/Gaia_archive/chap_datamodel/sec_dm_main_source_catalogue/ssec_dm_gaia_source.html)
-calls mh_gspphot iron abundance. This documentary discrepancy is disclosed:
-neither universal[M/H]=[Fe/H] nor a silent relabeling is established here.
-No calibrated metallicity/abundance analysis was performed.
+parameter estimates have modeling assumptions and systematic errors. This goes
+beyond a naming discrepancy: [Andrae et al., section 3.5.3](https://arxiv.org/html/2206.06138v1#S3.SS5.SSS3)
+find biased GSP-Phot[M/H] and describe an empirical calibration that also
+translates to the LAMOST DR6 [Fe/H] scale. Applying -0.8/-0.3 to an uncalibrated
+mean does not validate a Galactic population classification. No calibration
+was run here; calibrated abundances and group homogeneity remain unverified.
+The requested [ESA calibration page](https://www.cosmos.esa.int/web/gaia/dr3-gspphot-metallicity-calibration)
+returned HTTP 451 in this environment; its content was not independently read.
+The linked primary paper supplies the bias and translation evidence directly.
+
+[Wang & Chen, section 2.2 and Table 1](https://arxiv.org/html/2108.13605v1#S2.SS2)
+select APOGEE red-clump candidates with 2.3 <= logg <= 2.5 plus temperature/quality
+criteria. This is a counterexample to logg<2.5 implying supergiants, not a
+universal red-clump definition or an application of their cuts to Gaia.
+The [Pecaut/Mamajek dwarf sequence, version 2022.04.16](https://www.pas.rochester.edu/~emamajek/EEM_dwarf_UBVIJHK_colors_Teff.txt)
+lists F0V 7220 K and B9V 10700 K: the unbounded condition Teff > 7500 K includes stars
+hotter than A/F. The sequence is for dwarfs; no universal MK classifier or
+new production boundary is proposed. These qualifications belong to #78.
 
 The [HDBSCAN API](https://hdbscan.readthedocs.io/en/latest/api.html) defines noise
 and membership strength geometrically. A low-density point can arise from
@@ -179,7 +225,7 @@ not reproduce EOM's two clusters; presentation NaN need not fail. These were
 oracle/precondition mistakes, not production bugs or assertions weakened to
 hide errors. Red/green split preserves open decisions rather than fixing them.
 
-### Mutations and oracle controls
+### Initial mutations and oracle controls (historical)
 
 [Replay](check_m24_mutations.py) uses AST-scoped function/line sites, exactly
 one edit per mutation, syntax parsing, intact baseline, JUnit counts and
@@ -211,7 +257,7 @@ coherent retention and full invalidation 63 PASS each, partial invalidation
 diagnostic 60 PASS, missing-class placeholder 60 PASS. All 6 control outcomes PASS,
 with intact real inputs/index. They do not approve a corrective API.
 
-### Local commands actually executed
+### Initial local commands actually executed (historical)
 
 Actual Python executable throughout:
 `C:/Users/alexb/Documents/Projets/AstroSpectro/.venv/Scripts/python.exe`.
@@ -266,7 +312,7 @@ compatibility with legitimate remedies, mutation classification and whether
 the scientific documentation sufficiently qualifies its claims. No M2.4
 completion/integration claim before that review and human merge decision.
 
-## Final archive and integration boundary
+## Initial archive and integration boundary (historical)
 
 The durable proof branch advanced by fast-forward to
 **[a27028bb9dfb617d5cddc2a7fac6eb08a195142a](https://github.com/PhD-Brown/AstroSpectro/tree/a27028bb9dfb617d5cddc2a7fac6eb08a195142a)**.
@@ -284,3 +330,73 @@ optional test files, helper, conftest registration, matrix, mutation script and
 mutation JSON. The source blob remains `667a2985ea1b6b4f0a660a70f7635715730c0f78`.
 Final commit SHA and hosted CI are recorded in the PR/handoff so this document
 does not need a self-referential commit ID. M2.4 awaits independent review.
+
+## Revision execution and provenance ledger
+
+Revised code/test input snapshot:
+`1b9fa1157146eb508e9b590704ef0a7b214b87e6`. Commands use the same Windows
+Python3.11.9 environment and isolated hdbscan0.8.44 target described above.
+Source remains blob667a2985ea1b6b4f0a660a70f7635715730c0f78. Replays copy
+only synthetic source/test trees and never mutate production in this worktree.
+No dependencies, CI, notebooks, data or models were edited.
+
+| Actual command (project Python prefix) | Revised execution |
+|---|---|
+| `-m pytest -q tests/test_dimred_hdbscan_analyzer.py -W error --junitxml=test-results/m24-review-green-final.xml` |62PASS, no warnings/skips/xfails |
+| `-m pytest -q --import-mode=importlib --junitxml=test-results/m24-review-importlib-at-1b9fa11.xml` |385PASS/29deselected/7existing Gaia warnings |
+| `-m pytest -q --junitxml=test-results/m24-review-fast-final.xml` |385PASS/29deselected/7existing Gaia warnings |
+| `-m pytest -q -m 'integration and not slow' --junitxml=test-results/m24-review-integration-final.xml` |54PASS/360deselected, whole-repository integration selection |
+| Scoped target, `audit/check_m24_mutations.py --real --only presentation_prediction_data uniform_finite_refusal --output test-results/m24-review-real-controls-final.json` |Intact21PASS; both legitimate controls21PASS each, no skip/xfail |
+| `-m pytest -q tests/proofs_dimred_hdbscan_analyzer.py --tb=no --junitxml=test-results/m24-review-proofs-at-1b9fa11.xml` |10FAIL/33PASS/2optional deselected/0ERROR/SKIP/XFAIL |
+| Same proof file with scoped target, `-m slow -W error --junitxml=test-results/m24-review-real-proofs-at-1b9fa11.xml` |2PASS/43deselected |
+| `audit/check_m24_proof_controls.py --output test-results/m24-review-proof-controls-final.json` |7oracle checks PASS: retention/invalidation/noise-only palette66PASS each; partial invalidation62PASS/4expectedFAIL; refusal66PASS; diagnostics63PASS each |
+| `-m black --check src tests scripts app.py audit/check_m24_mutations.py audit/m24_review_candidates.py audit/check_m24_proof_controls.py`; same Ruff scope |PASS,37Black files with archive present |
+| `-m pip check`; `git diff --check` |PASS; no broken requirements |
+
+The complete revised mutation/ordering comparison is recorded in the final
+JSON. It distinguishes the
+original54 sites, six semantic review reconstructions and two extra guards
+(undefined dispersion→zero; mixed raw/standardized returned columns). They
+are distinct scoped edits, not the unavailable exact19-case Claude script.
+`palette_swapped_ranks`, one of the original54, is explicitly reclassified as
+admissible underR5. Its survival is expected; aesthetic controls are not
+incorrect mutations. The six original controls remain identifiable by name.
+
+Replay at committed input snapshot1b9fa11:
+`audit/check_m24_mutations.py --output test-results/m24-review-mutations-final.json`
+gives **53legacy incorrect sites KILLED +1admissible palette PASS**, six semantic
+R1/R2 sites KILLED, two extra guard sites KILLED, six original controls PASS
+and eleven review controls PASS. Thus61distinct incorrect sites are detected;
+the18other outcomes (including the palette alternative) are excluded. Zero
+SURVIVED among incorrect candidates, zero INCONCLUSIVE/import/collection errors.
+Every incorrect site has named failing assertion(s) in the JSON. No claim to
+the exact independent19-case script is made.
+
+The six semantic reconstructions were replayed with only the green test file
+from e11ad1b: intact59PASS and all6SURVIVED; current intact62PASS detects all6.
+`--reverse --output test-results/m24-review-reverse.json` gives62PASS under
+reversed collection, hashseed7 and-Werror. All source/input hashes and tracked
+index guards remain unchanged. No production file in the real tree was edited.
+
+### R10: historical run is not rewritten
+
+The original schema1 JSON, including `base_sha=749224f`, remains immutable at
+[e11ad1b](https://github.com/PhD-Brown/AstroSpectro/blob/e11ad1bbfca82a399b7e45049c5e6cfde1e6d25f/audit/m24_mutation_results.json).
+That SHA field was the active Git HEAD during an execution with uncommitted
+test/replay edits, **not** the commit containing all tested bytes. All eight
+recorded input hashes were verified against d402922. The exact full historical
+working-tree status was not captured by schema1; input-byte differences from
+749224f are reconstructible and listed in the revised JSON. The later commit
+containing these inputs is distinguished from the run's Git HEAD.
+
+New schema2 executions record the actual active HEAD, working-tree status,
+normalized input hashes, working-content Git blob IDs, selected group and
+per-case JUnit failures. Current tested input files are committed at1b9fa11;
+untracked/restored documents and result files at run start do not alter them.
+The historical-test comparison replaces **only** the green test file in a
+sandbox with its e11ad1b bytes; current conftest remains, and its exact hash is
+recorded. It is not mislabeled as a full old-checkout execution.
+
+Final archive SHA, final integration HEAD and SHA-specific hosted CI are
+published in the updated Draft PR and #43 handoff. No review thread is
+resolved by Codex. M2.4 remains pending Claude's second review and human merge.
