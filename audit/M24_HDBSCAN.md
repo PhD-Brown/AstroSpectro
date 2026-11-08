@@ -364,13 +364,20 @@ incorrect mutations. The six original controls remain identifiable by name.
 
 Replay at committed input snapshot1b9fa11:
 `audit/check_m24_mutations.py --output test-results/m24-review-mutations-final.json`
-gives **53legacy incorrect sites KILLED +1admissible palette PASS**, six semantic
-R1/R2 sites KILLED, two extra guard sites KILLED, six original controls PASS
-and eleven review controls PASS. Thus61distinct incorrect sites are detected;
+gives **53 legacy incorrect candidates KILLED + 1 admissible palette PASS**, six
+semantic R1/R2 candidates KILLED, two extra guards KILLED, six original controls
+PASS and eleven review controls PASS. Thus 61 incorrect candidates are detected;
 the18other outcomes (including the palette alternative) are excluded. Zero
 SURVIVED among incorrect candidates, zero INCONCLUSIVE/import/collection errors.
-Every incorrect site has named failing assertion(s) in the JSON. No claim to
+Every incorrect candidate has named failing assertion(s) in the JSON. No claim to
 the exact independent19-case script is made.
+
+These are **48 distinct original source locations** (function + line), not61
+independent locations: mean/std/median edits share the aggregation line, and
+reversal/sorting/mixed-units alternatives share the return line, among others.
+The JSON lists all eleven shared locations and their distinct replacement
+candidates. No duplicate candidate is silently counted as another location;
+this is a sensitivity campaign, not a number of independently validated laws.
 
 The six semantic reconstructions were replayed with only the green test file
 from e11ad1b: intact59PASS and all6SURVIVED; current intact62PASS detects all6.

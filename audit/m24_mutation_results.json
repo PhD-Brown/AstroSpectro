@@ -1837,5 +1837,102 @@
     "review_six": {
       "KILLED": 6
     }
+  },
+  "candidate_accounting": {
+    "incorrect_candidates": 61,
+    "distinct_original_source_locations": 48,
+    "location_policy": "Original production function + line; distinct semantic replacements on one line are separate candidates, not extra locations",
+    "shared_locations": [
+      {
+        "function": "_compute_stats",
+        "line": 365,
+        "candidates": [
+          "stats_includes_noise",
+          "stats_loses_noncontiguous"
+        ]
+      },
+      {
+        "function": "centroid",
+        "line": 361,
+        "candidates": [
+          "centroid_ignores_mask",
+          "centroid_wrong_axis"
+        ]
+      },
+      {
+        "function": "physical_profile_table",
+        "line": 220,
+        "candidates": [
+          "profile_mean_std_swap",
+          "profile_population_ddof",
+          "cluster_mean_to_median"
+        ]
+      },
+      {
+        "function": "compute_sensitivity",
+        "line": 410,
+        "candidates": [
+          "sensitivity_reverse_grid",
+          "sensitivity_loses_duplicates"
+        ]
+      },
+      {
+        "function": "compute_sensitivity",
+        "line": 426,
+        "candidates": [
+          "sensitivity_percent",
+          "sensitivity_wrong_rounding"
+        ]
+      },
+      {
+        "function": "compute_feature_profiles",
+        "line": 518,
+        "candidates": [
+          "feature_no_gaia_exclusions",
+          "feature_no_instrument_exclusions"
+        ]
+      },
+      {
+        "function": "compute_feature_profiles",
+        "line": 528,
+        "candidates": [
+          "feature_missing_strict",
+          "feature_missing_too_permissive"
+        ]
+      },
+      {
+        "function": "compute_feature_profiles",
+        "line": 530,
+        "candidates": [
+          "feature_no_dropna",
+          "drop_head_instead_of_nan_rows"
+        ]
+      },
+      {
+        "function": "compute_feature_profiles",
+        "line": 549,
+        "candidates": [
+          "feature_no_centering",
+          "feature_no_scaling"
+        ]
+      },
+      {
+        "function": "compute_feature_profiles",
+        "line": 556,
+        "candidates": [
+          "feature_includes_noise",
+          "feature_mean_to_median"
+        ]
+      },
+      {
+        "function": "compute_feature_profiles",
+        "line": 561,
+        "candidates": [
+          "returned_rows_reversed",
+          "returned_columns_sorted_independently",
+          "returned_frame_mixes_raw_and_standardized_columns"
+        ]
+      }
+    ]
   }
 }
