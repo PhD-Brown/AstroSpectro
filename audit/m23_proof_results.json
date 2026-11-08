@@ -1,0 +1,164 @@
+{
+  "production_base": "87bc1aca831c934e926eeb0756c7248ec0603c7a",
+  "source_sha256": "a43bb1027d1117c6480b78d70fd91d2c35e5e3398cfcdc3f48fadd6635c5f5d1",
+  "suite": {
+    "tests": "24",
+    "failures": "16",
+    "errors": "0",
+    "skipped": "0"
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "pytest": "8.4.2",
+    "plotly": "7.1.0"
+  },
+  "cases": [
+    {
+      "name": "test_params_used_records_seed_and_output_dimension[random_state-17-umap]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "AssertionError: assert None == 17\n +  where None = <built-in method get of dict object at 0xADDRESS>('random_state')\n +    where <built-in method get of dict object at 0xADDRESS> = {'low_memory': False, 'metric': 'euclidean', 'min_dist': 0.1, 'n_epochs': 200, ...}.get\n +      where {'low_memory': False, 'metric': 'euclidean', 'min_dist': 0.1, 'n_epochs': 200, ...} = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>.params_used"
+    },
+    {
+      "name": "test_params_used_records_seed_and_output_dimension[random_state-17-tsne]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "AssertionError: assert None == 17\n +  where None = <built-in method get of dict object at 0xADDRESS>('random_state')\n +    where <built-in method get of dict object at 0xADDRESS> = {'init': 'pca', 'learning_rate': 'auto', 'max_iter': 1000, 'metric': 'euclidean', ...}.get\n +      where {'init': 'pca', 'learning_rate': 'auto', 'max_iter': 1000, 'metric': 'euclidean', ...} = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>.params_used"
+    },
+    {
+      "name": "test_params_used_records_seed_and_output_dimension[n_components-3-umap]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "AssertionError: assert None == 3\n +  where None = <built-in method get of dict object at 0xADDRESS>('n_components')\n +    where <built-in method get of dict object at 0xADDRESS> = {'low_memory': False, 'metric': 'euclidean', 'min_dist': 0.1, 'n_epochs': 200, ...}.get\n +      where {'low_memory': False, 'metric': 'euclidean', 'min_dist': 0.1, 'n_epochs': 200, ...} = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>.params_used"
+    },
+    {
+      "name": "test_params_used_records_seed_and_output_dimension[n_components-3-tsne]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "AssertionError: assert None == 3\n +  where None = <built-in method get of dict object at 0xADDRESS>('n_components')\n +    where <built-in method get of dict object at 0xADDRESS> = {'init': 'pca', 'learning_rate': 'auto', 'max_iter': 1000, 'metric': 'euclidean', ...}.get\n +      where {'init': 'pca', 'learning_rate': 'auto', 'max_iter': 1000, 'metric': 'euclidean', ...} = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>.params_used"
+    },
+    {
+      "name": "test_tsne_n_jobs_override_is_forwarded",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "TypeError: conftest.embedding_backends.<locals>.Estimator() got multiple values for keyword argument 'n_jobs'"
+    },
+    {
+      "name": "test_tsne_solver_kwarg_reaches_estimator",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "TypeError: EmbeddingEngine.__init__() got multiple values for argument 'method'"
+    },
+    {
+      "name": "test_failed_fit_cannot_mix_model_and_cached_result[False-umap]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "assert (<conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> is None)\n +  where <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>._model"
+    },
+    {
+      "name": "test_failed_fit_cannot_mix_model_and_cached_result[False-tsne]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "assert (<conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> is None)\n +  where <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>._model"
+    },
+    {
+      "name": "test_failed_fit_cannot_mix_model_and_cached_result[True-umap]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "assert <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> is <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS>\n +  where <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>._model"
+    },
+    {
+      "name": "test_failed_fit_cannot_mix_model_and_cached_result[True-tsne]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "assert <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> is <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS>\n +  where <conftest.embedding_backends.<locals>.Estimator object at 0xADDRESS> = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>._model"
+    },
+    {
+      "name": "test_real_tsne_failed_refit_does_not_expose_old_coordinates",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "assert (TSNE(max_iter=300, n_jobs=-1, perplexity=3, random_state=42) is TSNE(max_iter=300, n_jobs=-1, perplexity=3, random_state=42))\n +  where TSNE(max_iter=300, n_jobs=-1, perplexity=3, random_state=42) = <dimred_embedding_audit.EmbeddingEngine object at 0xADDRESS>._model"
+    },
+    {
+      "name": "test_3d_correlations_use_finite_pairs[umap]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "AssertionError: assert '?' == 'Parallaxe'\n  \n  - Parallaxe\n  + ?"
+    },
+    {
+      "name": "test_3d_correlations_use_finite_pairs[tsne]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "AssertionError: assert '?' == 'Parallaxe'\n  \n  - Parallaxe\n  + ?"
+    },
+    {
+      "name": "test_stability_rejects_unknown_metric",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "Failed: DID NOT RAISE <class 'ValueError'>"
+    },
+    {
+      "name": "test_open_nonpositive_seed_count_has_explicit_outcome[0]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "IndexError: list index out of range"
+    },
+    {
+      "name": "test_open_nonpositive_seed_count_has_explicit_outcome[-1]",
+      "status": "FAIL",
+      "failure_type": null,
+      "message": "IndexError: list index out of range"
+    },
+    {
+      "name": "test_observe_single_hyperparameter_convention",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_observe_duplicate_grid_values_collapse",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_observe_empty_grid_mapping",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_observe_pca_slice_boundaries[0]",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_observe_pca_slice_boundaries[-1]",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_observe_transform_requires_preselected_features",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_counterexample_univariate_permutation_keeps_bimodality",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    },
+    {
+      "name": "test_counterexample_pca_scores_are_not_implicitly_whitened",
+      "status": "PASS",
+      "failure_type": null,
+      "message": null
+    }
+  ]
+}
