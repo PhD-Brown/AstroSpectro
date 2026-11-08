@@ -265,3 +265,22 @@ population-vs-sample variance, dependency-version nonfinite behavior, green
 compatibility with legitimate remedies, mutation classification and whether
 the scientific documentation sufficiently qualifies its claims. No M2.4
 completion/integration claim before that review and human merge decision.
+
+## Final archive and integration boundary
+
+The durable proof branch advanced by fast-forward to
+**[a27028bb9dfb617d5cddc2a7fac6eb08a195142a](https://github.com/PhD-Brown/AstroSpectro/tree/a27028bb9dfb617d5cddc2a7fac6eb08a195142a)**.
+Its [manifest with issue correspondence](https://github.com/PhD-Brown/AstroSpectro/blob/a27028bb9dfb617d5cddc2a7fac6eb08a195142a/audit/M24_PROOFS.md),
+proof source, fixtures, both result JSONs and oracle-control script were read
+back from GitHub **before** removal from integration. Source/tests/results are
+identical to d402922, whose committed executions are recorded above. The
+source/proof blob IDs were verified, and the remote ref matched the full SHA.
+No force-push/history rewrite. The proof ref is an ancestor of the final head.
+All six issues link the fixed executed d402922 proofs; a27028b adds their links
+to the manifest. Both are durable, not ephemeral references to a moving branch.
+
+The final diff versus starting main contains exactly eight paths: two green/
+optional test files, helper, conftest registration, matrix, mutation script and
+mutation JSON. The source blob remains667a2985ea1b6b4f0a660a70f7635715730c0f78.
+Final commit SHA and hosted CI are recorded in the PR/handoff so this document
+does not need a self-referential commit ID. M2.4 awaits independent review.
