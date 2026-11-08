@@ -1,0 +1,509 @@
+{
+  "source_hashes": {
+    "src/dimred/embedding.py": "a43bb1027d1117c6480b78d70fd91d2c35e5e3398cfcdc3f48fadd6635c5f5d1",
+    "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
+    "src/dimred/dimred_visualizer.py": "968207ab322c2eea40f8d1e3721c1e361a9d1f7912d511a48c5f6a2cb0f82b8a",
+    "src/dimred/run_reporter.py": "b4a55744237076ec1a78293651623a701809ba85d1afc9160a2c6e69c326db29",
+    "tests/conftest.py": "701a51b6a959240f7ca74c117c5886ab764aea39a52da273a3a9caa3deee4e1d",
+    "tests/test_dimred_embedding.py": "130756f94e6145689671c6e849597ee125ed666f76994efc5a6ca7ac16d4ef97",
+    "pyproject.toml": "8cd8530992cee33f36be6df21499ff57ada45163eae6d76f5537630fc089bc00"
+  },
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "cases": [
+    {
+      "name": "baseline",
+      "kind": "baseline",
+      "status": "PASS",
+      "tests": 94,
+      "failures": []
+    },
+    {
+      "name": "seed_ignored",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
+        "test_backend_defaults_and_successful_refit[umap]",
+        "test_backend_defaults_and_successful_refit[tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_compare_order_dimensions_and_parameter_forwarding[None]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods1]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods2]",
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "pca_off_by_one",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_compare_order_dimensions_and_parameter_forwarding[None]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods1]",
+        "test_compare_order_dimensions_and_parameter_forwarding[methods2]",
+        "test_real_pca_to_tsne_reproducibility[2]",
+        "test_real_pca_to_tsne_reproducibility[3]"
+      ]
+    },
+    {
+      "name": "umap_overrides_ignored",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_embeddings_reporter_round_trip"
+      ]
+    },
+    {
+      "name": "tsne_overrides_ignored",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]",
+        "test_real_pca_to_tsne_reproducibility[2]",
+        "test_real_pca_to_tsne_reproducibility[3]"
+      ]
+    },
+    {
+      "name": "umap_default_neighbors",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_backend_defaults_and_successful_refit[umap]"
+      ]
+    },
+    {
+      "name": "tsne_default_perplexity",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_backend_defaults_and_successful_refit[tsne]"
+      ]
+    },
+    {
+      "name": "fit_time_zero",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]"
+      ]
+    },
+    {
+      "name": "cache_wrong_embedding",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_fit_dispatch_dimensions_parameters_and_time[None-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[None-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[1-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[3-tsne]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-umap]",
+        "test_fit_dispatch_dimensions_parameters_and_time[10-tsne]",
+        "test_backend_defaults_and_successful_refit[umap]",
+        "test_backend_defaults_and_successful_refit[tsne]"
+      ]
+    },
+    {
+      "name": "transform_refits",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_transform_delegates_without_refit"
+      ]
+    },
+    {
+      "name": "stability_cap_4999",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_head_sampling",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_seed_ignored",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_reference_last",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]"
+      ]
+    },
+    {
+      "name": "stability_missing_seed",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[1-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[2-5013]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_alignment_failure_is_missing_not_false_zero"
+      ]
+    },
+    {
+      "name": "stability_false_zero",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-8]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5000]",
+        "test_stability_sampling_seeds_geometry_and_parent_isolation[3-5013]",
+        "test_alignment_failure_is_missing_not_false_zero"
+      ]
+    },
+    {
+      "name": "alignment_failure_false_zero",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_alignment_failure_is_missing_not_false_zero"
+      ]
+    },
+    {
+      "name": "negative_mutates_input",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape2-1-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape3-None-tsne]"
+      ]
+    },
+    {
+      "name": "negative_row_shuffle",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
+      ]
+    },
+    {
+      "name": "negative_permutation_seed_fixed",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape0-None-tsne]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
+      ]
+    },
+    {
+      "name": "negative_ignores_pca_count",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-umap]",
+        "test_negative_control_marginals_permutation_and_parameters[shape1-2-tsne]"
+      ]
+    },
+    {
+      "name": "sensitivity_override_reversed",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_sensitivity_grid_override_and_isolation[None-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[None-tsne-perplexity]",
+        "test_sensitivity_grid_override_and_isolation[values2-umap-n_neighbors]",
+        "test_sensitivity_grid_override_and_isolation[values2-tsne-perplexity]"
+      ]
+    },
+    {
+      "name": "3d_wrong_axis",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_spearman_rank_not_pearson_and_population_permutation[umap]",
+        "test_3d_spearman_rank_not_pearson_and_population_permutation[tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "3d_threshold_excludes_100",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_correlation_threshold_and_missing_params[100-umap]",
+        "test_3d_correlation_threshold_and_missing_params[100-tsne]"
+      ]
+    },
+    {
+      "name": "3d_signed_ranking",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[100-umap]",
+        "test_3d_correlation_threshold_and_missing_params[100-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[101-umap]",
+        "test_3d_correlation_threshold_and_missing_params[101-tsne]",
+        "test_3d_constants_are_undefined_and_do_not_win[umap]",
+        "test_3d_constants_are_undefined_and_do_not_win[tsne]"
+      ]
+    },
+    {
+      "name": "3d_missing_parameter_mask",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[99-umap]",
+        "test_3d_correlation_threshold_and_missing_params[99-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[100-umap]",
+        "test_3d_correlation_threshold_and_missing_params[100-tsne]",
+        "test_3d_correlation_threshold_and_missing_params[101-umap]",
+        "test_3d_correlation_threshold_and_missing_params[101-tsne]"
+      ]
+    },
+    {
+      "name": "3d_plot_seed_fixed",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "3d_wrong_class_rows",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "3d_wrong_metadata_rows",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "3d_wrong_cluster_labels",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[7-umap]",
+        "test_3d_tables_alignment_sampling_and_exports[200-umap]"
+      ]
+    },
+    {
+      "name": "3d_tsne_perplexity_ignored",
+      "kind": "mutation",
+      "status": "KILLED",
+      "tests": 94,
+      "failures": [
+        "test_3d_tables_alignment_sampling_and_exports[0-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[7-tsne]",
+        "test_3d_tables_alignment_sampling_and_exports[200-tsne]"
+      ]
+    },
+    {
+      "name": "comment_only",
+      "kind": "control",
+      "status": "PASS",
+      "tests": 94,
+      "failures": []
+    },
+    {
+      "name": "complete_core_metadata",
+      "kind": "control",
+      "status": "PASS",
+      "tests": 94,
+      "failures": []
+    },
+    {
+      "name": "permit_jobs_override",
+      "kind": "control",
+      "status": "PASS",
+      "tests": 94,
+      "failures": []
+    },
+    {
+      "name": "skip_constant_correlations",
+      "kind": "control",
+      "status": "PASS",
+      "tests": 94,
+      "failures": []
+    },
+    {
+      "name": "reject_zero_plot_size",
+      "kind": "control",
+      "status": "PASS",
+      "tests": 94,
+      "failures": []
+    }
+  ]
+}
