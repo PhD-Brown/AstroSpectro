@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+pytest_plugins = ("m24_support",)
+
 
 @pytest.fixture
 def embedding_module():
