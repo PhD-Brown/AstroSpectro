@@ -10,6 +10,79 @@ import pandas as pd
 import pytest
 
 
+@pytest.fixture
+def embedding_module():
+    # Isolate the optional facade (#21), but execute the real embedding source.
+    path = Path(__file__).resolve().parents[1] / "src/dimred/embedding.py"
+    spec = importlib.util.spec_from_file_location("dimred_embedding_audit", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def embedding_backends(monkeypatch):
+    """Capture estimator boundaries without claiming algorithm validation."""
+    import sys
+    import types
+    import sklearn.manifold
+
+    instances = []
+
+    class Estimator:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.input = None
+            self.output = None
+            instances.append(self)
+
+        def fit_transform(self, X):
+            self.input = np.array(X, copy=True)
+            self.n_features_in_ = X.shape[1]
+            self.output = np.column_stack(
+                [X[:, j % X.shape[1]] for j in range(self.kwargs["n_components"])]
+            )
+            return self.output
+
+        def transform(self, X):
+            if X.shape[1] != self.n_features_in_:
+                raise ValueError("Feature count differs from fitted input")
+            return np.column_stack(
+                [X[:, j % X.shape[1]] for j in range(self.kwargs["n_components"])]
+            )
+
+    monkeypatch.setitem(sys.modules, "umap", types.SimpleNamespace(UMAP=Estimator))
+    monkeypatch.setattr(sklearn.manifold, "TSNE", Estimator)
+    return instances
+
+
+@pytest.fixture
+def embedding_figures(monkeypatch):
+    """Capture exact Plotly tables and export requests, without large HTML."""
+    import plotly.express as px
+
+    calls = []
+
+    class Figure:
+        def __init__(self, data_frame, **kwargs):
+            self.table = data_frame.copy(deep=True)
+            self.kwargs = kwargs
+            self.paths = []
+            calls.append(self)
+
+        def update_traces(self, **kwargs):
+            return self
+
+        def update_layout(self, **kwargs):
+            return self
+
+        def write_html(self, path):
+            self.paths.append(Path(path))
+
+    monkeypatch.setattr(px, "scatter_3d", Figure)
+    return calls
+
+
 @pytest.fixture(scope="session")
 def dimred_pca_class():
     # Exercise the real source; the optional-dependency facade is tracked in #21.
