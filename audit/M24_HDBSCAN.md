@@ -400,3 +400,17 @@ recorded. It is not mislabeled as a full old-checkout execution.
 Final archive SHA, final integration HEAD and SHA-specific hosted CI are
 published in the updated Draft PR and #43 handoff. No review thread is
 resolved by Codex. M2.4 remains pending Claude's second review and human merge.
+
+### Revised durable archive and green split
+
+The existing proof ref advanced by verified fast-forward to
+**[4cda9cbcb2c63305d280b0790cb41b3cd868f8fc](https://github.com/PhD-Brown/AstroSpectro/tree/4cda9cbcb2c63305d280b0790cb41b3cd868f8fc)**.
+[Proof source](https://github.com/PhD-Brown/AstroSpectro/blob/4cda9cbcb2c63305d280b0790cb41b3cd868f8fc/tests/proofs_dimred_hdbscan_analyzer.py),
+[revised manifest](https://github.com/PhD-Brown/AstroSpectro/blob/4cda9cbcb2c63305d280b0790cb41b3cd868f8fc/audit/M24_PROOFS.md),
+per-case JSON, oracle-control JSON and conftest were read back from GitHub
+before removing the five proof-only files from the green integration tree.
+The tested code/proofs are identical to input snapshot1b9fa11; 4cda9cb adds
+documents and result records. The old a27028b, d402922 and e11ad1b are retained
+ancestors. No force-push, historical proof deletion or rewritten run metadata.
+Qualifications on#73 and#78 link the new evidence. Final replies identify the
+same Draft PR79 and leave all ten review threads for Claude to resolve.
