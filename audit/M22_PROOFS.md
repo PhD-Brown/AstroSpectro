@@ -83,4 +83,3 @@ and never edits the working-tree production module.
 Proofs remain outside automatic discovery/CI by filename. No xfail, production
 patch, new corrective PR or R2 issue creation. Fixed initial SHA is preserved;
 the integration child removes only archived files after remote verification.
-
