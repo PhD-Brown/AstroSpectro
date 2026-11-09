@@ -70,6 +70,70 @@ before the next block. R7/R8 code/doc checkpoint follows targeted validation;
 remaining work: one final full mutation replay and suites at committed inputs,
 hosted CI at the final head, eight inline replies left open, and one #43 handoff.
 
+### Final revision execution ledger
+
+Core executable inputs committed and pushed at **05d94d327028627e7b8d38e74be47b5550c21537**.
+The whole campaign and historical replay start from a clean worktree; no
+protected source/test/config/runner bytes changed during either run. New
+[full results](m25_review_mutation_results.json) and
+[historical-test replay](m25_review_historical_results.json) preserve actual
+start/end Git state, effective test hashes, versions and commands. Original
+`m25_mutation_results.json` is unchanged historical evidence at1eb0c0b.
+
+| Claude candidate | Old ae1e2be tests (56 per trial) | Revised tests (60 per trial) | Assertion that detects it |
+|---|---|---|---|
+| C01b missing snapshot buffers, strict=False |SURVIVED|KILLED|5controlled seen_batches restoration cases |
+| C02 no patience reset |SURVIVED|KILLED|late improvement:5epochs and restored level3 |
+| C03 ReLU→Identity |SURVIVED|KILLED|hidden encoder values−2/0 |
+| C04 ReLU before BN |SURVIVED|KILLED|same independent hidden encoder values |
+| C05 clip after step |SURVIVED|KILLED|norm consumed by Adam.step≤1+1e−5 |
+| C06 k60 |SURVIVED|KILLED|unique class7 winner at k50 |
+| C07 k20 |SURVIVED|KILLED|same ranked population, paired row permutation |
+| C08 gravity upper bound inclusive |SURVIVED|KILLED|foreign upper-edge rows excluded from eligible populations/barycentres |
+
+Revised total: **41 incorrect KILLED /0 SURVIVED /0 INCONCLUSIVE**,13admissible
+and2equivalent controls PASS, plus baseline PASS. All57trials have60cases,
+no skips or fixture/collection errors. A01/A02/A03/A09 change from4FAIL on old
+tests to4PASS on revised tests. Historical command intentionally exits1 because
+it reproduces8survivors/4rejected alternatives; this is not an execution error.
+
+Detections are not all value oracles: checkpoint_weights_missing and
+checkpoint_architecture each have2runtime-exception failures in load_state_dict.
+validation_train_mode has8assertions (explicit evaluation-mode boundary and
+registered-state checks) and1runtime BN exception. Its old IndexError spy
+artifact is replaced by an explicit mode assertion. Per-failure messages,
+tracebacks and detection kind are in the JSON; expected refusal tests that
+PASS are counted separately and never treated as kills.
+
+| Command / environment at core snapshot05d94d3 | Actual result |
+|---|---|
+| Fast M2.5 `pytest -q tests/test_dimred_autoencoder.py -W error` |31PASS |
+| Fast default and importlib whole suites |416PASS/62deselected/7existing Gaia warnings each |
+| Fast `-m 'integration and not slow'` |57PASS/421deselected |
+| Optional CPU file `-m slow` |33PASS |
+| Whole suite, real Torch, reverse order + importlib, `-m 'slow or not slow'` |449PASS/29optionalSKIP/7same Gaia warnings |
+| Both M2.5 files, shuffled seed2026, external Torch seed913, `-W error` |64PASS |
+| After whole reverse run, external seed703/threads2/deterministic=False/warn_only=True |Torch RNG/threads/both flags restored exactly |
+| Black/Ruff src/tests/scripts/app.py plus both M25audit scripts; both pip checks; diff check |PASS |
+
+Windows/Python3.11.9, Torch2.10.0+cpu/cuda=None and locked scientific packages
+as in the initial ledger. CPU tests stay outside the unchanged official CI.
+No GPU/catalog/notebook/W&B run, new astrophysical validation or measured
+coverage. The notebook passes early-stopping patience25 but does not configure
+the internal scheduler's patience; no new historical-run reproducibility
+contract for scheduler10 or shared RNG consumption is imposed.
+
+R8 qualifications published:
+[#80](https://github.com/PhD-Brown/AstroSpectro/issues/80#issuecomment-6730319277),
+[#81](https://github.com/PhD-Brown/AstroSpectro/issues/81#issuecomment-6730319525),
+[#82](https://github.com/PhD-Brown/AstroSpectro/issues/82#issuecomment-6730319732).
+The checker writes patched UTF-8 bytes explicitly and hashes the actual file
+bytes, avoiding implicit Windows newline conversion in that digest. The final
+six-case R8 replay records its own checker SHA/HEAD separately from core05d94d3.
+Its semantic observations remain those in the R8 table; no historical archive
+or ledger has been rewritten. Final CI/head and the open-thread replies are
+linked from PR87 and #43 after the last push.
+
 ## Initial delivery and historical execution ledger
 
 2026-11-08 · [Refs #43](https://github.com/PhD-Brown/AstroSpectro/issues/43).

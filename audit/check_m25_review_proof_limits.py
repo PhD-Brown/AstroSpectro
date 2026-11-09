@@ -126,9 +126,8 @@ def main():
                 destination = directory / path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 destination.write_bytes(data)
-            (directory / "src/dimred/autoencoder.py").write_text(
-                changed, encoding="utf-8"
-            )
+            patched_path = directory / "src/dimred/autoencoder.py"
+            patched_path.write_bytes(changed.encode("utf-8"))
             (directory / "tests/probe_review_limits.py").write_text(
                 f"KIND = {kind!r}\nEXPECTED = {expected!r}\n" + OBSERVATION,
                 encoding="utf-8",
@@ -181,7 +180,9 @@ def main():
                     historical_cases=len(historical),
                     tests=len(cases),
                     stronger_criterion_accepts=expected,
-                    patched_source_sha256=hashlib.sha256(changed.encode()).hexdigest(),
+                    patched_source_sha256=hashlib.sha256(
+                        patched_path.read_bytes()
+                    ).hexdigest(),
                     observations=[c.findtext("system-out", "") for c in cases],
                     command=command,
                     output=result.stdout + result.stderr,
