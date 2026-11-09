@@ -27,17 +27,17 @@ Initial statuses below are NA until the corresponding execution is recorded.
 
 | Code path | Independent contract / risk | Level | Initial test plan | Status |
 |---|---|---|---|---|
-| imports, path insertion, utils fallback (186–200) | Correct source, distinguish mtime utility from lexical fallback; inspect global state | U/I | isolated source, import failures, repeat calls | NA |
-| model discovery/loading (201–232) | No model/load failure gives fresh complete failure structure; selected artifact traceable | U/I | real latest_file, alternate classifier import, failures | NA |
-| CSV resolution/read (237–247) | Explicit stem prioritized; lexical fallback characterized; parse errors visible | U | multiple files, missing/malformed CSV | NA |
-| SNR (252–255) | Inclusive10, absent/NaN SNR; exact retained row values | U/P | boundary examples, matched prefiltered population | NA |
-| candidate columns/dropna (262–271) | Independent names/dtypes/variance/missing fraction; no unrelated population assumptions | U/I | 0/10/>10% NaNs, exclusions, constants, nullable types | NA |
-| alignment (279–295) | Every prediction associated to correct observation; all cardinalities checked | U/I/S | coherent permutations, middle removals, independent vector mismatch | NA |
-| needed schema (298–316) | Names/order/values exact; distinguish compatibility from valid imputation | U/I | 0/30/>30% missing; original inputs unchanged | NA |
-| inference/decode (323–332) | Model output decoded using saved mapping, no invented taxonomy | U/I | nonintuitive mapping, no encoder, explicit refusals | NA |
-| probabilities (334–345) | Correct row maxima; unavailable marker; invalid output never valid confidence | U/P | analytic matrices, method absent/failing, malformed distributions | NA |
-| result (347–371) | Stable complete keys, observed classes, F/G exact mask, no stale call state | U | full nominal result and second failure | NA |
-| _empty_result (374–395) | Fresh empty schema, false success/probability flags | U | direct and each early-return path | NA |
+| imports, path insertion, utils fallback (169–178) | Correct source, distinguish mtime utility from lexical fallback; inspect global state | U/I | isolated source, import failures, repeat calls | NA |
+| model discovery/loading (180–205) | No model/load failure gives fresh complete failure structure; selected artifact traceable | U/I | real latest_file, alternate classifier import, failures | NA |
+| CSV resolution/read (210–218) | Explicit stem prioritized; lexical fallback characterized; parse errors visible | U | multiple files, missing/malformed CSV | NA |
+| SNR (223–226) | Inclusive10, absent/NaN SNR; exact retained row values | U/P | boundary examples, matched prefiltered population | NA |
+| candidate columns/dropna (234–242) | Independent names/dtypes/variance/missing fraction; no unrelated population assumptions | U/I | 0/10/>10% NaNs, exclusions, constants, nullable types | NA |
+| alignment (248–262) | Every prediction associated to correct observation; all cardinalities checked | U/I/S | coherent permutations, middle removals, independent vector mismatch | NA |
+| needed schema (265–285) | Names/order/values exact; distinguish compatibility from valid imputation | U/I | 0/30/>30% missing; original inputs unchanged | NA |
+| inference/decode (289–296) | Model output decoded using saved mapping, no invented taxonomy | U/I | nonintuitive mapping, no encoder, explicit refusals | NA |
+| probabilities (299–307) | Correct row maxima; unavailable marker; invalid output never valid confidence | U/P | analytic matrices, method absent/failing, malformed distributions | NA |
+| result (309–330) | Stable complete keys, observed classes, F/G exact mask, no stale call state | U | full nominal result and second failure | NA |
+| _empty_result (333–354) | Fresh empty schema, false success/probability flags | U | direct and each early-return path | NA |
 | real pipeline/save/load | Same synthetic trusted saved object gives direct/bridge inference parity | I/P | miniature CPU XGBoost, named ColumnTransformer, joblib roundtrip | NA |
 
 Priorities: observation identity and exact schema first, then outputs/failures,
@@ -85,3 +85,17 @@ calibration and astrophysical validation remain separate questions.
   refusal is verified, rather than imposing any universal zero replacement.
   Canonical pipeline.classifier is executed from this worktree's unmodified
   source; temporary sys.modules entries/sys.path are restored by monkeypatch.
+- Archive `0da758111daaf7ba33283c1462ec1fb1368c6cff` pushed, remote SHA
+  and GitHub proof blob verified. Clean-commit replay19FAIL/19PASS/0ERROR/SKIP,
+  saved in `audit/m26_proof_results.json` with actual HEAD, empty dirty state,
+  input hashes, command, per-case diagnostics and output. Archive contains its
+  matching fixtures/source and classification in `audit/M26_PROOFS.md`.
+  New confirmed defect families: [#88](https://github.com/PhD-Brown/AstroSpectro/issues/88)
+  identity/cardinality, [#89](https://github.com/PhD-Brown/AstroSpectro/issues/89)
+  overriding fitted imputation, [#90](https://github.com/PhD-Brown/AstroSpectro/issues/90)
+  invalid outputs.19FAIL are not19bugs. Unit schema probes and real degenerate
+  backend evidence are distinguished explicitly in the issues and manifest.
+- Additional candidate/exclusion tests use10rows with1NaN, so the exclusion,
+  variance and dtype predicates are independently discriminated (5rows would
+  exclude the column via20%NaNs and hide those predicates). Green suite now
+  **58unit +4real =62PASS** under `-W error`.

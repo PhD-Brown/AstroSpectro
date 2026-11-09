@@ -1,0 +1,242 @@
+{
+  "git_head_at_run": "0da758111daaf7ba33283c1462ec1fb1368c6cff",
+  "working_tree_at_run": "",
+  "command": [
+    "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/proofs_dimred_xgboost_bridge.py",
+    "--tb=short",
+    "--junitxml=test-results/m26-proofs-archive.xml"
+  ],
+  "returncode": 1,
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2"
+  },
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "881cf59ea895000cd8d78b645a9e3c61ae595b5215433448e4e2999e19a9bffc",
+      "git_blob": "cb11f395b2eb8a7069f7edeb236b9b95334d3cd4"
+    },
+    "tests/proofs_dimred_xgboost_bridge.py": {
+      "sha256_lf": "f3c3f6afe3f37a03c452539a10c4686fca3bdb5413974597614748f9888dd437",
+      "git_blob": "f64751f2f1e700fac1b69141ef2e08db0804ff98"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    }
+  },
+  "cases": [
+    {
+      "name": "test_filter_cannot_reassign_predictions_to_other_observations[snr]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:67: in test_filter_cannot_reassign_predictions_to_other_observations\n    np.testing.assert_array_equal(result[\"Z_umap_aligned\"][:, 0], ids[retained])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 5 / 9 (55.6%)\nE   Mismatch at indices:\nE    [4]: 250 (ACTUAL), 608 (DESIRED)\nE    [5]: 608 (ACTUAL), 47 (DESIRED)\nE    [6]: 47 (ACTUAL), 903 (DESIRED)\nE    [7]: 903 (ACTUAL), 1102 (DESIRED)\nE    [8]: 1102 (ACTUAL), 2 (DESIRED)\nE   Max absolute difference among violations: 1100\nE   Max relative difference among violations: 550.\nE    ACTUAL: array([ 104,   19,  807,   33,  250,  608,   47,  903, 1102])\nE    DESIRED: array([ 104,   19,  807,   33,  608,   47,  903, 1102,    2])"
+    },
+    {
+      "name": "test_filter_cannot_reassign_predictions_to_other_observations[nan]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:67: in test_filter_cannot_reassign_predictions_to_other_observations\n    np.testing.assert_array_equal(result[\"Z_umap_aligned\"][:, 0], ids[retained])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 5 / 9 (55.6%)\nE   Mismatch at indices:\nE    [4]: 250 (ACTUAL), 608 (DESIRED)\nE    [5]: 608 (ACTUAL), 47 (DESIRED)\nE    [6]: 47 (ACTUAL), 903 (DESIRED)\nE    [7]: 903 (ACTUAL), 1102 (DESIRED)\nE    [8]: 1102 (ACTUAL), 2 (DESIRED)\nE   Max absolute difference among violations: 1100\nE   Max relative difference among violations: 550.\nE    ACTUAL: array([ 104,   19,  807,   33,  250,  608,   47,  903, 1102])\nE    DESIRED: array([ 104,   19,  807,   33,  608,   47,  903, 1102,    2])"
+    },
+    {
+      "name": "test_filter_cannot_reassign_predictions_to_other_observations[multiple]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:67: in test_filter_cannot_reassign_predictions_to_other_observations\n    np.testing.assert_array_equal(result[\"Z_umap_aligned\"][:, 0], ids[retained])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 6 / 7 (85.7%)\nE   First 5 mismatches are at indices:\nE    [1]: 19 (ACTUAL), 807 (DESIRED)\nE    [2]: 807 (ACTUAL), 33 (DESIRED)\nE    [3]: 33 (ACTUAL), 608 (DESIRED)\nE    [4]: 250 (ACTUAL), 47 (DESIRED)\nE    [5]: 608 (ACTUAL), 1102 (DESIRED)\nE   Max absolute difference among violations: 788\nE   Max relative difference among violations: 23.45454545\nE    ACTUAL: array([104,  19, 807,  33, 250, 608,  47])\nE    DESIRED: array([ 104,  807,   33,  608,   47, 1102,    2])"
+    },
+    {
+      "name": "test_each_input_cardinality_checked_independently[3-y]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 3 == 5\nE    +  where 3 = len(array([0, 1, 2]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))"
+    },
+    {
+      "name": "test_each_input_cardinality_checked_independently[3-cluster_labels]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 3 == 5\nE    +  where 3 = len(array([0, 1, 2]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))"
+    },
+    {
+      "name": "test_each_input_cardinality_checked_independently[7-y]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 7 == 5\nE    +  where 7 = len(array([0, 1, 2, 3, 4, 5, 6]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))"
+    },
+    {
+      "name": "test_each_input_cardinality_checked_independently[7-cluster_labels]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 7 == 5\nE    +  where 7 = len(array([0, 1, 2, 3, 4, 5, 6]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))"
+    },
+    {
+      "name": "test_prediction_cardinality_cannot_report_success[0]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:92: in test_prediction_cardinality_cannot_report_success\n    assert (\nE   AssertionError: assert 0 == 5\nE    +  where 0 = len(array([], dtype='<U1'))\nE    +  and   5 = len(array([0.7 , 0.55, 0.8 , 0.8 , 0.55]))"
+    },
+    {
+      "name": "test_prediction_cardinality_cannot_report_success[3]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:92: in test_prediction_cardinality_cannot_report_success\n    assert (\nE   AssertionError: assert 3 == 5\nE    +  where 3 = len(array(['G', 'G', 'G'], dtype='<U1'))\nE    +  and   5 = len(array([0.7 , 0.55, 0.8 , 0.8 , 0.55]))"
+    },
+    {
+      "name": "test_prediction_cardinality_cannot_report_success[7]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:92: in test_prediction_cardinality_cannot_report_success\n    assert (\nE   AssertionError: assert 7 == 5\nE    +  where 7 = len(array(['G', 'G', 'G', 'G', 'G', 'G', 'G'], dtype='<U1'))\nE    +  and   5 = len(array([0.7 , 0.55, 0.8 , 0.8 , 0.55]))"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[short]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[long]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[nan]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[inf]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[negative]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[above_one]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_invalid_probability_output_cannot_be_advertised_as_valid[unnormalized]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+    },
+    {
+      "name": "test_real_fitted_imputer_is_not_silently_overridden[present_nan]",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:153: in test_real_fitted_imputer_is_not_silently_overridden\n    np.testing.assert_array_equal(result[\"y_pred\"], expected)\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 1 / 5 (20%)\nE   Mismatch at index:\nE    [2]: M (ACTUAL), F (DESIRED)\nE    ACTUAL: array(['M', 'F', 'M', 'M', 'F'], dtype='<U1')\nE    DESIRED: array(['M', 'F', 'F', 'M', 'F'], dtype='<U1')"
+    },
+    {
+      "name": "test_real_fitted_imputer_is_not_silently_overridden[absent_column]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_real_degenerate_gaussian_probabilities_cannot_claim_success",
+      "status": "FAIL",
+      "detail": "tests\\proofs_dimred_xgboost_bridge.py:173: in test_real_degenerate_gaussian_probabilities_cannot_claim_success\n    assert result[\"has_proba\"] is False or np.isfinite(result[\"confidence\"]).all()\nE   AssertionError: assert (True is False or np.False_)\nE    +  where np.False_ = <built-in method all of numpy.ndarray object at 0x0000029BADC2FBD0>()\nE    +    where <built-in method all of numpy.ndarray object at 0x0000029BADC2FBD0> = array([False, False, False, False, False]).all\nE    +      where array([False, False, False, False, False]) = <ufunc 'isfinite'>(array([nan, nan, nan, nan, nan]))\nE    +        where <ufunc 'isfinite'> = np.isfinite"
+    },
+    {
+      "name": "test_identity_information_missing_from_api_is_observation[csv_permutation]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_identity_information_missing_from_api_is_observation[embedding_permutation]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_identity_information_missing_from_api_is_observation[labels_permutation]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_identity_information_missing_from_api_is_observation[replacement_ids]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_identity_information_missing_from_api_is_observation[duplicate_ids]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_identity_information_missing_from_api_is_observation[absent_ids]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_nonfinite_preparation_is_characterization[nan]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_nonfinite_preparation_is_characterization[inf]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_nonfinite_preparation_is_characterization[negative_inf]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_nonfinite_preparation_is_characterization[constant_nan]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[empty_names]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[duplicate_names]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[duplicate_csv]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[incompatible]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[zero_rows]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[one_row]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_degenerate_schema_and_population_observations[nonconsecutive_index]",
+      "status": "PASS",
+      "detail": null
+    },
+    {
+      "name": "test_unrelated_feature_can_change_population_observation",
+      "status": "PASS",
+      "detail": null
+    }
+  ],
+  "stdout": "FFFFFFFFFFFFFFFFFF.F..................                                   [100%]\n================================== FAILURES ===================================\n_____ test_filter_cannot_reassign_predictions_to_other_observations[snr] ______\ntests\\proofs_dimred_xgboost_bridge.py:67: in test_filter_cannot_reassign_predictions_to_other_observations\n    np.testing.assert_array_equal(result[\"Z_umap_aligned\"][:, 0], ids[retained])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 5 / 9 (55.6%)\nE   Mismatch at indices:\nE    [4]: 250 (ACTUAL), 608 (DESIRED)\nE    [5]: 608 (ACTUAL), 47 (DESIRED)\nE    [6]: 47 (ACTUAL), 903 (DESIRED)\nE    [7]: 903 (ACTUAL), 1102 (DESIRED)\nE    [8]: 1102 (ACTUAL), 2 (DESIRED)\nE   Max absolute difference among violations: 1100\nE   Max relative difference among violations: 550.\nE    ACTUAL: array([ 104,   19,  807,   33,  250,  608,   47,  903, 1102])\nE    DESIRED: array([ 104,   19,  807,   33,  608,   47,  903, 1102,    2])\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\ufffd au minimum commun : 9\n_____ test_filter_cannot_reassign_predictions_to_other_observations[nan] ______\ntests\\proofs_dimred_xgboost_bridge.py:67: in test_filter_cannot_reassign_predictions_to_other_observations\n    np.testing.assert_array_equal(result[\"Z_umap_aligned\"][:, 0], ids[retained])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 5 / 9 (55.6%)\nE   Mismatch at indices:\nE    [4]: 250 (ACTUAL), 608 (DESIRED)\nE    [5]: 608 (ACTUAL), 47 (DESIRED)\nE    [6]: 47 (ACTUAL), 903 (DESIRED)\nE    [7]: 903 (ACTUAL), 1102 (DESIRED)\nE    [8]: 1102 (ACTUAL), 2 (DESIRED)\nE   Max absolute difference among violations: 1100\nE   Max relative difference among violations: 550.\nE    ACTUAL: array([ 104,   19,  807,   33,  250,  608,   47,  903, 1102])\nE    DESIRED: array([ 104,   19,  807,   33,  608,   47,  903, 1102,    2])\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\ufffd au minimum commun : 9\n___ test_filter_cannot_reassign_predictions_to_other_observations[multiple] ___\ntests\\proofs_dimred_xgboost_bridge.py:67: in test_filter_cannot_reassign_predictions_to_other_observations\n    np.testing.assert_array_equal(result[\"Z_umap_aligned\"][:, 0], ids[retained])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 6 / 7 (85.7%)\nE   First 5 mismatches are at indices:\nE    [1]: 19 (ACTUAL), 807 (DESIRED)\nE    [2]: 807 (ACTUAL), 33 (DESIRED)\nE    [3]: 33 (ACTUAL), 608 (DESIRED)\nE    [4]: 250 (ACTUAL), 47 (DESIRED)\nE    [5]: 608 (ACTUAL), 1102 (DESIRED)\nE   Max absolute difference among violations: 788\nE   Max relative difference among violations: 23.45454545\nE    ACTUAL: array([104,  19, 807,  33, 250, 608,  47])\nE    DESIRED: array([ 104,  807,   33,  608,   47, 1102,    2])\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\ufffd au minimum commun : 7\n___________ test_each_input_cardinality_checked_independently[3-y] ____________\ntests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 3 == 5\nE    +  where 3 = len(array([0, 1, 2]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))\n_____ test_each_input_cardinality_checked_independently[3-cluster_labels] _____\ntests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 3 == 5\nE    +  where 3 = len(array([0, 1, 2]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))\n___________ test_each_input_cardinality_checked_independently[7-y] ____________\ntests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 7 == 5\nE    +  where 7 = len(array([0, 1, 2, 3, 4, 5, 6]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))\n_____ test_each_input_cardinality_checked_independently[7-cluster_labels] _____\ntests\\proofs_dimred_xgboost_bridge.py:82: in test_each_input_cardinality_checked_independently\n    assert len(result[key]) == len(result[\"y_pred\"]) == 5\nE   AssertionError: assert 7 == 5\nE    +  where 7 = len(array([0, 1, 2, 3, 4, 5, 6]))\nE    +  and   5 = len(array(['G', 'M', 'F', 'F', 'M'], dtype='<U1'))\n____________ test_prediction_cardinality_cannot_report_success[0] _____________\ntests\\proofs_dimred_xgboost_bridge.py:92: in test_prediction_cardinality_cannot_report_success\n    assert (\nE   AssertionError: assert 0 == 5\nE    +  where 0 = len(array([], dtype='<U1'))\nE    +  and   5 = len(array([0.7 , 0.55, 0.8 , 0.8 , 0.55]))\n____________ test_prediction_cardinality_cannot_report_success[3] _____________\ntests\\proofs_dimred_xgboost_bridge.py:92: in test_prediction_cardinality_cannot_report_success\n    assert (\nE   AssertionError: assert 3 == 5\nE    +  where 3 = len(array(['G', 'G', 'G'], dtype='<U1'))\nE    +  and   5 = len(array([0.7 , 0.55, 0.8 , 0.8 , 0.55]))\n____________ test_prediction_cardinality_cannot_report_success[7] _____________\ntests\\proofs_dimred_xgboost_bridge.py:92: in test_prediction_cardinality_cannot_report_success\n    assert (\nE   AssertionError: assert 7 == 5\nE    +  where 7 = len(array(['G', 'G', 'G', 'G', 'G', 'G', 'G'], dtype='<U1'))\nE    +  and   5 = len(array([0.7 , 0.55, 0.8 , 0.8 , 0.55]))\n____ test_invalid_probability_output_cannot_be_advertised_as_valid[short] _____\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n_____ test_invalid_probability_output_cannot_be_advertised_as_valid[long] _____\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n_____ test_invalid_probability_output_cannot_be_advertised_as_valid[nan] ______\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n_____ test_invalid_probability_output_cannot_be_advertised_as_valid[inf] ______\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n___ test_invalid_probability_output_cannot_be_advertised_as_valid[negative] ___\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n__ test_invalid_probability_output_cannot_be_advertised_as_valid[above_one] ___\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n_ test_invalid_probability_output_cannot_be_advertised_as_valid[unnormalized] _\ntests\\proofs_dimred_xgboost_bridge.py:123: in test_invalid_probability_output_cannot_be_advertised_as_valid\n    assert result[\"has_proba\"] is False\nE   assert True is False\n______ test_real_fitted_imputer_is_not_silently_overridden[present_nan] _______\ntests\\proofs_dimred_xgboost_bridge.py:153: in test_real_fitted_imputer_is_not_silently_overridden\n    np.testing.assert_array_equal(result[\"y_pred\"], expected)\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 1 / 5 (20%)\nE   Mismatch at index:\nE    [2]: M (ACTUAL), F (DESIRED)\nE    ACTUAL: array(['M', 'F', 'M', 'M', 'F'], dtype='<U1')\nE    DESIRED: array(['M', 'F', 'F', 'M', 'F'], dtype='<U1')\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_fitted_imputer_is_no0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_fitted_imputer_is_no0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_fitted_imputer_is_no0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_fitted_imputer_is_no0\\models\\spectral_classifier_synthetic_meta.json\n______ test_real_degenerate_gaussian_probabilities_cannot_claim_success _______\ntests\\proofs_dimred_xgboost_bridge.py:173: in test_real_degenerate_gaussian_probabilities_cannot_claim_success\n    assert result[\"has_proba\"] is False or np.isfinite(result[\"confidence\"]).all()\nE   AssertionError: assert (True is False or np.False_)\nE    +  where np.False_ = <built-in method all of numpy.ndarray object at 0x0000029BADC2FBD0>()\nE    +    where <built-in method all of numpy.ndarray object at 0x0000029BADC2FBD0> = array([False, False, False, False, False]).all\nE    +      where array([False, False, False, False, False]) = <ufunc 'isfinite'>(array([nan, nan, nan, nan, nan]))\nE    +        where <ufunc 'isfinite'> = np.isfinite\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_degenerate_gaussian_0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_degenerate_gaussian_0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_degenerate_gaussian_0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_degenerate_gaussian_0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_degenerate_gaussian_0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-984\\test_real_degenerate_gaussian_0\\models\\spectral_classifier_synthetic_meta.json\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-proofs-archive.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_filter_cannot_reassign_predictions_to_other_observations[snr]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_filter_cannot_reassign_predictions_to_other_observations[nan]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_filter_cannot_reassign_predictions_to_other_observations[multiple]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_each_input_cardinality_checked_independently[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_each_input_cardinality_checked_independently[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_each_input_cardinality_checked_independently[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_each_input_cardinality_checked_independently[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_prediction_cardinality_cannot_report_success[0]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_prediction_cardinality_cannot_report_success[3]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_prediction_cardinality_cannot_report_success[7]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[short]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[long]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[nan]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[inf]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[negative]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[above_one]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_invalid_probability_output_cannot_be_advertised_as_valid[unnormalized]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_real_fitted_imputer_is_not_silently_overridden[present_nan]\nFAILED tests/proofs_dimred_xgboost_bridge.py::test_real_degenerate_gaussian_probabilities_cannot_claim_success\n19 failed, 19 passed in 2.91s\n",
+  "stderr": ""
+}

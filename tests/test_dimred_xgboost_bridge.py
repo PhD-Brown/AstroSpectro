@@ -240,10 +240,48 @@ def test_candidate_nan_fraction_boundary(bridge_case, missing_count, keep):
 )
 def test_excluded_metadata_nan_cannot_remove_rows(bridge_case, column):
     c = bridge_case
-    df = c.frame.copy()
-    df[column] = [1.0, 2.0, np.nan, 4.0, 5.0]
+    df = pd.concat([c.frame, c.frame], ignore_index=True)
+    df[column] = [1.0, 2.0, np.nan, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
     df.to_csv(c.csv, index=False)
-    assert c.run()["_xgb_ok"]
+    assert c.run(
+        Z_umap=np.zeros((10, 2)), y=np.arange(10), cluster_labels=np.arange(10)
+    )["_xgb_ok"]
+    assert_frame_equal(c.spy.predict_inputs[0], df[c.classifier.feature_names_used])
+
+
+@pytest.mark.parametrize("kind", ["constant", "string", "nullable_boolean"])
+def test_candidate_variance_and_dtype_control_row_selection(
+    bridge_case, monkeypatch, kind
+):
+    c = bridge_case
+    df = pd.concat([c.frame, c.frame], ignore_index=True)
+    if kind == "constant":
+        df["auxiliary"] = [7.0] * 9 + [np.nan]
+    elif kind == "string":
+        df["auxiliary"] = list("abcdefghi") + [None]
+    else:
+        df["auxiliary"] = pd.Series([True, False] * 4 + [True, pd.NA], dtype="boolean")
+        monkeypatch.setattr(c.module.pd, "read_csv", lambda *a, **kw: df)
+    df.to_csv(c.csv, index=False)
+    keep = list(range(9 if kind == "nullable_boolean" else 10))
+    result = c.run(
+        Z_umap=np.column_stack((keep, np.zeros(len(keep)))),
+        y=np.array(keep),
+        cluster_labels=np.array(keep),
+    )
+    assert_frame_equal(
+        c.spy.predict_inputs[0],
+        df.iloc[keep][c.classifier.feature_names_used].reset_index(drop=True),
+    )
+    np.testing.assert_array_equal(result["y_aligned"], keep)
+
+
+def test_nonconsecutive_pandas_index_preserves_row_values(bridge_case, monkeypatch):
+    c = bridge_case
+    df = c.frame.copy()
+    df.index = [104, 19, 807, 33, 250]
+    monkeypatch.setattr(c.module.pd, "read_csv", lambda *a, **kw: df)
+    c.run()
     assert_frame_equal(
         c.spy.predict_inputs[0], c.frame[c.classifier.feature_names_used]
     )
