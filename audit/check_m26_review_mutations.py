@@ -514,6 +514,10 @@ def main():
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
+        "--proofs-ref",
+        help="Read the supplementary proof file from this immutable Git ref when absent from the integration head.",
+    )
+    parser.add_argument(
         "--only",
         nargs="+",
         help="Replay selected records with their unchanged-source positive baselines.",
@@ -532,13 +536,27 @@ def main():
         "audit/check_m26_mutations.py",
         "audit/check_m26_review_mutations.py",
     ]
-    inputs = {
-        name: {
-            "sha256_lf": fingerprint(root / name),
-            "git_blob_at_head": git(root, "rev-parse", f"HEAD:{name}"),
+    if args.phase == "green" and not (root / PROOF).exists():
+        paths.remove(PROOF)
+    contents, inputs = {}, {}
+    for name in paths:
+        source_ref = "HEAD"
+        if (root / name).exists():
+            content = (root / name).read_bytes()
+        else:
+            assert (
+                name == PROOF and args.proofs_ref
+            ), "Run proof phases from their archive or supply --proofs-ref."
+            source_ref = args.proofs_ref
+            content = subprocess.check_output(
+                ["git", "show", f"{source_ref}:{name}"], cwd=root
+            )
+        contents[name] = content
+        inputs[name] = {
+            "sha256_lf": hashlib.sha256(content.replace(b"\r\n", b"\n")).hexdigest(),
+            "git_blob_at_ref": git(root, "rev-parse", f"{source_ref}:{name}"),
+            "file_origin_ref": source_ref,
         }
-        for name in paths
-    }
     head, dirty = git(root, "rev-parse", "HEAD"), git(root, "status", "--porcelain")
     source = (root / TARGET).read_text(encoding="utf-8")
     records = []
@@ -550,7 +568,7 @@ def main():
                 continue
             destination = directory / name
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_bytes((root / name).read_bytes())
+            destination.write_bytes(contents[name])
         (directory / "m26_trace.py").write_text(TRACE_PLUGIN, encoding="utf-8")
         planned = candidates(args.phase)
         if args.only:
@@ -618,11 +636,14 @@ def main():
             )
             print(name, counts, "EXPECTED" if matched else "UNEXPECTED", flush=True)
     assert all(
-        fingerprint(root / name) == item["sha256_lf"] for name, item in inputs.items()
+        fingerprint(root / name) == item["sha256_lf"]
+        for name, item in inputs.items()
+        if item["file_origin_ref"] == "HEAD"
     )
     assert git(root, "rev-parse", "HEAD") == head
     payload = {
         "phase": args.phase,
+        "proofs_ref": args.proofs_ref,
         "selected_records": args.only,
         "git_head_at_run": head,
         "working_tree_at_run": dirty,

@@ -1,0 +1,321 @@
+{
+  "phase": "r2",
+  "selected_records": [
+    "preserve_present_missing_values"
+  ],
+  "git_head_at_run": "fe25d1a39e83f46b743e5524cf5b70d2169d6183",
+  "working_tree_at_run": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob_at_head": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/dimred/data_loader.py": {
+      "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+      "git_blob_at_head": "cf6eaa4cadac90b04a2960ef214fce38b216d61b"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob_at_head": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob_at_head": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+      "git_blob_at_head": "22caba53fbccb14cb45b8d95c7f1b751825d7a37"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+      "git_blob_at_head": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+      "git_blob_at_head": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793"
+    },
+    "tests/proofs_dimred_xgboost_bridge_review.py": {
+      "sha256_lf": "3456fd316caf5828265dc4c5a80a9ecd99a8f9070ba76b5307ffd9afd626d18d",
+      "git_blob_at_head": "e9961a5d2ef69a5b3d36a58ffcb8fcb28fadb972"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob_at_head": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "392d93fa74f16fd54cca841299133614b4d3b95de94007b1a31d76daac9bfb6d",
+      "git_blob_at_head": "4c7b26dbc1c500fa3c221201d050e60a2880abff"
+    },
+    "audit/check_m26_review_mutations.py": {
+      "sha256_lf": "4587ae03aae65783de5784e916c174567055c36f63167b238417d1c5a3f09b38",
+      "git_blob_at_head": "c3cc03429244dae3f99f1c499cfe2d6ead29a58b"
+    }
+  },
+  "results": [
+    {
+      "name": "r2_baseline",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "fitted_train_median or complete_finite"
+      ],
+      "patches": [],
+      "meaning": "red booster-matrix oracle, not labels alone",
+      "expected_fail": 2,
+      "expected_pass": 1,
+      "counts": {
+        "FAIL": 2,
+        "PASS": 1,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "fitted_train_median or complete_finite",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 2]: -0.9534625892455922 (ACTUAL), 0.23836564731139806 (DESIRED)\nE   Max absolute difference among violations: 1.19182824\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628, -0.953463],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628,  0.238366],..."
+        },
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 0]: -2.375772569505217 (ACTUAL), 0.0819231920519042 (DESIRED)\nE   Max absolute difference among violations: 2.45769576\nE   Max relative difference among violations: 30.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-2.375773,  1.205628,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [ 0.081923,  1.205628,  0.238366],..."
+        },
+        {
+          "name": "test_complete_finite_preprocessing_is_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FF.                                                                      [100%]\n================================== FAILURES ===================================\n_ test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta] _\ntests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 2]: -0.9534625892455922 (ACTUAL), 0.23836564731139806 (DESIRED)\nE   Max absolute difference among violations: 1.19182824\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628, -0.953463],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic_meta.json\n_ test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma] _\ntests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 0]: -2.375772569505217 (ACTUAL), 0.0819231920519042 (DESIRED)\nE   Max absolute difference among violations: 2.45769576\nE   Max relative difference among violations: 30.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-2.375773,  1.205628,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [ 0.081923,  1.205628,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1072\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic_meta.json\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-_b0713ma\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]\n2 failed, 1 passed, 13 deselected in 3.14s\n",
+      "stderr": ""
+    },
+    {
+      "name": "preserve_present_missing_values",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "fitted_train_median or complete_finite"
+      ],
+      "patches": [
+        [
+          "X_pred_df = df_aligned[needed].fillna(0)",
+          "X_pred_df = df_aligned[needed].copy()"
+        ]
+      ],
+      "meaning": "present NaNs pass to trained pipeline; absent-column policy separately exercised by full green control",
+      "expected_fail": 0,
+      "expected_pass": 3,
+      "counts": {
+        "FAIL": 0,
+        "PASS": 3,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          285
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "fitted_train_median or complete_finite",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 0,
+      "cases": [
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_complete_finite_preprocessing_is_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "...                                                                      [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-_b0713ma\\result.xml -\n3 passed, 13 deselected in 2.90s\n",
+      "stderr": ""
+    }
+  ]
+}

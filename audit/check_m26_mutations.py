@@ -3,6 +3,12 @@
 Record actual executed source lines, assertion diagnostics, exact patches,
 positive baseline, input hashes, HEAD and dirty state. Known defective paths
 are not silently turned into green contracts. Run with the project Python.
+
+Scope clarification after R4: a full positive baseline is followed by the
+designated test function for each mutant (all tests only when test=None).
+SURVIVED means survival of that recorded selection, not necessarily the suite.
+The historical JSON files are immutable; the review runner separately records
+full-suite71-case campaigns and the precise narrower proof selections.
 """
 
 import argparse
