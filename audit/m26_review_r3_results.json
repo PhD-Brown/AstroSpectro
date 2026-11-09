@@ -1,0 +1,1187 @@
+{
+  "phase": "r3",
+  "git_head_at_run": "77775501562b90fb776746098d62a6fbca85212d",
+  "working_tree_at_run": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob_at_head": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/dimred/data_loader.py": {
+      "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+      "git_blob_at_head": "cf6eaa4cadac90b04a2960ef214fce38b216d61b"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob_at_head": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob_at_head": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+      "git_blob_at_head": "22caba53fbccb14cb45b8d95c7f1b751825d7a37"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+      "git_blob_at_head": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+      "git_blob_at_head": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793"
+    },
+    "tests/proofs_dimred_xgboost_bridge_review.py": {
+      "sha256_lf": "3456fd316caf5828265dc4c5a80a9ecd99a8f9070ba76b5307ffd9afd626d18d",
+      "git_blob_at_head": "e9961a5d2ef69a5b3d36a58ffcb8fcb28fadb972"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob_at_head": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "392d93fa74f16fd54cca841299133614b4d3b95de94007b1a31d76daac9bfb6d",
+      "git_blob_at_head": "4c7b26dbc1c500fa3c221201d050e60a2880abff"
+    },
+    "audit/check_m26_review_mutations.py": {
+      "sha256_lf": "d087e04da7921542c6042a9ea14db46834e2a19f5b4fd593c7703fd0a210d5f7",
+      "git_blob_at_head": "eb2581ce2ba53b62c9d01f57ce89b784b425862a"
+    }
+  },
+  "results": [
+    {
+      "name": "r3_baseline",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [],
+      "meaning": "six red cases plus valid-output positive control",
+      "expected_fail": 6,
+      "expected_pass": 1,
+      "counts": {
+        "FAIL": 6,
+        "PASS": 1,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FFFFFF.                                                                  [100%]\n================================== FAILURES ===================================\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1055\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1055\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1055\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1055\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1055\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1055\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n6 failed, 1 passed, 9 deselected in 2.86s\n",
+      "stderr": ""
+    },
+    {
+      "name": "invented_nan_confidence",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [
+        [
+          "confidence = proba.max(axis=1)",
+          "confidence = np.nan_to_num(proba, nan=0.0).max(axis=1)"
+        ]
+      ],
+      "meaning": "Gaussian oracle no longer accepts invented confidence",
+      "expected_fail": 6,
+      "expected_pass": 1,
+      "counts": {
+        "FAIL": 6,
+        "PASS": 1,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          301
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FFFFFF.                                                                  [100%]\n================================== FAILURES ===================================\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1057\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1057\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1057\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1057\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1057\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1057\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n6 failed, 1 passed, 9 deselected in 2.73s\n",
+      "stderr": ""
+    },
+    {
+      "name": "silent_vector_crop",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [
+        [
+          "        y_aligned = y\n",
+          "        y_aligned = y[:len(df_aligned)]\n"
+        ],
+        [
+          "        cl_aligned = cluster_labels\n",
+          "        cl_aligned = cluster_labels[:len(df_aligned)]\n"
+        ]
+      ],
+      "meaning": "both too-long vectors still fail on original values, not merely length",
+      "expected_fail": 6,
+      "expected_pass": 1,
+      "counts": {
+        "FAIL": 6,
+        "PASS": 1,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          260,
+          261
+        ],
+        [
+          261,
+          262
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:122: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    np.testing.assert_array_equal(result[\"y_aligned\"], expected_y)\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   (shapes (5,), (7,) mismatch)\nE    ACTUAL: array([1200, 1201, 1202, 1203, 1204])\nE    DESIRED: array([1200, 1201, 1202, 1203, 1204, 1205, 1206])"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:123: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    np.testing.assert_array_equal(result[\"cl_aligned\"], expected_cl)\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   (shapes (5,), (7,) mismatch)\nE    ACTUAL: array([1200, 1201, 1202, 1203, 1204])\nE    DESIRED: array([1200, 1201, 1202, 1203, 1204, 1205, 1206])"
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FFFFFF.                                                                  [100%]\n================================== FAILURES ===================================\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:122: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    np.testing.assert_array_equal(result[\"y_aligned\"], expected_y)\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   (shapes (5,), (7,) mismatch)\nE    ACTUAL: array([1200, 1201, 1202, 1203, 1204])\nE    DESIRED: array([1200, 1201, 1202, 1203, 1204, 1205, 1206])\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:123: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    np.testing.assert_array_equal(result[\"cl_aligned\"], expected_cl)\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   (shapes (5,), (7,) mismatch)\nE    ACTUAL: array([1200, 1201, 1202, 1203, 1204])\nE    DESIRED: array([1200, 1201, 1202, 1203, 1204, 1205, 1206])\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1058\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1058\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1058\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1058\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1058\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1058\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n6 failed, 1 passed, 9 deselected in 2.58s\n",
+      "stderr": ""
+    },
+    {
+      "name": "tensor_flattened",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [
+        [
+          "confidence = proba.max(axis=1)",
+          "confidence = proba.reshape(len(proba), -1).max(axis=1)"
+        ]
+      ],
+      "meaning": "tensor oracle requires unavailable/refusal, not scalar shape alone",
+      "expected_fail": 6,
+      "expected_pass": 1,
+      "counts": {
+        "FAIL": 6,
+        "PASS": 1,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          301
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FFFFFF.                                                                  [100%]\n================================== FAILURES ===================================\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1060\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1060\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1060\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1060\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1060\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1060\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n6 failed, 1 passed, 9 deselected in 2.71s\n",
+      "stderr": ""
+    },
+    {
+      "name": "explicit_vector_refusal",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [
+        [
+          "    if len(df_aligned) != len(Z_umap):",
+          "    if not (len(df_aligned) == len(Z_umap) == len(y) == len(cluster_labels)):\n        raise ValueError(\"Observation alignment length mismatch\")\n    if len(df_aligned) != len(Z_umap):"
+        ]
+      ],
+      "meaning": "all four incompatible input vectors refused; output defects remain",
+      "expected_fail": 2,
+      "expected_pass": 5,
+      "counts": {
+        "FAIL": 2,
+        "PASS": 5,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          249,
+          250,
+          251
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        250,
+        251,
+        261,
+        262,
+        263,
+        264,
+        267,
+        268,
+        269,
+        287,
+        288,
+        291,
+        292,
+        294,
+        299,
+        302,
+        303,
+        304,
+        311,
+        312,
+        313,
+        314,
+        319,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331
+      ],
+      "stdout": "....FF.                                                                  [100%]\n================================== FAILURES ===================================\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1062\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1062\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1062\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1062\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1062\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1062\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n2 failed, 5 passed, 9 deselected in 2.70s\n",
+      "stderr": ""
+    },
+    {
+      "name": "probability_unavailable",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [
+        [
+          "        proba = clf.model_pipeline.predict_proba(X_pred_df)",
+          "        proba = clf.model_pipeline.predict_proba(X_pred_df)\n        if (np.ndim(proba) != 2 or proba.shape[0] != len(X_pred_df)\n            or proba.shape[1] == 0 or not np.isfinite(proba).all()\n            or (proba < 0).any() or (proba > 1).any()\n            or not np.allclose(proba.sum(axis=1), 1)):\n            raise ValueError(\"Probability distribution invalid shape or values\")"
+        ]
+      ],
+      "meaning": "invalid distributions unavailable; input-vector defects remain",
+      "expected_fail": 4,
+      "expected_pass": 3,
+      "counts": {
+        "FAIL": 4,
+        "PASS": 3,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          300,
+          301,
+          302,
+          303,
+          304,
+          305
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        311,
+        312,
+        314,
+        315,
+        316,
+        317,
+        322,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334
+      ],
+      "stdout": "FFFF...                                                                  [100%]\n================================== FAILURES ===================================\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\n4 failed, 3 passed, 9 deselected in 2.56s\n",
+      "stderr": ""
+    },
+    {
+      "name": "both_boundary_guards",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors"
+      ],
+      "patches": [
+        [
+          "    if len(df_aligned) != len(Z_umap):",
+          "    if not (len(df_aligned) == len(Z_umap) == len(y) == len(cluster_labels)):\n        raise ValueError(\"Observation alignment length mismatch\")\n    if len(df_aligned) != len(Z_umap):"
+        ],
+        [
+          "        proba = clf.model_pipeline.predict_proba(X_pred_df)",
+          "        proba = clf.model_pipeline.predict_proba(X_pred_df)\n        if (np.ndim(proba) != 2 or proba.shape[0] != len(X_pred_df)\n            or proba.shape[1] == 0 or not np.isfinite(proba).all()\n            or (proba < 0).any() or (proba > 1).any()\n            or not np.allclose(proba.sum(axis=1), 1)):\n            raise ValueError(\"Probability distribution invalid shape or values\")"
+        ]
+      ],
+      "meaning": "admissible conditional validation, no blanket refusal",
+      "expected_fail": 0,
+      "expected_pass": 7,
+      "counts": {
+        "FAIL": 0,
+        "PASS": 7,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          249,
+          250,
+          251
+        ],
+        [
+          302,
+          303,
+          304,
+          305,
+          306,
+          307
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-k",
+        "incompatible_vectors or undefined_probabilities or tensor_probabilities or valid_vectors",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 0,
+      "cases": [
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        250,
+        251,
+        261,
+        262,
+        263,
+        264,
+        267,
+        268,
+        269,
+        287,
+        288,
+        291,
+        292,
+        294,
+        299,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        313,
+        314,
+        316,
+        317,
+        318,
+        319,
+        324,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336
+      ],
+      "stdout": ".......                                                                  [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-utm8pai1\\result.xml -\n7 passed, 9 deselected in 2.51s\n",
+      "stderr": ""
+    }
+  ]
+}

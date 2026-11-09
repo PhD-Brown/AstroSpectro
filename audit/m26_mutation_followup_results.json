@@ -1,0 +1,873 @@
+{
+  "git_head_at_run": "72a9206a7fb004604b21d96125fdf2679d49a205",
+  "working_tree_at_run": "",
+  "git_head_after": "72a9206a7fb004604b21d96125fdf2679d49a205",
+  "working_tree_after": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob_at_head": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob_at_head": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob_at_head": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "881cf59ea895000cd8d78b645a9e3c61ae595b5215433448e4e2999e19a9bffc",
+      "git_blob_at_head": "cb11f395b2eb8a7069f7edeb236b9b95334d3cd4"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "670c709ad77b8a0be38b272b13a06ff76dbf38ed41481008c412e7f55426b55c",
+      "git_blob_at_head": "9de094dc8d4e8cd9aacc85c00ccf94a1038a666e"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "9f9e26befa670741f1cbfddaea8931531c5f7e266fef72fc38107c59fdf8b090",
+      "git_blob_at_head": "d009cd8ae03b51443360e03f2b511f9a12a04d08"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob_at_head": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "392d93fa74f16fd54cca841299133614b4d3b95de94007b1a31d76daac9bfb6d",
+      "git_blob_at_head": "4c7b26dbc1c500fa3c221201d050e60a2880abff"
+    }
+  },
+  "selected_cases": [
+    "missing_cutoff_strict",
+    "success_flag_false",
+    "missing_proba_flag_true"
+  ],
+  "baseline": {
+    "command": [
+      "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/test_dimred_xgboost_bridge.py",
+      "tests/test_dimred_xgboost_bridge_real.py",
+      "-p",
+      "m26_trace",
+      "--tb=short",
+      "--junitxml=result.xml",
+      "-W",
+      "error"
+    ],
+    "returncode": 0,
+    "cases": [
+      {
+        "name": "test_empty_structure_is_fresh",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_nominal_named_values_decode_confidence_and_integrity",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_coherent_permutation_preserves_observation_values[order0]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_coherent_permutation_preserves_observation_values[order1]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_repeat_inference_and_second_call_failure_have_no_stale_state",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_early_failures_return_complete_empty_result[no_model]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_early_failures_return_complete_empty_result[load]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_early_failures_return_complete_empty_result[metadata]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_early_failures_return_complete_empty_result[no_csv]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_early_failures_return_complete_empty_result[missing_schema]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_model_selection_uses_actual_utils_mtime",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_utils_import_fallback_is_lexical_characterization",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_classifier_script_import_fallback",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_classifier_both_imports_unavailable",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_explicit_csv_wins_and_fallback_is_lexical",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_snr_inclusive_boundary_and_absent_snr",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_nan_fraction_boundary[0-keep0]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_nan_fraction_boundary[1-keep1]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_nan_fraction_boundary[2-keep2]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_excluded_metadata_nan_cannot_remove_rows[obsid]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_excluded_metadata_nan_cannot_remove_rows[source_id]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_excluded_metadata_nan_cannot_remove_rows[teff_gspphot]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_excluded_metadata_nan_cannot_remove_rows[snr_g]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_excluded_metadata_nan_cannot_remove_rows[subclass]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_variance_and_dtype_control_row_selection[constant]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_variance_and_dtype_control_row_selection[string]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_variance_and_dtype_control_row_selection[nullable_boolean]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_nonconsecutive_pandas_index_preserves_row_values",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_selection_keeps_named_model_columns[constant]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_selection_keeps_named_model_columns[string]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_selection_keeps_named_model_columns[boolean]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_selection_keeps_named_model_columns[all_nan]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_candidate_selection_keeps_named_model_columns[constant_after_snr]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[int32]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[int64]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[float32]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[float64]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[Int64]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[Float64]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[boolean]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_representable_dataframe_dtypes_are_passed_by_name[string]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_missing_feature_fraction_characterization[3-0-True]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_missing_feature_fraction_characterization[3-1-False]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_missing_feature_fraction_characterization[4-1-True]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_missing_feature_fraction_characterization[10-3-True]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_missing_feature_fraction_characterization[10-4-False]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_missing_feature_fraction_characterization[7-2-True]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_decoding_observed_classes_and_fg_mask[labels0-expected0-mask0]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_decoding_observed_classes_and_fg_mask[labels1-expected1-mask1]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_no_encoder_preserves_labels_as_strings[prediction0]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_no_encoder_preserves_labels_as_strings[prediction1]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_probability_unavailable_has_explicit_flag[absent]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_probability_unavailable_has_explicit_flag[raises]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_probability_row_maximum_does_not_override_decision_rule",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_postload_exceptions_remain_visible[csv]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_postload_exceptions_remain_visible[predict]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_postload_exceptions_remain_visible[decode]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_path_resolution_side_effect_is_idempotent_observation",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_real_xgboost_saved_pipeline_inference_parity[False]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_real_xgboost_saved_pipeline_inference_parity[True]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_real_pipeline_explicitly_refuses_infinity[inf]",
+        "status": "PASS",
+        "diagnostic": null
+      },
+      {
+        "name": "test_real_pipeline_explicitly_refuses_infinity[-inf]",
+        "status": "PASS",
+        "diagnostic": null
+      }
+    ],
+    "executed_lines": [
+      169,
+      170,
+      171,
+      172,
+      173,
+      174,
+      176,
+      177,
+      178,
+      180,
+      181,
+      183,
+      184,
+      186,
+      190,
+      191,
+      192,
+      193,
+      194,
+      195,
+      196,
+      197,
+      198,
+      199,
+      201,
+      204,
+      205,
+      210,
+      211,
+      212,
+      213,
+      214,
+      215,
+      216,
+      218,
+      223,
+      224,
+      226,
+      234,
+      235,
+      236,
+      237,
+      238,
+      239,
+      240,
+      242,
+      243,
+      244,
+      245,
+      246,
+      249,
+      259,
+      260,
+      261,
+      262,
+      265,
+      266,
+      267,
+      272,
+      273,
+      274,
+      276,
+      277,
+      278,
+      279,
+      280,
+      285,
+      286,
+      289,
+      290,
+      292,
+      295,
+      297,
+      300,
+      301,
+      302,
+      303,
+      306,
+      307,
+      309,
+      310,
+      311,
+      312,
+      317,
+      319,
+      320,
+      321,
+      322,
+      323,
+      324,
+      325,
+      326,
+      327,
+      328,
+      329,
+      341,
+      342,
+      343,
+      344,
+      345,
+      346,
+      347,
+      348,
+      349,
+      350,
+      351
+    ],
+    "stdout": "..............................................................           [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-mutations-20m7025b\\result.xml -\n62 passed in 3.45s\n",
+    "stderr": ""
+  },
+  "results": [
+    {
+      "name": "missing_cutoff_strict",
+      "group": "mutation",
+      "old": "if pct > 0.30:",
+      "new": "if pct >= 0.30:",
+      "test": "test_missing_feature_fraction_characterization",
+      "interpretation": "current technical policy, not statistical approval",
+      "changed_lines": [
+        276
+      ],
+      "changed_lines_executed": [
+        276
+      ],
+      "verdict": "KILLED_BY_ASSERTION",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py::test_missing_feature_fraction_characterization",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_missing_feature_fraction_characterization[3-0-True]",
+          "status": "PASS",
+          "diagnostic": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[3-1-False]",
+          "status": "PASS",
+          "diagnostic": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[4-1-True]",
+          "status": "PASS",
+          "diagnostic": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[10-3-True]",
+          "status": "FAIL",
+          "diagnostic": "tests\\test_dimred_xgboost_bridge.py:364: in test_missing_feature_fraction_characterization\n    assert result[\"_xgb_ok\"]\nE   assert False"
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[10-4-False]",
+          "status": "PASS",
+          "diagnostic": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[7-2-True]",
+          "status": "PASS",
+          "diagnostic": null
+        }
+      ],
+      "executed_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        272,
+        273,
+        274,
+        276,
+        277,
+        278,
+        279,
+        280,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348,
+        349,
+        350,
+        351
+      ],
+      "stdout": "...F..                                                                   [100%]\n================================== FAILURES ===================================\n__________ test_missing_feature_fraction_characterization[10-3-True] __________\ntests\\test_dimred_xgboost_bridge.py:364: in test_missing_feature_fraction_characterization\n    assert result[\"_xgb_ok\"]\nE   assert False\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:273 3/10 features manquantes (30%)\nERROR    m26_bridge:xgboost_bridge.py:277 Trop de features manquantes \u2192 XGBoost ignor\u00e9.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-mutations-20m7025b\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_dimred_xgboost_bridge.py::test_missing_feature_fraction_characterization[10-3-True]\n1 failed, 5 passed in 0.69s\n",
+      "stderr": ""
+    },
+    {
+      "name": "success_flag_false",
+      "group": "mutation",
+      "old": "\"_xgb_ok\": True",
+      "new": "\"_xgb_ok\": False",
+      "test": "test_nominal_named_values_decode_confidence_and_integrity",
+      "interpretation": "result status",
+      "changed_lines": [
+        329
+      ],
+      "changed_lines_executed": [
+        329
+      ],
+      "verdict": "KILLED_BY_ASSERTION",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py::test_nominal_named_values_decode_confidence_and_integrity",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_nominal_named_values_decode_confidence_and_integrity",
+          "status": "FAIL",
+          "diagnostic": "tests\\test_dimred_xgboost_bridge.py:45: in test_nominal_named_values_decode_confidence_and_integrity\n    assert result[\"_xgb_ok\"] is True\nE   assert False is True"
+        }
+      ],
+      "executed_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348,
+        349,
+        350,
+        351
+      ],
+      "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________ test_nominal_named_values_decode_confidence_and_integrity __________\ntests\\test_dimred_xgboost_bridge.py:45: in test_nominal_named_values_decode_confidence_and_integrity\n    assert result[\"_xgb_ok\"] is True\nE   assert False is True\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-mutations-20m7025b\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_dimred_xgboost_bridge.py::test_nominal_named_values_decode_confidence_and_integrity\n1 failed in 0.62s\n",
+      "stderr": ""
+    },
+    {
+      "name": "missing_proba_flag_true",
+      "group": "mutation",
+      "old": "has_proba = False",
+      "new": "has_proba = True",
+      "test": "test_probability_unavailable_has_explicit_flag",
+      "interpretation": "availability",
+      "changed_lines": [
+        307
+      ],
+      "changed_lines_executed": [
+        307
+      ],
+      "verdict": "KILLED_BY_ASSERTION",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py::test_probability_unavailable_has_explicit_flag",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_probability_unavailable_has_explicit_flag[absent]",
+          "status": "FAIL",
+          "diagnostic": "tests\\test_dimred_xgboost_bridge.py:411: in test_probability_unavailable_has_explicit_flag\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+        },
+        {
+          "name": "test_probability_unavailable_has_explicit_flag[raises]",
+          "status": "FAIL",
+          "diagnostic": "tests\\test_dimred_xgboost_bridge.py:411: in test_probability_unavailable_has_explicit_flag\n    assert result[\"has_proba\"] is False\nE   assert True is False"
+        }
+      ],
+      "executed_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        303,
+        306,
+        307,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FF                                                                       [100%]\n================================== FAILURES ===================================\n___________ test_probability_unavailable_has_explicit_flag[absent] ____________\ntests\\test_dimred_xgboost_bridge.py:411: in test_probability_unavailable_has_explicit_flag\n    assert result[\"has_proba\"] is False\nE   assert True is False\n___________ test_probability_unavailable_has_explicit_flag[raises] ____________\ntests\\test_dimred_xgboost_bridge.py:411: in test_probability_unavailable_has_explicit_flag\n    assert result[\"has_proba\"] is False\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-mutations-20m7025b\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_dimred_xgboost_bridge.py::test_probability_unavailable_has_explicit_flag[absent]\nFAILED tests/test_dimred_xgboost_bridge.py::test_probability_unavailable_has_explicit_flag[raises]\n2 failed in 0.62s\n",
+      "stderr": ""
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "source_ref": "7b32abbd1881a487c0ea1bcc7355883e5797ea82",
+  "git_head_at_run": "7b32abbd1881a487c0ea1bcc7355883e5797ea82",
+  "method": "git show files from fixed ref into disposable directory; production worktree untouched",
+  "input_sha256_lf": {
+    "tests/proofs_dimred_xgboost_bridge_shapes.py": "8c9aae56c3281e51f7ed033d94e87298875b144d6b60a7908b820a2269c60ab3",
+    "tests/conftest.py": "881cf59ea895000cd8d78b645a9e3c61ae595b5215433448e4e2999e19a9bffc",
+    "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+    "src/dimred/xgboost_bridge.py": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+    "src/utils.py": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+    "src/pipeline/classifier.py": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe"
+  },
+  "command": [
+    "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/proofs_dimred_xgboost_bridge_shapes.py",
+    "--tb=short",
+    "--junitxml=result.xml"
+  ],
+  "returncode": 1,
+  "cases": [
+    {
+      "name": "test_three_dimensional_probability_output_requires_refusal",
+      "failure": "tests\\proofs_dimred_xgboost_bridge_shapes.py:15: in test_three_dimensional_probability_output_requires_refusal\n    assert result[\"confidence\"].shape == (\nE   AssertionError: A probability tensor is not scalar confidence.\nE   assert (5, 3) == (5,)\nE     \nE     Left contains one more item: 3\nE     Use -v to get more diff"
+    }
+  ],
+  "stdout": "F                                                                        [100%]\n================================== FAILURES ===================================\n_________ test_three_dimensional_probability_output_requires_refusal __________\ntests\\proofs_dimred_xgboost_bridge_shapes.py:15: in test_three_dimensional_probability_output_requires_refusal\n    assert result[\"confidence\"].shape == (\nE   AssertionError: A probability tensor is not scalar confidence.\nE   assert (5, 3) == (5,)\nE     \nE     Left contains one more item: 3\nE     Use -v to get more diff\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-shape-proof-rxy8jjc4\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_shapes.py::test_three_dimensional_probability_output_requires_refusal\n1 failed in 0.62s\n",
+  "stderr": ""
+}

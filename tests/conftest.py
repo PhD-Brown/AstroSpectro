@@ -5,11 +5,469 @@ from itertools import count
 from pathlib import Path
 import sys
 import types
+import re
+import math
 
 from astropy.io import fits
 import numpy as np
 import pandas as pd
 import pytest
+
+
+@pytest.fixture
+def bridge_module(monkeypatch):
+    """Execute the actual bridge source while restoring its sys.path changes."""
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    path = Path(__file__).resolve().parents[1] / "src/dimred/xgboost_bridge.py"
+    spec = importlib.util.spec_from_file_location("m26_bridge", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def bridge_case(tmp_path, monkeypatch, bridge_module):
+    """Provide real temporary CSV/discovery and a recording classifier boundary."""
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("m26_utils", root / "src/utils.py")
+    utilities = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(utilities)
+    monkeypatch.setitem(sys.modules, "utils", utilities)
+
+    class Spy:
+        def __init__(self):
+            self.predict_inputs = []
+            self.proba_inputs = []
+            self.predict_fn = lambda X: X["feature_alpha"].to_numpy(dtype=int) % 3
+            self.proba_fn = lambda X: np.array(
+                [[0.1, 0.2, 0.7], [0.55, 0.25, 0.2], [0.1, 0.8, 0.1]]
+            )[X["feature_alpha"].to_numpy(dtype=int) % 3]
+
+        def predict(self, X):
+            self.predict_inputs.append(X.copy(deep=True))
+            return self.predict_fn(X)
+
+        def predict_proba(self, X):
+            self.proba_inputs.append(X.copy(deep=True))
+            return self.proba_fn(X)
+
+    spy = Spy()
+    encoder = types.SimpleNamespace(
+        classes_=np.array(["G", "M", "F"]),
+        inverse_transform=lambda codes: np.array(["G", "M", "F"])[codes],
+    )
+    classifier = types.SimpleNamespace(
+        feature_names_used=["feature_gamma", "feature_alpha", "feature_beta"],
+        class_labels=["G", "M", "F"],
+        label_encoder=encoder,
+        model_pipeline=spy,
+    )
+    loaded = []
+
+    def load(path):
+        loaded.append(str(path))
+        return classifier
+
+    package = types.ModuleType("pipeline")
+    package.__path__ = []
+    module = types.ModuleType("pipeline.classifier")
+    module.SpectralClassifier = types.SimpleNamespace(load_model=load)
+    monkeypatch.setitem(sys.modules, "pipeline", package)
+    monkeypatch.setitem(sys.modules, "pipeline.classifier", module)
+    models = tmp_path / "models"
+    processed = tmp_path / "processed"
+    models.mkdir()
+    processed.mkdir()
+    model = models / "spectral_classifier_fixture.pkl"
+    model.write_text("not deserialized: spy boundary", encoding="utf-8")
+    frame = pd.DataFrame(
+        {
+            "obsid": [104, 19, 807, 33, 250],
+            "feature_alpha": [3, 10, 8, 23, 4],
+            "feature_beta": [101, 31, 89, 17, 53],
+            "feature_gamma": [3, 8, 1, 6, 4],
+            "snr_r": [10.0, 11.0, 20.0, 40.0, 50.0],
+        }
+    )
+    csv = processed / "features_fixture.csv"
+    frame.to_csv(csv, index=False)
+    args = {
+        "paths": {
+            "MODELS_DIR": models,
+            "PROCESSED_DIR": processed,
+            "SRC_DIR": root / "src",
+        },
+        "features_stem": "features_fixture",
+        "Z_umap": np.column_stack((frame["obsid"], [-2, 8, -9, 3, 7])),
+        "y": np.array(["true104", "true19", "true807", "true33", "true250"]),
+        "cluster_labels": np.array([7, -1, 2, 9, 1]),
+    }
+
+    def run(**overrides):
+        return bridge_module.load_and_predict(**(args | overrides))
+
+    return types.SimpleNamespace(
+        module=bridge_module,
+        classifier=classifier,
+        spy=spy,
+        args=args,
+        frame=frame,
+        csv=csv,
+        model=model,
+        loaded=loaded,
+        run=run,
+        import_module=module,
+        utils=utilities,
+    )
+
+
+@pytest.fixture
+def bridge_review_contracts(caplog):
+    """Accept explicit domain refusals without treating unrelated errors as evidence."""
+    # Separate domain and cause checks do not prescribe diagnostic word order.
+    # Generic "invalid column" is insufficient evidence of a data/schema refusal.
+    patterns = {
+        "identity": (
+            r"\b(?:observations?|population|identity|alignment|provenance)\b",
+            r"mismatch|incompatib|unverified|unknown|ambig|cannot|cardinal|length",
+        ),
+        "schema": (
+            r"\b(?:schema|features?|columns?)\b",
+            r"missing|incompatib|unsupported|non[ -]?numeric|absent",
+        ),
+        "preprocessing": (
+            r"\b(?:input|features?|columns?|schema|preprocessing)\b",
+            r"\bnan\b|missing|non[ -]?finite|incompatib",
+        ),
+        "probability": (
+            r"\b(?:probability|probabilities|distribution)\b",
+            r"invalid|undefined|non[ -]?finite|shape|rank|dimension|unavailable",
+        ),
+    }
+
+    def relevant(message, domain):
+        # These programming faults cannot establish a scientific refusal even
+        # when a wrapper also mentions a domain. This is a bounded M2.6 helper.
+        if re.search(
+            r"off[ -]by[ -]one|insertion loop|column index|buffer overflow",
+            message,
+            re.I,
+        ):
+            return False
+        return all(re.search(pattern, message, re.I) for pattern in patterns[domain])
+
+    def invoke(case, domain, **overrides):
+        caplog.clear()
+        try:
+            result = case.run(**overrides)
+        except ValueError as exc:
+            assert relevant(
+                str(exc), domain
+            ), f"Unrelated ValueError is not a {domain} validation refusal: {exc}"
+            return None
+        if result["_xgb_ok"]:
+            return result
+        assert result.get("has_proba") is False
+        for key in ("y_pred", "confidence"):
+            assert result.get(key) is None or np.asarray(result[key]).size == 0
+        messages = " ".join(
+            record.getMessage() for record in caplog.records if record.levelno >= 40
+        )
+        assert relevant(
+            messages, domain
+        ), f"A structured {domain} refusal needs a relevant error diagnostic: {messages}"
+        return None
+
+    def unavailable(result, count):
+        if result is None:
+            return
+        assert result["_xgb_ok"] is True
+        assert (
+            result["has_proba"] is False
+        ), "Invalid probabilities cannot become invented confidence."
+        for key in ("y_pred", "y_aligned", "cl_aligned", "Z_umap_aligned"):
+            assert len(result[key]) == count
+        if result.get("confidence") is not None:
+            assert np.asarray(result["confidence"]).shape == (count,)
+
+    return types.SimpleNamespace(invoke=invoke, unavailable=unavailable)
+
+
+@pytest.fixture
+def bridge_loader_population(bridge_case, dimred_loader_module):
+    """Build populations with the actual loader, independent of bridge filtering."""
+
+    def make(scenario):
+        c = bridge_case
+        ids = np.array([311, 42, 9001, 77, 5, 640, 128, 3, 2048, 999])
+        df = pd.DataFrame(
+            {
+                "obsid": ids,
+                "id_echo": ids,
+                "snr_r": 20.0,
+                "class": [
+                    "STAR",
+                    "GALAXY",
+                    "QSO",
+                    "STAR",
+                    "GALAXY",
+                    "QSO",
+                    "STAR",
+                    "GALAXY",
+                    "QSO",
+                    "STAR",
+                ],
+                "feature_alpha": [3, 10, 8, 23, 4, 6, 12, 17, 26, 40],
+                "feature_beta": [101, 31, 89, 17, 53, 8, 97, 13, 79, 41],
+                "feature_gamma": np.arange(10) + 1.0,
+            }
+        )
+        options = {"scale": False}
+        removed = []
+        if scenario == "default":
+            df["radial_velocity_corr"] = np.arange(10, dtype=float)
+            df.loc[2, "radial_velocity_corr"] = np.nan
+            df["label"] = np.arange(10, dtype=float)
+            df.loc[6, "label"] = np.nan
+            removed = [2]
+        elif scenario in {"nb01", "unequal"}:
+            df["seeing"] = np.arange(10, dtype=float) + 1.0
+            df.loc[2, "seeing"] = np.nan
+            if scenario == "nb01":
+                df.loc[7, "class"] = "Unknown"
+                removed = [7]
+            options.update(spectro_only=True, classes=["STAR", "GALAXY", "QSO"])
+        else:
+            assert scenario == "shared"
+        df.to_csv(c.csv, index=False)
+        catalog = c.csv.with_name("catalog_review.csv")
+        pd.DataFrame({"obsid": ids}).to_csv(catalog, index=False)
+        loader = dimred_loader_module.DimRedDataLoader(c.csv, catalog)
+        X, y, meta = loader.load(**options)
+        population = loader._df_merged.copy(deep=True)
+        expected_ids = np.delete(ids, removed)
+        np.testing.assert_array_equal(population.obsid.to_numpy(), expected_ids)
+        # Check actual X against retained raw values, not only its row count.
+        np.testing.assert_array_equal(
+            X, population[loader.get_feature_names()].to_numpy(float)
+        )
+        np.testing.assert_array_equal(y, population["class"].to_numpy())
+        np.testing.assert_array_equal(meta["class"], y)
+        c.classifier.feature_names_used = ["feature_gamma", "id_echo", "feature_beta"]
+        c.spy.predict_fn = lambda frame: frame["id_echo"].to_numpy(int) % 3
+        c.spy.proba_fn = lambda frame: np.tile([0.2, 0.3, 0.5], (len(frame), 1))
+        c.args.update(
+            Z_umap=np.column_stack((expected_ids, np.arange(len(expected_ids)))),
+            y=y,
+            cluster_labels=expected_ids + 10000,
+        )
+        c.population, c.loader, c.raw = population, loader, df
+        return c
+
+    return make
+
+
+@pytest.fixture
+def bridge_real_bundle(tmp_path, monkeypatch, bridge_module):
+    """Fit/save only a tiny trusted CPU model; use real classifier and joblib IO."""
+    from sklearn.compose import ColumnTransformer
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import LabelEncoder, StandardScaler
+    from xgboost import XGBClassifier
+
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.syspath_prepend(str(root / "src"))
+    package = types.ModuleType("pipeline")
+    package.__path__ = [str(root / "src/pipeline")]
+    monkeypatch.setitem(sys.modules, "pipeline", package)
+    classifier_spec = importlib.util.spec_from_file_location(
+        "pipeline.classifier", root / "src/pipeline/classifier.py"
+    )
+    classifier_module = importlib.util.module_from_spec(classifier_spec)
+    monkeypatch.setitem(sys.modules, "pipeline.classifier", classifier_module)
+    classifier_spec.loader.exec_module(classifier_module)
+    assert (
+        Path(classifier_module.__file__).resolve()
+        == root / "src/pipeline/classifier.py"
+    )
+    util_spec = importlib.util.spec_from_file_location(
+        "m26_real_utils", root / "src/utils.py"
+    )
+    utilities = importlib.util.module_from_spec(util_spec)
+    util_spec.loader.exec_module(utilities)
+    monkeypatch.setitem(sys.modules, "utils", utilities)
+
+    train = pd.DataFrame(
+        {
+            "feature_alpha": np.repeat([-4.0, 1.0, 6.0], 10)
+            + np.tile(np.arange(10) / 20, 3),
+            "feature_beta": np.tile([2.0, 7.0, -3.0, 5.0, 9.0], 6),
+            "feature_gamma": np.arange(30) % 7 + 2.0,
+        }
+    )
+    names = ["feature_gamma", "feature_alpha", "feature_beta"]
+    encoder = LabelEncoder().fit(["M", "F", "G"])
+    target = encoder.transform(np.repeat(["M", "F", "G"], 10))
+    pipeline = Pipeline(
+        [
+            (
+                "named",
+                ColumnTransformer(
+                    [
+                        (
+                            "numeric",
+                            Pipeline(
+                                [
+                                    ("imputer", SimpleImputer(strategy="median")),
+                                    ("scaler", StandardScaler()),
+                                ]
+                            ),
+                            names,
+                        )
+                    ],
+                    remainder="drop",
+                ),
+            ),
+            (
+                "xgb",
+                XGBClassifier(
+                    n_estimators=12,
+                    max_depth=2,
+                    min_child_weight=0,
+                    n_jobs=1,
+                    random_state=1729,
+                    tree_method="hist",
+                    device="cpu",
+                    learning_rate=0.4,
+                ),
+            ),
+        ]
+    ).fit(train[names], target)
+    clf = classifier_module.SpectralClassifier()
+    clf.model_pipeline = pipeline
+    clf.feature_names_used = names
+    clf.class_labels = encoder.classes_.tolist()
+    clf.label_encoder = encoder
+    models, processed = tmp_path / "models", tmp_path / "processed"
+    models.mkdir()
+    processed.mkdir()
+    model = models / "spectral_classifier_synthetic.pkl"
+    clf.save_model(str(model), trained_on_file="synthetic_training_only.csv")
+    query = train.iloc[[1, 14, 23, 8, 19]].reset_index(drop=True).copy()
+    query["obsid"] = [104, 19, 807, 33, 250]
+    csv = processed / "features_synthetic.csv"
+    query.to_csv(csv, index=False)
+    args = {
+        "paths": {
+            "SRC_DIR": root / "src",
+            "MODELS_DIR": models,
+            "PROCESSED_DIR": processed,
+        },
+        "features_stem": "features_synthetic",
+        "Z_umap": np.column_stack((query.obsid, [-2, 8, -9, 3, 7])),
+        "y": np.array(["M", "F", "G", "M", "F"]),
+        "cluster_labels": np.array([7, -1, 2, 9, 1]),
+    }
+    return types.SimpleNamespace(
+        module=bridge_module,
+        classifier=clf,
+        classifier_module=classifier_module,
+        train=train,
+        query=query,
+        csv=csv,
+        model=model,
+        args=args,
+        run=lambda **kw: bridge_module.load_and_predict(**(args | kw)),
+    )
+
+
+@pytest.fixture
+def bridge_preprocessing_oracle(bridge_real_bundle, monkeypatch):
+    """Observe actual booster input and independently compute train-only transforms."""
+    c = bridge_real_bundle
+    names = c.classifier.feature_names_used
+    medians, means, scales = [], [], []
+    for name in names:
+        values = sorted(float(v) for v in c.train[name])
+        medians.append((values[14] + values[15]) / 2)
+        mean = math.fsum(values) / 30
+        means.append(mean)
+        scales.append(math.sqrt(math.fsum((v - mean) ** 2 for v in values) / 30))
+    medians, means, scales = map(np.asarray, (medians, means, scales))
+    np.testing.assert_allclose(medians, [5.0, 1.225, 5.0], rtol=0, atol=2e-15)
+    np.testing.assert_allclose(means, [29 / 6, 1.225, 4.0], rtol=0, atol=2e-15)
+    loaded_models, booster_inputs = [], []
+
+    def trained_state(clf):
+        numeric = clf.model_pipeline.named_steps["named"].named_transformers_["numeric"]
+        np.testing.assert_allclose(
+            numeric.named_steps["imputer"].statistics_, medians, rtol=0, atol=2e-14
+        )
+        np.testing.assert_allclose(
+            numeric.named_steps["scaler"].mean_, means, rtol=0, atol=2e-14
+        )
+        np.testing.assert_allclose(
+            numeric.named_steps["scaler"].scale_, scales, rtol=0, atol=2e-14
+        )
+        return numeric
+
+    numeric = trained_state(c.classifier)
+    original_load = c.classifier_module.SpectralClassifier.load_model
+
+    def load(path):
+        loaded = original_load(path)
+        trained_state(loaded)
+        loaded_models.append(loaded)
+        return loaded
+
+    monkeypatch.setattr(
+        c.classifier_module.SpectralClassifier, "load_model", staticmethod(load)
+    )
+    booster_type = type(c.classifier.model_pipeline.named_steps["xgb"])
+    original_predict = booster_type.predict
+
+    def predict(estimator, X, *args, **kwargs):
+        booster_inputs.append(np.array(X, copy=True))
+        return original_predict(estimator, X, *args, **kwargs)
+
+    monkeypatch.setattr(booster_type, "predict", predict)
+
+    def forbid_fit(*args, **kwargs):
+        raise AssertionError("Inference must not refit learned preprocessing.")
+
+    monkeypatch.setattr(type(numeric.named_steps["imputer"]), "fit", forbid_fit)
+    monkeypatch.setattr(type(numeric.named_steps["scaler"]), "fit", forbid_fit)
+
+    def expected(query):
+        values = query[names].to_numpy(dtype=float, copy=True)
+        for column in range(len(names)):
+            values[np.isnan(values[:, column]), column] = medians[column]
+        return (values - means) / scales
+
+    def compare(actual, expected_values):
+        assert np.asarray(actual).shape == expected_values.shape
+        # Cap at eight float32 epsilons independently of the produced dtype.
+        # Float64 arithmetic over30 training rows retains the stricter2e-14 floor.
+        precision = min(
+            np.finfo(np.asarray(actual).dtype).eps, np.finfo(np.float32).eps
+        )
+        np.testing.assert_allclose(
+            actual, expected_values, rtol=8 * precision, atol=max(2e-14, 8 * precision)
+        )
+        for loaded in loaded_models:
+            trained_state(loaded)
+
+    return types.SimpleNamespace(
+        case=c,
+        expected=expected,
+        compare=compare,
+        inputs=booster_inputs,
+        loaded_models=loaded_models,
+        medians=medians,
+        means=means,
+        scales=scales,
+    )
 
 
 @pytest.fixture

@@ -1,0 +1,1096 @@
+{
+  "phase": "green",
+  "selected_records": [
+    "diagnosed_postload_refusal"
+  ],
+  "git_head_at_run": "fe25d1a39e83f46b743e5524cf5b70d2169d6183",
+  "working_tree_at_run": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob_at_head": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/dimred/data_loader.py": {
+      "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+      "git_blob_at_head": "cf6eaa4cadac90b04a2960ef214fce38b216d61b"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob_at_head": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob_at_head": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+      "git_blob_at_head": "22caba53fbccb14cb45b8d95c7f1b751825d7a37"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+      "git_blob_at_head": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+      "git_blob_at_head": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793"
+    },
+    "tests/proofs_dimred_xgboost_bridge_review.py": {
+      "sha256_lf": "3456fd316caf5828265dc4c5a80a9ecd99a8f9070ba76b5307ffd9afd626d18d",
+      "git_blob_at_head": "e9961a5d2ef69a5b3d36a58ffcb8fcb28fadb972"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob_at_head": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "392d93fa74f16fd54cca841299133614b4d3b95de94007b1a31d76daac9bfb6d",
+      "git_blob_at_head": "4c7b26dbc1c500fa3c221201d050e60a2880abff"
+    },
+    "audit/check_m26_review_mutations.py": {
+      "sha256_lf": "4587ae03aae65783de5784e916c174567055c36f63167b238417d1c5a3f09b38",
+      "git_blob_at_head": "c3cc03429244dae3f99f1c499cfe2d6ead29a58b"
+    }
+  },
+  "results": [
+    {
+      "name": "green_baseline",
+      "scope": [
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py"
+      ],
+      "patches": [],
+      "meaning": "entire revised M2.6 suite",
+      "expected_fail": 0,
+      "expected_pass": 71,
+      "counts": {
+        "FAIL": 0,
+        "PASS": 71,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 0,
+      "cases": [
+        {
+          "name": "test_empty_structure_is_fresh",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_nominal_named_values_decode_confidence_and_integrity",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_coherent_permutation_preserves_observation_values[order0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_coherent_permutation_preserves_observation_values[order1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_repeat_inference_and_second_call_failure_have_no_stale_state",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[no_model]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[load]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[metadata]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[no_csv]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[missing_schema]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_model_selection_uses_actual_utils_mtime",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_utils_import_fallback_is_lexical_characterization",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_classifier_script_import_fallback",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_classifier_both_imports_unavailable",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_explicit_csv_wins_and_fallback_is_lexical",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_snr_inclusive_boundary_and_absent_snr",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_nan_fraction_boundary[0-keep0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_nan_fraction_boundary[1-keep1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_nan_fraction_boundary[2-keep2]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[obsid]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[source_id]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[teff_gspphot]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[snr_g]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[subclass]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_variance_and_dtype_control_row_selection[constant]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_variance_and_dtype_control_row_selection[string]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_variance_and_dtype_control_row_selection[nullable_boolean]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_nonconsecutive_pandas_index_preserves_row_values",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[constant]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[string]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[boolean]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[all_nan]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[constant_after_snr]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[int32]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[int64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[float32]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[float64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[Int64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[Float64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[boolean]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[string]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[3-0-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[3-1-False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[4-1-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[10-3-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[10-4-False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[7-2-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_decoding_observed_classes_and_fg_mask[labels0-expected0-mask0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_decoding_observed_classes_and_fg_mask[labels1-expected1-mask1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_no_encoder_preserves_labels_as_strings[prediction0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_no_encoder_preserves_labels_as_strings[prediction1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_probability_unavailable_has_explicit_flag[absent]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_probability_unavailable_has_explicit_flag[raises]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_unusable_probability_shape_is_not_advertised[vector]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_unusable_probability_shape_is_not_advertised[empty_class_axis]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_probability_row_maximum_does_not_override_decision_rule",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_postload_exceptions_remain_visible[csv]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_postload_exceptions_remain_visible[predict]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_postload_exceptions_remain_visible[decode]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_model_discovery_ignores_other_pickle_families[False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_model_discovery_ignores_other_pickle_families[True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_actual_loader_shared_population_preserves_all_values",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_refusal_helper_rejects_unrelated_value_errors[identity]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_refusal_helper_rejects_unrelated_value_errors[preprocessing]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_refusal_helper_rejects_unrelated_value_errors[probability]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_path_resolution_side_effect_is_idempotent_observation",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_xgboost_saved_pipeline_inference_parity[False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_xgboost_saved_pipeline_inference_parity[True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_transformed_rows_distinguish_same_class_observations",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_pipeline_explicitly_refuses_infinity[inf]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_pipeline_explicitly_refuses_infinity[-inf]",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        176,
+        177,
+        178,
+        180,
+        181,
+        183,
+        184,
+        186,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        201,
+        204,
+        205,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        272,
+        273,
+        274,
+        276,
+        277,
+        278,
+        279,
+        280,
+        285,
+        286,
+        289,
+        290,
+        292,
+        295,
+        297,
+        300,
+        301,
+        302,
+        303,
+        306,
+        307,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329,
+        341,
+        342,
+        343,
+        344,
+        345,
+        346,
+        347,
+        348,
+        349,
+        350,
+        351
+      ],
+      "stdout": ".......................................................................  [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-lhz6pih0\\result.xml -\n71 passed in 4.15s\n",
+      "stderr": ""
+    },
+    {
+      "name": "diagnosed_postload_refusal",
+      "scope": [
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py"
+      ],
+      "patches": [
+        [
+          "    y_pred_enc = clf.model_pipeline.predict(X_pred_df)\n    if clf.label_encoder is not None:\n        # Cas standard: d\u00e9codage des labels vers les noms de classes.\n        y_pred = clf.label_encoder.inverse_transform(y_pred_enc)\n    else:\n        # Cas d\u00e9fensif: si pas d'encodeur, on force un tableau de cha\u00eenes.\n        y_pred = np.array(y_pred_enc, dtype=str)\n",
+          "    try:\n        y_pred_enc = clf.model_pipeline.predict(X_pred_df)\n        if clf.label_encoder is not None:\n            # Cas standard: d\u00e9codage des labels vers les noms de classes.\n            y_pred = clf.label_encoder.inverse_transform(y_pred_enc)\n        else:\n            # Cas d\u00e9fensif: si pas d'encodeur, on force un tableau de cha\u00eenes.\n            y_pred = np.array(y_pred_enc, dtype=str)\n    except ValueError as exc:\n        if not any(token in str(exc).lower() for token in\n                   (\"unsupported features\", \"invalid class codes\", \"infinity\", \"too large\")):\n            raise\n        logger.error(\"Prediction features incompatible: %s\", exc)\n        return _empty_result()\n"
+        ]
+      ],
+      "meaning": "R6 propagated or structured error both admissible",
+      "expected_fail": 0,
+      "expected_pass": 71,
+      "counts": {
+        "FAIL": 0,
+        "PASS": 71,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [
+          289,
+          290,
+          291,
+          293,
+          296,
+          297,
+          298,
+          299,
+          300,
+          301,
+          302
+        ]
+      ],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 0,
+      "cases": [
+        {
+          "name": "test_empty_structure_is_fresh",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_nominal_named_values_decode_confidence_and_integrity",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_coherent_permutation_preserves_observation_values[order0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_coherent_permutation_preserves_observation_values[order1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_repeat_inference_and_second_call_failure_have_no_stale_state",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[no_model]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[load]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[metadata]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[no_csv]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_early_failures_return_complete_empty_result[missing_schema]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_model_selection_uses_actual_utils_mtime",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_utils_import_fallback_is_lexical_characterization",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_classifier_script_import_fallback",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_classifier_both_imports_unavailable",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_explicit_csv_wins_and_fallback_is_lexical",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_snr_inclusive_boundary_and_absent_snr",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_nan_fraction_boundary[0-keep0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_nan_fraction_boundary[1-keep1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_nan_fraction_boundary[2-keep2]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[obsid]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[source_id]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[teff_gspphot]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[snr_g]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_excluded_metadata_nan_cannot_remove_rows[subclass]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_variance_and_dtype_control_row_selection[constant]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_variance_and_dtype_control_row_selection[string]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_variance_and_dtype_control_row_selection[nullable_boolean]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_nonconsecutive_pandas_index_preserves_row_values",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[constant]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[string]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[boolean]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[all_nan]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_candidate_selection_keeps_named_model_columns[constant_after_snr]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[int32]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[int64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[float32]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[float64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[Int64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[Float64]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[boolean]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_representable_dataframe_dtypes_are_passed_by_name[string]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[3-0-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[3-1-False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[4-1-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[10-3-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[10-4-False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_missing_feature_fraction_characterization[7-2-True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_decoding_observed_classes_and_fg_mask[labels0-expected0-mask0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_decoding_observed_classes_and_fg_mask[labels1-expected1-mask1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_no_encoder_preserves_labels_as_strings[prediction0]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_no_encoder_preserves_labels_as_strings[prediction1]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_probability_unavailable_has_explicit_flag[absent]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_probability_unavailable_has_explicit_flag[raises]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_unusable_probability_shape_is_not_advertised[vector]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_unusable_probability_shape_is_not_advertised[empty_class_axis]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_probability_row_maximum_does_not_override_decision_rule",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_postload_exceptions_remain_visible[csv]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_postload_exceptions_remain_visible[predict]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_postload_exceptions_remain_visible[decode]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_model_discovery_ignores_other_pickle_families[False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_model_discovery_ignores_other_pickle_families[True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_actual_loader_shared_population_preserves_all_values",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_refusal_helper_rejects_unrelated_value_errors[identity]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_refusal_helper_rejects_unrelated_value_errors[preprocessing]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_refusal_helper_rejects_unrelated_value_errors[probability]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_path_resolution_side_effect_is_idempotent_observation",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_xgboost_saved_pipeline_inference_parity[False]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_xgboost_saved_pipeline_inference_parity[True]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_transformed_rows_distinguish_same_class_observations",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_pipeline_explicitly_refuses_infinity[inf]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_pipeline_explicitly_refuses_infinity[-inf]",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        176,
+        177,
+        178,
+        180,
+        181,
+        183,
+        184,
+        186,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        201,
+        204,
+        205,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        272,
+        273,
+        274,
+        276,
+        277,
+        278,
+        279,
+        280,
+        285,
+        286,
+        289,
+        290,
+        291,
+        293,
+        296,
+        297,
+        298,
+        299,
+        300,
+        301,
+        302,
+        304,
+        307,
+        308,
+        309,
+        310,
+        313,
+        314,
+        316,
+        317,
+        318,
+        319,
+        324,
+        326,
+        327,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        348,
+        349,
+        350,
+        351,
+        352,
+        353,
+        354,
+        355,
+        356,
+        357,
+        358
+      ],
+      "stdout": ".......................................................................  [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-lhz6pih0\\result.xml -\n71 passed in 3.84s\n",
+      "stderr": ""
+    }
+  ]
+}
