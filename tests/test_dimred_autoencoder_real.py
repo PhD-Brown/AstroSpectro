@@ -6,7 +6,7 @@ import pytest
 pytestmark = [pytest.mark.slow, pytest.mark.integration]
 
 
-def test_fresh_process_import_with_real_torch():
+def test_fresh_process_import_with_real_torch(autoencoder_real_module):
     from pathlib import Path
     import subprocess
     import sys

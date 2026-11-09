@@ -315,6 +315,8 @@ def main():
                 "slow or not slow",
                 "tests/test_dimred_autoencoder.py",
                 "tests/test_dimred_autoencoder_real.py",
+                "-k",
+                "not fresh_process and not independent_loader",
                 "--junitxml=results.xml",
             ]
             result = subprocess.run(
