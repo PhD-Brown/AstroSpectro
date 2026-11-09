@@ -247,3 +247,44 @@ Full classifier training, cross-version persistence, GPU, real spectra/models,
 W&B/services, end-to-end notebooks/plots, coverage measurement, OS permission
 failures, invalid input shapes/None and arbitrary model schemas are untested.
 The Draft PR remains unmerged; M2.6 is not integrated; no M2.7 work follows.
+
+## Final local verification and handoff
+
+[Machine-readable validation](m26_validation_results.json) records a clean input
+snapshot **68b86aaa1d967ed2dd42c9ffd208b1d21e11190c**, actual commands, stdout,
+stderr, versions, Git blobs and effective LF-normalized SHA256 hashes. A later
+documentation/evidence commit is not retroactively described as the tested HEAD.
+Production source is still the base18302e68, bridge blobeab849e4. Environment
+Windows/Python3.11.9, pytest8.4.2/pytest-socket0.7.0, versions listed above;
+final subprocess suite environment PYTHONHASHSEED7/MPLBACKEND=Agg.
+Commands below use `../AstroSpectro/.venv/Scripts/python.exe` from the M26 root.
+
+| Command / check | Actually observed |
+|---|---|
+| `-m pytest -q tests/test_dimred_xgboost_bridge.py tests/test_dimred_xgboost_bridge_real.py -W error` | **64PASS**, no skips/warnings/errors |
+| `-m pytest -q` | **480PASS /62deselected /7warnings** |
+| `-m pytest -q --import-mode=importlib` | **480PASS /62deselected /7warnings** |
+| Same64cases in reverse order, via pytest.main collection plugin, `-W error` | **64PASS**, original sys.path and four temporary import entries restored by identity |
+| `-m black --check src tests scripts app.py audit/check_m26_mutations.py` | **38files unchanged**, PASS |
+| `-m ruff check src tests scripts app.py audit/check_m26_mutations.py` | PASS |
+| `-m pip check` | No broken requirements |
+| `git diff --check`; diff against base for src/config/dependencies/CI/notebooks | PASS; no production/config differences |
+| `git merge-base --is-ancestor` for both fixed proof SHAs | BothPASS; archives remain reachable |
+| Fresh actual `python -I -X utf8` facade import, Torch not installed | FAIL NameError nn at autoencoder87; known#21, separately recorded, not hidden in a global “all tests pass” claim |
+
+The62exclusions are the repository's configured slow/network selection, including
+optional UMAP/HDBSCAN/Torch work from earlier missions. **All4real M2.6 XGBoost
+tests are in the default suite**, not skipped. No optional slow campaign was
+required for this bridge. The7warnings come from existing Gaia DataFrame.drop
+inplace deprecation (#16), not the M2.6 tests. Primary proof19FAIL/19PASS and
+supplemental1FAIL are deliberately separate from the green CI suite.
+No line-coverage percentage was measured.
+
+Every checkpoint was pushed and compared to its remote SHA (8bdea734,
+8a8e54ec,0da75811,553c2fb8,72a9206a,7b32abbd,68b86aaa; subsequent
+evidence/documentation head is in the Draft PR). The original checkout and old
+worktrees remain untouched. Hosted CI is checked **after** PR creation and its
+actual run/head/job result belongs in the PR description and single #43
+handoff; local tests are not presented as hosted CI. Next action is the first
+independent Claude review, with scientific decisions and merge reserved to the
+human. Keep #43 open and M2.6 yellow until human integration.

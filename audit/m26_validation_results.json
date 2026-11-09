@@ -1,0 +1,296 @@
+{
+  "git_head_at_run": "68b86aaa1d967ed2dd42c9ffd208b1d21e11190c",
+  "working_tree_at_run": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2",
+    "black": "24.4.2",
+    "ruff": "0.5.0",
+    "pytest-socket": "0.7.0",
+    "joblib": "1.6.0"
+  },
+  "environment": {
+    "PYTHONHASHSEED": "7",
+    "MPLBACKEND": "Agg",
+    "PYTHONIOENCODING": "utf-8"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "881cf59ea895000cd8d78b645a9e3c61ae595b5215433448e4e2999e19a9bffc",
+      "git_blob": "cb11f395b2eb8a7069f7edeb236b9b95334d3cd4"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "ccb66965cab81b69fa1c95a16b515634bfd937638d4239556f49a792e7b49b13",
+      "git_blob": "ca1b42b4f35a5f0e7e1e8a067bb974106b56f973"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "9f9e26befa670741f1cbfddaea8931531c5f7e266fef72fc38107c59fdf8b090",
+      "git_blob": "d009cd8ae03b51443360e03f2b511f9a12a04d08"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "392d93fa74f16fd54cca841299133614b4d3b95de94007b1a31d76daac9bfb6d",
+      "git_blob": "4c7b26dbc1c500fa3c221201d050e60a2880abff"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    }
+  },
+  "results": [
+    {
+      "name": "targeted_warnings_errors",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py",
+        "-W",
+        "error",
+        "--junitxml=test-results/m26-final-targeted.xml"
+      ],
+      "returncode": 0,
+      "stdout": "................................................................         [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-final-targeted.xml -\n64 passed in 3.16s\n",
+      "stderr": ""
+    },
+    {
+      "name": "full_fast",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--junitxml=test-results/m26-final-full.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 15%]\n........................................................................ [ 30%]\n........................................................................ [ 45%]\n........................................................................ [ 60%]\n........................................................................ [ 75%]\n........................................................................ [ 90%]\n................................................                         [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-final-full.xml -\n480 passed, 62 deselected, 7 warnings in 12.13s\n",
+      "stderr": ""
+    },
+    {
+      "name": "full_importlib",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--import-mode=importlib",
+        "--junitxml=test-results/m26-final-importlib.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 15%]\n........................................................................ [ 30%]\n........................................................................ [ 45%]\n........................................................................ [ 60%]\n........................................................................ [ 75%]\n........................................................................ [ 90%]\n................................................                         [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-final-importlib.xml -\n480 passed, 62 deselected, 7 warnings in 12.23s\n",
+      "stderr": ""
+    },
+    {
+      "name": "black",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black",
+        "--check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m26_mutations.py"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "All done! \u2728 \ud83c\udf70 \u2728\n38 files would be left unchanged.\n"
+    },
+    {
+      "name": "ruff",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m26_mutations.py"
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "name": "pip_check",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "returncode": 0,
+      "stdout": "No broken requirements found.\n",
+      "stderr": ""
+    },
+    {
+      "name": "diff_check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "production_unchanged",
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "18302e68cf25289873aa170a27834d99b516f376",
+        "--",
+        "src",
+        "pyproject.toml",
+        "requirements",
+        ".github",
+        "notebooks"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "primary_archive_ancestor",
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "0da758111daaf7ba33283c1462ec1fb1368c6cff",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "supplemental_archive_ancestor",
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "7b32abbd1881a487c0ea1bcc7355883e5797ea82",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "facade_probe": {
+    "command": [
+      "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+      "-I",
+      "-X",
+      "utf8",
+      "-c",
+      "import sys;sys.path.insert(0,sys.argv[1]);from dimred import xgboost_predict",
+      "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src"
+    ],
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "PyTorch non trouv\u00e9. Installer : pip install torch\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\dimred\\__init__.py\", line 46, in <module>\n    from .autoencoder import SpectralAutoencoder\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\dimred\\autoencoder.py\", line 87, in <module>\n    class _Encoder(nn.Module):\n                   ^^\nNameError: name 'nn' is not defined. Did you mean: 'np'?\n"
+  },
+  "git_head_after": "68b86aaa1d967ed2dd42c9ffd208b1d21e11190c",
+  "reverse_order_validation": {
+    "returncode": 0,
+    "state_restored": true,
+    "order": "reversed",
+    "checks": [
+      "pipeline",
+      "pipeline.classifier",
+      "classifier",
+      "utils",
+      "sys.path"
+    ],
+    "cases": [
+      "test_real_pipeline_explicitly_refuses_infinity[-inf]",
+      "test_real_pipeline_explicitly_refuses_infinity[inf]",
+      "test_real_xgboost_saved_pipeline_inference_parity[True]",
+      "test_real_xgboost_saved_pipeline_inference_parity[False]",
+      "test_path_resolution_side_effect_is_idempotent_observation",
+      "test_postload_exceptions_remain_visible[decode]",
+      "test_postload_exceptions_remain_visible[predict]",
+      "test_postload_exceptions_remain_visible[csv]",
+      "test_probability_row_maximum_does_not_override_decision_rule",
+      "test_unusable_probability_shape_is_not_advertised[empty_class_axis]",
+      "test_unusable_probability_shape_is_not_advertised[vector]",
+      "test_probability_unavailable_has_explicit_flag[raises]",
+      "test_probability_unavailable_has_explicit_flag[absent]",
+      "test_no_encoder_preserves_labels_as_strings[prediction1]",
+      "test_no_encoder_preserves_labels_as_strings[prediction0]",
+      "test_decoding_observed_classes_and_fg_mask[labels1-expected1-mask1]",
+      "test_decoding_observed_classes_and_fg_mask[labels0-expected0-mask0]",
+      "test_missing_feature_fraction_characterization[7-2-True]",
+      "test_missing_feature_fraction_characterization[10-4-False]",
+      "test_missing_feature_fraction_characterization[10-3-True]",
+      "test_missing_feature_fraction_characterization[4-1-True]",
+      "test_missing_feature_fraction_characterization[3-1-False]",
+      "test_missing_feature_fraction_characterization[3-0-True]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[string]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[boolean]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[Float64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[Int64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[float64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[float32]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[int64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[int32]",
+      "test_candidate_selection_keeps_named_model_columns[constant_after_snr]",
+      "test_candidate_selection_keeps_named_model_columns[all_nan]",
+      "test_candidate_selection_keeps_named_model_columns[boolean]",
+      "test_candidate_selection_keeps_named_model_columns[string]",
+      "test_candidate_selection_keeps_named_model_columns[constant]",
+      "test_nonconsecutive_pandas_index_preserves_row_values",
+      "test_candidate_variance_and_dtype_control_row_selection[nullable_boolean]",
+      "test_candidate_variance_and_dtype_control_row_selection[string]",
+      "test_candidate_variance_and_dtype_control_row_selection[constant]",
+      "test_excluded_metadata_nan_cannot_remove_rows[subclass]",
+      "test_excluded_metadata_nan_cannot_remove_rows[snr_g]",
+      "test_excluded_metadata_nan_cannot_remove_rows[teff_gspphot]",
+      "test_excluded_metadata_nan_cannot_remove_rows[source_id]",
+      "test_excluded_metadata_nan_cannot_remove_rows[obsid]",
+      "test_candidate_nan_fraction_boundary[2-keep2]",
+      "test_candidate_nan_fraction_boundary[1-keep1]",
+      "test_candidate_nan_fraction_boundary[0-keep0]",
+      "test_snr_inclusive_boundary_and_absent_snr",
+      "test_explicit_csv_wins_and_fallback_is_lexical",
+      "test_classifier_both_imports_unavailable",
+      "test_classifier_script_import_fallback",
+      "test_utils_import_fallback_is_lexical_characterization",
+      "test_model_selection_uses_actual_utils_mtime",
+      "test_early_failures_return_complete_empty_result[missing_schema]",
+      "test_early_failures_return_complete_empty_result[no_csv]",
+      "test_early_failures_return_complete_empty_result[metadata]",
+      "test_early_failures_return_complete_empty_result[load]",
+      "test_early_failures_return_complete_empty_result[no_model]",
+      "test_repeat_inference_and_second_call_failure_have_no_stale_state",
+      "test_coherent_permutation_preserves_observation_values[order1]",
+      "test_coherent_permutation_preserves_observation_values[order0]",
+      "test_nominal_named_values_decode_confidence_and_integrity",
+      "test_empty_structure_is_fresh"
+    ],
+    "command_description": "pytest.main on both M26 files with -W error and a collection reversal plugin; sessionfinish asserts original identities of sys.modules pipeline/pipeline.classifier/classifier/utils and original sys.path"
+  }
+}
