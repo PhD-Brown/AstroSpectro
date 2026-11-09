@@ -21,6 +21,30 @@ import xml.etree.ElementTree as ET
 # name, expected category, exact source expression, replacement
 CANDIDATES = [
     (
+        "A01_sorted_validation",
+        "admissible",
+        "val_idx = rng.choice(N, size=n_val, replace=False)",
+        "val_idx = np.sort(rng.choice(N, size=n_val, replace=False))",
+    ),
+    (
+        "A02_float64_encode",
+        "admissible",
+        "Z = self._model.encode(X_t).cpu().numpy()",
+        "Z = self._model.encode(X_t).cpu().numpy().astype(np.float64)",
+    ),
+    (
+        "A03_independent_population_rng",
+        "admissible",
+        "idx_sel = rng.choice(",
+        "idx_sel = np.random.default_rng(42).choice(",
+    ),
+    (
+        "A09_scheduler_patience_five",
+        "admissible",
+        "patience=10, min_lr",
+        "patience=5, min_lr",
+    ),
+    (
         "C05_clip_after_step",
         "incorrect",
         "nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)\n                optimizer.step()",

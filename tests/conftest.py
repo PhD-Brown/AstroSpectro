@@ -41,6 +41,7 @@ def autoencoder_real_module():
     previous_threads = torch.get_num_threads()
     previous_rng = torch.get_rng_state()
     previous_deterministic = torch.are_deterministic_algorithms_enabled()
+    previous_warn_only = torch.is_deterministic_algorithms_warn_only_enabled()
     torch.set_num_threads(1)
     torch.manual_seed(1729)
     torch.use_deterministic_algorithms(True)
@@ -52,7 +53,9 @@ def autoencoder_real_module():
         yield module
     finally:
         torch.set_rng_state(previous_rng)
-        torch.use_deterministic_algorithms(previous_deterministic)
+        torch.use_deterministic_algorithms(
+            previous_deterministic, warn_only=previous_warn_only
+        )
         torch.set_num_threads(previous_threads)
 
 

@@ -260,7 +260,7 @@ def test_arithmetic_missing_required_parameters(autoencoder_numeric_module, miss
 
 @pytest.mark.parametrize("count", [1, 23, 207])
 def test_latent_arithmetic_independent_barycentres_and_distances(
-    autoencoder_numeric_module, autoencoder_plotting, count
+    autoencoder_numeric_module, autoencoder_plotting, monkeypatch, count
 ):
     centres = np.array(
         [[1.0, 2.0], [4.0, -1.0], [8.0, 5.0], [-2.0, 7.0], [3.0, 9.0], [6.0, 12.0]]
@@ -293,23 +293,51 @@ def test_latent_arithmetic_independent_barycentres_and_distances(
         ignore_index=True,
     )
     y = np.r_[y, ["QSO", "STAR", "STAR", "STAR", "STAR"]]
-    rng = np.random.default_rng(42)
-    expected = np.array(
-        [
-            Z[
-                rng.choice(
-                    np.arange(i * count, (i + 1) * count),
-                    min(200, count),
-                    replace=False,
-                )
-            ].mean(axis=0)
-            for i in range(6)
-        ]
+    from math import fsum
+
+    keys = ["K_naine", "G_naine", "F_naine", "K_geante", "G_geante", "F_geante"]
+    eligible_groups = {
+        frozenset(range(i * count, (i + 1) * count)): key for i, key in enumerate(keys)
+    }
+    sampled = []
+    real_factory = np.random.default_rng
+
+    class ObservedGenerator:
+        def __init__(self, *args, **kwargs):
+            self.generator = real_factory(*args, **kwargs)
+
+        def choice(self, candidates, size=None, replace=True, **kwargs):
+            # Observe the actual selected subset; do not replay a shared RNG stream.
+            eligible = frozenset(np.asarray(candidates).tolist())
+            assert (
+                eligible in eligible_groups
+            ), "Population contains foreign or missing rows"
+            selected = self.generator.choice(
+                candidates, size=size, replace=replace, **kwargs
+            )
+            assert len(selected) == min(200, count)
+            assert len(set(selected)) == len(selected)
+            assert set(selected).issubset(eligible)
+            sampled.append((eligible_groups[eligible], np.asarray(selected).copy()))
+            return selected
+
+    monkeypatch.setattr(
+        autoencoder_numeric_module.np.random, "default_rng", ObservedGenerator
     )
     result = autoencoder_numeric_module.latent_arithmetic(Z, meta, y)
-    for key, value in zip(
-        ["K_naine", "G_naine", "F_naine", "K_geante", "G_geante", "F_geante"], expected
-    ):
+    assert {key for key, _ in sampled} == set(keys)
+    selected_by_key = dict(sampled)
+    expected = np.array(
+        [
+            [
+                fsum(float(Z[row, axis]) for row in selected_by_key[key])
+                / min(200, count)
+                for axis in range(2)
+            ]
+            for key in keys
+        ]
+    )
+    for key, value in zip(keys, expected):
         np.testing.assert_allclose(result["populations"][key], value, atol=1e-12)
     predictions = [
         expected[3] - expected[0] + expected[1],
@@ -322,9 +350,16 @@ def test_latent_arithmetic_independent_barycentres_and_distances(
         distance = np.sqrt(sum((predicted - target) ** 2))
         assert row["distance"] == pytest.approx(distance)
         assert row["ratio_pct"] == pytest.approx(100 * distance / reference)
+    sampled.clear()
     again = autoencoder_numeric_module.latent_arithmetic(Z, meta, y)
-    assert result["populations"] == again["populations"]
-    assert result["tests"] == again["tests"]
+    for key, selected in dict(sampled).items():
+        np.testing.assert_array_equal(np.sort(selected), np.sort(selected_by_key[key]))
+        np.testing.assert_allclose(
+            result["populations"][key], again["populations"][key], atol=1e-12
+        )
+    for original, repeated in zip(result["tests"], again["tests"]):
+        assert original["distance"] == pytest.approx(repeated["distance"])
+        assert original["ratio_pct"] == pytest.approx(repeated["ratio_pct"])
     assert result["fig"] is not None
 
 
