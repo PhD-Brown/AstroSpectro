@@ -1,0 +1,490 @@
+{
+  "phase": "all_proofs",
+  "git_head_at_run": "77775501562b90fb776746098d62a6fbca85212d",
+  "working_tree_at_run": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob_at_head": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/dimred/data_loader.py": {
+      "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+      "git_blob_at_head": "cf6eaa4cadac90b04a2960ef214fce38b216d61b"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob_at_head": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob_at_head": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+      "git_blob_at_head": "22caba53fbccb14cb45b8d95c7f1b751825d7a37"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+      "git_blob_at_head": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+      "git_blob_at_head": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793"
+    },
+    "tests/proofs_dimred_xgboost_bridge_review.py": {
+      "sha256_lf": "3456fd316caf5828265dc4c5a80a9ecd99a8f9070ba76b5307ffd9afd626d18d",
+      "git_blob_at_head": "e9961a5d2ef69a5b3d36a58ffcb8fcb28fadb972"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob_at_head": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "392d93fa74f16fd54cca841299133614b4d3b95de94007b1a31d76daac9bfb6d",
+      "git_blob_at_head": "4c7b26dbc1c500fa3c221201d050e60a2880abff"
+    },
+    "audit/check_m26_review_mutations.py": {
+      "sha256_lf": "d087e04da7921542c6042a9ea14db46834e2a19f5b4fd593c7703fd0a210d5f7",
+      "git_blob_at_head": "eb2581ce2ba53b62c9d01f57ce89b784b425862a"
+    }
+  },
+  "results": [
+    {
+      "name": "all_proof_baseline",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py"
+      ],
+      "patches": [],
+      "meaning": "all supplementary proofs on unchanged source",
+      "expected_fail": 13,
+      "expected_pass": 3,
+      "counts": {
+        "FAIL": 13,
+        "PASS": 3,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [],
+      "expectation_met": true,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 1,
+      "cases": [
+        {
+          "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (44.44444 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]"
+        },
+        {
+          "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (55.55556 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 9.0, 10.0]"
+        },
+        {
+          "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\nE   AssertionError: DataFrame are different\nE   \nE   DataFrame shape mismatch\nE   [left]:  (9, 3)\nE   [right]: (10, 3)"
+        },
+        {
+          "name": "test_shared_actual_loader_population_is_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 2]: -0.9534625892455922 (ACTUAL), 0.23836564731139806 (DESIRED)\nE   Max absolute difference among violations: 1.19182824\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628, -0.953463],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628,  0.238366],..."
+        },
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 0]: -2.375772569505217 (ACTUAL), 0.0819231920519042 (DESIRED)\nE   Max absolute difference among violations: 2.45769576\nE   Max relative difference among violations: 30.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-2.375773,  1.205628,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [ 0.081923,  1.205628,  0.238366],..."
+        },
+        {
+          "name": "test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:103: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    observation.compare(observation.inputs[0], observation.expected(selected))\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 1]: -0.29987700196467165 (ACTUAL), 0.0 (DESIRED)\nE   Max absolute difference among violations: 0.299877\nE   Max relative difference among violations: inf\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616, -0.299877,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  0.      ,  0.238366],..."
+        },
+        {
+          "name": "test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:100: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    assert set(query.loc[query.feature_alpha.notna(), \"obsid\"]).issubset(set(ids))\nE   assert False\nE    +  where False = <built-in method issubset of set object at 0x0000014AD384AF80>({np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...})\nE    +    where <built-in method issubset of set object at 0x0000014AD384AF80> = {19, 33, 104, 250, 6001, 6002, ...}.issubset\nE    +      where {19, 33, 104, 250, 6001, 6002, ...} = set(0     104\\n1      19\\n3      33\\n4     250\\n5    6001\\n6    6002\\n7    6003\\n8    6004\\n9    6005\\nName: obsid, dtype: int64)\nE    +    and   {np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...} = set(array([ 104,   19,  807,   33,  250, 6001, 6002, 6003, 6004]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "FAIL",
+          "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_complete_finite_preprocessing_is_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        259,
+        260,
+        261,
+        262,
+        265,
+        266,
+        267,
+        285,
+        286,
+        289,
+        290,
+        292,
+        297,
+        300,
+        301,
+        302,
+        309,
+        310,
+        311,
+        312,
+        317,
+        319,
+        320,
+        321,
+        322,
+        323,
+        324,
+        325,
+        326,
+        327,
+        328,
+        329
+      ],
+      "stdout": "FFF.FFFFFFFFFF..                                                         [100%]\n================================== FAILURES ===================================\n_ test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default] _\ntests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (44.44444 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]\n_ test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01] _\ntests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (55.55556 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 9.0, 10.0]\n_ test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal] _\ntests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\nE   AssertionError: DataFrame are different\nE   \nE   DataFrame shape mismatch\nE   [left]:  (9, 3)\nE   [right]: (10, 3)\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\u00e9 au minimum commun : 9\n_ test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta] _\ntests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 2]: -0.9534625892455922 (ACTUAL), 0.23836564731139806 (DESIRED)\nE   Max absolute difference among violations: 1.19182824\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628, -0.953463],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic_meta.json\n_ test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma] _\ntests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 0]: -2.375772569505217 (ACTUAL), 0.0819231920519042 (DESIRED)\nE   Max absolute difference among violations: 2.45769576\nE   Max relative difference among violations: 30.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-2.375773,  1.205628,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [ 0.081923,  1.205628,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic_meta.json\n__ test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:103: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    observation.compare(observation.inputs[0], observation.expected(selected))\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 1]: -0.29987700196467165 (ACTUAL), 0.0 (DESIRED)\nE   Max absolute difference among violations: 0.299877\nE   Max relative difference among violations: inf\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616, -0.299877,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  0.      ,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic_meta.json\n__ test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10] __\ntests\\proofs_dimred_xgboost_bridge_review.py:100: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    assert set(query.loc[query.feature_alpha.notna(), \"obsid\"]).issubset(set(ids))\nE   assert False\nE    +  where False = <built-in method issubset of set object at 0x0000014AD384AF80>({np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...})\nE    +    where <built-in method issubset of set object at 0x0000014AD384AF80> = {19, 33, 104, 250, 6001, 6002, ...}.issubset\nE    +      where {19, 33, 104, 250, 6001, 6002, ...} = set(0     104\\n1      19\\n3      33\\n4     250\\n5    6001\\n6    6002\\n7    6003\\n8    6004\\n9    6005\\nName: obsid, dtype: int64)\nE    +    and   {np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...} = set(array([ 104,   19,  807,   33,  250, 6001, 6002, 6003, 6004]))\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic_meta.json\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\u00e9 au minimum commun : 9\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1043\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-tyw9kmis\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n13 failed, 3 passed in 3.69s\n",
+      "stderr": ""
+    },
+    {
+      "name": "combined_admissible_control",
+      "scope": [
+        "tests/proofs_dimred_xgboost_bridge_review.py"
+      ],
+      "patches": [
+        [
+          "df_aligned[f] = 0.0",
+          "df_aligned[f] = np.nan"
+        ],
+        [
+          "X_pred_df = df_aligned[needed].fillna(0)",
+          "X_pred_df = df_aligned[needed].copy()"
+        ],
+        [
+          "    if len(df_aligned) != len(Z_umap):",
+          "    if not (len(df_aligned) == len(Z_umap) == len(y) == len(cluster_labels)):\n        raise ValueError(\"Observation alignment length mismatch\")\n    if \"id_echo\" in df_aligned and not np.array_equal(df_aligned[\"id_echo\"].to_numpy(), Z_umap[:, 0]):\n        raise ValueError(\"Observation identity mismatch\")\n    if len(df_aligned) != len(Z_umap):"
+        ],
+        [
+          "        proba = clf.model_pipeline.predict_proba(X_pred_df)",
+          "        proba = clf.model_pipeline.predict_proba(X_pred_df)\n        if (np.ndim(proba) != 2 or proba.shape[0] != len(X_pred_df)\n            or proba.shape[1] == 0 or not np.isfinite(proba).all()\n            or (proba < 0).any() or (proba > 1).any()\n            or not np.allclose(proba.sum(axis=1), 1)):\n            raise ValueError(\"Probability distribution invalid shape or values\")"
+        ]
+      ],
+      "meaning": "synthetic identity guard, trained preprocessing and output validation; not a production patch",
+      "expected_fail": 0,
+      "expected_pass": 16,
+      "counts": {
+        "FAIL": 0,
+        "PASS": 16,
+        "ERROR": 0,
+        "SKIP": 0
+      },
+      "assertion_failures_only": true,
+      "collection_matches_baseline": true,
+      "changed_sites_executed": [
+        [],
+        [
+          289
+        ],
+        [
+          249,
+          250,
+          251,
+          252,
+          253
+        ],
+        [
+          304,
+          305,
+          306,
+          307,
+          308,
+          309
+        ]
+      ],
+      "expectation_met": false,
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/proofs_dimred_xgboost_bridge_review.py",
+        "-p",
+        "m26_trace",
+        "--tb=short",
+        "--junitxml=result.xml",
+        "-W",
+        "error"
+      ],
+      "returncode": 0,
+      "cases": [
+        {
+          "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_shared_actual_loader_population_is_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_tensor_probabilities_require_refusal_not_flattening",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_valid_vectors_and_probabilities_are_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        },
+        {
+          "name": "test_complete_finite_preprocessing_is_positive_control",
+          "outcome": "PASS",
+          "detail": null
+        }
+      ],
+      "executed_bridge_lines": [
+        169,
+        170,
+        171,
+        172,
+        173,
+        180,
+        181,
+        186,
+        190,
+        191,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        210,
+        211,
+        218,
+        223,
+        224,
+        226,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        242,
+        243,
+        244,
+        245,
+        246,
+        249,
+        250,
+        251,
+        252,
+        253,
+        263,
+        264,
+        265,
+        266,
+        269,
+        270,
+        271,
+        289,
+        290,
+        293,
+        294,
+        296,
+        301,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310,
+        311,
+        312,
+        315,
+        316,
+        318,
+        319,
+        320,
+        321,
+        326,
+        328,
+        329,
+        330,
+        331,
+        332,
+        333,
+        334,
+        335,
+        336,
+        337,
+        338
+      ],
+      "stdout": "................                                                         [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-tyw9kmis\\result.xml -\n16 passed in 3.22s\n",
+      "stderr": ""
+    }
+  ]
+}

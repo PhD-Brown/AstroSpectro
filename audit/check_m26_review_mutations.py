@@ -142,12 +142,12 @@ def candidates(phase):
                 "changed placeholder still violates trained transformation",
             ),
             (
-                "preserve_all_missing_values",
-                PRESERVE_NAN,
+                "preserve_present_missing_values",
+                [(SCHEMA, "X_pred_df = df_aligned[needed].copy()")],
                 selection,
                 0,
                 3,
-                "complete missing-value passthrough to trained pipeline accepted",
+                "present NaNs pass to trained pipeline; absent-column policy separately exercised by full green control",
             ),
             (
                 "explicit_preprocessing_refusal",
@@ -230,7 +230,7 @@ def candidates(phase):
             ),
         ]
     if phase == "all_proofs":
-        changes = PRESERVE_NAN + [
+        changes = [(SCHEMA, "X_pred_df = df_aligned[needed].copy()")] + [
             (ALIGN, LENGTH_GUARD + IDENTITY_GUARD + ALIGN),
             (PROBA_LINE, PROBA_LINE + PROBA_GUARD),
         ]
@@ -288,6 +288,9 @@ def candidates(phase):
             + "\n".join("    " + line for line in prediction.splitlines())
             + """
     except ValueError as exc:
+        if not any(token in str(exc).lower() for token in
+                   ("unsupported features", "invalid class codes", "infinity", "too large")):
+            raise
         logger.error("Prediction features incompatible: %s", exc)
         return _empty_result()
 """
@@ -510,6 +513,11 @@ def main():
         "--phase", choices=["r1", "r2", "r3", "all_proofs", "green"], required=True
     )
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        help="Replay selected records with their unchanged-source positive baselines.",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     paths = [
@@ -544,9 +552,16 @@ def main():
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_bytes((root / name).read_bytes())
         (directory / "m26_trace.py").write_text(TRACE_PLUGIN, encoding="utf-8")
-        for name, changes, selection, want_fail, want_pass, meaning in candidates(
-            args.phase
-        ):
+        planned = candidates(args.phase)
+        if args.only:
+            assert set(args.only).issubset({c[0] for c in planned})
+            scopes = {tuple(c[2]) for c in planned if c[0] in args.only}
+            planned = [
+                c
+                for c in planned
+                if c[0] in args.only or (not c[1] and tuple(c[2]) in scopes)
+            ]
+        for name, changes, selection, want_fail, want_pass, meaning in planned:
             mutated = replace(source, changes)
             (directory / TARGET).write_text(mutated, encoding="utf-8")
             outcome = execute(directory, selection)
@@ -608,6 +623,7 @@ def main():
     assert git(root, "rev-parse", "HEAD") == head
     payload = {
         "phase": args.phase,
+        "selected_records": args.only,
         "git_head_at_run": head,
         "working_tree_at_run": dirty,
         "python": sys.version,
