@@ -3,6 +3,63 @@
 2026-11-09 · Refs #43 — revised for the second independent Claude review.
 Tests and audit only. Independent Claude review and human merge decision required.
 
+## Targeted correction after Claude's second review (2026-11-09)
+
+Scope: [second review5833314781](https://github.com/PhD-Brown/AstroSpectro/pull/91#pullrequestreview-5833314781),
+R1/R3/R5 and documentation R6 only; start at clean local/remote b3988eb.
+Same branch and Draft PR91. The first-revision results below remain historical;
+this section supersedes its dtype-derived tolerance claim.
+
+| Review | Final correction and evidence | Remaining limit |
+|---|---|---|
+| R1 | Four internally filtered green cases admit a relevant identity refusal, or require exact feature values, predicted labels, Z, supplied labels and clusters on success. Unchanged populations still require success, including actual-loader shared. | G1 does not choose an ID transport or filtering strategy. External equal-size permutations remain invisible to the API. |
+| R3 | Domain and cause are checked independently of word order. Generic invalid-column wording is insufficient; the specified insertion/index fault is rejected even wrapped in schema wording.24 isolated fake-case tests cover ValueError and logged empty structured refusals. | Bounded M2.6 diagnostic helper, not a general exception classifier or proof of every future validator. No new exception class imposed. |
+| R5 | Transformed-value tolerance capped at8*eps(float32), independently of produced precision. Float64 retains a stricter arithmetic allowance (absolute floor2e-14 for these30-row fixtures). Seven isolated numeric cases include exact float16 acceptance. | A lossy result cannot enlarge the bound itself; dtype names alone do not determine acceptance. |
+| R6 | An internal error unrelated to data, schema or prediction validity must not be misleadingly presented as a relevant scientific refusal. | This does not decide between propagating an exception and returning a structured failure. Confidence=max(proba) versus P(displayed class), error policy, NaN policy and ID transport remain human decisions. |
+
+No production behavior or historical archive changed. The runner's final phase
+replays only the second-review controls, not the old mutation campaign. No new
+red oracle or production defect required another archive.
+
+### Final targeted verification
+
+Test/runner inputs committed at **aaa32133cc52627cb1b262720cad818c1f72bfd3**,
+pushed with matching remote SHA. Later commits add only this report and result
+ledgers. Bridge/source remain base18302e68, blob eab849e4 (352 lines).
+
+[Targeted controls](m26_final_review_controls_results.json) record25 executions
+(including positive/red baselines), all with expected outcomes, matching
+collection, executed patch sites, assertion-only failures and no ERROR/SKIP.
+The proof file is reconstructed explicitly from unchanged fe25d1a; these runs
+combine its proof bytes with the current corrected helper, not a rewrite of
+the archived environment.
+
+| Scope / candidate | Actual result |
+|---|---|
+| Complete green baseline, G1, float32, float64, reordered schema diagnostic | **102 PASS each**, with `-W error` |
+| Actual-loader R1 baseline / length-only refusal / G1 | **3 FAIL/1 PASS**, **2 FAIL/2 PASS**, **4 PASS** respectively; S1/S2 still reject length-only refusal, shared still succeeds |
+| All16 proofs: production / G1 / combined admissible control | **13 FAIL/3 PASS**, **9 FAIL/7 PASS**, **16 PASS**; G1 leaves #89/#90 defects exposed |
+| R2 beta/gamma + finite positive: baseline / wrong train mean / trained NaN passthrough | **2 FAIL/1 PASS**, **2 FAIL/1 PASS**, **3 PASS**; wrong medians fail assert_allclose |
+| Same R2 scope, NaN passthrough then float16 | **3 numerical FAIL**, cap rtol/atol=9.5367431640625e-7 |
+| R3 seven-case baseline; nan_to_num, vector cropping, tensor flattening | **6 FAIL/1 PASS each**; boundary guards together **7 PASS** |
+| Real-only baseline / lossy float16 / same-class row swap / renamed column permutation / relative1e-6 perturbation | **5 PASS** baseline; **3 numerical FAIL/2 PASS each** changed case |
+
+[Final validation ledger](m26_final_review_validation_results.json) records
+Windows/Python3.11.9 and package versions, commands, stdout/stderr, committed
+input blobs and effective LF hashes. M2.6: **102 PASS**, including24 isolated
+diagnostic cases,7 isolated precision cases and5 real bridge integrations.
+Normal and importlib suites: **518 PASS/62 deselected/7 existing Gaia warnings**
+each. Black39 files, Ruff, pip check and diff check pass. Production/config/
+notebooks diff is empty; bridge hash unchanged; all three archives remain
+ancestors and historical result JSONs unchanged. The first ledger capture hit
+a console cp1252 error while printing Black output; the successful capture
+sets UTF-8 and saves each result incrementally. No test failure was involved.
+
+The final GitHub SHA/CI result and review replies are linked in PR91 and the
+single #43 handoff. PR remains Draft; R1/R3/R5 threads remain open for a short
+Claude verification of these points and the R6 note, then human decision.
+No full first/second review, old mutation campaign or M2.7 is requested.
+
 ## Revision after Claude's first review R1–R7
 
 Read the complete [review 5831007444](https://github.com/PhD-Brown/AstroSpectro/pull/91#pullrequestreview-5831007444),

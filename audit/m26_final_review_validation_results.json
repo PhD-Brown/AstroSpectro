@@ -1,0 +1,211 @@
+{
+  "git_head_at_run": "aaa32133cc52627cb1b262720cad818c1f72bfd3",
+  "working_tree_at_run": "M audit/M26_XGBOOST_BRIDGE.md\n?? audit/m26_final_review_controls_results.json",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2",
+    "pytest-socket": "0.7.0",
+    "black": "24.4.2",
+    "ruff": "0.5.0"
+  },
+  "inputs": {
+    "tests/conftest.py": {
+      "sha256_lf": "2655105bf02bab19724c938293c6e2070c5019382d3c2e3b29876be7af277356",
+      "git_blob": "4dd349af36064eafd8933d26661603a9fa378122"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "b483a87785df12e96cf8e4e8062a40a6b209001dbfa4ebf307aeb534b954f2e9",
+      "git_blob": "e625daf816eda87f305b23ea9bc944685a7ca806"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+      "git_blob": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793"
+    },
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "audit/check_m26_review_mutations.py": {
+      "sha256_lf": "6b1f18057ab0c434089c482a82f916288e5dd661409b02a19504e7728e3a56ec",
+      "git_blob": "777d2a56e389f5443a266a10f675a89f4def2f33"
+    }
+  },
+  "results": [
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py",
+        "-W",
+        "error"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 70%]\n..............................                                           [100%]\n102 passed in 3.59s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 13%]\n........................................................................ [ 27%]\n........................................................................ [ 41%]\n........................................................................ [ 55%]\n........................................................................ [ 69%]\n........................................................................ [ 83%]\n........................................................................ [ 97%]\n..............                                                           [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n518 passed, 62 deselected, 7 warnings in 12.50s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--import-mode=importlib"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 13%]\n........................................................................ [ 27%]\n........................................................................ [ 41%]\n........................................................................ [ 55%]\n........................................................................ [ 69%]\n........................................................................ [ 83%]\n........................................................................ [ 97%]\n..............                                                           [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n518 passed, 62 deselected, 7 warnings in 12.62s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black",
+        "--check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m26_mutations.py",
+        "audit/check_m26_review_mutations.py"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "All done! \u2728 \ud83c\udf70 \u2728\n39 files would be left unchanged.\n"
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m26_mutations.py",
+        "audit/check_m26_review_mutations.py"
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "returncode": 0,
+      "stdout": "No broken requirements found.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "18302e68cf25289873aa170a27834d99b516f376",
+        "--",
+        "src",
+        "notebooks",
+        "pyproject.toml",
+        "requirements",
+        "requirements.txt",
+        ".github/workflows"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "hash-object",
+        "src/dimred/xgboost_bridge.py"
+      ],
+      "returncode": 0,
+      "stdout": "eab849e4bb80be03a50ebc9128d2737530262358\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--name-only",
+        "b3988ebd8adf6711d074d9e8b9e3ff9c2955c2c7",
+        "--",
+        "audit/*results.json"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "0da758111daaf7ba33283c1462ec1fb1368c6cff",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "7b32abbd1881a487c0ea1bcc7355883e5797ea82",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "fe25d1a39e83f46b743e5524cf5b70d2169d6183",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "recording_note": "Previous capture process failed while printing Black Unicode output under cp1252, after both full pytest suites passed. This retry sets UTF-8 and persists each result.",
+  "git_head_after": "aaa32133cc52627cb1b262720cad818c1f72bfd3"
+}
