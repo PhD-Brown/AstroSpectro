@@ -13,6 +13,113 @@ import pytest
 
 
 @pytest.fixture
+def bridge_module(monkeypatch):
+    """Execute the actual bridge source while restoring its sys.path changes."""
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    path = Path(__file__).resolve().parents[1] / "src/dimred/xgboost_bridge.py"
+    spec = importlib.util.spec_from_file_location("m26_bridge", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def bridge_case(tmp_path, monkeypatch, bridge_module):
+    """Provide real temporary CSV/discovery and a recording classifier boundary."""
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location("m26_utils", root / "src/utils.py")
+    utilities = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(utilities)
+    monkeypatch.setitem(sys.modules, "utils", utilities)
+
+    class Spy:
+        def __init__(self):
+            self.predict_inputs = []
+            self.proba_inputs = []
+            self.predict_fn = lambda X: X["feature_alpha"].to_numpy(dtype=int) % 3
+            self.proba_fn = lambda X: np.array(
+                [[0.1, 0.2, 0.7], [0.55, 0.25, 0.2], [0.1, 0.8, 0.1]]
+            )[X["feature_alpha"].to_numpy(dtype=int) % 3]
+
+        def predict(self, X):
+            self.predict_inputs.append(X.copy(deep=True))
+            return self.predict_fn(X)
+
+        def predict_proba(self, X):
+            self.proba_inputs.append(X.copy(deep=True))
+            return self.proba_fn(X)
+
+    spy = Spy()
+    encoder = types.SimpleNamespace(
+        classes_=np.array(["G", "M", "F"]),
+        inverse_transform=lambda codes: np.array(["G", "M", "F"])[codes],
+    )
+    classifier = types.SimpleNamespace(
+        feature_names_used=["feature_gamma", "feature_alpha", "feature_beta"],
+        class_labels=["G", "M", "F"],
+        label_encoder=encoder,
+        model_pipeline=spy,
+    )
+    loaded = []
+
+    def load(path):
+        loaded.append(str(path))
+        return classifier
+
+    package = types.ModuleType("pipeline")
+    package.__path__ = []
+    module = types.ModuleType("pipeline.classifier")
+    module.SpectralClassifier = types.SimpleNamespace(load_model=load)
+    monkeypatch.setitem(sys.modules, "pipeline", package)
+    monkeypatch.setitem(sys.modules, "pipeline.classifier", module)
+    models = tmp_path / "models"
+    processed = tmp_path / "processed"
+    models.mkdir()
+    processed.mkdir()
+    model = models / "spectral_classifier_fixture.pkl"
+    model.write_text("not deserialized: spy boundary", encoding="utf-8")
+    frame = pd.DataFrame(
+        {
+            "obsid": [104, 19, 807, 33, 250],
+            "feature_alpha": [3, 10, 8, 23, 4],
+            "feature_beta": [101, 31, 89, 17, 53],
+            "feature_gamma": [3, 8, 1, 6, 4],
+            "snr_r": [10.0, 11.0, 20.0, 40.0, 50.0],
+        }
+    )
+    csv = processed / "features_fixture.csv"
+    frame.to_csv(csv, index=False)
+    args = {
+        "paths": {
+            "MODELS_DIR": models,
+            "PROCESSED_DIR": processed,
+            "SRC_DIR": root / "src",
+        },
+        "features_stem": "features_fixture",
+        "Z_umap": np.column_stack((frame["obsid"], [-2, 8, -9, 3, 7])),
+        "y": np.array(["true104", "true19", "true807", "true33", "true250"]),
+        "cluster_labels": np.array([7, -1, 2, 9, 1]),
+    }
+
+    def run(**overrides):
+        return bridge_module.load_and_predict(**(args | overrides))
+
+    return types.SimpleNamespace(
+        module=bridge_module,
+        classifier=classifier,
+        spy=spy,
+        args=args,
+        frame=frame,
+        csv=csv,
+        model=model,
+        loaded=loaded,
+        run=run,
+        import_module=module,
+        utils=utilities,
+    )
+
+
+@pytest.fixture
 def autoencoder_numeric_module(monkeypatch):
     """Execute source with inert Torch names; never execute neural operations.
 
