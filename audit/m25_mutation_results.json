@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "git_head_at_run": "47c56c1da7a07d59f295d2689e0b907b96b1c2f1",
-  "working_tree_at_run": "?? audit/M25_AUTOENCODER.md\n?? audit/M25_PROOFS.md\n?? audit/check_m25_proof_controls.py\n?? audit/m25_proof_control_results.json\n?? audit/m25_proof_results.json\n?? audit/m25_proofs.xml",
+  "git_head_at_run": "1eb0c0b121164dace4b2ad0cd31feb6262c93873",
+  "working_tree_at_run": "M audit/M25_AUTOENCODER.md",
   "inputs_sha256": {
     "src/dimred/__init__.py": "5993ff7b6754387993336e83aed7a4530161d3c793dc8e5cfc64ef066852b83d",
     "src/dimred/autoencoder.py": "0dd5b83d7aac55e45ebe8455a10749a8e8342d78460ce159b8b000664c3a9082",
@@ -13,10 +13,10 @@
     "src/dimred/run_reporter.py": "fe904362a53a19dbd8d99c51256b225cfc1a4c25a34a8d814e23b852dd49580f",
     "src/dimred/xgboost_bridge.py": "40b5628d2eb25e07881ad524fc123a40ce28c3e2d2b1b74d1a7376365ca97dce",
     "tests/conftest.py": "f097e7637fb5b599adab41abfdfc331609c97bf5784d7efe59a6827e89d3192c",
-    "tests/test_dimred_autoencoder.py": "e971e8c2b4f21b570806ea636f2035098bb633db8cc63cfc816876fba24cdbec",
+    "tests/test_dimred_autoencoder.py": "feed297f9d3104a602f19feca9f616d8c0da28aee02deddc028e401aadab3423",
     "tests/test_dimred_autoencoder_real.py": "d1e9148e3c2f7567f1282327221b843317cb4c006d0032fb2e249f16462192b6",
     "pyproject.toml": "8cd8530992cee33f36be6df21499ff57ada45163eae6d76f5537630fc089bc00",
-    "audit/check_m25_mutations.py": "ac2e6fa289d243628b1cdc78cde58984fa0f7c15e8b6a089393624061bd77e39"
+    "audit/check_m25_mutations.py": "478414eb58cdc6b5eb815593d5be604b220fb2f0aea405a4ca163882654b627d"
   },
   "source_blob": "b06bfa75a2e0a8b132d0a0fb8e0a899b6afed0ad",
   "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
@@ -151,7 +151,7 @@
       "failed": [
         {
           "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",
-          "message": "assert False\n +  where False = all(<generator object test_inference_values_no_grad_eval_cpu_and_input_preservation.<locals>.<genexpr> at 0x0000021952061F20>)"
+          "message": "assert False\n +  where False = all(<generator object test_inference_values_no_grad_eval_cpu_and_input_preservation.<locals>.<genexpr> at 0x000001F64DA27440>)"
         },
         {
           "name": "test_real_dropout_and_batchnorm_inference_stability",
@@ -175,15 +175,15 @@
       "failed": [
         {
           "name": "test_early_stopping_restores_actual_best_weights[2-4]",
-          "message": "assert 4.0 == 2.0\n +  where 4.0 = <built-in method item of Parameter object at 0x000002D9CF6CF1B0>()\n +    where <built-in method item of Parameter object at 0x000002D9CF6CF1B0> = Parameter containing:\\ntensor(4., requires_grad=True).item\n +      where Parameter containing:\\ntensor(4., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+          "message": "assert 4.0 == 2.0\n +  where 4.0 = <built-in method item of Parameter object at 0x0000022BC6930230>()\n +    where <built-in method item of Parameter object at 0x0000022BC6930230> = Parameter containing:\\ntensor(4., requires_grad=True).item\n +      where Parameter containing:\\ntensor(4., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
         },
         {
           "name": "test_early_stopping_restores_actual_best_weights[0-6]",
-          "message": "assert 6.0 == 2.0\n +  where 6.0 = <built-in method item of Parameter object at 0x000002D9D21231B0>()\n +    where <built-in method item of Parameter object at 0x000002D9D21231B0> = Parameter containing:\\ntensor(6., requires_grad=True).item\n +      where Parameter containing:\\ntensor(6., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+          "message": "assert 6.0 == 2.0\n +  where 6.0 = <built-in method item of Parameter object at 0x0000022BCFFA7B10>()\n +    where <built-in method item of Parameter object at 0x0000022BCFFA7B10> = Parameter containing:\\ntensor(6., requires_grad=True).item\n +      where Parameter containing:\\ntensor(6., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
         },
         {
           "name": "test_early_stopping_restores_actual_best_weights[1-3]",
-          "message": "assert 3.0 == 2.0\n +  where 3.0 = <built-in method item of Parameter object at 0x000002D9CF6CDA40>()\n +    where <built-in method item of Parameter object at 0x000002D9CF6CDA40> = Parameter containing:\\ntensor(3., requires_grad=True).item\n +      where Parameter containing:\\ntensor(3., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+          "message": "assert 3.0 == 2.0\n +  where 3.0 = <built-in method item of Parameter object at 0x0000022BC6930E60>()\n +    where <built-in method item of Parameter object at 0x0000022BC6930E60> = Parameter containing:\\ntensor(3., requires_grad=True).item\n +      where Parameter containing:\\ntensor(3., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
         }
       ],
       "errors": [],
@@ -199,15 +199,15 @@
       "failed": [
         {
           "name": "test_early_stopping_restores_actual_best_weights[2-4]",
-          "message": "assert 4.0 == 2.0\n +  where 4.0 = <built-in method item of Parameter object at 0x000002454F929590>()\n +    where <built-in method item of Parameter object at 0x000002454F929590> = Parameter containing:\\ntensor(4., requires_grad=True).item\n +      where Parameter containing:\\ntensor(4., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+          "message": "assert 4.0 == 2.0\n +  where 4.0 = <built-in method item of Parameter object at 0x000001C8BF387890>()\n +    where <built-in method item of Parameter object at 0x000001C8BF387890> = Parameter containing:\\ntensor(4., requires_grad=True).item\n +      where Parameter containing:\\ntensor(4., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
         },
         {
           "name": "test_early_stopping_restores_actual_best_weights[0-6]",
-          "message": "assert 6.0 == 2.0\n +  where 6.0 = <built-in method item of Parameter object at 0x00000245469A6F30>()\n +    where <built-in method item of Parameter object at 0x00000245469A6F30> = Parameter containing:\\ntensor(6., requires_grad=True).item\n +      where Parameter containing:\\ntensor(6., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+          "message": "assert 6.0 == 2.0\n +  where 6.0 = <built-in method item of Parameter object at 0x000001C8BEEAF610>()\n +    where <built-in method item of Parameter object at 0x000001C8BEEAF610> = Parameter containing:\\ntensor(6., requires_grad=True).item\n +      where Parameter containing:\\ntensor(6., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
         },
         {
           "name": "test_early_stopping_restores_actual_best_weights[1-3]",
-          "message": "assert 3.0 == 2.0\n +  where 3.0 = <built-in method item of Parameter object at 0x00000245462FE670>()\n +    where <built-in method item of Parameter object at 0x00000245462FE670> = Parameter containing:\\ntensor(3., requires_grad=True).item\n +      where Parameter containing:\\ntensor(3., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+          "message": "assert 3.0 == 2.0\n +  where 3.0 = <built-in method item of Parameter object at 0x000001C8CA81D4A0>()\n +    where <built-in method item of Parameter object at 0x000001C8CA81D4A0> = Parameter containing:\\ntensor(3., requires_grad=True).item\n +      where Parameter containing:\\ntensor(3., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
         }
       ],
       "errors": [],
@@ -451,15 +451,15 @@
       "failed": [
         {
           "name": "test_architecture_parameter_count_and_gradients[3-hidden0-1]",
-          "message": "assert 87 == 84\n +  where 87 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001EE51CB0A00>)"
+          "message": "assert 87 == 84\n +  where 87 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001D9522706C0>)"
         },
         {
           "name": "test_architecture_parameter_count_and_gradients[1-hidden1-3]",
-          "message": "assert 35 == 32\n +  where 35 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001EE4D60B920>)"
+          "message": "assert 35 == 32\n +  where 35 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001D94DBC79F0>)"
         },
         {
           "name": "test_architecture_parameter_count_and_gradients[2-hidden2-1]",
-          "message": "assert 10 == 7\n +  where 10 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001EE46234EE0>)"
+          "message": "assert 10 == 7\n +  where 10 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001D9467DEDC0>)"
         },
         {
           "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",

@@ -21,7 +21,7 @@ Historical Draft statements in older matrices are not current merge status.
 No previous dedicated AE tests existed. Previous tests bypassed the defective
 facade for unrelated dimred modules; they did not validate an autoencoder.
 
-G = `tests/test_dimred_autoencoder.py` (29 cases, no installed Torch needed).
+G = `tests/test_dimred_autoencoder.py` (31 cases, no installed Torch needed).
 R = `tests/test_dimred_autoencoder_real.py` (29 optional CPU cases).
 A = separate red/observation archive, linked in the delivery ledger below.
 G executes the complete source with **inert import-only Torch names** to make
@@ -71,7 +71,7 @@ feature names, physical units or scaler provenance is built into the AE API.
 | `load`715–752 | Torch required; CPU map, `weights_only=False`; reconstructs architecture, strict weights, eval; optional history/time; chosen device. | R own local trusted payloads: missing/corrupt/incomplete/shape/weights refusal; optional+extra metadata; exact outputs/state PASS I, AP CPU. | Static trust-boundary risk: unrestricted pickle; only locally created payloads loaded. No malicious payload/exploit test. No universal safe-load claim. GPU transfer/other versions NA. |
 | `_check_fitted`758–763 | RuntimeError if `_model is None`. | G encode/decode/reconstruct/save before model PASS U, AP initial guard. | A failed fit can pass guard; preserve or invalidate state remains open. |
 | `__repr__`765–768 | Displays D→hidden→L; no training/scientific guarantee. | Read/statical inventory PA; no brittle formatting test. | Does not attest actual parameters or fit success. |
-| `tester_candidat`774–1013 | Cast/atleast2d raw row; reference scaler or raw-copy fallback; encode/reconstruct/MSE; nearest50 Euclidean neighbors; vote excludes−1; fixed heuristic thresholds. Creates3panel figure, show(), optional save. Returns z,mse,cluster,verdict,scaled/recon. | G actual StandardScaler and controlled AE boundary, nontrivial residual MSE5, declared feature-bar order, no scaler, noise-only, noise-majority, noncontiguous labels, <50 and scrambled120row nearest-neighbor oracle PASS U/I/P, AP calculations. | AE stub does not validate neural inference (R does separately). No raw feature identity/order detection beyond caller precondition. Equal-size permutations undetectable; ties not scientifically defined. Metadata/y arguments currently unused; teff optional plotting. Save export, glyphs/layout/pixel rendering not exercised; plt.show suppressed/Agg; no claim of figure layout quality. Fixed.97/3 are not measured quantiles of arbitrary datasets. |
+| `tester_candidat`774–1013 | Cast/atleast2d raw row; reference scaler or raw-copy fallback; encode/reconstruct/MSE; nearest50 Euclidean neighbors; vote excludes−1; fixed heuristic thresholds. Creates3panel figure, show(), optional save. Returns z,mse,cluster,verdict,scaled/recon. | G actual StandardScaler and controlled AE boundary, nontrivial residual MSE5, declared feature-bar order, no scaler, noise-only, noise-majority, noncontiguous labels, <50 and scrambled120row nearest-neighbor oracle PASS U/I/P, AP calculations. | AE stub does not validate neural inference (R does separately). No raw feature identity/order detection beyond caller precondition. Equal-size permutations undetectable; ties not scientifically defined. Metadata/y arguments currently unused; teff optional plotting. Teff finite mask and actual tmp_path PNG export tested; plt.show suppressed/Agg. Glyph/layout/pixel quality unvalidated. Fixed.97/3 are not measured quantiles of arbitrary datasets. |
 | `latent_arithmetic`1016–1233 | Reads Gaia Teff/logg columns, STAR finite mask; selects6 windows; returns populations,tests,fig; analogies/Euclidean distances/reference-ratio with denominator floor1e−8; optional save/show. | G 1/23/207 rows per group, asymmetric positions+offsets,2analogies, independent norms, excluded QSO/NaN/outside rows, same-seed resampling, absent populations/columns PASS U/I/P, AP calculations. | Positional Z/meta/y must correspond; no object IDs. <20 only warning, not exclusion. Zero/near-zero reference ratio floor is uncalibrated policy, PA. Latent axis metric/nonidentifiability and calibrated astrophysical interpretation NA. No green verdict/taxonomy threshold asserted. |
 | Nested `select_pop`1056–1080 | Half-open Teff/logg windows, max200 without replacement using shared local RNG42; returns mean and total qualifying count; absent→None,0; prints warning/count/2coordinates. | G first-window lower limits, excluded upper/outside, sampling cap207→200 and means, deterministic repeat PASS U/P, AP selected examples. | Total found count vs sampled200 not returned in public populations; numeric count/print formatting not frozen. Nullable/misaligned meta/y, nonfinite Z,1D latent visualization PA. |
 
@@ -86,7 +86,8 @@ absolute tolerances1e−14/1e−15 for small arithmetic; Torch's hand-set binary
 weights/inputs yield exact float32 values. Adam first-step tolerance2e−7 and
 MSE1e−6 allow float32 rounding, not a trained-loss target.
 
-Parameter count per affine path with widths d0..dk is Σ(di*di+1+di+1), plus
+Parameter count per affine path is the sum of `(width_in * width_out + width_out)`
+over consecutive widths d0..dk, plus
 2Σ(hidden widths) for trainable BN scale/bias. BN running mean/variance and
 num_batches_tracked are buffers, verified in the checkpoint roundtrip but
 excluded from trainable counts. G's geometry/scientific helpers use controlled
@@ -143,7 +144,8 @@ performance superiority to PCA**. Correct cautious prose remains admissible.
 
 ## Delivery ledger
 
-Execution inputs: snapshot `47c56c1` (preliminary snapshot0328a99 also preserved).
+Initial execution inputs: snapshot `47c56c1` (preliminary0328a99 preserved).
+Final green-suite/mutation inputs after two export tests: snapshot `1eb0c0b`.
 The mutation JSON records actual input hashes, source blob, HEAD and working
 tree status. Preflight harness failures (missing copied loader), two interrupted
 pilot runs and the initial plotting backend error are development checks,
@@ -195,8 +197,8 @@ The archive stays an ancestor of integration and its ordinary merge history.
 ### Mutation campaign and positive controls
 
 Run `python audit/check_m25_mutations.py` with the isolated CPU interpreter.
-[Machine-readable results](m25_mutation_results.json) record snapshot
-**47c56c1da7a07d59f295d2689e0b907b96b1c2f1**, all input local-byte SHA256
+[Machine-readable results](m25_mutation_results.json) record the final input
+snapshot **1eb0c0b** (full SHA in JSON), all input local-byte SHA256
 hashes, source Git blob, platform/Torch and actual dirty/untracked status.
 CRLF local-byte hashes are not Git blob IDs. Before/after hashes agree.
 No input file changed during this completed campaign; the preliminary runs
@@ -204,8 +206,8 @@ were interrupted before this snapshot and are not claimed as evidence.
 
 Each trial copied all9dimred sources, conftest, G/R/config/script into a unique
 temporary directory and ran **56 tests**. Two independent fresh-process import
-tests are explicitly excluded from replay with `-k` to avoid redundant imports;
-both are executed in the normal suites. No collection/fixture/import errors,
+tests and two PNG exports are explicitly excluded from replay with `-k` to avoid
+redundant import/render work; all four execute in the normal suites. No collection/fixture/import errors,
 skips or missing cases are classified as kills.
 
 **33 incorrect candidates KILLED /0 SURVIVED /0 INCONCLUSIVE**. Covered sites:
@@ -235,13 +237,14 @@ Python3.11.9, Windows10build26300 AMD64, NumPy2.4.6, pandas3.1.1,
 sklearn1.9.1, pytest8.4.2, Black24.4.2, Ruff0.5.0. Full optional fixture
 restores RNG/CPU-thread/determinism state after each test.
 
-| Actual command / interpreter | Result at unchanged test inputs47c56c1 |
+| Actual command / interpreter | Result (green inputs1eb0c0b; archived proofs47c56c1) |
 |---|---|
-| Fast `python -m pytest -q tests/test_dimred_autoencoder.py` |29PASS (also in reverse order with `-W error`) |
-| Fast `python -m pytest -q` |414PASS/58deselected/7existing Gaia warnings |
-| Fast `python -m pytest -q --import-mode=importlib` |414PASS/58deselected/7same warnings |
-| Fast `python -m pytest -q -m 'integration and not slow'` |55PASS/417deselected |
+| Fast `python -m pytest -q tests/test_dimred_autoencoder.py` |31PASS (normal/reverse order, `-W error`) |
+| Fast `python -m pytest -q` |416PASS/58deselected/7existing Gaia warnings |
+| Fast `python -m pytest -q --import-mode=importlib` |416PASS/58deselected/7same Gaia warnings |
+| Fast `python -m pytest -q -m 'integration and not slow'` |57PASS/417deselected |
 | CPU `python -m pytest -q -m slow tests/test_dimred_autoencoder_real.py` |29PASS; normal, importlib and reverse order |
+| Fast explicit optional CPU file (`-m slow`, no Torch installed) |29SKIP,0FAIL; these skips are not real-network validation |
 | CPU mutation replay |33KILLED,6positive controls+baseline PASS;56tests per trial; PYTHONHASHSEED7 |
 | CPU explicit archived proofs |11FAIL/14PASS as classified above,12warnings; identical replay |
 | CPU archived oracle controls |7PASS |
@@ -250,14 +253,22 @@ restores RNG/CPU-thread/determinism state after each test.
 | `python -m pip check`, both interpreters; `git diff --check` |PASS |
 
 Earlier exploratory full optional-environment importlib run412PASS used27G
-cases before the noise-majority parametrization; it is not the final414count.
+cases before the noise-majority parametrization;414PASS used29G before export
+tests. These are historical, not the final416count.
 The seven fast-suite warnings are pre-existing `gaia_crossmatcher.py:1210`
 Pandas4Warning. Optional M2.5 CPU tests are explicitly `slow`+`integration`,
 so the unchanged official CI **does not execute them**. Without Torch they
 skip when explicitly selected, rather than impersonating real execution.
 
-Final integration head, Draft PR, hosted CI run/SHA and handoff are recorded in
-the linked PR and #43 after the last push; this file does not fabricate a
+First hosted [CI42540318386](https://github.com/PhD-Brown/AstroSpectro/actions/runs/42540318386)
+completed successfully at headba9f6d6 (control merge1e6222a), before the two PNG
+tests: Linux/Python3.11.18,411PASS/3WindowsSKIP/58deselected/7Gaia warnings;
+pip check, Black35files and Ruff PASS. Job logs were read. This is historical
+CI for that head, not final-head confirmation.
+
+Final integration head, [Draft PR87](https://github.com/PhD-Brown/AstroSpectro/pull/87),
+hosted CI run/SHA and handoff are recorded in PR87 and #43 after the last push;
+this file does not fabricate a
 self-referential commit hash or a hosted result before that run exists.
 
 ### Residual limits and review questions
@@ -265,6 +276,10 @@ self-referential commit hash or a hosted result before that run exists.
 No real astrophysical evaluation, final held-out catalog, GPU, full notebook
 execution, cross-version/device checkpoint, filesystem interruption/permission,
 large-batch memory measurement, visual-layout QA, line coverage or real W&B.
+Both diagnostic exports write actual synthetic PNGs in tmp_path and check
+the PNG signature. Candidate Teff scatter checks finite-only coordinates and
+color values. Only missing-font-glyph warnings are filtered during that export;
+pixel aesthetics/font completeness/layout remain outside the numeric checks.
 Further input-policy cases remain PA as marked in the inventory. No residual
 is silently converted into a green requirement or claimed covered by a mock.
 
