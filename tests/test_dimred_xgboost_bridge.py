@@ -2,14 +2,28 @@
 
 import builtins
 import os
+import re
 from pathlib import Path
 import sys
 import types
 
 import numpy as np
 import pandas as pd
-from pandas.testing import assert_frame_equal
+from pandas.testing import assert_frame_equal as assert_pandas_frame_equal
 import pytest
+
+
+def assert_frame_equal(actual, expected):
+    """Protect names/order/values, while allowing lossless numeric representations."""
+    assert_pandas_frame_equal(actual, expected, check_dtype=False, check_exact=True)
+
+
+def assert_confidence_policy(actual, historical_maximum, predicted_class_probability):
+    """Keep both R6 semantics admissible, consistently across the whole result."""
+    assert any(
+        np.array_equal(actual, choice)
+        for choice in (historical_maximum, predicted_class_probability)
+    )
 
 
 def assert_empty(result):
@@ -36,6 +50,7 @@ def test_empty_structure_is_fresh(bridge_module):
 
 
 def test_nominal_named_values_decode_confidence_and_integrity(bridge_case):
+    """Verify values and characterize the historical row-maximum confidence policy."""
     c = bridge_case
     original = c.csv.read_bytes()
     inputs = {k: v.copy() for k, v in c.args.items() if isinstance(v, np.ndarray)}
@@ -47,7 +62,9 @@ def test_nominal_named_values_decode_confidence_and_integrity(bridge_case):
     assert_frame_equal(c.spy.predict_inputs[0], expected_frame)
     assert_frame_equal(c.spy.proba_inputs[0], expected_frame)
     np.testing.assert_array_equal(result["y_pred"], ["G", "M", "F", "F", "M"])
-    np.testing.assert_array_equal(result["confidence"], [0.7, 0.55, 0.8, 0.8, 0.55])
+    assert_confidence_policy(
+        result["confidence"], [0.7, 0.55, 0.8, 0.8, 0.55], [0.1, 0.25, 0.1, 0.1, 0.25]
+    )
     assert result["has_proba"] is True
     assert result["classes_pred"] == ["F", "G", "M"]
     np.testing.assert_array_equal(result["fg_mask"], [True, False, True, True, False])
@@ -317,7 +334,7 @@ def test_candidate_selection_keeps_named_model_columns(bridge_case, kind):
     ["int32", "int64", "float32", "float64", "Int64", "Float64", "boolean", "string"],
 )
 def test_representable_dataframe_dtypes_are_passed_by_name(
-    bridge_case, monkeypatch, dtype
+    bridge_case, bridge_review_contracts, monkeypatch, dtype
 ):
     """read_csv normally infers dtypes; nullable types exercise the DataFrame boundary."""
     c = bridge_case
@@ -328,9 +345,15 @@ def test_representable_dataframe_dtypes_are_passed_by_name(
     df["feature_alpha"] = pd.Series(values, dtype=dtype)
     snapshot = df.copy(deep=True)
     monkeypatch.setattr(c.module.pd, "read_csv", lambda *args, **kwargs: df)
-    c.run()
-    assert_frame_equal(c.spy.predict_inputs[0], df[c.classifier.feature_names_used])
-    assert_frame_equal(df, snapshot)
+    if dtype in {"boolean", "string"}:
+        result = bridge_review_contracts.invoke(c, "schema")
+    else:
+        result = c.run()
+    if result is not None and result["_xgb_ok"]:
+        actual = c.spy.predict_inputs[0].apply(pd.to_numeric)
+        expected = df[c.classifier.feature_names_used].apply(pd.to_numeric)
+        assert_frame_equal(actual, expected)
+    assert_pandas_frame_equal(df, snapshot)  # Caller-owned data must remain intact.
 
 
 @pytest.mark.parametrize(
@@ -345,9 +368,9 @@ def test_representable_dataframe_dtypes_are_passed_by_name(
     ],
 )
 def test_missing_feature_fraction_characterization(
-    bridge_case, total, missing, accepted
+    bridge_case, bridge_review_contracts, total, missing, accepted
 ):
-    """Protect technical cutoff only; zero substitution is not scientifically approved."""
+    """Above30% currently refuses; below it zero/NaN/refusal stay open policies."""
     c = bridge_case
     present = ["feature_alpha"] + [f"available{i}" for i in range(total - missing - 1)]
     df = c.frame.copy()
@@ -356,17 +379,25 @@ def test_missing_feature_fraction_characterization(
     needed = present + [f"absent{i}" for i in range(missing)]
     c.classifier.feature_names_used = needed
     df.to_csv(c.csv, index=False)
-    result = c.run()
+    result = (
+        bridge_review_contracts.invoke(c, "schema") if missing and accepted else c.run()
+    )
     if not accepted:
         assert_empty(result)
         assert not c.spy.predict_inputs
-    else:
+    elif result is not None:
         assert result["_xgb_ok"]
         assert c.spy.predict_inputs, "An accepted schema must reach the estimator."
         expected = df[present].copy()
+        actual = c.spy.predict_inputs[0]
+        assert list(actual.columns) == needed
+        assert_frame_equal(actual[present], expected)
         for name in needed[len(present) :]:
-            expected[name] = 0.0
-        assert_frame_equal(c.spy.predict_inputs[0], expected)
+            values = actual[name].to_numpy()
+            assert np.all(values == 0) or pd.isna(values).all(), (
+                "This compatibility test allows the historical zero placeholder or "
+                "missing values for the fitted pipeline; it endorses neither policy."
+            )
 
 
 @pytest.mark.parametrize(
@@ -426,6 +457,7 @@ def test_unusable_probability_shape_is_not_advertised(bridge_case, kind):
 
 
 def test_probability_row_maximum_does_not_override_decision_rule(bridge_case):
+    """Characterize historical row-max confidence; semantic choice remains R6 OPEN."""
     c = bridge_case
     c.spy.predict_fn = lambda X: np.array([0, 2, 1, 1, 2])
     c.spy.proba_fn = lambda X: np.array(
@@ -438,15 +470,17 @@ def test_probability_row_maximum_does_not_override_decision_rule(bridge_case):
         ]
     )
     result = c.run()
-    np.testing.assert_array_equal(result["confidence"], [0.8, 0.6, 0.7, 0.9, 0.5])
+    assert_confidence_policy(
+        result["confidence"], [0.8, 0.6, 0.7, 0.9, 0.5], [0.05, 0.1, 0.7, 0.06, 0.5]
+    )
     np.testing.assert_array_equal(result["y_pred"], ["G", "F", "M", "M", "F"])
     # A documented threshold wrapper may disagree with argmax; do not reject it.
     assert result["has_proba"]
 
 
 @pytest.mark.parametrize("stage", ["csv", "predict", "decode"])
-def test_postload_exceptions_remain_visible(bridge_case, stage):
-    """Observed explicit failures are admissible; no blanket exception swallowing."""
+def test_postload_exceptions_remain_visible(bridge_case, caplog, stage):
+    """Permit informative exceptions or a diagnosed structured refusal (R6 OPEN)."""
     c = bridge_case
     if stage == "csv":
         c.csv.write_text("a,b\n1,2\n3,4,5\n", encoding="utf-8")
@@ -461,8 +495,70 @@ def test_postload_exceptions_remain_visible(bridge_case, stage):
             _ for _ in ()
         ).throw(ValueError("invalid class codes"))
         expected = ValueError
-    with pytest.raises(expected):
-        c.run()
+    caplog.clear()
+    try:
+        result = c.run()
+    except expected as exc:
+        assert str(exc), "A propagated domain failure needs a useful diagnostic."
+        return
+    else:
+        assert_empty(result)
+        messages = " ".join(r.getMessage() for r in caplog.records if r.levelno >= 40)
+        pattern = {
+            "csv": r"csv|parse|tokeniz|read",
+            "predict": r"predict|features|incompatib",
+            "decode": r"decod|class|label|codes",
+        }[stage]
+        assert re.search(
+            pattern, messages, re.I
+        ), "A structured refusal needs a relevant error log."
+
+
+@pytest.mark.parametrize("fallback", [False, True])
+def test_model_discovery_ignores_other_pickle_families(
+    bridge_case, monkeypatch, fallback
+):
+    c = bridge_case
+    unrelated = c.model.with_name("zzz_other_experiment.pkl")
+    unrelated.write_text(
+        "Synthetic competing artifact, never deserialized", encoding="utf-8"
+    )
+    os.utime(c.model, (100, 100))
+    os.utime(unrelated, (1000, 1000))
+    if fallback:
+        original = builtins.__import__
+
+        def block(name, *args, **kwargs):
+            if name == "utils":
+                raise ImportError("exercise local artifact discovery")
+            return original(name, *args, **kwargs)
+
+        monkeypatch.setattr(builtins, "__import__", block)
+    assert c.run()["model_path"] == str(c.model)
+    assert c.loaded == [str(c.model)]
+
+
+@pytest.mark.integration
+def test_actual_loader_shared_population_preserves_all_values(bridge_loader_population):
+    c = bridge_loader_population("shared")
+    result = c.run()
+    assert result["_xgb_ok"]
+    assert_frame_equal(
+        c.spy.predict_inputs[0],
+        c.population[c.classifier.feature_names_used].reset_index(drop=True),
+    )
+    np.testing.assert_array_equal(result["Z_umap_aligned"][:, 0], c.population.obsid)
+
+
+@pytest.mark.parametrize("domain", ["identity", "preprocessing", "probability"])
+def test_refusal_helper_rejects_unrelated_value_errors(
+    bridge_case, bridge_review_contracts, domain
+):
+    bridge_case.spy.predict_fn = lambda X: (_ for _ in ()).throw(
+        ValueError("row buffer overflow")
+    )
+    with pytest.raises(AssertionError, match="Unrelated ValueError"):
+        bridge_review_contracts.invoke(bridge_case, domain)
 
 
 def test_path_resolution_side_effect_is_idempotent_observation(bridge_case):

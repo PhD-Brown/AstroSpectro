@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import types
 import re
+import math
 
 from astropy.io import fits
 import numpy as np
@@ -353,6 +354,92 @@ def bridge_real_bundle(tmp_path, monkeypatch, bridge_module):
         model=model,
         args=args,
         run=lambda **kw: bridge_module.load_and_predict(**(args | kw)),
+    )
+
+
+@pytest.fixture
+def bridge_preprocessing_oracle(bridge_real_bundle, monkeypatch):
+    """Observe actual booster input and independently compute train-only transforms."""
+    c = bridge_real_bundle
+    names = c.classifier.feature_names_used
+    medians, means, scales = [], [], []
+    for name in names:
+        values = sorted(float(v) for v in c.train[name])
+        medians.append((values[14] + values[15]) / 2)
+        mean = math.fsum(values) / 30
+        means.append(mean)
+        scales.append(math.sqrt(math.fsum((v - mean) ** 2 for v in values) / 30))
+    medians, means, scales = map(np.asarray, (medians, means, scales))
+    np.testing.assert_allclose(medians, [5.0, 1.225, 5.0], rtol=0, atol=2e-15)
+    np.testing.assert_allclose(means, [29 / 6, 1.225, 4.0], rtol=0, atol=2e-15)
+    loaded_models, booster_inputs = [], []
+
+    def trained_state(clf):
+        numeric = clf.model_pipeline.named_steps["named"].named_transformers_["numeric"]
+        np.testing.assert_allclose(
+            numeric.named_steps["imputer"].statistics_, medians, rtol=0, atol=2e-14
+        )
+        np.testing.assert_allclose(
+            numeric.named_steps["scaler"].mean_, means, rtol=0, atol=2e-14
+        )
+        np.testing.assert_allclose(
+            numeric.named_steps["scaler"].scale_, scales, rtol=0, atol=2e-14
+        )
+        return numeric
+
+    numeric = trained_state(c.classifier)
+    original_load = c.classifier_module.SpectralClassifier.load_model
+
+    def load(path):
+        loaded = original_load(path)
+        trained_state(loaded)
+        loaded_models.append(loaded)
+        return loaded
+
+    monkeypatch.setattr(
+        c.classifier_module.SpectralClassifier, "load_model", staticmethod(load)
+    )
+    booster_type = type(c.classifier.model_pipeline.named_steps["xgb"])
+    original_predict = booster_type.predict
+
+    def predict(estimator, X, *args, **kwargs):
+        booster_inputs.append(np.array(X, copy=True))
+        return original_predict(estimator, X, *args, **kwargs)
+
+    monkeypatch.setattr(booster_type, "predict", predict)
+
+    def forbid_fit(*args, **kwargs):
+        raise AssertionError("Inference must not refit learned preprocessing.")
+
+    monkeypatch.setattr(type(numeric.named_steps["imputer"]), "fit", forbid_fit)
+    monkeypatch.setattr(type(numeric.named_steps["scaler"]), "fit", forbid_fit)
+
+    def expected(query):
+        values = query[names].to_numpy(dtype=float, copy=True)
+        for column in range(len(names)):
+            values[np.isnan(values[:, column]), column] = medians[column]
+        return (values - means) / scales
+
+    def compare(actual, expected_values):
+        assert np.asarray(actual).shape == expected_values.shape
+        # Eight ULP-scale epsilons allow float32 representation, while float64
+        # arithmetic over30 training rows is bounded conservatively by2e-14.
+        precision = np.finfo(np.asarray(actual).dtype).eps
+        np.testing.assert_allclose(
+            actual, expected_values, rtol=8 * precision, atol=max(2e-14, 8 * precision)
+        )
+        for loaded in loaded_models:
+            trained_state(loaded)
+
+    return types.SimpleNamespace(
+        case=c,
+        expected=expected,
+        compare=compare,
+        inputs=booster_inputs,
+        loaded_models=loaded_models,
+        medians=medians,
+        means=means,
+        scales=scales,
     )
 
 
