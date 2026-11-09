@@ -1,5 +1,77 @@
 # M2.5 — SpectralAutoencoder: numerical contracts and scientific limits
 
+## Revision after Claude's first review R1–R8
+
+Read [review5820620989](https://github.com/PhD-Brown/AstroSpectro/pull/87#pullrequestreview-5820620989),
+all eight full inline threads, #43 and Claude's handoff6729881618, and live
+AGENTS.md. Local/remote start ae1e2be, clean; main795af2c unchanged. Same M2.5
+worktree/branch/Draft PR87. No production, dependency, CI, notebook or data edit.
+This section supersedes the initial evidence claims where noted below.
+
+| Review / checkpoint | Corrected contract and independent expectation | Evidence and remaining limits |
+|---|---|---|
+| R1 / A:046e78d | Actual hidden encoder: fixed affine weights and BN statistics give pre-activations[-3.5,2.25]/[-1.5,.25], ReLU outputs[0,2.25]/[0,.25], latent−2/0. Repeated eval inference disables dropout. | CPU30PASS at A; C03 Identity and C04 ReLU-before-BN fail the numerical assertion. AP this hidden encoder example; decoder hidden activation is not independently valued by this oracle. Corrected inaccurate finite-difference comment: final-bias gradient is analytic. |
+| R2 / B:0374bf3 | Validation5,6,4,7,8,9 with patience2 stops after5epochs and restores weight3; improvement at3 must reset patience. Real registered buffer seen_batches increments once per train forward;5,2,3,4 with patience0 restores weight2 AND buffer2. | CPU32PASS at B; C02 and C01b (named parameters plus strict=False) fail assertions. AP reset and complete controlled state restoration. Real BN buffers remain separately covered in inference/save-load; no claim that bufferless old tests proved restoration. Tie policy remains OPEN. |
+| R3 / C:d944ca5 | At each actual Adam.step, global gradient norm≤1+1e−5. At least one pre-clip norm>1.001; actual parameters update. Identical seeded reference training without spies produces exactly the same histories and full state. | CPU33PASS at C; C05 step-before-clip fails the step-time norm assertion. AP order/consumed norm for the chosen real network; first-step Adam formula alone does not prove clipping. |
+| R4 / C:d944ca5 | Ranked distances0..99, labels2 at0..14/41..99 and7 at15..40: votes k20=15:5 for2; k50=24:26 for7; k60=34:26 for2. Paired input permutation preserves the winner. | G31PASS at C; C06/C07 fail vote assertion. AP discriminates20/50/60; no promise of distinguishing k49/51 when that requires an undecided tie policy. |
+| R5 / C:d944ca5 | STAR rows Teff4500/logg3.0 and5.5 with remote latent coordinates are excluded. Their temperatures lie inside the K window, so Teff cannot mask a gravity-bound error. | C08 inclusive gravity fails all three population cases. AP these half-open numerical boundaries; no universal astrophysical threshold validated. |
+| R6 /9a7dab4 | Validation rows compared as paired sorted rows, not RNG return order; floating output dtype, not mandatory float32; actual population samples observed and independently summed; real plateau test discovers configured patience then checks finite, nonincreasing LR and an actual reduction. | A01/A02/A03/A09 all PASS, while counts/disjointness/coverage, output values, unique200-row in-population subsets, repeatability and barycentres remain checked. No historical artifact was found requiring one RNG consumption order or patience10; these internal configurations are not frozen by green tests. |
+| R7 | Current mutation runner distinguishes assertion failures, runtime exceptions, errors/collection, expected-refusal tests and skips; compound patches require all anchors. Start/end HEAD, dirty state, effective historical test hashes, versions and actual commands recorded. | Original JSON remains unchanged and historical. New results use m25_review_mutation_results.json. Eight former survivors and four rejected alternatives are replayed against old tests using --tests-ref, without changing the checkout. Final clean-input replay is recorded below after execution. |
+| R8 | Historical archive59eb774 remains immutable. New checker reconstructs its files from Git into temporary copies and executes original proofs plus stronger observations. | Six limit/remedy checks PASS in development: drop-all gives zero optimizer steps/NaN train loss but passes old proof; model-only invalidation leaves stale metadata but passes old proof. Safe batch/refusal and full preservation/invalidation satisfy stronger criteria. Silent imputation passes #82's old oracle; scientific policy OPEN. |
+
+### Corrected proof status and contracts
+
+- AP for the added hidden-encoder numerical example, late patience reset,
+  controlled parameters AND registered-buffer restoration, consumed clipped
+  gradients,20/50/60neighbor discrimination, and the two gravity upper edges.
+- PA for untested architectures/devices, independent hidden-decoder nonlinear
+  values, physical interpretation, tie policies, general invalid inputs and
+  future remediation completeness. Initial AP language below was too broad
+  for the old nonlinear/early-stopping/clipping/boundary tests; R1–R5 provide
+  the newly stated limited evidence, not a retrospective upgrade of old runs.
+- A01: same validation population/order-free mean. A02: values/shapes/floating
+  dtype. A03: sample membership/count/uniqueness/repeatability and fsum mean of
+  actually selected rows; shared RNG42 and independent RNG42 streams accepted.
+  These observations instrument the NumPy sampling boundary; they do not
+  establish a general guarantee for arbitrary alternative sampling APIs.
+- A09: the scheduler must observe validation loss and function on a constant
+  plateau; internal patience is discovered at runtime. The old12×.01 then.005
+  trajectory was implementation characterization, not a scientific invariant.
+  No verified historical consumer requires patience10. Modes/factors/rate floors
+  are checked for a meaningful minimization scheduler, not fixed numerically.
+- Real Torch fixture restores RNG, thread count, deterministic mode AND its
+  warn_only flag. Agg remains a deliberate process-wide headless backend,
+  as before; no interactive notebook is executed in the pytest process.
+
+### R8: limits of the immutable red oracles
+
+[Archive59eb774](https://github.com/PhD-Brown/AstroSpectro/tree/59eb774eb618cdf639cde3c0358da319ee4bcffa)
+and its11FAIL/14PASS ledger are unchanged. A PASS under a candidate remedy is
+not sufficient evidence that every scientific/state criterion has been met.
+
+| Issue | Counter-control reproduced in temporary archive copies | Strengthened acceptance for a future corrective PR |
+|---|---|---|
+| #80 | drop_last=True makes both old cases PASS; N2 leaves one train row, zero optimizer steps and NaN train_loss. Old oracle only requires finite validation loss. | A successful fit must have finite histories and at least one actual optimization step; do not silently drop the entire train. Alternatively refuse the impossible batch explicitly before training. Strategy/drop_last policy remains OPEN. The checker also accepts a guarded partial-batch policy/refusal. |
+| #81 | Invalidating only _model makes the old proof PASS while history_/fit_time_ remain from the old model. | Retain the entire last completed state (all weights/buffers/history/time) or invalidate model and corresponding metadata completely. Partial invalidation is inadequate. Checker accepts both complete alternatives. |
+| #82 | np.nan_to_num before fit makes both old NaN/Inf cases PASS. | This demonstrates only numeric success under imputation. It does not authorize silent imputation or establish astrophysical validity; reject/explicit treatment/provenance policy remains for the scientific owner. |
+
+`audit/check_m25_review_proof_limits.py` contains only temporary-copy controls,
+not a production fix or new default red suite. Its results record archive file
+hashes, checker hash, actual local HEAD/dirty state, versions and per-case
+stdout. No historical file/ref is rewritten; no additional red archive needed.
+Qualifications are published on #80/#81/#82 and linked in the final handoff.
+
+### Saving checkpoints and next action
+
+Verified remote checkpoints: A046e78d, B0374bf3, Cd944ca5, R69a7dab4.
+Each followed targeted passing tests, explicit staging, ordinary commit/push
+and remote SHA verification. Code/tests and intermediate decisions were saved
+before the next block. R7/R8 code/doc checkpoint follows targeted validation;
+remaining work: one final full mutation replay and suites at committed inputs,
+hosted CI at the final head, eight inline replies left open, and one #43 handoff.
+
+## Initial delivery and historical execution ledger
+
 2026-11-08 · [Refs #43](https://github.com/PhD-Brown/AstroSpectro/issues/43).
 Audit/tests only; independent Claude review and human merge decision pending.
 

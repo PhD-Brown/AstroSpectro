@@ -6,7 +6,9 @@ errors, missing tests and optional skips are inconclusive, never KILLED.
 """
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
+from importlib.metadata import version
 import json
 import os
 from pathlib import Path
@@ -20,6 +22,36 @@ import xml.etree.ElementTree as ET
 
 # name, expected category, exact source expression, replacement
 CANDIDATES = [
+    (
+        "A_honor_empty_hidden",
+        "admissible",
+        "hidden_dims or [256, 128, 64]",
+        "[256, 128, 64] if hidden_dims is None else hidden_dims",
+    ),
+    (
+        "A_invalidate_complete_state",
+        "admissible",
+        "        # Construction du modèle\n",
+        "        if batch_size <= 0:\n            self._model = self.history_ = self.fit_time_ = None\n            raise ValueError('batch_size must be positive')\n\n        # Construction du modèle\n",
+    ),
+    (
+        "A_reject_nonfinite",
+        "admissible",
+        "        # Construction du modèle\n",
+        "        if not np.isfinite(X).all():\n            raise ValueError('Training features must be finite')\n\n        # Construction du modèle\n",
+    ),
+    (
+        "A_weighted_epoch_metric",
+        "admissible",
+        "train_losses.append(loss.item())",
+        "train_losses.append((loss.item(), len(X_batch)))",
+    ),
+    (
+        "A_safe_singleton_policy",
+        "admissible",
+        "drop_last=False",
+        "drop_last=(len(X_train) % batch_size == 1)",
+    ),
     (
         "A01_sorted_validation",
         "admissible",
@@ -324,12 +356,19 @@ def digest(path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", default="audit/m25_mutation_results.json")
+    parser.add_argument("--output", default="audit/m25_review_mutation_results.json")
+    parser.add_argument(
+        "--tests-ref",
+        help="Replay historical tests from a Git ref without changing the workspace",
+    )
     parser.add_argument(
         "--only", default="", help="Substring filter, for investigation"
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    head_at_start = git(root, "rev-parse", "HEAD")
+    status_at_start = git(root, "status", "--short")
+    started_at = datetime.now(timezone.utc).isoformat()
     relative_paths = [
         *[
             str(path.relative_to(root)).replace("\\", "/")
@@ -342,6 +381,13 @@ def main():
         "audit/check_m25_mutations.py",
     ]
     before = {name: digest(root / name) for name in relative_paths}
+    test_overrides = {}
+    if args.tests_ref:
+        for name in relative_paths:
+            if name.startswith("tests/"):
+                test_overrides[name] = subprocess.check_output(
+                    ["git", "-C", str(root), "show", f"{args.tests_ref}:{name}"]
+                )
     source_path = "src/dimred/autoencoder.py"
     source = (root / source_path).read_text(encoding="utf-8")
     candidates = [("baseline", "baseline", "", ""), *CANDIDATES]
@@ -360,6 +406,8 @@ def main():
                 target = directory / rel
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(root / rel, target)
+                if rel in test_overrides:
+                    target.write_bytes(test_overrides[rel])
             count = source.count(old) if old else 0
             if old and count == 0:
                 raise ValueError(f"Missing source anchor: {name}")
@@ -369,6 +417,36 @@ def main():
                     "self._model.load_state_dict(best_state)",
                     "self._model.load_state_dict(best_state, strict=False)",
                 )
+            secondary = []
+            if name == "C01b_snapshot_without_buffers":
+                secondary.append(
+                    (
+                        "self._model.load_state_dict(best_state)",
+                        "self._model.load_state_dict(best_state, strict=False)",
+                    )
+                )
+            elif name == "A_weighted_epoch_metric":
+                secondary.append(
+                    (
+                        "np.mean(train_losses)",
+                        "sum(v * n for v, n in train_losses) / sum(n for _, n in train_losses)",
+                    )
+                )
+            elif name == "A_safe_singleton_policy":
+                secondary.append(
+                    (
+                        "        # Construction du modèle\n",
+                        "        if len(X) - max(1, int(len(X) * val_fraction)) < 2:\n            raise ValueError('Training batch requires at least two rows')\n\n        # Construction du modèle\n",
+                    )
+                )
+            # Compound candidates must activate every documented source anchor.
+            patches = [(old, new)] if old else []
+            patches.extend(secondary)
+            for extra_old, extra_new in secondary:
+                if source.count(extra_old) == 0:
+                    raise ValueError(f"Missing compound anchor: {name}")
+                if name != "C01b_snapshot_without_buffers":
+                    mutated = mutated.replace(extra_old, extra_new)
             compile(mutated, "autoencoder.py", "exec")
             (directory / source_path).write_text(mutated, encoding="utf-8")
             env = {
@@ -401,14 +479,21 @@ def main():
             report = directory / "results.xml"
             cases = list(ET.parse(report).iter("testcase")) if report.exists() else []
             errors = [c.attrib["name"] for c in cases if c.find("error") is not None]
-            failures = [
-                {
-                    "name": c.attrib["name"],
-                    "message": c.find("failure").get("message", ""),
-                }
-                for c in cases
-                if c.find("failure") is not None
-            ]
+            failures = []
+            for case in cases:
+                failure = case.find("failure")
+                if failure is None:
+                    continue
+                message = failure.get("message", "")
+                is_assertion = message.startswith(("assert ", "AssertionError"))
+                failures.append(
+                    dict(
+                        name=case.attrib["name"],
+                        message=message,
+                        detection="assertion" if is_assertion else "runtime_exception",
+                        traceback=failure.text or "",
+                    )
+                )
             skips = sum(c.find("skipped") is not None for c in cases)
             if name == "baseline":
                 baseline_count = len(cases)
@@ -430,11 +515,42 @@ def main():
                 category=category,
                 status=status,
                 replacements=count,
+                replacement_sites=[
+                    dict(
+                        anchor=a,
+                        replacement=b,
+                        matches=source.count(a),
+                        line_numbers=[
+                            i + 1
+                            for i, line in enumerate(source.splitlines())
+                            if a.splitlines()[0] in line
+                        ],
+                    )
+                    for a, b in patches
+                ],
                 tests=len(cases),
                 failed=failures,
                 errors=errors,
                 skipped=skips,
                 exit_code=result.returncode,
+                failure_kinds=sorted({f["detection"] for f in failures}),
+                expected_refusal_tests_passed=sum(
+                    any(
+                        token in c.attrib["name"]
+                        for token in [
+                            "unfitted_operations_refuse",
+                            "invalid_architecture_refused",
+                            "wrong_inference_shapes_refused",
+                            "checkpoint_invalid_local_payload_refused",
+                            "check_torch_diagnostic",
+                            "arithmetic_missing_required_parameters",
+                        ]
+                    )
+                    and c.find("failure") is None
+                    and c.find("error") is None
+                    and c.find("skipped") is None
+                    for c in cases
+                ),
             )
             records.append(record)
             print(name, status, len(failures), flush=True)
@@ -444,16 +560,35 @@ def main():
     import torch
 
     payload = dict(
-        schema=1,
-        git_head_at_run=git(root, "rev-parse", "HEAD"),
-        working_tree_at_run=git(root, "status", "--short"),
+        schema=2,
+        started_at_utc=started_at,
+        git_head_at_run=head_at_start,
+        working_tree_at_start=status_at_start,
+        git_head_at_end=git(root, "rev-parse", "HEAD"),
+        working_tree_at_end=git(root, "status", "--short"),
         inputs_sha256=before,
+        tests_ref=args.tests_ref,
+        effective_test_inputs_sha256={
+            name: (
+                hashlib.sha256(test_overrides[name]).hexdigest()
+                if name in test_overrides
+                else before[name]
+            )
+            for name in relative_paths
+            if name.startswith("tests/")
+        },
         source_blob=git(root, "rev-parse", "HEAD:src/dimred/autoencoder.py"),
         python=sys.version,
         platform=platform.platform(),
         torch=torch.__version__,
         cuda=torch.version.cuda,
         command=sys.argv,
+        interpreter=sys.executable,
+        pytest_command=command,
+        versions={
+            name: version(name)
+            for name in ["pytest", "numpy", "pandas", "scikit-learn", "torch"]
+        },
         cases=records,
     )
     (root / args.output).write_text(
