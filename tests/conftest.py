@@ -5,6 +5,7 @@ from itertools import count
 from pathlib import Path
 import sys
 import types
+import re
 
 from astropy.io import fits
 import numpy as np
@@ -117,6 +118,127 @@ def bridge_case(tmp_path, monkeypatch, bridge_module):
         import_module=module,
         utils=utilities,
     )
+
+
+@pytest.fixture
+def bridge_review_contracts(caplog):
+    """Accept explicit domain refusals without treating unrelated errors as evidence."""
+    patterns = {
+        "identity": r"(?:observation|population|identity|alignment).*(?:mismatch|incompatib|unverified|unknown|ambig|cannot|cardinal|length|provenance)",
+        "schema": r"(?:schema|feature|column).*(?:missing|incompatib|unsupported|non.?numeric|invalid|absent)",
+        "preprocessing": r"(?:input|feature|column|schema|preprocess).*(?:NaN|missing|non.?finite|incompatib|invalid)",
+        "probability": r"(?:probabilit|distribution).*(?:invalid|undefined|non.?finite|finite|shape|rank|dimension|unavailable)",
+    }
+
+    def invoke(case, domain, **overrides):
+        caplog.clear()
+        try:
+            result = case.run(**overrides)
+        except ValueError as exc:
+            assert re.search(
+                patterns[domain], str(exc), re.I
+            ), f"Unrelated ValueError is not a {domain} validation refusal: {exc}"
+            return None
+        if result["_xgb_ok"]:
+            return result
+        assert result.get("has_proba") is False
+        for key in ("y_pred", "confidence"):
+            assert result.get(key) is None or np.asarray(result[key]).size == 0
+        messages = " ".join(
+            record.getMessage() for record in caplog.records if record.levelno >= 40
+        )
+        assert re.search(
+            patterns[domain], messages, re.I
+        ), f"A structured {domain} refusal needs a relevant error diagnostic: {messages}"
+        return None
+
+    def unavailable(result, count):
+        if result is None:
+            return
+        assert result["_xgb_ok"] is True
+        assert (
+            result["has_proba"] is False
+        ), "Invalid probabilities cannot become invented confidence."
+        for key in ("y_pred", "y_aligned", "cl_aligned", "Z_umap_aligned"):
+            assert len(result[key]) == count
+        if result.get("confidence") is not None:
+            assert np.asarray(result["confidence"]).shape == (count,)
+
+    return types.SimpleNamespace(invoke=invoke, unavailable=unavailable)
+
+
+@pytest.fixture
+def bridge_loader_population(bridge_case, dimred_loader_module):
+    """Build populations with the actual loader, independent of bridge filtering."""
+
+    def make(scenario):
+        c = bridge_case
+        ids = np.array([311, 42, 9001, 77, 5, 640, 128, 3, 2048, 999])
+        df = pd.DataFrame(
+            {
+                "obsid": ids,
+                "id_echo": ids,
+                "snr_r": 20.0,
+                "class": [
+                    "STAR",
+                    "GALAXY",
+                    "QSO",
+                    "STAR",
+                    "GALAXY",
+                    "QSO",
+                    "STAR",
+                    "GALAXY",
+                    "QSO",
+                    "STAR",
+                ],
+                "feature_alpha": [3, 10, 8, 23, 4, 6, 12, 17, 26, 40],
+                "feature_beta": [101, 31, 89, 17, 53, 8, 97, 13, 79, 41],
+                "feature_gamma": np.arange(10) + 1.0,
+            }
+        )
+        options = {"scale": False}
+        removed = []
+        if scenario == "default":
+            df["radial_velocity_corr"] = np.arange(10, dtype=float)
+            df.loc[2, "radial_velocity_corr"] = np.nan
+            df["label"] = np.arange(10, dtype=float)
+            df.loc[6, "label"] = np.nan
+            removed = [2]
+        elif scenario in {"nb01", "unequal"}:
+            df["seeing"] = np.arange(10, dtype=float) + 1.0
+            df.loc[2, "seeing"] = np.nan
+            if scenario == "nb01":
+                df.loc[7, "class"] = "Unknown"
+                removed = [7]
+            options.update(spectro_only=True, classes=["STAR", "GALAXY", "QSO"])
+        else:
+            assert scenario == "shared"
+        df.to_csv(c.csv, index=False)
+        catalog = c.csv.with_name("catalog_review.csv")
+        pd.DataFrame({"obsid": ids}).to_csv(catalog, index=False)
+        loader = dimred_loader_module.DimRedDataLoader(c.csv, catalog)
+        X, y, meta = loader.load(**options)
+        population = loader._df_merged.copy(deep=True)
+        expected_ids = np.delete(ids, removed)
+        np.testing.assert_array_equal(population.obsid.to_numpy(), expected_ids)
+        # Check actual X against retained raw values, not only its row count.
+        np.testing.assert_array_equal(
+            X, population[loader.get_feature_names()].to_numpy(float)
+        )
+        np.testing.assert_array_equal(y, population["class"].to_numpy())
+        np.testing.assert_array_equal(meta["class"], y)
+        c.classifier.feature_names_used = ["feature_gamma", "id_echo", "feature_beta"]
+        c.spy.predict_fn = lambda frame: frame["id_echo"].to_numpy(int) % 3
+        c.spy.proba_fn = lambda frame: np.tile([0.2, 0.3, 0.5], (len(frame), 1))
+        c.args.update(
+            Z_umap=np.column_stack((expected_ids, np.arange(len(expected_ids)))),
+            y=y,
+            cluster_labels=expected_ids + 10000,
+        )
+        c.population, c.loader, c.raw = population, loader, df
+        return c
+
+    return make
 
 
 @pytest.fixture
