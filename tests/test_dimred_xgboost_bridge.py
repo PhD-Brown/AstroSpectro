@@ -412,6 +412,19 @@ def test_probability_unavailable_has_explicit_flag(bridge_case, mode):
     assert result["_xgb_ok"] is True
 
 
+@pytest.mark.parametrize("kind", ["vector", "empty_class_axis"])
+def test_unusable_probability_shape_is_not_advertised(bridge_case, kind):
+    c = bridge_case
+    c.spy.proba_fn = lambda X: np.arange(5.0) if kind == "vector" else np.empty((5, 0))
+    try:
+        result = c.run()
+    except ValueError:
+        return  # Explicit domain refusal is also admissible.
+    assert not result["_xgb_ok"] or result["has_proba"] is False
+    if result["_xgb_ok"]:
+        assert result["confidence"].shape == (5,)
+
+
 def test_probability_row_maximum_does_not_override_decision_rule(bridge_case):
     c = bridge_case
     c.spy.predict_fn = lambda X: np.array([0, 2, 1, 1, 2])
