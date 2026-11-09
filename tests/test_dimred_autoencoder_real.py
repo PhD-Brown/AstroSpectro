@@ -76,12 +76,42 @@ def test_architecture_parameter_count_and_gradients(
     assert all(
         p.grad is not None and m.torch.isfinite(p.grad).all() for p in net.parameters()
     )
-    # One finite-difference gradient at a smooth eval-mode point.
+    # Analytic final-bias gradient: d(sum(output))/d(bias) = batch size.
     net.eval()
     parameter = net.decoder.net[-1].bias
     net.zero_grad()
     net(X)[0].sum().backward()
     assert m.torch.allclose(parameter.grad, m.torch.full_like(parameter, 4.0))
+
+
+def test_hidden_nonlinearity_has_manual_batchnorm_relu_oracle(autoencoder_real_module):
+    m = autoencoder_real_module
+    net = m._AutoencoderNet(2, 1, [2], dropout=0.5)
+    # Configure by numerical role; the oracle does not assert container order.
+    affine = [
+        layer for layer in net.encoder.modules() if isinstance(layer, m.nn.Linear)
+    ]
+    bn = next(
+        layer for layer in net.encoder.modules() if isinstance(layer, m.nn.BatchNorm1d)
+    )
+    with m.torch.no_grad():
+        affine[0].weight.copy_(m.torch.tensor([[1.0, -2.0], [3.0, 1.0]]))
+        affine[0].bias.copy_(m.torch.tensor([0.5, -1.0]))
+        bn.running_mean.copy_(m.torch.tensor([1.0, -1.0]))
+        bn.running_var.fill_(4.0 - bn.eps)
+        bn.weight.copy_(m.torch.tensor([2.0, 0.5]))
+        bn.bias.copy_(m.torch.tensor([0.0, 1.0]))
+        affine[1].weight.copy_(m.torch.tensor([[1.0, -1.0]]))
+        affine[1].bias.fill_(0.25)
+    net.eval()
+    X = m.torch.tensor([[1.0, 2.0], [-1.0, 0.0]])
+    # Affine: [-2.5,4],[-.5,-4]. BN denominator sqrt(var+eps)=2:
+    # [-3.5,2.25],[-1.5,.25]. ReLU gives [0,2.25],[0,.25].
+    # Final dot with [1,-1], plus .25, gives -2 and 0.
+    expected = np.array([[-2.0], [0.0]])
+    for _ in range(2):  # Dropout must be inactive in eval mode.
+        actual = net.encode(X).detach().numpy()
+        np.testing.assert_allclose(actual, expected, rtol=0, atol=2e-6)
 
 
 def analytic_model(m):

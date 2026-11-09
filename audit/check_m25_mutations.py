@@ -20,6 +20,13 @@ import xml.etree.ElementTree as ET
 
 # name, expected category, exact source expression, replacement
 CANDIDATES = [
+    ("C03_relu_identity", "incorrect", "nn.ReLU(inplace=True),", "nn.Identity(),"),
+    (
+        "C04_relu_before_bn",
+        "incorrect",
+        "nn.BatchNorm1d(h),\n                nn.ReLU(inplace=True),",
+        "nn.ReLU(inplace=True),\n                nn.BatchNorm1d(h),",
+    ),
     (
         "split_overlap",
         "incorrect",
