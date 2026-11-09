@@ -229,16 +229,22 @@ def test_candidate_scaling_reconstruction_vote_and_feature_order(
 def test_candidate_nearest_fifty_excludes_distant_majority(
     autoencoder_numeric_module, autoencoder_plotting
 ):
-    # Rows scrambled; near fifty have unique winner 7, far majority have label 2.
-    distances = np.arange(120.0)
-    order = np.random.default_rng(11).permutation(120)
-    Z = np.column_stack([distances, np.zeros(120)])[order]
-    labels = np.where(distances < 50, 7, 2)[order]
+    # Distances are ranks 0..99. k20: 15/5 for class2; k50: 24/26 for
+    # class7; k60: 34/26 for class2. No distance or vote ties.
+    distances = np.arange(100.0)
+    positions = np.column_stack([distances, np.zeros(100)])
+    labels = np.where((distances >= 15) & (distances <= 40), 7, 2)
     ae = SimpleNamespace(encode=lambda X: np.zeros((1, 2)), reconstruct=np.zeros_like)
-    result = autoencoder_numeric_module.tester_candidat(
-        np.array([1.0, 2.0]), ae, object(), ["a", "b"], Z, labels
-    )
-    assert result["cluster"] == 7
+    for order in [np.arange(100), np.random.default_rng(11).permutation(100)]:
+        result = autoencoder_numeric_module.tester_candidat(
+            np.array([1.0, 2.0]),
+            ae,
+            object(),
+            ["a", "b"],
+            positions[order],
+            labels[order],
+        )
+        assert result["cluster"] == 7
 
 
 @pytest.mark.parametrize("missing", ["teff_gspphot", "logg_gspphot"])
@@ -273,20 +279,20 @@ def test_latent_arithmetic_independent_barycentres_and_distances(
     )
     y = np.repeat("STAR", 6 * count)
     # Excluded non-star, missing and boundary-outside rows must not contaminate.
-    Z = np.vstack([Z, [[1e6, 1e6]] * 3])
+    Z = np.vstack([Z, [[1e6, 1e6]] * 5])
     meta = pd.concat(
         [
             meta,
             pd.DataFrame(
                 {
-                    "teff_gspphot": [4500.0, np.nan, 7500.0],
-                    "logg_gspphot": [4.5, 4.5, 5.5],
+                    "teff_gspphot": [4500.0, np.nan, 7500.0, 4500.0, 4500.0],
+                    "logg_gspphot": [4.5, 4.5, 5.5, 3.0, 5.5],
                 }
             ),
         ],
         ignore_index=True,
     )
-    y = np.r_[y, ["QSO", "STAR", "STAR"]]
+    y = np.r_[y, ["QSO", "STAR", "STAR", "STAR", "STAR"]]
     rng = np.random.default_rng(42)
     expected = np.array(
         [

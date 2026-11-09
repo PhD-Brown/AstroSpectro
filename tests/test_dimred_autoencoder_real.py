@@ -373,11 +373,70 @@ def test_one_real_adam_step_has_analytic_update(autoencoder_real_module, monkeyp
         lr_scheduler=False,
         verbose=False,
     )
-    # Initial gradient -4 is clipped to -1. Adam's bias-corrected first update
-    # is +.1/(1+eps), independent of beta1/beta2 to float32 precision.
+    # Adam's bias-corrected first update is approximately lr * sign(gradient).
+    # This checks Adam, not clipping; a separate step-time oracle checks clipping.
     assert ae._model.level.item() == pytest.approx(0.1, abs=2e-7)
     assert history["train_loss"] == [4.0]
     assert history["val_loss"][0] == pytest.approx(1.9**2, abs=1e-6)
+
+
+def test_optimizer_consumes_clipped_gradients_without_spy_side_effects(
+    autoencoder_real_module, monkeypatch
+):
+    m = autoencoder_real_module
+    real_adam = m.optim.Adam
+    real_clip = m.nn.utils.clip_grad_norm_
+    consumed, unclipped, changed = [], [], []
+
+    class ObservedAdam(real_adam):
+        def step(self, *args, **kwargs):
+            params = [p for group in self.param_groups for p in group["params"]]
+            # Read-only detached copies: the spy does not normalize gradients.
+            consumed.append(
+                float(
+                    m.torch.sqrt(
+                        sum(
+                            p.grad.detach().square().sum()
+                            for p in params
+                            if p.grad is not None
+                        )
+                    )
+                )
+            )
+            before = [p.detach().clone() for p in params]
+            result = super().step(*args, **kwargs)
+            changed.append(
+                any(not m.torch.equal(p, old) for p, old in zip(params, before))
+            )
+            return result
+
+    def observe_clip(parameters, max_norm):
+        norm = real_clip(list(parameters), max_norm)
+        unclipped.append(float(norm))
+        return norm
+
+    X = np.random.default_rng(71).normal(scale=50, size=(20, 3)).astype(np.float32)
+    options = dict(
+        epochs=2, batch_size=6, val_fraction=0.1, verbose=False, lr_scheduler=False
+    )
+    m.torch.manual_seed(701)
+    reference = m.SpectralAutoencoder(3, 2, [4], dropout=0.2, device="cpu")
+    reference_history = reference.fit(X, **options)
+    reference_state = {
+        key: value.clone() for key, value in reference._model.state_dict().items()
+    }
+    monkeypatch.setattr(m.optim, "Adam", ObservedAdam)
+    monkeypatch.setattr(m.nn.utils, "clip_grad_norm_", observe_clip)
+    m.torch.manual_seed(701)
+    observed = m.SpectralAutoencoder(3, 2, [4], dropout=0.2, device="cpu")
+    observed_history = observed.fit(X, **options)
+    assert len(consumed) == len(unclipped) == 6
+    assert max(unclipped) > 1.0 + 1e-3
+    assert max(consumed) <= 1.0 + 1e-5  # float32 norm rounding allowance
+    assert all(changed)
+    assert reference_history == observed_history
+    for key, value in observed._model.state_dict().items():
+        assert m.torch.equal(value, reference_state[key])
 
 
 @pytest.mark.parametrize(

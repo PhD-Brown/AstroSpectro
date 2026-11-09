@@ -21,6 +21,25 @@ import xml.etree.ElementTree as ET
 # name, expected category, exact source expression, replacement
 CANDIDATES = [
     (
+        "C05_clip_after_step",
+        "incorrect",
+        "nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)\n                optimizer.step()",
+        "optimizer.step()\n                nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)",
+    ),
+    (
+        "C06_sixty_neighbours",
+        "incorrect",
+        "np.argsort(dists)[:50]",
+        "np.argsort(dists)[:60]",
+    ),
+    (
+        "C07_twenty_neighbours",
+        "incorrect",
+        "np.argsort(dists)[:50]",
+        "np.argsort(dists)[:20]",
+    ),
+    ("C08_inclusive_gravity", "incorrect", "logg_v < g_hi", "logg_v <= g_hi"),
+    (
         "C01b_snapshot_without_buffers",
         "incorrect",
         "best_state = {k: v.clone() for k, v in self._model.state_dict().items()}",
@@ -303,7 +322,11 @@ def main():
     source = (root / source_path).read_text(encoding="utf-8")
     candidates = [("baseline", "baseline", "", ""), *CANDIDATES]
     if args.only:
-        candidates = [c for c in candidates if c[0] == "baseline" or args.only in c[0]]
+        candidates = [
+            c
+            for c in candidates
+            if c[0] == "baseline" or any(part in c[0] for part in args.only.split(","))
+        ]
     records = []
     baseline_count = None
     for name, category, old, new in candidates:
