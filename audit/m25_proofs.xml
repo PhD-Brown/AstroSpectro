@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="11" skipped="0" tests="25" time="10.286" timestamp="2026-11-08T19:18:30.793037-05:00" hostname="Alex_Labs"><testcase classname="tests.proofs_dimred_autoencoder" name="test_absent_torch_optional_boundary_has_domain_diagnostic[module]" time="0.691"><failure message="AssertionError: PyTorch non trouvé. Installer : pip install torch&#10;  Traceback (most recent call last):&#10;    File &quot;&lt;string&gt;&quot;, line 14, in &lt;module&gt;&#10;    File &quot;&lt;frozen importlib._bootstrap_external&gt;&quot;, line 940, in exec_module&#10;    File &quot;&lt;frozen importlib._bootstrap&gt;&quot;, line 241, in _call_with_frames_removed&#10;    File &quot;C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py&quot;, line 87, in &lt;module&gt;&#10;      class _Encoder(nn.Module):&#10;                     ^^&#10;  NameError: name 'nn' is not defined. Did you mean: 'np'?&#10;  &#10;assert 1 == 0&#10; +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode">E   AssertionError: PyTorch non trouvé. Installer : pip install torch
+      Traceback (most recent call last):
+        File "&lt;string&gt;", line 14, in &lt;module&gt;
+        File "&lt;frozen importlib._bootstrap_external&gt;", line 940, in exec_module
+        File "&lt;frozen importlib._bootstrap&gt;", line 241, in _call_with_frames_removed
+        File "C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py", line 87, in &lt;module&gt;
+          class _Encoder(nn.Module):
+                         ^^
+      NameError: name 'nn' is not defined. Did you mean: 'np'?
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_absent_torch_optional_boundary_has_domain_diagnostic[package]" time="2.500"><failure message="AssertionError: PyTorch non trouvé. Installer : pip install torch&#10;  Traceback (most recent call last):&#10;    File &quot;&lt;string&gt;&quot;, line 20, in &lt;module&gt;&#10;    File &quot;C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\__init__.py&quot;, line 46, in &lt;module&gt;&#10;      from .autoencoder import SpectralAutoencoder&#10;    File &quot;C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py&quot;, line 87, in &lt;module&gt;&#10;      class _Encoder(nn.Module):&#10;                     ^^&#10;  NameError: name 'nn' is not defined. Did you mean: 'np'?&#10;  &#10;assert 1 == 0&#10; +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode">E   AssertionError: PyTorch non trouvé. Installer : pip install torch
+      Traceback (most recent call last):
+        File "&lt;string&gt;", line 20, in &lt;module&gt;
+        File "C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\__init__.py", line 46, in &lt;module&gt;
+          from .autoencoder import SpectralAutoencoder
+        File "C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py", line 87, in &lt;module&gt;
+          class _Encoder(nn.Module):
+                         ^^
+      NameError: name 'nn' is not defined. Did you mean: 'np'?
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_absent_torch_optional_boundary_has_domain_diagnostic[pca]" time="2.433"><failure message="AssertionError: PyTorch non trouvé. Installer : pip install torch&#10;  Traceback (most recent call last):&#10;    File &quot;&lt;string&gt;&quot;, line 18, in &lt;module&gt;&#10;    File &quot;C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\__init__.py&quot;, line 46, in &lt;module&gt;&#10;      from .autoencoder import SpectralAutoencoder&#10;    File &quot;C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py&quot;, line 87, in &lt;module&gt;&#10;      class _Encoder(nn.Module):&#10;                     ^^&#10;  NameError: name 'nn' is not defined. Did you mean: 'np'?&#10;  &#10;assert 1 == 0&#10; +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode">E   AssertionError: PyTorch non trouvé. Installer : pip install torch
+      Traceback (most recent call last):
+        File "&lt;string&gt;", line 18, in &lt;module&gt;
+        File "C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\__init__.py", line 46, in &lt;module&gt;
+          from .autoencoder import SpectralAutoencoder
+        File "C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py", line 87, in &lt;module&gt;
+          class _Encoder(nn.Module):
+                         ^^
+      NameError: name 'nn' is not defined. Did you mean: 'np'?
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_absent_torch_optional_boundary_has_domain_diagnostic[invoke]" time="0.697"><failure message="AssertionError: PyTorch non trouvé. Installer : pip install torch&#10;  Traceback (most recent call last):&#10;    File &quot;&lt;string&gt;&quot;, line 14, in &lt;module&gt;&#10;    File &quot;&lt;frozen importlib._bootstrap_external&gt;&quot;, line 940, in exec_module&#10;    File &quot;&lt;frozen importlib._bootstrap&gt;&quot;, line 241, in _call_with_frames_removed&#10;    File &quot;C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py&quot;, line 87, in &lt;module&gt;&#10;      class _Encoder(nn.Module):&#10;                     ^^&#10;  NameError: name 'nn' is not defined. Did you mean: 'np'?&#10;  &#10;assert 1 == 0&#10; +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode">E   AssertionError: PyTorch non trouvé. Installer : pip install torch
+      Traceback (most recent call last):
+        File "&lt;string&gt;", line 14, in &lt;module&gt;
+        File "&lt;frozen importlib._bootstrap_external&gt;", line 940, in exec_module
+        File "&lt;frozen importlib._bootstrap&gt;", line 241, in _call_with_frames_removed
+        File "C:\Users\alexb\Documents\Projets\AstroSpectro-m25\src\dimred\autoencoder.py", line 87, in &lt;module&gt;
+          class _Encoder(nn.Module):
+                         ^^
+      NameError: name 'nn' is not defined. Did you mean: 'np'?
+      
+    assert 1 == 0
+     +  where 1 = CompletedProcess(args=['C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe', '-I...    class _Encoder(nn.Module):\n                   ^^\nNameError: name \'nn\' is not defined. Did you mean: \'np\'?\n').returncode</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_valid_small_training_does_not_crash_inside_batchnorm[6-4-0.1]" time="3.749"><failure message="AssertionError: assert ('batch' in 'expected more than 1 value per channel when training, got input size torch.size([1, 2])')&#10; +  where 'expected more than 1 value per channel when training, got input size torch.size([1, 2])' = &lt;built-in method lower of str object at 0x000001CF99DC1110&gt;()&#10; +    where &lt;built-in method lower of str object at 0x000001CF99DC1110&gt; = 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'.lower&#10; +      where 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])' = str(ValueError('Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'))">E   ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 2])
+
+During handling of the above exception, another exception occurred:
+E   AssertionError: assert ('batch' in 'expected more than 1 value per channel when training, got input size torch.size([1, 2])')
+     +  where 'expected more than 1 value per channel when training, got input size torch.size([1, 2])' = &lt;built-in method lower of str object at 0x000001CF99DC1110&gt;()
+     +    where &lt;built-in method lower of str object at 0x000001CF99DC1110&gt; = 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'.lower
+     +      where 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])' = str(ValueError('Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'))</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_valid_small_training_does_not_crash_inside_batchnorm[2-10-0.1]" time="0.009"><failure message="AssertionError: assert ('batch' in 'expected more than 1 value per channel when training, got input size torch.size([1, 2])')&#10; +  where 'expected more than 1 value per channel when training, got input size torch.size([1, 2])' = &lt;built-in method lower of str object at 0x000001CF99EAB630&gt;()&#10; +    where &lt;built-in method lower of str object at 0x000001CF99EAB630&gt; = 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'.lower&#10; +      where 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])' = str(ValueError('Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'))">E   ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 2])
+
+During handling of the above exception, another exception occurred:
+E   AssertionError: assert ('batch' in 'expected more than 1 value per channel when training, got input size torch.size([1, 2])')
+     +  where 'expected more than 1 value per channel when training, got input size torch.size([1, 2])' = &lt;built-in method lower of str object at 0x000001CF99EAB630&gt;()
+     +    where &lt;built-in method lower of str object at 0x000001CF99EAB630&gt; = 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'.lower
+     +      where 'Expected more than 1 value per channel when training, got input size torch.Size([1, 2])' = str(ValueError('Expected more than 1 value per channel when training, got input size torch.Size([1, 2])'))</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_failed_fit_cannot_expose_random_model_with_stale_history" time="0.019"><failure message="AssertionError: &#10;Arrays are not equal&#10;&#10;Mismatched elements: 8 / 8 (100%)&#10;First 5 mismatches are at indices:&#10; [0, 0]: 0.27193552255630493 (ACTUAL), -0.4325176477432251 (DESIRED)&#10; [1, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)&#10; [2, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)&#10; [3, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)&#10; [4, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)&#10;Max absolute difference among violations: 0.7044532&#10;Max relative difference among violations: 1.679324&#10; ACTUAL: array([[0.271936],&#10;       [0.271936],&#10;       [0.271936],...&#10; DESIRED: array([[-0.432518],&#10;       [-0.400303],&#10;       [-0.400303],...">E   AssertionError: 
+    Arrays are not equal
+    
+    Mismatched elements: 8 / 8 (100%)
+    First 5 mismatches are at indices:
+     [0, 0]: 0.27193552255630493 (ACTUAL), -0.4325176477432251 (DESIRED)
+     [1, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)
+     [2, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)
+     [3, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)
+     [4, 0]: 0.27193552255630493 (ACTUAL), -0.40030309557914734 (DESIRED)
+    Max absolute difference among violations: 0.7044532
+    Max relative difference among violations: 1.679324
+     ACTUAL: array([[0.271936],
+           [0.271936],
+           [0.271936],...
+     DESIRED: array([[-0.432518],
+           [-0.400303],
+           [-0.400303],...</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_nonfinite_training_cannot_silently_report_success[nan]" time="0.009"><failure message="AssertionError: {'lr_history': [0.001], 'train_loss': [np.float64(nan)], 'val_loss': [nan]}&#10;assert False&#10; +  where False = all(&lt;generator object test_nonfinite_training_cannot_silently_report_success.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001CF99F16F80&gt;)">E   AssertionError: {'lr_history': [0.001], 'train_loss': [np.float64(nan)], 'val_loss': [nan]}
+    assert False
+     +  where False = all(&lt;generator object test_nonfinite_training_cannot_silently_report_success.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001CF99F16F80&gt;)</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_nonfinite_training_cannot_silently_report_success[inf]" time="0.009"><failure message="AssertionError: {'lr_history': [0.001], 'train_loss': [np.float64(nan)], 'val_loss': [nan]}&#10;assert False&#10; +  where False = all(&lt;generator object test_nonfinite_training_cannot_silently_report_success.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001CF8DAF3E60&gt;)">E   AssertionError: {'lr_history': [0.001], 'train_loss': [np.float64(nan)], 'val_loss': [nan]}
+    assert False
+     +  where False = all(&lt;generator object test_nonfinite_training_cannot_silently_report_success.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001CF8DAF3E60&gt;)</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_epoch_mse_weights_observations_not_batches" time="0.007"><failure message="assert np.float64(236.7083282470703) == 228.0 ± 1.0e-05&#10;  &#10;  comparison failed&#10;  Obtained: 236.7083282470703&#10;  Expected: 228.0 ± 1.0e-05">E   assert np.float64(236.7083282470703) == 228.0 ± 1.0e-05
+      
+      comparison failed
+      Obtained: 236.7083282470703
+      Expected: 228.0 ± 1.0e-05</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_explicit_empty_hidden_configuration_is_not_replaced" time="0.018"><failure message="assert 4 == 1&#10; +  where 4 = sum(&lt;generator object test_explicit_empty_hidden_configuration_is_not_replaced.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001CF99F1CD60&gt;)">E   assert 4 == 1
+     +  where 4 = sum(&lt;generator object test_explicit_empty_hidden_configuration_is_not_replaced.&lt;locals&gt;.&lt;genexpr&gt; at 0x000001CF99F1CD60&gt;)</failure><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_split_boundaries[0-0.1]" time="0.006"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+ValueError a must be a positive integer unless no samples are taken
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_split_boundaries[1-0.1]" time="0.006"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+ValueError num_samples should be a positive integer value, but got num_samples=0
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_split_boundaries[8-1.0]" time="0.006"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+ValueError num_samples should be a positive integer value, but got num_samples=0
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_split_boundaries[8-2.0]" time="0.006"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+ValueError Cannot take a larger sample than population when replace is False
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_split_boundaries[8--0.5]" time="0.011"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+{'train_loss': [np.float64(0.9346979260444641)], 'val_loss': [1.0325907468795776], 'lr_history': [0.001]}
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_zero_negative_epochs[0]" time="0.007"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+{'train_loss': [], 'val_loss': [], 'lr_history': []}
+[[-0.4013006]]
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_zero_negative_epochs[-1]" time="0.006"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+{'train_loss': [], 'val_loss': [], 'lr_history': []}
+[[-0.4013006]]
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_interpolation_empty_or_invalid_steps[0]" time="0.002"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+(array([], dtype=float64), array([], dtype=float64))
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_interpolation_empty_or_invalid_steps[-1]" time="0.004"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+ValueError Number of samples, -1, must be non-negative.
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_duplicate_objects_cross_validation_boundary" time="0.010"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+Synthetic repeated object IDs crossing train/validation: [np.float64(0.0), np.float64(4.0), np.float64(5.0), np.float64(6.0), np.float64(9.0)]
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_numeric_boundary_policies[nan_label]" time="0.003"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+IndexError index -1 is out of bounds for axis 0 with size 0
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_numeric_boundary_policies[wrong_label_length]" time="0.003"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+IndexError boolean index did not match indexed array along axis 0; size of axis is 3 but size of corresponding boolean axis is 2
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_numeric_boundary_policies[empty_summary]" time="0.002"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+IndexError index -1 is out of bounds for axis 0 with size 0
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase><testcase classname="tests.proofs_dimred_autoencoder" name="test_observe_numeric_boundary_policies[interpolation_multiple_rows]" time="0.002"><system-out>--------------------------------- Captured Log ---------------------------------
+
+--------------------------------- Captured Out ---------------------------------
+(array([[1. , 1. ],
+       [0.5, 0.5],
+       [0. , 0. ]]), array([[1. , 1. ],
+       [0.5, 0.5],
+       [0. , 0. ]]))
+
+</system-out><system-err>--------------------------------- Captured Err ---------------------------------
+
+</system-err></testcase></testsuite></testsuites>
