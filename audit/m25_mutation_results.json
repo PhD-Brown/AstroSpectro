@@ -1,0 +1,840 @@
+{
+  "schema": 1,
+  "git_head_at_run": "1eb0c0b121164dace4b2ad0cd31feb6262c93873",
+  "working_tree_at_run": "M audit/M25_AUTOENCODER.md",
+  "inputs_sha256": {
+    "src/dimred/__init__.py": "5993ff7b6754387993336e83aed7a4530161d3c793dc8e5cfc64ef066852b83d",
+    "src/dimred/autoencoder.py": "0dd5b83d7aac55e45ebe8455a10749a8e8342d78460ce159b8b000664c3a9082",
+    "src/dimred/data_loader.py": "6a8f1344fa3fb46ca85d3561113002f745394201316a6837976b2d91d96146b1",
+    "src/dimred/dimred_visualizer.py": "f77107af006706586a839744fcea8a98656de29677b12d2b67a6971dea739e68",
+    "src/dimred/embedding.py": "f06e9836f4068b4ef1c624240e57bae5597676251231d5151011517830f8ac70",
+    "src/dimred/hdbscan_analyzer.py": "a5042df441ec74bdcf0bf6dad509b411b1fd45d78bbb5742e445c3805ff9e398",
+    "src/dimred/pca_analyzer.py": "6d5660145ee852ec323980c530965211c00a7ebb09c760970481a17c66db379a",
+    "src/dimred/run_reporter.py": "fe904362a53a19dbd8d99c51256b225cfc1a4c25a34a8d814e23b852dd49580f",
+    "src/dimred/xgboost_bridge.py": "40b5628d2eb25e07881ad524fc123a40ce28c3e2d2b1b74d1a7376365ca97dce",
+    "tests/conftest.py": "f097e7637fb5b599adab41abfdfc331609c97bf5784d7efe59a6827e89d3192c",
+    "tests/test_dimred_autoencoder.py": "feed297f9d3104a602f19feca9f616d8c0da28aee02deddc028e401aadab3423",
+    "tests/test_dimred_autoencoder_real.py": "d1e9148e3c2f7567f1282327221b843317cb4c006d0032fb2e249f16462192b6",
+    "pyproject.toml": "8cd8530992cee33f36be6df21499ff57ada45163eae6d76f5537630fc089bc00",
+    "audit/check_m25_mutations.py": "478414eb58cdc6b5eb815593d5be604b220fb2f0aea405a4ca163882654b627d"
+  },
+  "source_blob": "b06bfa75a2e0a8b132d0a0fb8e0a899b6afed0ad",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "torch": "2.10.0+cpu",
+  "cuda": null,
+  "command": [
+    "audit/check_m25_mutations.py"
+  ],
+  "cases": [
+    {
+      "name": "baseline",
+      "category": "baseline",
+      "status": "PASS",
+      "replacements": 0,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "split_overlap",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.1]",
+          "message": "assert (20 + 2) == 20\n +  where 20 = len(array([[  0.,   0.],\\n       [  1.,   1.],\\n       [  2.,   4.],\\n       [  3.,   9.],\\n       [  4.,  16.],\\n       [  5.,...      [ 15., 225.],\\n       [ 16., 256.],\\n       [ 17., 289.],\\n       [ 18., 324.],\\n       [ 19., 361.]], dtype=float32))\n +  and   2 = len(array([[  1.,   1.],\\n       [ 15., 225.]], dtype=float32))\n +  and   20 = len(array([[  0.,   0.],\\n       [  1.,   1.],\\n       [  2.,   4.],\\n       [  3.,   9.],\\n       [  4.,  16.],\\n       [  5.,...[ 14., 196.],\\n       [ 15., 225.],\\n       [ 16., 256.],\\n       [ 17., 289.],\\n       [ 18., 324.],\\n       [ 19., 361.]]))"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.25]",
+          "message": "assert (20 + 5) == 20\n +  where 20 = len(array([[  0.,   0.],\\n       [  1.,   1.],\\n       [  2.,   4.],\\n       [  3.,   9.],\\n       [  4.,  16.],\\n       [  5.,...      [ 15., 225.],\\n       [ 16., 256.],\\n       [ 17., 289.],\\n       [ 18., 324.],\\n       [ 19., 361.]], dtype=float32))\n +  and   5 = len(array([[ 13., 169.],\\n       [  8.,  64.],\\n       [ 11., 121.],\\n       [  1.,   1.],\\n       [ 19., 361.]], dtype=float32))\n +  and   20 = len(array([[  0.,   0.],\\n       [  1.,   1.],\\n       [  2.,   4.],\\n       [  3.,   9.],\\n       [  4.,  16.],\\n       [  5.,...[ 14., 196.],\\n       [ 15., 225.],\\n       [ 16., 256.],\\n       [ 17., 289.],\\n       [ 18., 324.],\\n       [ 19., 361.]]))"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.75]",
+          "message": "assert (20 + 15) == 20\n +  where 20 = len(array([[  0.,   0.],\\n       [  1.,   1.],\\n       [  2.,   4.],\\n       [  3.,   9.],\\n       [  4.,  16.],\\n       [  5.,...      [ 15., 225.],\\n       [ 16., 256.],\\n       [ 17., 289.],\\n       [ 18., 324.],\\n       [ 19., 361.]], dtype=float32))\n +  and   15 = len(array([[  0.,   0.],\\n       [ 14., 196.],\\n       [  7.,  49.],\\n       [ 18., 324.],\\n       [  2.,   4.],\\n       [ 19.,...      [  4.,  16.],\\n       [  8.,  64.],\\n       [  5.,  25.],\\n       [ 12., 144.],\\n       [ 16., 256.]], dtype=float32))\n +  and   20 = len(array([[  0.,   0.],\\n       [  1.,   1.],\\n       [  2.,   4.],\\n       [  3.,   9.],\\n       [  4.,  16.],\\n       [  5.,...[ 14., 196.],\\n       [ 15., 225.],\\n       [ 16., 256.],\\n       [ 17., 289.],\\n       [ 18., 324.],\\n       [ 19., 361.]]))"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "split_size",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.1]",
+          "message": "assert 3 == 2\n +  where 3 = len(array([[ 13., 169.],\\n       [  1.,   1.],\\n       [ 14., 196.]], dtype=float32))\n +  and   2 = max(1, 2)\n +    where 2 = int((20 * 0.1))"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.25]",
+          "message": "assert 6 == 5\n +  where 6 = len(array([[ 11., 121.],\\n       [ 12., 144.],\\n       [  8.,  64.],\\n       [ 17., 289.],\\n       [  7.,  49.],\\n       [  1.,   1.]], dtype=float32))\n +  and   5 = max(1, 5)\n +    where 5 = int((20 * 0.25))"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.75]",
+          "message": "assert 16 == 15\n +  where 16 = len(array([[  3.,   9.],\\n       [  0.,   0.],\\n       [  1.,   1.],\\n       [ 12., 144.],\\n       [ 11., 121.],\\n       [  6.,...      [ 10., 100.],\\n       [  9.,  81.],\\n       [ 15., 225.],\\n       [  4.,  16.],\\n       [  2.,   4.]], dtype=float32))\n +  and   15 = max(1, 15)\n +    where 15 = int((20 * 0.75))"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "split_seed",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 2,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[207]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0]: 2.02155 (ACTUAL), 2.0222000000000007 (DESIRED)\n [1]: -11.991655000000002 (ACTUAL), -12.037090000000001 (DESIRED)\nMax absolute difference among violations: 0.045435\nMax relative difference among violations: 0.00377458\n ACTUAL: array([  2.02155 , -11.991655])\n DESIRED: array([  2.0222 , -12.03709])"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.1]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 4 / 4 (100%)\nMismatch at indices:\n [0, 0]: 13.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: 169.0 (ACTUAL), 1.0 (DESIRED)\n [1, 0]: 9.0 (ACTUAL), 15.0 (DESIRED)\n [1, 1]: 81.0 (ACTUAL), 225.0 (DESIRED)\nMax absolute difference among violations: 168.\nMax relative difference among violations: 168.\n ACTUAL: array([[ 13., 169.],\n       [  9.,  81.]], dtype=float32)\n DESIRED: array([[  1.,   1.],\n       [ 15., 225.]], dtype=float32)"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.25]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 10 / 10 (100%)\nFirst 5 mismatches are at indices:\n [0, 0]: 0.0 (ACTUAL), 13.0 (DESIRED)\n [0, 1]: 0.0 (ACTUAL), 169.0 (DESIRED)\n [1, 0]: 19.0 (ACTUAL), 8.0 (DESIRED)\n [1, 1]: 361.0 (ACTUAL), 64.0 (DESIRED)\n [2, 0]: 7.0 (ACTUAL), 11.0 (DESIRED)\nMax absolute difference among violations: 297.\nMax relative difference among violations: 120.\n ACTUAL: array([[  0.,   0.],\n       [ 19., 361.],\n       [  7.,  49.],...\n DESIRED: array([[ 13., 169.],\n       [  8.,  64.],\n       [ 11., 121.],..."
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.75]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 30 / 30 (100%)\nFirst 5 mismatches are at indices:\n [0, 0]: 7.0 (ACTUAL), 0.0 (DESIRED)\n [0, 1]: 49.0 (ACTUAL), 0.0 (DESIRED)\n [1, 0]: 15.0 (ACTUAL), 14.0 (DESIRED)\n [1, 1]: 225.0 (ACTUAL), 196.0 (DESIRED)\n [2, 0]: 3.0 (ACTUAL), 7.0 (DESIRED)\nMax absolute difference among violations: 297.\nMax relative difference among violations: 120.\n ACTUAL: array([[  7.,  49.],\n       [ 15., 225.],\n       [  3.,   9.],...\n DESIRED: array([[  0.,   0.],\n       [ 14., 196.],\n       [  7.,  49.],..."
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "validation_train_mode",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.1]",
+          "message": "IndexError: list index out of range"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.25]",
+          "message": "IndexError: list index out of range"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.75]",
+          "message": "IndexError: list index out of range"
+        },
+        {
+          "name": "test_checkpoint_full_roundtrip_weights_buffers_outputs_and_metadata",
+          "message": "ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 4])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "inference_dropout",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 2,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",
+          "message": "assert False\n +  where False = all(<generator object test_inference_values_no_grad_eval_cpu_and_input_preservation.<locals>.<genexpr> at 0x000001F64DA27440>)"
+        },
+        {
+          "name": "test_real_dropout_and_batchnorm_inference_stability",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 6 / 12 (50%)\nFirst 5 mismatches are at indices:\n [0, 0]: 0.00622248649597168 (ACTUAL), 3.649923086166382 (DESIRED)\n [0, 1]: 0.34694576263427734 (ACTUAL), -2.2993972301483154 (DESIRED)\n [1, 0]: 2.1924428939819336 (ACTUAL), 0.00622248649597168 (DESIRED)\n [1, 1]: -1.240860104560852 (ACTUAL), 0.34694576263427734 (DESIRED)\n [2, 0]: -0.1571391522884369 (ACTUAL), 0.00622248649597168 (DESIRED)\nMax absolute difference among violations: 3.6437006\nMax relative difference among violations: 351.34192\n ACTUAL: array([[ 0.006222,  0.346946],\n       [ 2.192443, -1.24086 ],\n       [-0.157139,  0.31168 ],...\n DESIRED: array([[ 3.649923, -2.299397],\n       [ 0.006222,  0.346946],\n       [ 0.006222,  0.346946],..."
+        },
+        {
+          "name": "test_checkpoint_full_roundtrip_weights_buffers_outputs_and_metadata",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 18 / 24 (75%)\nFirst 5 mismatches are at indices:\n [0, 0]: -1.5511963367462158 (ACTUAL), -1.5940066576004028 (DESIRED)\n [0, 1]: -0.328958123922348 (ACTUAL), 0.6977362632751465 (DESIRED)\n [3, 0]: -0.6067541837692261 (ACTUAL), -0.8333598375320435 (DESIRED)\n [3, 1]: 0.013945672661066055 (ACTUAL), -0.06832928955554962 (DESIRED)\n [4, 0]: -1.043236255645752 (ACTUAL), -0.8659566640853882 (DESIRED)\nMax absolute difference among violations: 1.0266944\nMax relative difference among violations: 25.072123\n ACTUAL: array([[-1.551196, -0.328958],\n       [-0.606754,  0.013946],\n       [-0.606754,  0.013946],...\n DESIRED: array([[-1.594007,  0.697736],\n       [-0.606754,  0.013946],\n       [-0.606754,  0.013946],..."
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "no_best_restore",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[2-4]",
+          "message": "assert 4.0 == 2.0\n +  where 4.0 = <built-in method item of Parameter object at 0x0000022BC6930230>()\n +    where <built-in method item of Parameter object at 0x0000022BC6930230> = Parameter containing:\\ntensor(4., requires_grad=True).item\n +      where Parameter containing:\\ntensor(4., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[0-6]",
+          "message": "assert 6.0 == 2.0\n +  where 6.0 = <built-in method item of Parameter object at 0x0000022BCFFA7B10>()\n +    where <built-in method item of Parameter object at 0x0000022BCFFA7B10> = Parameter containing:\\ntensor(6., requires_grad=True).item\n +      where Parameter containing:\\ntensor(6., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[1-3]",
+          "message": "assert 3.0 == 2.0\n +  where 3.0 = <built-in method item of Parameter object at 0x0000022BC6930E60>()\n +    where <built-in method item of Parameter object at 0x0000022BC6930E60> = Parameter containing:\\ntensor(3., requires_grad=True).item\n +      where Parameter containing:\\ntensor(3., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "best_state_alias",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[2-4]",
+          "message": "assert 4.0 == 2.0\n +  where 4.0 = <built-in method item of Parameter object at 0x000001C8BF387890>()\n +    where <built-in method item of Parameter object at 0x000001C8BF387890> = Parameter containing:\\ntensor(4., requires_grad=True).item\n +      where Parameter containing:\\ntensor(4., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[0-6]",
+          "message": "assert 6.0 == 2.0\n +  where 6.0 = <built-in method item of Parameter object at 0x000001C8BEEAF610>()\n +    where <built-in method item of Parameter object at 0x000001C8BEEAF610> = Parameter containing:\\ntensor(6., requires_grad=True).item\n +      where Parameter containing:\\ntensor(6., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[1-3]",
+          "message": "assert 3.0 == 2.0\n +  where 3.0 = <built-in method item of Parameter object at 0x000001C8CA81D4A0>()\n +    where <built-in method item of Parameter object at 0x000001C8CA81D4A0> = Parameter containing:\\ntensor(3., requires_grad=True).item\n +      where Parameter containing:\\ntensor(3., requires_grad=True) = Network().level\n +        where Network() = SpectralAutoencoder(1 \u2192 [1] \u2192 1)._model"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "patience_off_by_one",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[2-4]",
+          "message": "assert 5 == 4\n +  where 5 = len([5.0, 2.0, 3.0, 4.0, 6.0])"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[1-3]",
+          "message": "assert 4 == 3\n +  where 4 = len([5.0, 2.0, 3.0, 4.0])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "train_history",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[2-4]",
+          "message": "assert [5.0, 2.0, 3.0, 4.0] == [1.0, 0.0, 1.0, 4.0]\n  \n  At index 0 diff: 5.0 != 1.0\n  Use -v to get more diff"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[0-6]",
+          "message": "assert [5.0, 2.0, 3.0, 4.0, 6.0, 7.0] == [1.0, 0.0, 1.....0, 9.0, 16.0]\n  \n  At index 0 diff: 5.0 != 1.0\n  Use -v to get more diff"
+        },
+        {
+          "name": "test_early_stopping_restores_actual_best_weights[1-3]",
+          "message": "assert [5.0, 2.0, 3.0] == [1.0, 0.0, 1.0]\n  \n  At index 0 diff: 5.0 != 1.0\n  Use -v to get more diff"
+        },
+        {
+          "name": "test_one_real_adam_step_has_analytic_update",
+          "message": "assert [3.609999895095825] == [4.0]\n  \n  At index 0 diff: 3.609999895095825 != 4.0\n  Use -v to get more diff"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "lr_history",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_real_adam_clipping_gradient_reset_and_scheduler_history",
+          "message": "assert [0.1, 0.1, 0.1] == [0.1, 0.05, 0.025]\n  \n  At index 1 diff: 0.1 != 0.05\n  Use -v to get more diff"
+        },
+        {
+          "name": "test_real_scheduler_reduces_on_plateau_and_disabled_is_unused",
+          "message": "assert [0.01, 0.01] == [0.005, 0.005]\n  \n  At index 0 diff: 0.01 != 0.005\n  Use -v to get more diff"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "no_gradient_reset",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_real_adam_clipping_gradient_reset_and_scheduler_history",
+          "message": "assert 0 == 3\n +  where 0 = len([])\n +  and   3 = len([([tensor(-4.)], [tensor(-1.0000)], 1.0), ([tensor(-4.8000)], [tensor(-1.0000)], 1.0), ([tensor(-4.7000)], [tensor(-1.0000)], 1.0)])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "no_clipping",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_real_adam_clipping_gradient_reset_and_scheduler_history",
+          "message": "assert 3 == 0\n +  where 3 = len([True, True, True])\n +  and   0 = len([])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "ignored_weight_decay",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_real_adam_clipping_gradient_reset_and_scheduler_history",
+          "message": "AssertionError: assert {'lr': 0.1, '...t_decay': 0.0} == {'lr': 0.1, '..._decay': 0.02}\n  \n  Omitting 1 identical items, use -vv to show\n  Differing items:\n  {'weight_decay': 0.0} != {'weight_decay': 0.02}\n  Use -v to get more diff"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "mse_mae",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_mse_manual_asymmetric_residuals[False]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-14\n\nMismatched elements: 3 / 3 (100%)\nMismatch at indices:\n [0]: 1.6666666666666667 (ACTUAL), 3.0 (DESIRED)\n [1]: 1.0 (ACTUAL), 3.0 (DESIRED)\n [2]: 3.6666666666666665 (ACTUAL), 16.333333333333332 (DESIRED)\nMax absolute difference among violations: 12.66666667\nMax relative difference among violations: 0.7755102\n ACTUAL: array([1.666667, 1.      , 3.666667])\n DESIRED: array([ 3.      ,  3.      , 16.333333])"
+        },
+        {
+          "name": "test_summary_independent_moments_quantile_and_noncontiguous_classes",
+          "message": "assert np.float64(1.75) == (21 / 4)"
+        },
+        {
+          "name": "test_pca_comparison_analytic_axes",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-15\n\nMismatched elements: 1 / 4 (25%)\nMismatch at index:\n [0]: 0.6666666666666666 (ACTUAL), 1.5555555555555556 (DESIRED)\nMax absolute difference among violations: 0.88888889\nMax relative difference among violations: 0.57142857\n ACTUAL: array([0.666667, 0.      , 0.555556, 0.111111])\n DESIRED: array([1.555556, 0.      , 0.555556, 0.111111])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "mse_sum_features",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_mse_manual_asymmetric_residuals[False]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-14\n\nMismatched elements: 3 / 3 (100%)\nMismatch at indices:\n [0]: 9.0 (ACTUAL), 3.0 (DESIRED)\n [1]: 9.0 (ACTUAL), 3.0 (DESIRED)\n [2]: 49.0 (ACTUAL), 16.333333333333332 (DESIRED)\nMax absolute difference among violations: 32.66666667\nMax relative difference among violations: 2.\n ACTUAL: array([ 9.,  9., 49.])\n DESIRED: array([ 3.      ,  3.      , 16.333333])"
+        },
+        {
+          "name": "test_pca_comparison_analytic_axes",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-15\n\nMismatched elements: 1 / 4 (25%)\nMismatch at index:\n [0]: 4.666666666666667 (ACTUAL), 1.5555555555555556 (DESIRED)\nMax absolute difference among violations: 3.11111111\nMax relative difference among violations: 2.\n ACTUAL: array([4.666667, 0.      , 0.555556, 0.111111])\n DESIRED: array([1.555556, 0.      , 0.555556, 0.111111])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "mse_global_median",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_mse_manual_asymmetric_residuals[False]",
+          "message": "assert 3.0 == 7.444444444444444 \u00b1 7.4e-06\n  \n  comparison failed\n  Obtained: 3.0\n  Expected: 7.444444444444444 \u00b1 7.4e-06"
+        },
+        {
+          "name": "test_pca_comparison_analytic_axes",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-15\n\nMismatched elements: 1 / 4 (25%)\nMismatch at index:\n [0]: 1.3333333333333333 (ACTUAL), 1.5555555555555556 (DESIRED)\nMax absolute difference among violations: 0.22222222\nMax relative difference among violations: 0.14285714\n ACTUAL: array([1.333333, 0.      , 0.555556, 0.111111])\n DESIRED: array([1.555556, 0.      , 0.555556, 0.111111])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "summary_ddof",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_summary_independent_moments_quantile_and_noncontiguous_classes",
+          "message": "assert np.float64(7.365459931328117) == 6.378675411086537 \u00b1 6.4e-06\n  \n  comparison failed\n  Obtained: 7.365459931328117\n  Expected: 6.378675411086537 \u00b1 6.4e-06"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "summary_median",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_summary_independent_moments_quantile_and_noncontiguous_classes",
+          "message": "assert np.float64(2.5) == (21 / 4)"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "summary_quantile",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_summary_independent_moments_quantile_and_noncontiguous_classes",
+          "message": "assert np.float64(12.400000000000002) == 14.2 \u00b1 1.4e-05\n  \n  comparison failed\n  Obtained: 12.400000000000002\n  Expected: 14.2 \u00b1 1.4e-05"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "wrong_latent_dim",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_architecture_parameter_count_and_gradients[3-hidden0-1]",
+          "message": "assert 87 == 84\n +  where 87 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001D9522706C0>)"
+        },
+        {
+          "name": "test_architecture_parameter_count_and_gradients[1-hidden1-3]",
+          "message": "assert 35 == 32\n +  where 35 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001D94DBC79F0>)"
+        },
+        {
+          "name": "test_architecture_parameter_count_and_gradients[2-hidden2-1]",
+          "message": "assert 10 == 7\n +  where 10 = sum(<generator object test_architecture_parameter_count_and_gradients.<locals>.<genexpr> at 0x000001D9467DEDC0>)"
+        },
+        {
+          "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",
+          "message": "AssertionError: \nArrays are not equal\n\n(shapes (3, 2), (3, 1) mismatch)\n ACTUAL: array([[-0.5, -0.5],\n       [-7.5, -7.5],\n       [11.5, 11.5]], dtype=float32)\n DESIRED: array([[-0.5],\n       [-7.5],\n       [11.5]])"
+        },
+        {
+          "name": "test_real_dropout_and_batchnorm_inference_stability",
+          "message": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (6x3 and 2x4)"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.1]",
+          "message": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (18x2 and 1x2)"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.25]",
+          "message": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (15x2 and 1x2)"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.75]",
+          "message": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (5x2 and 1x2)"
+        },
+        {
+          "name": "test_external_seed_controls_training_and_second_fit_resets",
+          "message": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (6x3 and 2x4)"
+        },
+        {
+          "name": "test_checkpoint_full_roundtrip_weights_buffers_outputs_and_metadata",
+          "message": "RuntimeError: mat1 and mat2 shapes cannot be multiplied (11x3 and 2x2)"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "reversed_features",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 3 / 3 (100%)\nMismatch at indices:\n [0, 0]: 5.5 (ACTUAL), -0.5 (DESIRED)\n [1, 0]: 10.5 (ACTUAL), -7.5 (DESIRED)\n [2, 0]: -6.5 (ACTUAL), 11.5 (DESIRED)\nMax absolute difference among violations: 18.\nMax relative difference among violations: 12.\n ACTUAL: array([[ 5.5],\n       [10.5],\n       [-6.5]], dtype=float32)\n DESIRED: array([[-0.5],\n       [-7.5],\n       [11.5]])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "reversed_rows",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 2 / 3 (66.7%)\nMismatch at indices:\n [0, 0]: 11.5 (ACTUAL), -0.5 (DESIRED)\n [2, 0]: -0.5 (ACTUAL), 11.5 (DESIRED)\nMax absolute difference among violations: 12.\nMax relative difference among violations: 24.\n ACTUAL: array([[11.5],\n       [-7.5],\n       [-0.5]], dtype=float32)\n DESIRED: array([[-0.5],\n       [-7.5],\n       [11.5]])"
+        },
+        {
+          "name": "test_real_dropout_and_batchnorm_inference_stability",
+          "message": "ValueError: At least one stride in the given numpy array is negative, and tensors with negative strides are not currently supported. (You can probably work around this by making a copy of your array  with array.copy().)"
+        },
+        {
+          "name": "test_checkpoint_full_roundtrip_weights_buffers_outputs_and_metadata",
+          "message": "ValueError: At least one stride in the given numpy array is negative, and tensors with negative strides are not currently supported. (You can probably work around this by making a copy of your array  with array.copy().)"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "checkpoint_weights_missing",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_checkpoint_full_roundtrip_weights_buffers_outputs_and_metadata",
+          "message": "RuntimeError: Error(s) in loading state_dict for _AutoencoderNet:\n\tMissing key(s) in state_dict: \"encoder.net.0.weight\", \"encoder.net.0.bias\", \"encoder.net.1.weight\", \"encoder.net.1.bias\", \"encoder.net.1.running_mean\", \"encoder.net.1.running_var\", \"encoder.net.4.weight\", \"encoder.net.4.bias\", \"encoder.net.5.weight\", \"encoder.net.5.bias\", \"encoder.net.5.running_mean\", \"encoder.net.5.running_var\", \"encoder.net.8.weight\", \"encoder.net.8.bias\", \"decoder.net.0.weight\", \"decoder.net.0.bias\", \"decoder.net.1.weight\", \"decoder.net.1.bias\", \"decoder.net.1.running_mean\", \"decoder.net.1.running_var\", \"decoder.net.4.weight\", \"decoder.net.4.bias\", \"decoder.net.5.weight\", \"decoder.net.5.bias\", \"decoder.net.5.running_mean\", \"decoder.net.5.running_var\", \"decoder.net.8.weight\", \"decoder.net.8.bias\"."
+        },
+        {
+          "name": "test_checkpoint_optional_metadata_and_extra_fields",
+          "message": "RuntimeError: Error(s) in loading state_dict for _AutoencoderNet:\n\tMissing key(s) in state_dict: \"encoder.net.0.weight\", \"encoder.net.0.bias\", \"encoder.net.1.weight\", \"encoder.net.1.bias\", \"encoder.net.1.running_mean\", \"encoder.net.1.running_var\", \"encoder.net.4.weight\", \"encoder.net.4.bias\", \"decoder.net.0.weight\", \"decoder.net.0.bias\", \"decoder.net.1.weight\", \"decoder.net.1.bias\", \"decoder.net.1.running_mean\", \"decoder.net.1.running_var\", \"decoder.net.4.weight\", \"decoder.net.4.bias\"."
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "checkpoint_architecture",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_checkpoint_full_roundtrip_weights_buffers_outputs_and_metadata",
+          "message": "RuntimeError: Error(s) in loading state_dict for _AutoencoderNet:\n\tsize mismatch for encoder.net.8.weight: copying a param with shape torch.Size([2, 2]) from checkpoint, the shape in current model is torch.Size([3, 2]).\n\tsize mismatch for encoder.net.8.bias: copying a param with shape torch.Size([2]) from checkpoint, the shape in current model is torch.Size([3]).\n\tsize mismatch for decoder.net.0.weight: copying a param with shape torch.Size([2, 2]) from checkpoint, the shape in current model is torch.Size([2, 3])."
+        },
+        {
+          "name": "test_checkpoint_optional_metadata_and_extra_fields",
+          "message": "RuntimeError: Error(s) in loading state_dict for _AutoencoderNet:\n\tsize mismatch for encoder.net.4.weight: copying a param with shape torch.Size([1, 2]) from checkpoint, the shape in current model is torch.Size([2, 2]).\n\tsize mismatch for encoder.net.4.bias: copying a param with shape torch.Size([1]) from checkpoint, the shape in current model is torch.Size([2]).\n\tsize mismatch for decoder.net.0.weight: copying a param with shape torch.Size([2, 1]) from checkpoint, the shape in current model is torch.Size([2, 2])."
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "interpolation_reversed",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_interpolation_affine_oracle[1]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-14\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: -9.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: 7.0 (ACTUAL), 5.0 (DESIRED)\nMax absolute difference among violations: 10.\nMax relative difference among violations: 10.\n ACTUAL: array([[-9.,  7.]])\n DESIRED: array([[1., 5.]])"
+        },
+        {
+          "name": "test_interpolation_affine_oracle[2]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-14\n\nMismatched elements: 4 / 4 (100%)\nMismatch at indices:\n [0, 0]: -9.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: 7.0 (ACTUAL), 5.0 (DESIRED)\n [1, 0]: 1.0 (ACTUAL), -9.0 (DESIRED)\n [1, 1]: 5.0 (ACTUAL), 7.0 (DESIRED)\nMax absolute difference among violations: 10.\nMax relative difference among violations: 10.\n ACTUAL: array([[-9.,  7.],\n       [ 1.,  5.]])\n DESIRED: array([[ 1.,  5.],\n       [-9.,  7.]])"
+        },
+        {
+          "name": "test_interpolation_affine_oracle[5]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-14\n\nMismatched elements: 8 / 10 (80%)\nFirst 5 mismatches are at indices:\n [0, 0]: -9.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: 7.0 (ACTUAL), 5.0 (DESIRED)\n [1, 0]: -6.5 (ACTUAL), -1.5 (DESIRED)\n [1, 1]: 6.5 (ACTUAL), 5.5 (DESIRED)\n [3, 0]: -1.5 (ACTUAL), -6.5 (DESIRED)\nMax absolute difference among violations: 10.\nMax relative difference among violations: 10.\n ACTUAL: array([[-9. ,  7. ],\n       [-6.5,  6.5],\n       [-4. ,  6. ],...\n DESIRED: array([[ 1. ,  5. ],\n       [-1.5,  5.5],\n       [-4. ,  6. ],..."
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "arithmetic_sign",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[1]",
+          "message": "assert 1.0 == 5.385164807134504 \u00b1 5.4e-06\n  \n  comparison failed\n  Obtained: 1.0\n  Expected: 5.385164807134504 \u00b1 5.4e-06"
+        },
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[23]",
+          "message": "assert 1.3480726983364042 == 5.385164807134502 \u00b1 5.4e-06\n  \n  comparison failed\n  Obtained: 1.3480726983364042\n  Expected: 5.385164807134502 \u00b1 5.4e-06"
+        },
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[207]",
+          "message": "assert 29.34051468751699 == 5.563784091928795 \u00b1 5.6e-06\n  \n  comparison failed\n  Obtained: 29.34051468751699\n  Expected: 5.563784091928795 \u00b1 5.6e-06"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "arithmetic_reference",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[1]",
+          "message": "assert 126.92955176439848 == 73.97092748646287 \u00b1 7.4e-05\n  \n  comparison failed\n  Obtained: 126.92955176439848\n  Expected: 73.97092748646287 \u00b1 7.4e-05"
+        },
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[23]",
+          "message": "assert 126.92955176439844 == 73.97092748646284 \u00b1 7.4e-05\n  \n  comparison failed\n  Obtained: 126.92955176439844\n  Expected: 73.97092748646284 \u00b1 7.4e-05"
+        },
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[207]",
+          "message": "assert 129.64472932428995 == 77.20573486320761 \u00b1 7.7e-05\n  \n  comparison failed\n  Obtained: 129.64472932428995\n  Expected: 77.20573486320761 \u00b1 7.7e-05"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "arithmetic_population",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[1]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0]: 4.0 (ACTUAL), 1.0 (DESIRED)\n [1]: -1.0 (ACTUAL), 2.0 (DESIRED)\nMax absolute difference among violations: 3.\nMax relative difference among violations: 3.\n ACTUAL: array([ 4., -1.])\n DESIRED: array([1., 2.])"
+        },
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[23]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0]: 4.110000000000001 (ACTUAL), 1.11 (DESIRED)\n [1]: -1.165 (ACTUAL), 1.835 (DESIRED)\nMax absolute difference among violations: 3.\nMax relative difference among violations: 2.7027027\n ACTUAL: array([ 4.11 , -1.165])\n DESIRED: array([1.11 , 1.835])"
+        },
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[207]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0]: 5.022199999999999 (ACTUAL), 2.0222000000000007 (DESIRED)\n [1]: -15.037090000000005 (ACTUAL), -12.037090000000001 (DESIRED)\nMax absolute difference among violations: 3.\nMax relative difference among violations: 1.48353279\n ACTUAL: array([  5.0222 , -15.03709])\n DESIRED: array([  2.0222 , -12.03709])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "candidate_noise_votes",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_candidate_scaling_reconstruction_vote_and_feature_order[False-cluster_labels3-9]",
+          "message": "assert -1 == 9"
+        },
+        {
+          "name": "test_candidate_scaling_reconstruction_vote_and_feature_order[True-cluster_labels3-9]",
+          "message": "assert -1 == 9"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "candidate_wrong_distance_axis",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_candidate_nearest_fifty_excludes_distant_majority",
+          "message": "assert 2 == 7"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "candidate_no_scaler",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_candidate_scaling_reconstruction_vote_and_feature_order[True-None-None]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 5.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: -2.0 (ACTUAL), 0.0 (DESIRED)\nMax absolute difference among violations: 4.\nMax relative difference among violations: 4.\n ACTUAL: array([[ 5., -2.]])\n DESIRED: array([[1., 0.]])"
+        },
+        {
+          "name": "test_candidate_scaling_reconstruction_vote_and_feature_order[True-cluster_labels1--1]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 5.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: -2.0 (ACTUAL), 0.0 (DESIRED)\nMax absolute difference among violations: 4.\nMax relative difference among violations: 4.\n ACTUAL: array([[ 5., -2.]])\n DESIRED: array([[1., 0.]])"
+        },
+        {
+          "name": "test_candidate_scaling_reconstruction_vote_and_feature_order[True-cluster_labels2-9]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 5.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: -2.0 (ACTUAL), 0.0 (DESIRED)\nMax absolute difference among violations: 4.\nMax relative difference among violations: 4.\n ACTUAL: array([[ 5., -2.]])\n DESIRED: array([[1., 0.]])"
+        },
+        {
+          "name": "test_candidate_scaling_reconstruction_vote_and_feature_order[True-cluster_labels3-9]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 5.0 (ACTUAL), 1.0 (DESIRED)\n [0, 1]: -2.0 (ACTUAL), 0.0 (DESIRED)\nMax absolute difference among violations: 4.\nMax relative difference among violations: 4.\n ACTUAL: array([[ 5., -2.]])\n DESIRED: array([[1., 0.]])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "candidate_all_neighbours",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_candidate_nearest_fifty_excludes_distant_majority",
+          "message": "assert 2 == 7"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "pca_median",
+      "category": "incorrect",
+      "status": "KILLED",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_pca_comparison_analytic_axes",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=1e-15\n\nMismatched elements: 2 / 4 (50%)\nMismatch at indices:\n [2]: 0.3333333333333333 (ACTUAL), 0.5555555555555556 (DESIRED)\n [3]: 0.0 (ACTUAL), 0.1111111111111111 (DESIRED)\nMax absolute difference among violations: 0.22222222\nMax relative difference among violations: 1.\n ACTUAL: array([1.555556, 0.      , 0.333333, 0.      ])\n DESIRED: array([1.555556, 0.      , 0.555556, 0.111111])"
+        },
+        {
+          "name": "test_pca_forwarding_same_rows_default_and_custom_order",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 4 / 5 (80%)\nMismatch at indices:\n [1]: 1.0 (ACTUAL), 3.0 (DESIRED)\n [2]: 1.0 (ACTUAL), 3.0 (DESIRED)\n [3]: 1.0 (ACTUAL), 3.0 (DESIRED)\n [4]: 1.0 (ACTUAL), 3.0 (DESIRED)\nMax absolute difference among violations: 2.\nMax relative difference among violations: 0.66666667\n ACTUAL: array([11.,  1.,  1.,  1.,  1.])\n DESIRED: array([11.,  3.,  3.,  3.,  3.])"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1
+    },
+    {
+      "name": "mse_equivalent",
+      "category": "equivalent",
+      "status": "PASS",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "architecture_equivalent",
+      "category": "equivalent",
+      "status": "PASS",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "extra_checkpoint_metadata",
+      "category": "admissible",
+      "status": "PASS",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "cautious_interpolation_prose",
+      "category": "admissible",
+      "status": "PASS",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "cautious_candidate_verdict",
+      "category": "admissible",
+      "status": "PASS",
+      "replacements": 1,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    },
+    {
+      "name": "explicit_shape_rejection",
+      "category": "admissible",
+      "status": "PASS",
+      "replacements": 2,
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0
+    }
+  ]
+}

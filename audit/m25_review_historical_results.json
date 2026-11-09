@@ -1,0 +1,415 @@
+{
+  "schema": 2,
+  "started_at_utc": "2026-11-09T01:47:18.943271+00:00",
+  "git_head_at_run": "05d94d327028627e7b8d38e74be47b5550c21537",
+  "working_tree_at_start": "",
+  "git_head_at_end": "05d94d327028627e7b8d38e74be47b5550c21537",
+  "working_tree_at_end": "?? audit/m25_review_proof_limit_results.json",
+  "inputs_sha256": {
+    "src/dimred/__init__.py": "5993ff7b6754387993336e83aed7a4530161d3c793dc8e5cfc64ef066852b83d",
+    "src/dimred/autoencoder.py": "0dd5b83d7aac55e45ebe8455a10749a8e8342d78460ce159b8b000664c3a9082",
+    "src/dimred/data_loader.py": "6a8f1344fa3fb46ca85d3561113002f745394201316a6837976b2d91d96146b1",
+    "src/dimred/dimred_visualizer.py": "f77107af006706586a839744fcea8a98656de29677b12d2b67a6971dea739e68",
+    "src/dimred/embedding.py": "f06e9836f4068b4ef1c624240e57bae5597676251231d5151011517830f8ac70",
+    "src/dimred/hdbscan_analyzer.py": "a5042df441ec74bdcf0bf6dad509b411b1fd45d78bbb5742e445c3805ff9e398",
+    "src/dimred/pca_analyzer.py": "6d5660145ee852ec323980c530965211c00a7ebb09c760970481a17c66db379a",
+    "src/dimred/run_reporter.py": "fe904362a53a19dbd8d99c51256b225cfc1a4c25a34a8d814e23b852dd49580f",
+    "src/dimred/xgboost_bridge.py": "40b5628d2eb25e07881ad524fc123a40ce28c3e2d2b1b74d1a7376365ca97dce",
+    "tests/conftest.py": "18de3cbbb8dd275497628930f33c7320dd468d775aef585a13d6be39de168ad3",
+    "tests/test_dimred_autoencoder.py": "71f60b0c02eff1ce75fafc2a08b6ac5366a4cbab412fc9848b5eb810f3b28b84",
+    "tests/test_dimred_autoencoder_real.py": "e4ba61502fa3454016cb5b4ff346dbf42fa7807aecedda1fb22456100145e55b",
+    "pyproject.toml": "8cd8530992cee33f36be6df21499ff57ada45163eae6d76f5537630fc089bc00",
+    "audit/check_m25_mutations.py": "229b64594702c2d4f9d7fe12ddb25dcf1c74b5e678177b7e1f54e820805a2b15"
+  },
+  "tests_ref": "ae1e2be0a4fd5f60ad39068b0b05ceb0ca645546",
+  "effective_test_inputs_sha256": {
+    "tests/conftest.py": "f5b0030929bbab92cdd25ad10e671036e437748e6bdab5e490fe3515980fbd50",
+    "tests/test_dimred_autoencoder.py": "feed297f9d3104a602f19feca9f616d8c0da28aee02deddc028e401aadab3423",
+    "tests/test_dimred_autoencoder_real.py": "d1e9148e3c2f7567f1282327221b843317cb4c006d0032fb2e249f16462192b6"
+  },
+  "source_blob": "b06bfa75a2e0a8b132d0a0fb8e0a899b6afed0ad",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "torch": "2.10.0+cpu",
+  "cuda": null,
+  "command": [
+    "audit/check_m25_mutations.py",
+    "--only",
+    "C0,A01,A02,A03,A09",
+    "--tests-ref",
+    "ae1e2be0a4fd5f60ad39068b0b05ceb0ca645546",
+    "--output",
+    "audit/m25_review_historical_results.json"
+  ],
+  "interpreter": "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+  "pytest_command": [
+    "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "-m",
+    "slow or not slow",
+    "tests/test_dimred_autoencoder.py",
+    "tests/test_dimred_autoencoder_real.py",
+    "-k",
+    "not fresh_process and not independent_loader and not png_export",
+    "--junitxml=results.xml"
+  ],
+  "versions": {
+    "pytest": "8.4.2",
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "torch": "2.10.0+cpu"
+  },
+  "cases": [
+    {
+      "name": "baseline",
+      "category": "baseline",
+      "status": "PASS",
+      "replacements": 0,
+      "replacement_sites": [],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "A01_sorted_validation",
+      "category": "admissible",
+      "status": "FAIL",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "val_idx = rng.choice(N, size=n_val, replace=False)",
+          "replacement": "val_idx = np.sort(rng.choice(N, size=n_val, replace=False))",
+          "matches": 1,
+          "line_numbers": [
+            319
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.25]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 4 / 10 (40%)\nMismatch at indices:\n [0, 0]: 1.0 (ACTUAL), 13.0 (DESIRED)\n [0, 1]: 1.0 (ACTUAL), 169.0 (DESIRED)\n [3, 0]: 13.0 (ACTUAL), 1.0 (DESIRED)\n [3, 1]: 169.0 (ACTUAL), 1.0 (DESIRED)\nMax absolute difference among violations: 168.\nMax relative difference among violations: 168.\n ACTUAL: array([[  1.,   1.],\n       [  8.,  64.],\n       [ 11., 121.],...\n DESIRED: array([[ 13., 169.],\n       [  8.,  64.],\n       [ 11., 121.],...",
+          "detection": "assertion",
+          "traceback": "autoencoder_real_module = <module 'm25_real' from 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\astrospectro-m25-6ax_ozfj\\\\src\\\\dimred\\\\autoencoder.py'>\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023A72676D90>\nfraction = 0.25\n\n    @pytest.mark.parametrize(\"fraction\", [0.1, 0.25, 0.75])\n    def test_split_disjoint_complete_fixed_and_loader_targets(\n        autoencoder_real_module, monkeypatch, fraction\n    ):\n        m = autoencoder_real_module\n        captures = []\n        real_loader = m.DataLoader\n    \n        def loader(dataset, **kwargs):\n            captures.append((dataset, kwargs))\n            return real_loader(dataset, **kwargs)\n    \n        monkeypatch.setattr(m, \"DataLoader\", loader)\n        X = np.column_stack([np.arange(20.0), np.arange(20.0) ** 2])\n        for seed in [3, 19]:\n            m.torch.manual_seed(seed)\n            ae = m.SpectralAutoencoder(2, 1, [2], dropout=0.0, device=\"cpu\")\n            validation = []\n            original = m._AutoencoderNet.forward\n    \n            def forward(net, x):\n                if not net.training:\n                    validation.append(x.detach().numpy().copy())\n                return original(net, x)\n    \n            with monkeypatch.context() as ctx:\n                ctx.setattr(m._AutoencoderNet, \"forward\", forward)\n                ae.fit(X, epochs=1, batch_size=40, val_fraction=fraction, verbose=False)\n            dataset, options = captures[-1]\n            train, target = [t.numpy() for t in dataset.tensors]\n            val = validation[0]\n            assert len(val) == max(1, int(20 * fraction))\n            expected_indices = np.random.default_rng(42).choice(\n                20, max(1, int(20 * fraction)), replace=False\n            )\n>           np.testing.assert_array_equal(val, X[expected_indices].astype(np.float32))\nE           AssertionError: \nE           Arrays are not equal\nE           \nE           Mismatched elements: 4 / 10 (40%)\nE           Mismatch at indices:\nE            [0, 0]: 1.0 (ACTUAL), 13.0 (DESIRED)\nE            [0, 1]: 1.0 (ACTUAL), 169.0 (DESIRED)\nE            [3, 0]: 13.0 (ACTUAL), 1.0 (DESIRED)\nE            [3, 1]: 169.0 (ACTUAL), 1.0 (DESIRED)\nE           Max absolute difference among violations: 168.\nE           Max relative difference among violations: 168.\nE            ACTUAL: array([[  1.,   1.],\nE                  [  8.,  64.],\nE                  [ 11., 121.],...\nE            DESIRED: array([[ 13., 169.],\nE                  [  8.,  64.],\nE                  [ 11., 121.],...\n\ntests\\test_dimred_autoencoder_real.py:178: AssertionError"
+        },
+        {
+          "name": "test_split_disjoint_complete_fixed_and_loader_targets[0.75]",
+          "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 28 / 30 (93.3%)\nFirst 5 mismatches are at indices:\n [1, 0]: 1.0 (ACTUAL), 14.0 (DESIRED)\n [1, 1]: 1.0 (ACTUAL), 196.0 (DESIRED)\n [2, 0]: 2.0 (ACTUAL), 7.0 (DESIRED)\n [2, 1]: 4.0 (ACTUAL), 49.0 (DESIRED)\n [3, 0]: 3.0 (ACTUAL), 18.0 (DESIRED)\nMax absolute difference among violations: 336.\nMax relative difference among violations: 48.\n ACTUAL: array([[  0.,   0.],\n       [  1.,   1.],\n       [  2.,   4.],...\n DESIRED: array([[  0.,   0.],\n       [ 14., 196.],\n       [  7.,  49.],...",
+          "detection": "assertion",
+          "traceback": "autoencoder_real_module = <module 'm25_real' from 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\astrospectro-m25-6ax_ozfj\\\\src\\\\dimred\\\\autoencoder.py'>\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000023A72624450>\nfraction = 0.75\n\n    @pytest.mark.parametrize(\"fraction\", [0.1, 0.25, 0.75])\n    def test_split_disjoint_complete_fixed_and_loader_targets(\n        autoencoder_real_module, monkeypatch, fraction\n    ):\n        m = autoencoder_real_module\n        captures = []\n        real_loader = m.DataLoader\n    \n        def loader(dataset, **kwargs):\n            captures.append((dataset, kwargs))\n            return real_loader(dataset, **kwargs)\n    \n        monkeypatch.setattr(m, \"DataLoader\", loader)\n        X = np.column_stack([np.arange(20.0), np.arange(20.0) ** 2])\n        for seed in [3, 19]:\n            m.torch.manual_seed(seed)\n            ae = m.SpectralAutoencoder(2, 1, [2], dropout=0.0, device=\"cpu\")\n            validation = []\n            original = m._AutoencoderNet.forward\n    \n            def forward(net, x):\n                if not net.training:\n                    validation.append(x.detach().numpy().copy())\n                return original(net, x)\n    \n            with monkeypatch.context() as ctx:\n                ctx.setattr(m._AutoencoderNet, \"forward\", forward)\n                ae.fit(X, epochs=1, batch_size=40, val_fraction=fraction, verbose=False)\n            dataset, options = captures[-1]\n            train, target = [t.numpy() for t in dataset.tensors]\n            val = validation[0]\n            assert len(val) == max(1, int(20 * fraction))\n            expected_indices = np.random.default_rng(42).choice(\n                20, max(1, int(20 * fraction)), replace=False\n            )\n>           np.testing.assert_array_equal(val, X[expected_indices].astype(np.float32))\nE           AssertionError: \nE           Arrays are not equal\nE           \nE           Mismatched elements: 28 / 30 (93.3%)\nE           First 5 mismatches are at indices:\nE            [1, 0]: 1.0 (ACTUAL), 14.0 (DESIRED)\nE            [1, 1]: 1.0 (ACTUAL), 196.0 (DESIRED)\nE            [2, 0]: 2.0 (ACTUAL), 7.0 (DESIRED)\nE            [2, 1]: 4.0 (ACTUAL), 49.0 (DESIRED)\nE            [3, 0]: 3.0 (ACTUAL), 18.0 (DESIRED)\nE           Max absolute difference among violations: 336.\nE           Max relative difference among violations: 48.\nE            ACTUAL: array([[  0.,   0.],\nE                  [  1.,   1.],\nE                  [  2.,   4.],...\nE            DESIRED: array([[  0.,   0.],\nE                  [ 14., 196.],\nE                  [  7.,  49.],...\n\ntests\\test_dimred_autoencoder_real.py:178: AssertionError"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1,
+      "failure_kinds": [
+        "assertion"
+      ],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "A02_float64_encode",
+      "category": "admissible",
+      "status": "FAIL",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "Z = self._model.encode(X_t).cpu().numpy()",
+          "replacement": "Z = self._model.encode(X_t).cpu().numpy().astype(np.float64)",
+          "matches": 1,
+          "line_numbers": [
+            474
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_inference_values_no_grad_eval_cpu_and_input_preservation",
+          "message": "AssertionError: assert (True and dtype('float64') == <class 'numpy.float32'>)\n +  where True = isinstance(array([[-0.5],\\n       [-7.5],\\n       [11.5]]), <class 'numpy.ndarray'>)\n +    where <class 'numpy.ndarray'> = np.ndarray\n +  and   dtype('float64') = array([[-0.5],\\n       [-7.5],\\n       [11.5]]).dtype\n +  and   <class 'numpy.float32'> = np.float32",
+          "detection": "assertion",
+          "traceback": "autoencoder_real_module = <module 'm25_real' from 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\astrospectro-m25-l5od5vz9\\\\src\\\\dimred\\\\autoencoder.py'>\n\n    def test_inference_values_no_grad_eval_cpu_and_input_preservation(\n        autoencoder_real_module,\n    ):\n        m = autoencoder_real_module\n        ae = analytic_model(m)\n        X = np.array([[1.0, 3.0], [-2.0, 4.0], [5.0, -1.0]])\n        original = X.copy()\n        observed = []\n        handle = ae._model.encoder.register_forward_hook(\n            lambda net, args, out: observed.append(\n                (net.training, m.torch.is_grad_enabled(), out.requires_grad)\n            )\n        )\n        ae._model.train()\n        Z = ae.encode(X)\n        expected_z = np.array([[-0.5], [-7.5], [11.5]])\n        expected_x = np.array([[-0.5, 5.0], [-21.5, 19.0], [35.5, -19.0]])\n        np.testing.assert_array_equal(Z, expected_z)\n        np.testing.assert_array_equal(ae.decode(Z), expected_x)\n        np.testing.assert_array_equal(ae.reconstruct(X), expected_x)\n        np.testing.assert_array_equal(ae.encode(X), Z)\n        np.testing.assert_array_equal(X, original)\n        assert all(value == (False, False, False) for value in observed)\n>       assert isinstance(Z, np.ndarray) and Z.dtype == np.float32\nE       AssertionError: assert (True and dtype('float64') == <class 'numpy.float32'>)\nE        +  where True = isinstance(array([[-0.5],\\n       [-7.5],\\n       [11.5]]), <class 'numpy.ndarray'>)\nE        +    where <class 'numpy.ndarray'> = np.ndarray\nE        +  and   dtype('float64') = array([[-0.5],\\n       [-7.5],\\n       [11.5]]).dtype\nE        +  and   <class 'numpy.float32'> = np.float32\n\ntests\\test_dimred_autoencoder_real.py:122: AssertionError"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1,
+      "failure_kinds": [
+        "assertion"
+      ],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "A03_independent_population_rng",
+      "category": "admissible",
+      "status": "FAIL",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "idx_sel = rng.choice(",
+          "replacement": "idx_sel = np.random.default_rng(42).choice(",
+          "matches": 1,
+          "line_numbers": [
+            1075
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_latent_arithmetic_independent_barycentres_and_distances[207]",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-12\n\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0]: 5.022199999999999 (ACTUAL), 5.0262 (DESIRED)\n [1]: -15.037090000000005 (ACTUAL), -15.10197 (DESIRED)\nMax absolute difference among violations: 0.06488\nMax relative difference among violations: 0.00429613\n ACTUAL: array([  5.0222 , -15.03709])\n DESIRED: array([  5.0262 , -15.10197])",
+          "detection": "assertion",
+          "traceback": "autoencoder_numeric_module = <module 'm25_numeric' from 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\astrospectro-m25-30k0yiro\\\\src\\\\dimred\\\\autoencoder.py'>\nautoencoder_plotting = <module 'matplotlib.pyplot' from 'C:\\\\Users\\\\alexb\\\\Documents\\\\Projets\\\\AstroSpectro-m25\\\\.venv-torch\\\\Lib\\\\site-packages\\\\matplotlib\\\\pyplot.py'>\ncount = 207\n\n    @pytest.mark.parametrize(\"count\", [1, 23, 207])\n    def test_latent_arithmetic_independent_barycentres_and_distances(\n        autoencoder_numeric_module, autoencoder_plotting, count\n    ):\n        centres = np.array(\n            [[1.0, 2.0], [4.0, -1.0], [8.0, 5.0], [-2.0, 7.0], [3.0, 9.0], [6.0, 12.0]]\n        )\n        temperatures = [3800.0, 5200.0, 6200.0, 4000.0, 5500.0, 7000.0]\n        gravities = [4.0, 4.5, 5.0, 0.5, 2.0, 2.9]\n        Z = np.repeat(centres, count, axis=0)\n        # Vary rows so RNG selection/cap is discriminating beyond constant clusters.\n        offsets = np.column_stack([np.arange(count) / 100, -(np.arange(count) ** 2) / 1000])\n        Z += np.tile(offsets, (6, 1))\n        meta = pd.DataFrame(\n            {\n                \"teff_gspphot\": np.repeat(temperatures, count),\n                \"logg_gspphot\": np.repeat(gravities, count),\n            }\n        )\n        y = np.repeat(\"STAR\", 6 * count)\n        # Excluded non-star, missing and boundary-outside rows must not contaminate.\n        Z = np.vstack([Z, [[1e6, 1e6]] * 3])\n        meta = pd.concat(\n            [\n                meta,\n                pd.DataFrame(\n                    {\n                        \"teff_gspphot\": [4500.0, np.nan, 7500.0],\n                        \"logg_gspphot\": [4.5, 4.5, 5.5],\n                    }\n                ),\n            ],\n            ignore_index=True,\n        )\n        y = np.r_[y, [\"QSO\", \"STAR\", \"STAR\"]]\n        rng = np.random.default_rng(42)\n        expected = np.array(\n            [\n                Z[\n                    rng.choice(\n                        np.arange(i * count, (i + 1) * count),\n                        min(200, count),\n                        replace=False,\n                    )\n                ].mean(axis=0)\n                for i in range(6)\n            ]\n        )\n        result = autoencoder_numeric_module.latent_arithmetic(Z, meta, y)\n        for key, value in zip(\n            [\"K_naine\", \"G_naine\", \"F_naine\", \"K_geante\", \"G_geante\", \"F_geante\"], expected\n        ):\n>           np.testing.assert_allclose(result[\"populations\"][key], value, atol=1e-12)\nE           AssertionError: \nE           Not equal to tolerance rtol=1e-07, atol=1e-12\nE           \nE           Mismatched elements: 2 / 2 (100%)\nE           Mismatch at indices:\nE            [0]: 5.022199999999999 (ACTUAL), 5.0262 (DESIRED)\nE            [1]: -15.037090000000005 (ACTUAL), -15.10197 (DESIRED)\nE           Max absolute difference among violations: 0.06488\nE           Max relative difference among violations: 0.00429613\nE            ACTUAL: array([  5.0222 , -15.03709])\nE            DESIRED: array([  5.0262 , -15.10197])\n\ntests\\test_dimred_autoencoder.py:307: AssertionError"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1,
+      "failure_kinds": [
+        "assertion"
+      ],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "A09_scheduler_patience_five",
+      "category": "admissible",
+      "status": "FAIL",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "patience=10, min_lr",
+          "replacement": "patience=5, min_lr",
+          "matches": 1,
+          "line_numbers": [
+            340
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [
+        {
+          "name": "test_real_adam_clipping_gradient_reset_and_scheduler_history",
+          "message": "AssertionError: assert {'factor': 0....'patience': 5} == {'factor': 0....patience': 10}\n  \n  Omitting 3 identical items, use -vv to show\n  Differing items:\n  {'patience': 5} != {'patience': 10}\n  Use -v to get more diff",
+          "detection": "assertion",
+          "traceback": "autoencoder_real_module = <module 'm25_real' from 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\astrospectro-m25-gzt5wvdt\\\\src\\\\dimred\\\\autoencoder.py'>\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002AAD21C8CD0>\n\n    def test_real_adam_clipping_gradient_reset_and_scheduler_history(\n        autoencoder_real_module, monkeypatch\n    ):\n        m = autoencoder_real_module\n        controlled_network(m, monkeypatch)\n        original_adam, original_clip = m.optim.Adam, m.nn.utils.clip_grad_norm_\n        zero_calls, clips, optimizers, scheduler_values = [], [], [], []\n    \n        class Adam(original_adam):\n            def __init__(self, params, **kwargs):\n                super().__init__(params, **kwargs)\n                optimizers.append(self)\n                assert kwargs == {\"lr\": 0.1, \"weight_decay\": 0.02}\n    \n            def zero_grad(self, *args, **kwargs):\n                zero_calls.append(True)\n                return super().zero_grad(*args, **kwargs)\n    \n        def clip(params, max_norm):\n            params = list(params)\n            before = [p.grad.clone() for p in params]\n            result = original_clip(params, max_norm)\n            clips.append((before, [p.grad.clone() for p in params], max_norm))\n            return result\n    \n        class Scheduler:\n            def __init__(self, optimizer, **kwargs):\n                self.optimizer = optimizer\n                assert kwargs == dict(mode=\"min\", factor=0.5, patience=10, min_lr=1e-6)\n    \n            def step(self, loss):\n                scheduler_values.append(loss)\n                self.optimizer.param_groups[0][\"lr\"] *= 0.5\n    \n        monkeypatch.setattr(m.optim, \"Adam\", Adam)\n        monkeypatch.setattr(m.nn.utils, \"clip_grad_norm_\", clip)\n        monkeypatch.setattr(m.optim.lr_scheduler, \"ReduceLROnPlateau\", Scheduler)\n        ae = m.SpectralAutoencoder(1, 1, [1], device=\"cpu\")\n>       history = ae.fit(\n            np.full((8, 1), 2.0),\n            epochs=3,\n            lr=0.1,\n            weight_decay=0.02,\n            batch_size=10,\n            verbose=False,\n        )\n\ntests\\test_dimred_autoencoder_real.py:298: \n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\nsrc\\dimred\\autoencoder.py:339: in fit\n    optim.lr_scheduler.ReduceLROnPlateau(\n_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n\nself = <test_dimred_autoencoder_real.test_real_adam_clipping_gradient_reset_and_scheduler_history.<locals>.Scheduler object at 0x000002AAD21C9890>\noptimizer = Adam (\nParameter Group 0\n    amsgrad: False\n    betas: (0.9, 0.999)\n    capturable: False\n    decoupled_weight_decay: ...tiable: False\n    eps: 1e-08\n    foreach: None\n    fused: None\n    lr: 0.1\n    maximize: False\n    weight_decay: 0.02\n)\nkwargs = {'factor': 0.5, 'min_lr': 1e-06, 'mode': 'min', 'patience': 5}\n@py_assert3 = 'min', @py_assert5 = 0.5, @py_assert7 = 10, @py_assert9 = 1e-06\n@py_assert11 = {'factor': 0.5, 'min_lr': 1e-06, 'mode': 'min', 'patience': 10}\n@py_assert1 = False\n@py_format13 = \"{'factor': 0....'patience': 5} == {'factor': 0....patience': 10}\\n~\\n~Omitting 3 identical items, use -vv to show\\n~Differing items:\\n~{'patience': 5} != {'patience': 10}\\n~Use -v to get more diff\"\n\n    def __init__(self, optimizer, **kwargs):\n        self.optimizer = optimizer\n>       assert kwargs == dict(mode=\"min\", factor=0.5, patience=10, min_lr=1e-6)\nE       AssertionError: assert {'factor': 0....'patience': 5} == {'factor': 0....patience': 10}\nE         \nE         Omitting 3 identical items, use -vv to show\nE         Differing items:\nE         {'patience': 5} != {'patience': 10}\nE         Use -v to get more diff\n\ntests\\test_dimred_autoencoder_real.py:288: AssertionError"
+        },
+        {
+          "name": "test_real_scheduler_reduces_on_plateau_and_disabled_is_unused",
+          "message": "assert [0.01, 0.01, ...01, 0.01, ...] == [0.01, 0.01, ...01, 0.01, ...]\n  \n  At index 7 diff: 0.005 != 0.01\n  Use -v to get more diff",
+          "detection": "assertion",
+          "traceback": "autoencoder_real_module = <module 'm25_real' from 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\astrospectro-m25-gzt5wvdt\\\\src\\\\dimred\\\\autoencoder.py'>\nmonkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000002AAD21CDB10>\n\n    def test_real_scheduler_reduces_on_plateau_and_disabled_is_unused(\n        autoencoder_real_module, monkeypatch\n    ):\n        m = autoencoder_real_module\n        controlled_network(m, monkeypatch)\n    \n        class Loss(m.nn.Module):\n            def forward(self, output, target):\n                return output.sum() * 0 + 1\n    \n        monkeypatch.setattr(m.nn, \"MSELoss\", Loss)\n        ae = m.SpectralAutoencoder(1, 1, [1], device=\"cpu\")\n        history = ae.fit(\n            np.ones((8, 1)),\n            epochs=14,\n            lr=0.01,\n            batch_size=10,\n            early_stopping_patience=0,\n            verbose=False,\n        )\n>       assert history[\"lr_history\"][:12] == [0.01] * 12\nE       assert [0.01, 0.01, ...01, 0.01, ...] == [0.01, 0.01, ...01, 0.01, ...]\nE         \nE         At index 7 diff: 0.005 != 0.01\nE         Use -v to get more diff\n\ntests\\test_dimred_autoencoder_real.py:376: AssertionError"
+        }
+      ],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 1,
+      "failure_kinds": [
+        "assertion"
+      ],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C05_clip_after_step",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)\n                optimizer.step()",
+          "replacement": "optimizer.step()\n                nn.utils.clip_grad_norm_(self._model.parameters(), max_norm=1.0)",
+          "matches": 1,
+          "line_numbers": [
+            371
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C06_sixty_neighbours",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "np.argsort(dists)[:50]",
+          "replacement": "np.argsort(dists)[:60]",
+          "matches": 1,
+          "line_numbers": [
+            841
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C07_twenty_neighbours",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "np.argsort(dists)[:50]",
+          "replacement": "np.argsort(dists)[:20]",
+          "matches": 1,
+          "line_numbers": [
+            841
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C08_inclusive_gravity",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "logg_v < g_hi",
+          "replacement": "logg_v <= g_hi",
+          "matches": 1,
+          "line_numbers": [
+            1065
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C01b_snapshot_without_buffers",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "best_state = {k: v.clone() for k, v in self._model.state_dict().items()}",
+          "replacement": "best_state = {k: v.clone() for k, v in self._model.named_parameters()}",
+          "matches": 1,
+          "line_numbers": [
+            399
+          ]
+        },
+        {
+          "anchor": "self._model.load_state_dict(best_state)",
+          "replacement": "self._model.load_state_dict(best_state, strict=False)",
+          "matches": 1,
+          "line_numbers": [
+            439
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C02_patience_not_reset",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 1,
+      "replacement_sites": [
+        {
+          "anchor": "                patience_counter = 0",
+          "replacement": "                pass  # missing improvement reset",
+          "matches": 1,
+          "line_numbers": [
+            400
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C03_relu_identity",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 2,
+      "replacement_sites": [
+        {
+          "anchor": "nn.ReLU(inplace=True),",
+          "replacement": "nn.Identity(),",
+          "matches": 2,
+          "line_numbers": [
+            106,
+            137
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    },
+    {
+      "name": "C04_relu_before_bn",
+      "category": "incorrect",
+      "status": "SURVIVED",
+      "replacements": 2,
+      "replacement_sites": [
+        {
+          "anchor": "nn.BatchNorm1d(h),\n                nn.ReLU(inplace=True),",
+          "replacement": "nn.ReLU(inplace=True),\n                nn.BatchNorm1d(h),",
+          "matches": 2,
+          "line_numbers": [
+            105,
+            136
+          ]
+        }
+      ],
+      "tests": 56,
+      "failed": [],
+      "errors": [],
+      "skipped": 0,
+      "exit_code": 0,
+      "failure_kinds": [],
+      "expected_refusal_tests_passed": 18
+    }
+  ]
+}

@@ -13,6 +13,67 @@ import pytest
 
 
 @pytest.fixture
+def autoencoder_numeric_module(monkeypatch):
+    """Execute source with inert Torch names; never execute neural operations.
+
+    This bypasses known import defect #21 for NumPy/plotting contracts only.
+    Fresh subprocess proofs separately test the actual dependency boundary.
+    """
+    path = Path(__file__).resolve().parents[1] / "src/dimred/autoencoder.py"
+    names = ["torch", "torch.nn", "torch.optim", "torch.utils", "torch.utils.data"]
+    modules = {name: types.ModuleType(name) for name in names}
+    modules["torch.nn"].Module = object
+    modules["torch.utils.data"].DataLoader = object
+    modules["torch.utils.data"].TensorDataset = object
+    with monkeypatch.context() as context:
+        for name, module in modules.items():
+            context.setitem(sys.modules, name, module)
+        spec = importlib.util.spec_from_file_location("m25_numeric", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def autoencoder_real_module():
+    """Load the actual module using the installed CPU PyTorch, if available."""
+    torch = pytest.importorskip("torch")
+    previous_threads = torch.get_num_threads()
+    previous_rng = torch.get_rng_state()
+    previous_deterministic = torch.are_deterministic_algorithms_enabled()
+    previous_warn_only = torch.is_deterministic_algorithms_warn_only_enabled()
+    torch.set_num_threads(1)
+    torch.manual_seed(1729)
+    torch.use_deterministic_algorithms(True)
+    path = Path(__file__).resolve().parents[1] / "src/dimred/autoencoder.py"
+    spec = importlib.util.spec_from_file_location("m25_real", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    try:
+        yield module
+    finally:
+        torch.set_rng_state(previous_rng)
+        torch.use_deterministic_algorithms(
+            previous_deterministic, warn_only=previous_warn_only
+        )
+        torch.set_num_threads(previous_threads)
+
+
+@pytest.fixture
+def autoencoder_plotting(monkeypatch):
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    monkeypatch.setattr(plt, "show", lambda: None)
+    # Known layout/glyph warnings are presentation limitations, not math oracles.
+    monkeypatch.setattr(plt, "tight_layout", lambda: None)
+    yield plt
+    plt.close("all")
+
+
+@pytest.fixture
 def embedding_module():
     # Isolate the optional facade (#21), but execute the real embedding source.
     path = Path(__file__).resolve().parents[1] / "src/dimred/embedding.py"
