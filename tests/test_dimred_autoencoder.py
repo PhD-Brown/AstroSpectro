@@ -332,3 +332,52 @@ def test_arithmetic_absent_populations(
     )
     assert all(value is None for value in result["populations"].values())
     assert result["tests"] == []
+
+
+@pytest.mark.integration
+def test_candidate_temperature_mask_and_png_export(
+    autoencoder_numeric_module, autoencoder_plotting, tmp_path
+):
+    import warnings
+
+    Z = np.array([[1.0, 7.0], [9.0, -3.0], [-2.0, 4.0]])
+    temperature = np.array([4200.0, np.nan, 6100.0])
+    ae = SimpleNamespace(
+        encode=lambda X: np.array([[2.0, 1.0]]), reconstruct=np.zeros_like
+    )
+    destination = tmp_path / "candidate.png"
+    with warnings.catch_warnings():
+        # Font coverage is platform-specific; this checks export/data, not glyph QA.
+        warnings.filterwarnings(
+            "ignore", message="Glyph .* missing from font", category=UserWarning
+        )
+        result = autoencoder_numeric_module.tester_candidat(
+            np.array([1.0, 2.0]),
+            ae,
+            object(),
+            ["a", "b"],
+            Z,
+            teff_train=temperature,
+            save_path=destination,
+        )
+    assert destination.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    collection = autoencoder_plotting.gcf().axes[0].collections[0]
+    np.testing.assert_array_equal(collection.get_offsets(), [[1.0, 7.0], [-2.0, 4.0]])
+    np.testing.assert_array_equal(collection.get_array(), [4200.0, 6100.0])
+    assert result["mse"] == 2.5
+
+
+@pytest.mark.integration
+def test_arithmetic_png_export_without_required_populations(
+    autoencoder_numeric_module, autoencoder_plotting, tmp_path
+):
+    destination = tmp_path / "arithmetic.png"
+    result = autoencoder_numeric_module.latent_arithmetic(
+        np.array([[1.0, 2.0]]),
+        pd.DataFrame({"teff_gspphot": [4500.0], "logg_gspphot": [4.5]}),
+        np.array(["QSO"]),
+        save_path=destination,
+    )
+    assert destination.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert result["fig"] is autoencoder_plotting.gcf()
+    assert result["tests"] == []

@@ -316,7 +316,7 @@ def main():
                 "tests/test_dimred_autoencoder.py",
                 "tests/test_dimred_autoencoder_real.py",
                 "-k",
-                "not fresh_process and not independent_loader",
+                "not fresh_process and not independent_loader and not png_export",
                 "--junitxml=results.xml",
             ]
             result = subprocess.run(
