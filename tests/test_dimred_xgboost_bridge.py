@@ -193,15 +193,7 @@ def test_explicit_csv_wins_and_fallback_is_lexical(bridge_case):
 def test_snr_inclusive_boundary_and_absent_snr(bridge_case):
     c = bridge_case
     df = c.frame.copy()
-    df["snr_r"] = [
-        np.nextafter(10.0, 0.0),
-        10.0,
-        np.nextafter(10.0, 20.0),
-        np.nan,
-        15.0,
-    ]
-    df.to_csv(c.csv, index=False, float_format="%.17g")
-    # CSV parser may round nextafter back to10; use representable decimal probes.
+    # Decimal probes survive CSV inference without rounding back onto the edge.
     df["snr_r"] = [9.999, 10.0, 10.001, np.nan, 15.0]
     df.to_csv(c.csv, index=False)
     keep = [1, 2, 4]

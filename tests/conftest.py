@@ -120,6 +120,121 @@ def bridge_case(tmp_path, monkeypatch, bridge_module):
 
 
 @pytest.fixture
+def bridge_real_bundle(tmp_path, monkeypatch, bridge_module):
+    """Fit/save only a tiny trusted CPU model; use real classifier and joblib IO."""
+    from sklearn.compose import ColumnTransformer
+    from sklearn.impute import SimpleImputer
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import LabelEncoder, StandardScaler
+    from xgboost import XGBClassifier
+
+    root = Path(__file__).resolve().parents[1]
+    monkeypatch.syspath_prepend(str(root / "src"))
+    package = types.ModuleType("pipeline")
+    package.__path__ = [str(root / "src/pipeline")]
+    monkeypatch.setitem(sys.modules, "pipeline", package)
+    classifier_spec = importlib.util.spec_from_file_location(
+        "pipeline.classifier", root / "src/pipeline/classifier.py"
+    )
+    classifier_module = importlib.util.module_from_spec(classifier_spec)
+    monkeypatch.setitem(sys.modules, "pipeline.classifier", classifier_module)
+    classifier_spec.loader.exec_module(classifier_module)
+    assert (
+        Path(classifier_module.__file__).resolve()
+        == root / "src/pipeline/classifier.py"
+    )
+    util_spec = importlib.util.spec_from_file_location(
+        "m26_real_utils", root / "src/utils.py"
+    )
+    utilities = importlib.util.module_from_spec(util_spec)
+    util_spec.loader.exec_module(utilities)
+    monkeypatch.setitem(sys.modules, "utils", utilities)
+
+    train = pd.DataFrame(
+        {
+            "feature_alpha": np.repeat([-4.0, 1.0, 6.0], 10)
+            + np.tile(np.arange(10) / 20, 3),
+            "feature_beta": np.tile([2.0, 7.0, -3.0, 5.0, 9.0], 6),
+            "feature_gamma": np.arange(30) % 7 + 2.0,
+        }
+    )
+    names = ["feature_gamma", "feature_alpha", "feature_beta"]
+    encoder = LabelEncoder().fit(["M", "F", "G"])
+    target = encoder.transform(np.repeat(["M", "F", "G"], 10))
+    pipeline = Pipeline(
+        [
+            (
+                "named",
+                ColumnTransformer(
+                    [
+                        (
+                            "numeric",
+                            Pipeline(
+                                [
+                                    ("imputer", SimpleImputer(strategy="median")),
+                                    ("scaler", StandardScaler()),
+                                ]
+                            ),
+                            names,
+                        )
+                    ],
+                    remainder="drop",
+                ),
+            ),
+            (
+                "xgb",
+                XGBClassifier(
+                    n_estimators=12,
+                    max_depth=2,
+                    min_child_weight=0,
+                    n_jobs=1,
+                    random_state=1729,
+                    tree_method="hist",
+                    device="cpu",
+                    learning_rate=0.4,
+                ),
+            ),
+        ]
+    ).fit(train[names], target)
+    clf = classifier_module.SpectralClassifier()
+    clf.model_pipeline = pipeline
+    clf.feature_names_used = names
+    clf.class_labels = encoder.classes_.tolist()
+    clf.label_encoder = encoder
+    models, processed = tmp_path / "models", tmp_path / "processed"
+    models.mkdir()
+    processed.mkdir()
+    model = models / "spectral_classifier_synthetic.pkl"
+    clf.save_model(str(model), trained_on_file="synthetic_training_only.csv")
+    query = train.iloc[[1, 14, 23, 8, 19]].reset_index(drop=True).copy()
+    query["obsid"] = [104, 19, 807, 33, 250]
+    csv = processed / "features_synthetic.csv"
+    query.to_csv(csv, index=False)
+    args = {
+        "paths": {
+            "SRC_DIR": root / "src",
+            "MODELS_DIR": models,
+            "PROCESSED_DIR": processed,
+        },
+        "features_stem": "features_synthetic",
+        "Z_umap": np.column_stack((query.obsid, [-2, 8, -9, 3, 7])),
+        "y": np.array(["M", "F", "G", "M", "F"]),
+        "cluster_labels": np.array([7, -1, 2, 9, 1]),
+    }
+    return types.SimpleNamespace(
+        module=bridge_module,
+        classifier=clf,
+        classifier_module=classifier_module,
+        train=train,
+        query=query,
+        csv=csv,
+        model=model,
+        args=args,
+        run=lambda **kw: bridge_module.load_and_predict(**(args | kw)),
+    )
+
+
+@pytest.fixture
 def autoencoder_numeric_module(monkeypatch):
     """Execute source with inert Torch names; never execute neural operations.
 

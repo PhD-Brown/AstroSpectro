@@ -69,3 +69,19 @@ Zero substitution is a current behavior, not a statistically justified policy.
 Training/preprocessing (#24), group leakage (#22), feature provenance (#23),
 XGBoost compatibility (#28), general persistence (#38), and real-catalogue,
 calibration and astrophysical validation remain separate questions.
+
+## Execution checkpoints (historical, not replaced by later totals)
+
+- At base with new unit bytes: `python -m pytest -q tests/test_dimred_xgboost_bridge.py
+  -W error --tb=short --junitxml=test-results/m26-unit-first.xml`:54PASS.
+  Black/Ruff and diff check PASS. Checkpoint8bdea734 pushed and remote verified.
+- Real CPU named pipeline: median imputer and StandardScaler fitted on30
+  synthetic training rows, XGBoost12trees/depth2/thread1/seed1729; five query
+  rows. No full train_and_evaluate, tuning, calibration or reference run.
+  `-m pytest -q tests/test_dimred_xgboost_bridge_real.py -W error`:4PASS.
+  Combined unit/real58PASS; Black/Ruff3files and diff check PASS.
+  Same-version direct/joblib/bridge probability comparison uses atol1e-12,
+  rtol0 (serialization parity, not observational tolerance). Real infinity
+  refusal is verified, rather than imposing any universal zero replacement.
+  Canonical pipeline.classifier is executed from this worktree's unmodified
+  source; temporary sys.modules entries/sys.path are restored by monkeypatch.
