@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "archive_sha": "59eb774eb618cdf639cde3c0358da319ee4bcffa",
+  "git_head_at_run": "2dc41b5b22d1bc457fdd076988dcdf21a3c30e33",
+  "working_tree_at_start": "",
+  "started_at_utc": "2026-11-09T01:59:43.943196+00:00",
+  "archive_inputs_sha256": {
+    "src/dimred/__init__.py": "ac7813552d8c0cb436e556d92bfa683acdcb627c19e136209cfaf57440d7babf",
+    "src/dimred/autoencoder.py": "e788cee0a55da7f4804bb2e2c8a11fd971cb43478134693f3f48b3ac7b920904",
+    "src/dimred/data_loader.py": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+    "src/dimred/dimred_visualizer.py": "968207ab322c2eea40f8d1e3721c1e361a9d1f7912d511a48c5f6a2cb0f82b8a",
+    "src/dimred/embedding.py": "a43bb1027d1117c6480b78d70fd91d2c35e5e3398cfcdc3f48fadd6635c5f5d1",
+    "src/dimred/hdbscan_analyzer.py": "a963478cb7ae605652082b2153ba330f3d6cb3d7d27a772bb77b736498802ded",
+    "src/dimred/pca_analyzer.py": "10d8d757c62ef5310499dba6703d16ce7a901907d9de4834a831eb3ea5e3ce2d",
+    "src/dimred/run_reporter.py": "b4a55744237076ec1a78293651623a701809ba85d1afc9160a2c6e69c326db29",
+    "src/dimred/xgboost_bridge.py": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+    "tests/conftest.py": "f5b0030929bbab92cdd25ad10e671036e437748e6bdab5e490fe3515980fbd50",
+    "tests/proofs_dimred_autoencoder.py": "7f3ee20caa6db99834f76e70791ef564abc6ebed187b36ce27e851cae499978b",
+    "pyproject.toml": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc"
+  },
+  "checker_sha256": "499ff5af8be260ee82b7a4461159bdda78c850d436c2017a65c4280cee95778d",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "torch": "2.10.0+cpu",
+  "cases": [
+    {
+      "name": "drop_all_singleton_train",
+      "status": "PASS",
+      "historical_cases": 2,
+      "tests": 3,
+      "stronger_criterion_accepts": false,
+      "patched_source_sha256": "e32470542b2789e66ee84c0b1bc5eadacd567d7bbab8a0b32b8feda859c7d9dc",
+      "observations": [
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\nActual optimizer steps: 0 history: {'train_loss': [np.float64(nan)], 'val_loss': [0.19525223970413208], 'lr_history': [0.001]}\n\n"
+      ],
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "slow or not slow",
+        "tests/proofs_dimred_autoencoder.py",
+        "tests/probe_review_limits.py",
+        "-k",
+        "valid_small_training or review_observation",
+        "--junitxml=results.xml",
+        "-o",
+        "junit_logging=all"
+      ],
+      "output": "...                                                                      [100%]\n============================== warnings summary ===============================\ntests/proofs_dimred_autoencoder.py::test_valid_small_training_does_not_crash_inside_batchnorm[2-10-0.1]\ntests/probe_review_limits.py::test_review_observation\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Lib\\site-packages\\numpy\\_core\\fromnumeric.py:3824: RuntimeWarning: Mean of empty slice\n    return _methods._mean(a, axis=axis, dtype=dtype,\n\ntests/proofs_dimred_autoencoder.py::test_valid_small_training_does_not_crash_inside_batchnorm[2-10-0.1]\ntests/probe_review_limits.py::test_review_observation\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Lib\\site-packages\\numpy\\_core\\_methods.py:142: RuntimeWarning: invalid value encountered in scalar divide\n    ret = ret.dtype.type(ret / rcount)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m25-r8-_d6dew60\\results.xml -\n3 passed, 23 deselected, 4 warnings in 3.18s\n"
+    },
+    {
+      "name": "safe_batch_or_refusal",
+      "status": "PASS",
+      "historical_cases": 2,
+      "tests": 3,
+      "stronger_criterion_accepts": true,
+      "patched_source_sha256": "aae269c12598c36ef04b1af817a375374859e7b3d300a20e98e3a6b9bf022956",
+      "observations": [
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\nExplicit refusal: Training batch requires at least two rows\n\n"
+      ],
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "slow or not slow",
+        "tests/proofs_dimred_autoencoder.py",
+        "tests/probe_review_limits.py",
+        "-k",
+        "valid_small_training or review_observation",
+        "--junitxml=results.xml",
+        "-o",
+        "junit_logging=all"
+      ],
+      "output": "...                                                                      [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m25-r8-e5u3swte\\results.xml -\n3 passed, 23 deselected in 3.10s\n"
+    },
+    {
+      "name": "invalidate_model_only",
+      "status": "PASS",
+      "historical_cases": 1,
+      "tests": 2,
+      "stronger_criterion_accepts": false,
+      "patched_source_sha256": "91e7803973e4294ce276b79be066e810aad42347b59594fc3d7d138b6cd16224",
+      "observations": [
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\nModel/history/time present: False True True\n\n"
+      ],
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "slow or not slow",
+        "tests/proofs_dimred_autoencoder.py",
+        "tests/probe_review_limits.py",
+        "-k",
+        "failed_fit or review_observation",
+        "--junitxml=results.xml",
+        "-o",
+        "junit_logging=all"
+      ],
+      "output": "..                                                                       [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m25-r8-ztb5995l\\results.xml -\n2 passed, 24 deselected in 3.17s\n"
+    },
+    {
+      "name": "invalidate_complete_state",
+      "status": "PASS",
+      "historical_cases": 1,
+      "tests": 2,
+      "stronger_criterion_accepts": true,
+      "patched_source_sha256": "c99978532f0ddb3b8f2e181f199c0366dc821f94ee0c3e3a1f07cfed66216c77",
+      "observations": [
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\nModel/history/time present: False False False\n\n"
+      ],
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "slow or not slow",
+        "tests/proofs_dimred_autoencoder.py",
+        "tests/probe_review_limits.py",
+        "-k",
+        "failed_fit or review_observation",
+        "--junitxml=results.xml",
+        "-o",
+        "junit_logging=all"
+      ],
+      "output": "..                                                                       [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m25-r8-5r44fuxf\\results.xml -\n2 passed, 24 deselected in 3.04s\n"
+    },
+    {
+      "name": "preserve_complete_state",
+      "status": "PASS",
+      "historical_cases": 1,
+      "tests": 2,
+      "stronger_criterion_accepts": true,
+      "patched_source_sha256": "68c847bbb91842e662df01baf38b92b2f418d0d7a91211c1ad3a891b8422d1c3",
+      "observations": [
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\nModel/history/time present: True True True\n\n"
+      ],
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "slow or not slow",
+        "tests/proofs_dimred_autoencoder.py",
+        "tests/probe_review_limits.py",
+        "-k",
+        "failed_fit or review_observation",
+        "--junitxml=results.xml",
+        "-o",
+        "junit_logging=all"
+      ],
+      "output": "..                                                                       [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m25-r8-8oi14v5x\\results.xml -\n2 passed, 24 deselected in 3.40s\n"
+    },
+    {
+      "name": "silent_nonfinite_imputation",
+      "status": "PASS",
+      "historical_cases": 2,
+      "tests": 3,
+      "stronger_criterion_accepts": null,
+      "patched_source_sha256": "84077997e1fedfb7d04fc01f37dc80ac56262bd0e2295392fd6d0613e844e656",
+      "observations": [
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\n\n",
+        "--------------------------------- Captured Log ---------------------------------\n\n--------------------------------- Captured Out ---------------------------------\nNonfinite imputation satisfies the historical oracle; scientific admissibility remains OPEN.\n\n"
+      ],
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m25\\.venv-torch\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-m",
+        "slow or not slow",
+        "tests/proofs_dimred_autoencoder.py",
+        "tests/probe_review_limits.py",
+        "-k",
+        "nonfinite_training or review_observation",
+        "--junitxml=results.xml",
+        "-o",
+        "junit_logging=all"
+      ],
+      "output": "...                                                                      [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m25-r8-fx28g_a9\\results.xml -\n3 passed, 23 deselected in 2.88s\n"
+    }
+  ]
+}

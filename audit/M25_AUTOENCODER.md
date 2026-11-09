@@ -17,7 +17,7 @@ This section supersedes the initial evidence claims where noted below.
 | R5 / C:d944ca5 | STAR rows Teff4500/logg3.0 and5.5 with remote latent coordinates are excluded. Their temperatures lie inside the K window, so Teff cannot mask a gravity-bound error. | C08 inclusive gravity fails all three population cases. AP these half-open numerical boundaries; no universal astrophysical threshold validated. |
 | R6 /9a7dab4 | Validation rows compared as paired sorted rows, not RNG return order; floating output dtype, not mandatory float32; actual population samples observed and independently summed; real plateau test discovers configured patience then checks finite, nonincreasing LR and an actual reduction. | A01/A02/A03/A09 all PASS, while counts/disjointness/coverage, output values, unique200-row in-population subsets, repeatability and barycentres remain checked. No historical artifact was found requiring one RNG consumption order or patience10; these internal configurations are not frozen by green tests. |
 | R7 | Current mutation runner distinguishes assertion failures, runtime exceptions, errors/collection, expected-refusal tests and skips; compound patches require all anchors. Start/end HEAD, dirty state, effective historical test hashes, versions and actual commands recorded. | Original JSON remains unchanged and historical. New results use m25_review_mutation_results.json. Eight former survivors and four rejected alternatives are replayed against old tests using --tests-ref, without changing the checkout. Final clean-input replay is recorded below after execution. |
-| R8 | Historical archive59eb774 remains immutable. New checker reconstructs its files from Git into temporary copies and executes original proofs plus stronger observations. | Six limit/remedy checks PASS in development: drop-all gives zero optimizer steps/NaN train loss but passes old proof; model-only invalidation leaves stale metadata but passes old proof. Safe batch/refusal and full preservation/invalidation satisfy stronger criteria. Silent imputation passes #82's old oracle; scientific policy OPEN. |
+| R8 | Historical archive59eb774 remains immutable. New checker reconstructs its files from Git into temporary copies and executes original proofs plus stronger observations. | Six limit/remedy checks PASS at committed checker2dc41b5: drop-all gives zero optimizer steps/NaN train loss but passes old proof; model-only invalidation leaves stale metadata but passes old proof. Safe batch/refusal and full preservation/invalidation satisfy stronger criteria. Silent imputation passes #82's old oracle; scientific policy OPEN. |
 
 ### Corrected proof status and contracts
 
@@ -63,12 +63,14 @@ Qualifications are published on #80/#81/#82 and linked in the final handoff.
 
 ### Saving checkpoints and next action
 
-Verified remote checkpoints: A046e78d, B0374bf3, Cd944ca5, R69a7dab4.
+Verified remote checkpoints: A046e78d, B0374bf3, Cd944ca5, R69a7dab4,
+D05d94d3 and evidence/checker2dc41b5.
 Each followed targeted passing tests, explicit staging, ordinary commit/push
 and remote SHA verification. Code/tests and intermediate decisions were saved
-before the next block. R7/R8 code/doc checkpoint follows targeted validation;
-remaining work: one final full mutation replay and suites at committed inputs,
-hosted CI at the final head, eight inline replies left open, and one #43 handoff.
+before the next block. R1–R8 corrections, full replays and local suites are
+complete. Hosted CI at the final integration head, eight inline replies left
+open and the one #43 handoff are recorded in PR87. Next scientific action:
+Claude's second independent review, then human merge decision; M2.5 stays 🟡.
 
 ### Final revision execution ledger
 
@@ -127,7 +129,10 @@ R8 qualifications published:
 [#80](https://github.com/PhD-Brown/AstroSpectro/issues/80#issuecomment-6730319277),
 [#81](https://github.com/PhD-Brown/AstroSpectro/issues/81#issuecomment-6730319525),
 [#82](https://github.com/PhD-Brown/AstroSpectro/issues/82#issuecomment-6730319732).
-The checker writes patched UTF-8 bytes explicitly and hashes the actual file
+The [six-case R8 result](m25_review_proof_limit_results.json) records a clean
+start at **2dc41b5b22d1bc457fdd076988dcdf21a3c30e33**,6PASS/15pytest cases,
+and a checker hash verified against the executed local file. The checker
+writes patched UTF-8 bytes explicitly and hashes the actual file
 bytes, avoiding implicit Windows newline conversion in that digest. The final
 six-case R8 replay records its own checker SHA/HEAD separately from core05d94d3.
 Its semantic observations remain those in the R8 table; no historical archive
