@@ -12,6 +12,7 @@ import importlib.metadata
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -336,6 +337,11 @@ def main():
     parser.add_argument(
         "--output", type=Path, default=Path("test-results/m26-mutations.json")
     )
+    parser.add_argument(
+        "--only",
+        nargs="+",
+        help="Replay named cases without repeating the full campaign.",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     paths = [
@@ -372,6 +378,8 @@ def main():
         assert all(c["status"] == "PASS" for c in baseline["cases"])
         for group, candidates in [("mutation", MUTANTS), ("control", CONTROLS)]:
             for name, old, new, test, interpretation in candidates:
+                if args.only and name not in args.only:
+                    continue
                 assert source.count(old) == 1, (name, source.count(old))
                 mutated = source.replace(old, new, 1)
                 ast.parse(mutated)
@@ -405,7 +413,10 @@ def main():
                 elif outcome["returncode"] == 0:
                     verdict = "PASS" if group == "control" else "SURVIVED"
                 elif failures and all(
-                    "AssertionError" in (c["diagnostic"] or "") for c in failures
+                    re.search(
+                        r"(?m)^E\s+(?:AssertionError|assert\s)", c["diagnostic"] or ""
+                    )
+                    for c in failures
                 ):
                     verdict = (
                         "REJECTED_BY_ASSERTION"
@@ -443,6 +454,7 @@ def main():
             for k in ["numpy", "pandas", "scikit-learn", "xgboost", "pytest"]
         },
         "inputs": inputs,
+        "selected_cases": args.only,
         "baseline": baseline,
         "results": records,
     }

@@ -361,11 +361,12 @@ def test_missing_feature_fraction_characterization(
         assert_empty(result)
         assert not c.spy.predict_inputs
     else:
+        assert result["_xgb_ok"]
+        assert c.spy.predict_inputs, "An accepted schema must reach the estimator."
         expected = df[present].copy()
         for name in needed[len(present) :]:
             expected[name] = 0.0
         assert_frame_equal(c.spy.predict_inputs[0], expected)
-        assert result["_xgb_ok"]
 
 
 @pytest.mark.parametrize(
