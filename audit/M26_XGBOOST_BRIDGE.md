@@ -1,6 +1,6 @@
 # M2.6 — XGBoostBridge scientific and technical audit
 
-2026-11-09 · Refs #43. Initial inventory; execution ledger follows as work proceeds.
+2026-11-09 · Refs #43 — delivered for the first independent Claude review.
 Tests and audit only. Independent Claude review and human merge decision required.
 
 ## Reference and method
@@ -20,28 +20,45 @@ Local Python3.11.9, NumPy2.4.6, pandas3.1.1, sklearn1.9.1, XGBoost3.2.0,
 pytest8.4.2, Black24.4.2, Ruff0.5.0 match relevant Python3.11 lock entries.
 Interpreter: `../AstroSpectro/.venv/Scripts/python.exe` (no installation edits).
 
-## Initial significant-path inventory
+## Significant-path matrix
 
 AP = evidence on a precise contract; PA = partial; NA = not validated; B = blocked.
-Initial statuses below are NA until the corresponding execution is recorded.
+All line numbers refer to the unchanged354-line bridge at the base SHA.
+Tests prefixed `test_` below are in [unit tests](../tests/test_dimred_xgboost_bridge.py)
+unless designated **R** ([real integration](../tests/test_dimred_xgboost_bridge_real.py)),
+**P** ([primary proof archive](https://github.com/PhD-Brown/AstroSpectro/blob/0da758111daaf7ba33283c1462ec1fb1368c6cff/tests/proofs_dimred_xgboost_bridge.py)) or
+**PS** ([supplemental shape archive](https://github.com/PhD-Brown/AstroSpectro/blob/7b32abbd1881a487c0ea1bcc7355883e5797ea82/tests/proofs_dimred_xgboost_bridge_shapes.py)).
+No bridge tests predated this mission. Evidence commands, versions, exact hashes
+and execution SHAs are in the ledgers below, not inferred from the active HEAD.
 
-| Code path | Independent contract / risk | Level | Initial test plan | Status |
-|---|---|---|---|---|
-| imports, path insertion, utils fallback (169–178) | Correct source, distinguish mtime utility from lexical fallback; inspect global state | U/I | isolated source, import failures, repeat calls | NA |
-| model discovery/loading (180–205) | No model/load failure gives fresh complete failure structure; selected artifact traceable | U/I | real latest_file, alternate classifier import, failures | NA |
-| CSV resolution/read (210–218) | Explicit stem prioritized; lexical fallback characterized; parse errors visible | U | multiple files, missing/malformed CSV | NA |
-| SNR (223–226) | Inclusive10, absent/NaN SNR; exact retained row values | U/P | boundary examples, matched prefiltered population | NA |
-| candidate columns/dropna (234–242) | Independent names/dtypes/variance/missing fraction; no unrelated population assumptions | U/I | 0/10/>10% NaNs, exclusions, constants, nullable types | NA |
-| alignment (248–262) | Every prediction associated to correct observation; all cardinalities checked | U/I/S | coherent permutations, middle removals, independent vector mismatch | NA |
-| needed schema (265–285) | Names/order/values exact; distinguish compatibility from valid imputation | U/I | 0/30/>30% missing; original inputs unchanged | NA |
-| inference/decode (289–296) | Model output decoded using saved mapping, no invented taxonomy | U/I | nonintuitive mapping, no encoder, explicit refusals | NA |
-| probabilities (299–307) | Correct row maxima; unavailable marker; invalid output never valid confidence | U/P | analytic matrices, method absent/failing, malformed distributions | NA |
-| result (309–330) | Stable complete keys, observed classes, F/G exact mask, no stale call state | U | full nominal result and second failure | NA |
-| _empty_result (333–354) | Fresh empty schema, false success/probability flags | U | direct and each early-return path | NA |
-| real pipeline/save/load | Same synthetic trusted saved object gives direct/bridge inference parity | I/P | miniature CPU XGBoost, named ColumnTransformer, joblib roundtrip | NA |
+| Code / independent contract | Risk; level | Executed test(s) / result | Status; limitation / issue |
+|---|---|---|---|
+| imports/path169–178: resolve SRC_DIR and fallback only at import boundary | Import state; U/I | test_path_resolution_side_effect_is_idempotent_observation; test_utils_import_fallback_is_lexical_characterization PASS | AP current insertion/idempotence; intentional global sys.path change recorded. Fixtures restore it; no public-facade claim. |
+| discovery180: real utils uses mtime; local fallback lexical | Artifact identity; U/I | test_model_selection_uses_actual_utils_mtime; fallback test PASS | AP distinct mtime-vs-name scenario; mtime ties/OS permission policy untested. utils239–272 read. |
+| loading188–205: package/script imports and absent/unloadable model yield structured failure | I/O; U/I | test_classifier_script_import_fallback, test_classifier_both_imports_unavailable, test_early_failures_return_complete_empty_result PASS | AP stubbed import/load failure paths; real joblib success separately R. Missing feature metadata caught during logging; no hostile pickle loaded. |
+| CSV210–218: explicit stem wins; fallback lexical last | Provenance; U | test_explicit_csv_wins_and_fallback_is_lexical; early no_csv PASS | AP current discovery; scientifically compatible generation not established. No metadata binding; #20/#23. |
+| CSV218 and inference289–296: postload errors visible | Diagnostic; U | test_postload_exceptions_remain_visible (CSV/predict/decode) PASS | AP explicit ParserError/ValueError; broad operational-robustness prose is not a universal exception guarantee. |
+| SNR223–226: retain10 and10.001, remove9.999/NaN; absent SNR means no cut | Population; U/P | test_snr_inclusive_boundary_and_absent_snr PASS with matched prefiltered Z/y/clusters | AP boundary/values; fixed r/10 does not reproduce arbitrary loader options. |
+| candidates234–242: numeric, varying, <=10%NaN; rows incomplete on these columns removed | Population; U/P | test_candidate_nan_fraction_boundary (0/1/2 of10), test_candidate_variance_and_dtype_control_row_selection PASS | AP independent cutoff/dtype/variance predicates, including nullable Boolean withNA; no universal dtype inference promise. |
+| _EXCL_COLS: excluded metadata with1/10NaN cannot delete rows | Provenance; U | test_excluded_metadata_nan_cannot_remove_rows (5columns) PASS | AP selected named exclusions; not a provenance allowlist (#23). |
+| numeric representations and model schema | Numeric; U | test_representable_dataframe_dtypes_are_passed_by_name (8dtypes), test_candidate_selection_keeps_named_model_columns PASS | AP actual DataFrame boundary; nullable/string cases use read_csv return injection, not a claim CSV preserves extension dtypes. |
+| schema285: named columns exactly in saved order with row values intact | Schema; U/I | test_nominal_named_values_decode_confidence_and_integrity; coherent_permutation; **R** real_xgboost_saved_pipeline_inference_parity PASS | AP finite supported schema; correct dimensions alone are insufficient. Spies record both estimator inputs; CSV and caller arrays/palette untouched. |
+| alignment248–262: correctly preselected same-order population remains paired | Identity; U/I/S synthetic | test_coherent_permutation_preserves_observation_values; nonconsecutive_pandas_index PASS | AP conditional pairing; no independent ID verification. |
+| alignment248–262: middle deletion or incompatible label cardinality must not yield false associations | Identity; U/I/S synthetic | **P** filter_cannot...3FAIL; each_input_cardinality...4FAIL | PA, confirmed #88; compatible refusal or real reconciliation remains open. |
+| equal-size independent permutations, replaced/duplicate/absent CSV IDs | Identity; U/I observation | **P** identity_information_missing_from_api_is_observation6PASS | PA architecture: no embedding IDs in API. These are observations of a violated caller precondition, not green requirements to detect unseen IDs. |
+| missing names265–280: technical30% cutoff and current zero placeholders | Schema; U | test_missing_feature_fraction_characterization6PASS | AP characterization only (0/1/2/3/4 missing across3/4/7/10expected); scientific imputation OPEN/#89. |
+| preparation285 must preserve the saved fitted transformation or refuse | Statistical; I/P | **P** real_fitted_imputer...present_nan FAIL; absent_column PASS control | PA, confirmed #89 by actual saved XGBoost. NaN20% remains a query row but is zero-filled before trained median. |
+| decode289–296: exact saved class mapping or original labels as strings | Taxonomy; U | test_decoding_observed_classes_and_fg_mask; test_no_encoder_preserves_labels_as_strings PASS | AP synthetic mapping G/M/F and observed subset; no new taxonomy or mandatory argmax decision rule. |
+| proba299–302: row maxima without altering predictions | Numeric; U/P | test_probability_row_maximum_does_not_override_decision_rule PASS | AP analytic asymmetric matrix; not calibration. |
+| unavailable proba303–307: absent/raising method or unusable reduction shape marked unavailable | Availability; U | test_probability_unavailable_has_explicit_flag; test_unusable_probability_shape_is_not_advertised PASS | AP methods absent/ValueError,1D and(N,0); ones sentinel never interpreted as calibrated confidence. |
+| output289–330: valid cardinality, finite normalized probability matrix, scalar confidence | Numeric/shape; U/I | **P** prediction_cardinality3FAIL, invalid_probability7FAIL; real_degenerate_gaussian FAIL; **PS** tensor shape FAIL | PA/#90. Ten primary and one supplemental cases are injections, one primary case real GaussianNB; not twelve independent backend bugs. |
+| result309–330: stable keys/types/status/classes/F-G mask/model path | API; U | nominal; decoding; repeat_inference_and_second_call_failure PASS | AP successful finite nominal results; invalid-output schema remains #90. |
+| _empty_result333–354: full fresh failure structure, no stale class list | State; U | test_empty_structure_is_fresh; early_failures5cases PASS | AP fresh mutable list and all early-return branches exercised. |
+| saved classifier2168–2254: trusted same-version roundtrip and bridge inference parity | Persistence; I/P | **R** real_xgboost_saved_pipeline_inference_parity2PASS, real_pipeline_explicitly_refuses_infinity2PASS | AP4CPU tests included in default CI; general train/save/load compatibility remains #38/#28. |
+| facade/__init__46/70 and optional Torch | Imports; I observation | Fresh `python -I -X utf8` actual facade import FAIL with NameError nn, Torch actually absent | B for public facade in this environment; already #21, not hidden by source-direct tests. |
+| empty/one-row/invalid schema and nonfinite inputs | API; U observations | **P** degenerate_schema_and_population7PASS, nonfinite_preparation4PASS | PA observed spy acceptance only; real infinities refused separately R. No general empty-domain or invalid-schema policy selected. |
+| STELLAR_COLORS / unused color_map | Presentation; static/U | Palette source read; nominal palette input unchanged PASS | PA aesthetic constants not scientifically validated; no plotting performed. |
 
-Priorities: observation identity and exact schema first, then outputs/failures,
-real XGBoost, adversarial proofs, targeted mutations, final matrix and Draft PR.
 No changes to production, dependencies, CI, notebooks, real models or data.
 
 ## Consumer boundaries inspected
@@ -52,6 +69,8 @@ NB02 cells3/21/48 load PCA artifact y/meta/features_stem, call the bridge, and
 pass results to plots/reporter; NB02 does not reconstruct the loader population.
 The committed historical output reports42920 bridge rows versus43019 embedding
 rows: this is historical output, not a measured current run or quantified harm.
+There is no obsolete bridge call in that notebook: it uses the current API.
+The claim in its comment that predictions are aligned is conditional, as above.
 `data_loader.load` has configurable SNR band/minimum, classes, balancing and
 spectro_only; the bridge hardcodes r>=10 and an independent denylist.
 Embedding preserves order provided by its caller. HDBSCAN profiles have their
@@ -59,6 +78,52 @@ own positional limitations (#73). Visualizer infers probability availability
 from confidence!=1 rather than receiving has_proba. Reporter computes accuracy
 when lengths agree, which cannot establish identity. These consumers were read,
 not executed end-to-end; M2.7/M2.8 are not started.
+
+Inspected at the base SHA: complete bridge; facade; relevant loader selectors,
+load/meta/scaler contracts; embedding fit/return order; HDBSCAN profiles;
+visualizer2055–2209; reporter715–1082 (only bridge inputs/consumption, not a
+reporter audit); classifier preparation812–1084, pipeline interfaces and
+save/load2168–2254; utils.latest_file239–272; NB02 source cells3/21/48 and
+relevant historical outputs; pyproject, CI lock, precommit, sole quality workflow
+and conftest. No notebook or historical artifact executed/deserialized.
+
+### Exclusion and provenance comparison
+
+[Exact static inventory](m26_exclusion_inventory.json) is from AST literal
+extraction plus the real loader constants at the source SHA. Loader default
+excludes `label`/`main_class` that the bridge admits as candidates; bridge
+excludes `radial_velocity_corr` that the default loader admits. Loader
+spectro_only additionally excludes instrumental fields and Gaia prefixes;
+bridge has no spectro_only argument. Classifier base exclusions additionally
+remove fields such as RA/Dec, instrumental coefficients, label/main_class,
+parallax_error and phot_bp/rp_mean_mag. Conversely bridge excludes ag_gspphot,
+ebpminrp_gspphot,phot_variable_flag,radial_velocity_corr that classifier base
+does not (classifier spectro_only has additional restrictions).
+
+Crucially these bridge exclusions select the **population for dropna**, not
+the final inference schema: final columns are taken from saved
+feature_names_used, even when a name belongs to _EXCL_COLS. Thus an excluded
+candidate name is not proof it cannot reach a model that requests it. An unused
+numeric variable with10%NaN can delete an inference row; a numeric label column
+could do so too. These differences are demonstrated structurally and by the
+archived unrelated-feature observation; they do not quantify real prevalence.
+No claim of spectro-only provenance follows from these denylists (#23).
+
+### Independent examples and tolerances
+
+Nominal IDs104/19/807/33/250 have alpha3/10/8/23/4, beta101/31/89/17/53,
+gamma3/8/1/6/4. The saved order is gamma,alpha,beta; spy integer codes
+alpha mod3=0/1/2/2/1 decode through G/M/F to G/M/F/F/M. Literal per-row
+probabilities have maxima .7/.55/.8/.8/.55. Another matrix's maxima are
+.8/.6/.7/.9/.5; predictions deliberately disagree with some argmax values,
+so a legitimate threshold decision wrapper is not rejected. Values/IDs are
+compared, not merely dimensions. Two coherent paired permutations preserve
+the association. Candidate missing fractions are hand-computed0/10,1/10,2/10;
+missing-name fractions include3/10 (accepted technically) and4/10 (refused).
+These decimal comparisons are numerical examples, not astrophysical thresholds
+endorsed by this audit. Exact spy checks use identical double literals; actual
+same-version probability roundtrip uses rtol0/atol1e-12, from #38's parity
+criterion. No observational uncertainty is inferred from that tolerance.
 
 ## Scientific limits and open decisions
 
@@ -99,3 +164,86 @@ calibration and astrophysical validation remain separate questions.
   variance and dtype predicates are independently discriminated (5rows would
   exclude the column via20%NaNs and hide those predicates). Green suite now
   **58unit +4real =62PASS** under `-W error`.
+
+## Mutation evidence and limits
+
+[Runner](check_m26_mutations.py) copies only relevant source/config/tests to a
+TemporaryDirectory; exact anchors must occur once, ast.parse must succeed,
+pytest collection must match the positive baseline's selected case names, and
+line tracing must show the changed statement executed. It records commands,
+stdout/JUnit diagnostics, hashes, Git blobs, start/end HEAD and working-tree
+state. The real worktree inputs are hash-guarded; no tracked production edited.
+
+[Initial campaign](m26_mutation_initial_results.json) was run on clean
+`553c2fb81bd1cdd57b06bca0f25e4050faefe7f3`: baseline62PASS,25mutants,
+5controls. Historical raw classification:21KILLED_BY_ASSERTION,
+3RUNTIME_FAILURE,1SURVIVED; controls5PASS. Two runtime labels were overly
+conservative: pytest's plain `E assert False is True` diagnostics did not spell
+AssertionError. The third was an actual test-order weakness: accepted schema
+was indexed before asserting success, so the strict30% mutant caused IndexError.
+An explicit acceptance assertion now precedes spy indexing. The historical
+JSON is retained unchanged, not retrospectively relabeled.
+
+[Targeted follow-up](m26_mutation_followup_results.json) at clean
+`72a9206a7fb004604b21d96125fdf2679d49a205` reruns those3cases with a62PASS
+baseline: **3KILLED_BY_ASSERTION**, no errors/skips. Final combined evidence
+is **24distinct mutants detected by relevant assertions,1survivor,5controls
+PASS**, not a claim of a second complete30case campaign. No unaffected
+candidate was rerun unnecessarily. Later additions test only two invalid
+probability shapes; the original62case campaign snapshot remains explicit.
+
+| Mutant family (exact replacements are in JSON) | Detection / limit |
+|---|---|
+| reversed columns/rows; shifted y/clusters/Z | Named-frame/paired-array assertions;5detected |
+| strict/lowered SNR, strict10%NaN; variance/dtype/exclusion predicates removed | Independent population/value assertions;6detected |
+| strict30% missing cutoff, missing-column value1 | Acceptance + exact current placeholders;2detected; this is technical characterization, not approved imputation |
+| ignored decoder; probability rows reversed/axis0/minimum; F-only mask; trained-vs-observed classes | Exact labels/maxima/mask/subset assertions;6detected |
+| failure/success flags, probability availability, lexical-vs-mtime model, first-vs-last CSV | Status/discovery assertions;5detected; lexical CSV policy characterized, not endorsed scientifically |
+| fillna(0)→fillna(7) on the nominal finite input | **SURVIVED**, reached285 but no missing model value in that green scenario. This is a declared #89 coverage gap; protecting zero fill as scientifically correct would be wrong. |
+| DataFrame copy, np.max equivalent, np.unique classes |3equivalent controls PASS |
+| preserving pipeline NaNs, explicit mismatched-population refusal |2admissible partial-remedy controls PASS; not production changes, complete fixes or scientific approvals |
+
+Mutations cover bridge semantics, not perturbations of XGBoost internals,
+historical training, calibration or unseen architectures. The known truncation
+path has red proofs, not an arbitrary green contract. No quota or mutation
+percentage is used as scientific validation.
+
+## Defects, archives and review boundary
+
+- NEW [#88](https://github.com/PhD-Brown/AstroSpectro/issues/88), P1: actual
+  filtering/truncation and independent input-cardinality failures.
+- NEW [#89](https://github.com/PhD-Brown/AstroSpectro/issues/89), P1: actual
+  saved median/scaler/XGBoost direct F versus bridge M at ID807.
+- NEW [#90](https://github.com/PhD-Brown/AstroSpectro/issues/90), P2: real
+  degenerate GaussianNB returns5NaN confidences advertised as available;
+  injected malformed outputs document the wider validation boundary.
+- KNOWN #21 facade; #23 provenance; #22/#24 training leakage/transformations;
+  #28 version-sensitive training/calibration and #38 general persistence.
+- OPEN/risk: unbound model/CSV generation, mtime/lexical fallback policy (#20),
+  missing-column policy, unsupported needed-name lists, unavailable-proba
+  presentation, real population identity and any published-result impact.
+  No fourth defect inferred from these unmeasured risks.
+
+Primary [proof archive0da7581](https://github.com/PhD-Brown/AstroSpectro/tree/0da758111daaf7ba33283c1462ec1fb1368c6cff)
+contains38cases:19FAIL/19PASS; [manifest](https://github.com/PhD-Brown/AstroSpectro/blob/0da758111daaf7ba33283c1462ec1fb1368c6cff/audit/M26_PROOFS.md)
+classifies each family and oracle limits. Its fixtures differ from the latest
+unit-file bytes, so execute from that fixed checkout. No proof was weakened
+or changed after archival. [Supplemental7b32abb](https://github.com/PhD-Brown/AstroSpectro/blob/7b32abbd1881a487c0ea1bcc7355883e5797ea82/tests/proofs_dimred_xgboost_bridge_shapes.py)
+adds1FAIL: a(5,2,3)probability tensor is advertised as(5,3)confidence.
+[Replayed from fixed-ref files](m26_shape_proof_results.json), also classified
+as a #90 injection, not a backend discovery. Two green cases verify1D/(N,0)
+already become unavailable. Final M2.6 suite: **60unit +4real =64PASS**.
+Both archive commits remain ancestors; proof files were removed from the
+integration head only after push/remote/GitHub accessibility verification.
+No branch/worktree was deleted and no history rewritten.
+
+Claude should independently review identity preconditions, the direct median
+oracle, Gaussian/tensor boundary qualification, mutation diagnostics and
+scientific-policy neutrality. In particular the median proof compares labels
+and distinguishes this actual fixture; it is not a general transformed-value
+equality oracle. No claim of leak-free training, calibrated probabilities,
+catalogue provenance or astrophysical validity follows from any green result.
+Full classifier training, cross-version persistence, GPU, real spectra/models,
+W&B/services, end-to-end notebooks/plots, coverage measurement, OS permission
+failures, invalid input shapes/None and arbitrary model schemas are untested.
+The Draft PR remains unmerged; M2.6 is not integrated; no M2.7 work follows.
