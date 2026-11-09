@@ -1,6 +1,7 @@
 """Independent wrapper oracles; no claim of training or astrophysical validation."""
 
 import builtins
+import logging
 import os
 import re
 from pathlib import Path
@@ -24,6 +25,128 @@ def assert_confidence_policy(actual, historical_maximum, predicted_class_probabi
         np.array_equal(actual, choice)
         for choice in (historical_maximum, predicted_class_probability)
     )
+
+
+def assert_filtered_prediction(case, result, population, arrays):
+    """Require exact retained values, labels and associations on successful inference."""
+    assert result["_xgb_ok"] is True
+    expected = population[case.classifier.feature_names_used].reset_index(drop=True)
+    assert_frame_equal(case.spy.predict_inputs[-1], expected)
+    assert_frame_equal(case.spy.proba_inputs[-1], expected)
+    # Independent synthetic classifier contract: alpha modulo3 maps to G/M/F.
+    labels = np.array(["G", "M", "F"])[population.feature_alpha.to_numpy() % 3]
+    np.testing.assert_array_equal(result["y_pred"], labels)
+    for supplied, returned in (
+        ("Z_umap", "Z_umap_aligned"),
+        ("y", "y_aligned"),
+        ("cluster_labels", "cl_aligned"),
+    ):
+        np.testing.assert_array_equal(result[returned], arrays[supplied])
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize(
+    "domain,message",
+    [
+        ("schema", "Non-numeric feature columns cannot reach the model"),
+        ("schema", "Feature columns contain non-numeric data"),
+        ("preprocessing", "NaN values in input features"),
+        ("probability", "Probabilities are non-finite"),
+        ("identity", "Cannot verify observation identity"),
+        (
+            "identity",
+            "Observation population provenance cannot be verified after bridge filtering",
+        ),
+    ],
+)
+def test_refusal_helper_accepts_domain_and_cause_in_either_order(
+    bridge_review_contracts, structured, domain, message
+):
+    def run():
+        if not structured:
+            raise ValueError(message)
+        logging.getLogger(__name__).error(message)
+        return {
+            "_xgb_ok": False,
+            "has_proba": False,
+            "y_pred": None,
+            "confidence": None,
+        }
+
+    assert (
+        bridge_review_contracts.invoke(types.SimpleNamespace(run=run), domain) is None
+    )
+
+
+@pytest.mark.parametrize("structured", [False, True])
+@pytest.mark.parametrize(
+    "domain,message",
+    [
+        ("schema", "column index invalid: -1 (off-by-one in insertion loop)"),
+        ("schema", "Feature schema missing: column index invalid (insertion loop)"),
+        ("identity", "Observation identity is available"),
+        ("preprocessing", "NaN values in the probability distribution"),
+        ("probability", "Probabilities are finite"),
+        ("schema", "Non-numeric thread identifier"),
+    ],
+)
+def test_refusal_helper_rejects_internal_faults_or_missing_domain_cause(
+    bridge_review_contracts, structured, domain, message
+):
+    def run():
+        if not structured:
+            raise ValueError(message)
+        logging.getLogger(__name__).error(message)
+        return {
+            "_xgb_ok": False,
+            "has_proba": False,
+            "y_pred": None,
+            "confidence": None,
+        }
+
+    with pytest.raises(
+        AssertionError, match="Unrelated ValueError|relevant error diagnostic"
+    ):
+        bridge_review_contracts.invoke(types.SimpleNamespace(run=run), domain)
+
+
+@pytest.mark.parametrize(
+    "representation",
+    [
+        "float32",
+        "float64",
+        "float16_loss",
+        "float16_exact",
+        "rows",
+        "columns",
+        "perturbation",
+    ],
+)
+def test_preprocessing_precision_is_bounded_independently_of_result_dtype(
+    bridge_preprocessing_oracle, representation
+):
+    oracle = bridge_preprocessing_oracle
+    expected = np.array(
+        [[0.2383656473, 0.0819231921, -2.3757725695], [1.225, -0.9534625892, 5.0]]
+    )
+    if representation == "float16_exact":
+        expected = np.array([[0.0, 1.0, -2.0], [4.0, 0.5, 8.0]])
+    actual = expected.astype(
+        representation
+        if representation in ("float32", "float64")
+        else "float16" if representation.startswith("float16") else "float64"
+    )
+    if representation == "rows":
+        actual = actual[::-1]
+    elif representation == "columns":
+        actual = actual[:, ::-1]
+    elif representation == "perturbation":
+        actual[0, 0] += 1e-4  # Exceeds the independent float32 error allowance.
+    if representation in ("float32", "float64", "float16_exact"):
+        oracle.compare(actual, expected)
+    else:
+        with pytest.raises(AssertionError, match="Not equal to tolerance"):
+            oracle.compare(actual, expected)
 
 
 def assert_empty(result):
@@ -207,7 +330,7 @@ def test_explicit_csv_wins_and_fallback_is_lexical(bridge_case):
     )
 
 
-def test_snr_inclusive_boundary_and_absent_snr(bridge_case):
+def test_snr_inclusive_boundary_and_absent_snr(bridge_case, bridge_review_contracts):
     c = bridge_case
     df = c.frame.copy()
     # Decimal probes survive CSV inference without rounding back onto the edge.
@@ -215,12 +338,9 @@ def test_snr_inclusive_boundary_and_absent_snr(bridge_case):
     df.to_csv(c.csv, index=False)
     keep = [1, 2, 4]
     arrays = {k: v[keep] for k, v in c.args.items() if isinstance(v, np.ndarray)}
-    result = c.run(**arrays)
-    assert_frame_equal(
-        c.spy.predict_inputs[-1],
-        c.frame.iloc[keep][c.classifier.feature_names_used].reset_index(drop=True),
-    )
-    np.testing.assert_array_equal(result["Z_umap_aligned"][:, 0], [19, 807, 250])
+    result = bridge_review_contracts.invoke(c, "identity", **arrays)
+    if result is not None:
+        assert_filtered_prediction(c, result, c.frame.iloc[keep], arrays)
     c.frame.drop(columns="snr_r").to_csv(c.csv, index=False)
     assert c.run()["_xgb_ok"]
     assert len(c.spy.predict_inputs[-1]) == 5
@@ -230,7 +350,9 @@ def test_snr_inclusive_boundary_and_absent_snr(bridge_case):
     "missing_count,keep",
     [(0, list(range(10))), (1, [0, 1, 2, 3, 5, 6, 7, 8, 9]), (2, list(range(10)))],
 )
-def test_candidate_nan_fraction_boundary(bridge_case, missing_count, keep):
+def test_candidate_nan_fraction_boundary(
+    bridge_case, bridge_review_contracts, missing_count, keep
+):
     c = bridge_case
     df = pd.concat(
         [c.frame, c.frame.assign(obsid=lambda x: x.obsid + 1000)], ignore_index=True
@@ -240,16 +362,18 @@ def test_candidate_nan_fraction_boundary(bridge_case, missing_count, keep):
     for row in [4, 7][:missing_count]:
         df.loc[row, "auxiliary"] = np.nan
     df.to_csv(c.csv, index=False)
-    result = c.run(
+    arrays = dict(
         Z_umap=np.column_stack((df.iloc[keep].obsid, np.zeros(len(keep)))),
         y=np.array([f"id{x}" for x in df.iloc[keep].obsid]),
         cluster_labels=np.arange(len(keep)),
     )
-    assert_frame_equal(
-        c.spy.predict_inputs[-1],
-        df.iloc[keep][c.classifier.feature_names_used].reset_index(drop=True),
+    result = (
+        bridge_review_contracts.invoke(c, "identity", **arrays)
+        if missing_count == 1
+        else c.run(**arrays)
     )
-    np.testing.assert_array_equal(result["Z_umap_aligned"][:, 0], df.iloc[keep].obsid)
+    if result is not None:
+        assert_filtered_prediction(c, result, df.iloc[keep], arrays)
 
 
 @pytest.mark.parametrize(
@@ -268,7 +392,7 @@ def test_excluded_metadata_nan_cannot_remove_rows(bridge_case, column):
 
 @pytest.mark.parametrize("kind", ["constant", "string", "nullable_boolean"])
 def test_candidate_variance_and_dtype_control_row_selection(
-    bridge_case, monkeypatch, kind
+    bridge_case, bridge_review_contracts, monkeypatch, kind
 ):
     c = bridge_case
     df = pd.concat([c.frame, c.frame], ignore_index=True)
@@ -281,16 +405,18 @@ def test_candidate_variance_and_dtype_control_row_selection(
         monkeypatch.setattr(c.module.pd, "read_csv", lambda *a, **kw: df)
     df.to_csv(c.csv, index=False)
     keep = list(range(9 if kind == "nullable_boolean" else 10))
-    result = c.run(
+    arrays = dict(
         Z_umap=np.column_stack((keep, np.zeros(len(keep)))),
         y=np.array(keep),
         cluster_labels=np.array(keep),
     )
-    assert_frame_equal(
-        c.spy.predict_inputs[0],
-        df.iloc[keep][c.classifier.feature_names_used].reset_index(drop=True),
+    result = (
+        bridge_review_contracts.invoke(c, "identity", **arrays)
+        if kind == "nullable_boolean"
+        else c.run(**arrays)
     )
-    np.testing.assert_array_equal(result["y_aligned"], keep)
+    if result is not None:
+        assert_filtered_prediction(c, result, df.iloc[keep], arrays)
 
 
 def test_nonconsecutive_pandas_index_preserves_row_values(bridge_case, monkeypatch):
@@ -307,7 +433,9 @@ def test_nonconsecutive_pandas_index_preserves_row_values(bridge_case, monkeypat
 @pytest.mark.parametrize(
     "kind", ["constant", "string", "boolean", "all_nan", "constant_after_snr"]
 )
-def test_candidate_selection_keeps_named_model_columns(bridge_case, kind):
+def test_candidate_selection_keeps_named_model_columns(
+    bridge_case, bridge_review_contracts, kind
+):
     c = bridge_case
     df = c.frame.copy()
     extra = {
@@ -322,11 +450,14 @@ def test_candidate_selection_keeps_named_model_columns(bridge_case, kind):
     if kind == "constant_after_snr":
         df.loc[4, "snr_r"] = 9
     df.to_csv(c.csv, index=False)
-    c.run(**{k: v[keep] for k, v in c.args.items() if isinstance(v, np.ndarray)})
-    assert_frame_equal(
-        c.spy.predict_inputs[0],
-        c.frame.iloc[keep][c.classifier.feature_names_used].reset_index(drop=True),
+    arrays = {k: v[keep] for k, v in c.args.items() if isinstance(v, np.ndarray)}
+    result = (
+        bridge_review_contracts.invoke(c, "identity", **arrays)
+        if kind == "constant_after_snr"
+        else c.run(**arrays)
     )
+    if result is not None:
+        assert_filtered_prediction(c, result, c.frame.iloc[keep], arrays)
 
 
 @pytest.mark.parametrize(

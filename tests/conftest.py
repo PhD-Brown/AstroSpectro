@@ -124,20 +124,45 @@ def bridge_case(tmp_path, monkeypatch, bridge_module):
 @pytest.fixture
 def bridge_review_contracts(caplog):
     """Accept explicit domain refusals without treating unrelated errors as evidence."""
+    # Separate domain and cause checks do not prescribe diagnostic word order.
+    # Generic "invalid column" is insufficient evidence of a data/schema refusal.
     patterns = {
-        "identity": r"(?:observation|population|identity|alignment).*(?:mismatch|incompatib|unverified|unknown|ambig|cannot|cardinal|length|provenance)",
-        "schema": r"(?:schema|feature|column).*(?:missing|incompatib|unsupported|non.?numeric|invalid|absent)",
-        "preprocessing": r"(?:input|feature|column|schema|preprocess).*(?:NaN|missing|non.?finite|incompatib|invalid)",
-        "probability": r"(?:probabilit|distribution).*(?:invalid|undefined|non.?finite|finite|shape|rank|dimension|unavailable)",
+        "identity": (
+            r"\b(?:observations?|population|identity|alignment|provenance)\b",
+            r"mismatch|incompatib|unverified|unknown|ambig|cannot|cardinal|length",
+        ),
+        "schema": (
+            r"\b(?:schema|features?|columns?)\b",
+            r"missing|incompatib|unsupported|non[ -]?numeric|absent",
+        ),
+        "preprocessing": (
+            r"\b(?:input|features?|columns?|schema|preprocessing)\b",
+            r"\bnan\b|missing|non[ -]?finite|incompatib",
+        ),
+        "probability": (
+            r"\b(?:probability|probabilities|distribution)\b",
+            r"invalid|undefined|non[ -]?finite|shape|rank|dimension|unavailable",
+        ),
     }
+
+    def relevant(message, domain):
+        # These programming faults cannot establish a scientific refusal even
+        # when a wrapper also mentions a domain. This is a bounded M2.6 helper.
+        if re.search(
+            r"off[ -]by[ -]one|insertion loop|column index|buffer overflow",
+            message,
+            re.I,
+        ):
+            return False
+        return all(re.search(pattern, message, re.I) for pattern in patterns[domain])
 
     def invoke(case, domain, **overrides):
         caplog.clear()
         try:
             result = case.run(**overrides)
         except ValueError as exc:
-            assert re.search(
-                patterns[domain], str(exc), re.I
+            assert relevant(
+                str(exc), domain
             ), f"Unrelated ValueError is not a {domain} validation refusal: {exc}"
             return None
         if result["_xgb_ok"]:
@@ -148,8 +173,8 @@ def bridge_review_contracts(caplog):
         messages = " ".join(
             record.getMessage() for record in caplog.records if record.levelno >= 40
         )
-        assert re.search(
-            patterns[domain], messages, re.I
+        assert relevant(
+            messages, domain
         ), f"A structured {domain} refusal needs a relevant error diagnostic: {messages}"
         return None
 
@@ -422,9 +447,11 @@ def bridge_preprocessing_oracle(bridge_real_bundle, monkeypatch):
 
     def compare(actual, expected_values):
         assert np.asarray(actual).shape == expected_values.shape
-        # Eight ULP-scale epsilons allow float32 representation, while float64
-        # arithmetic over30 training rows is bounded conservatively by2e-14.
-        precision = np.finfo(np.asarray(actual).dtype).eps
+        # Cap at eight float32 epsilons independently of the produced dtype.
+        # Float64 arithmetic over30 training rows retains the stricter2e-14 floor.
+        precision = min(
+            np.finfo(np.asarray(actual).dtype).eps, np.finfo(np.float32).eps
+        )
         np.testing.assert_allclose(
             actual, expected_values, rtol=8 * precision, atol=max(2e-14, 8 * precision)
         )

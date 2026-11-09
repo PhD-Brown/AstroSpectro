@@ -53,6 +53,130 @@ def replace(source, changes):
 
 
 def candidates(phase):
+    if phase == "final":
+        # Narrow second-review replay; historical campaigns/results stay intact.
+        g1 = (
+            "    if len(df_aligned) != len(df_raw) or len(df_aligned) != len(Z_umap):\n"
+            '        raise ValueError("Observation population provenance cannot be verified after bridge filtering")\n'
+        )
+        records = [
+            c for c in candidates("r1") if c[0] in ("baseline", "length_refusal_only")
+        ]
+        records += [
+            (
+                "g1_loader_population",
+                [(ALIGN, g1 + ALIGN)],
+                [PROOF, "-k", "loader_population"],
+                0,
+                4,
+                "G1 admits identity refusal; shared population must still succeed",
+            )
+        ]
+        records += candidates("all_proofs")
+        records += [
+            (
+                "g1_all_proofs",
+                [(ALIGN, g1 + ALIGN)],
+                [PROOF],
+                9,
+                7,
+                "G1 leaves independent #89/#90 defects exposed",
+            )
+        ]
+        records += [
+            c
+            for c in candidates("r2")
+            if c[0]
+            in (
+                "r2_baseline",
+                "trained_mean_not_saved_median",
+                "preserve_present_missing_values",
+            )
+        ]
+        records += [
+            (
+                "float16_preprocessing_loss",
+                [(SCHEMA, 'X_pred_df = df_aligned[needed].astype("float16")')],
+                [PROOF, "-k", "fitted_train_median or complete_finite"],
+                3,
+                0,
+                "NaNs reach learned imputer but degraded precision must fail numerically",
+            )
+        ]
+        records += [
+            c
+            for c in candidates("r3")
+            if c[0]
+            in (
+                "r3_baseline",
+                "invented_nan_confidence",
+                "silent_vector_crop",
+                "tensor_flattened",
+                "both_boundary_guards",
+            )
+        ]
+        # Use current suite size; earlier green phase documents its71-case scope.
+        for name, changes, selection, fail, passed, meaning in candidates("green"):
+            if name in (
+                "green_baseline",
+                "float32_representation",
+                "float64_representation",
+                "r7_real_baseline",
+                "r7_real_same_class_swap",
+            ):
+                records.append(
+                    (
+                        name,
+                        changes,
+                        selection,
+                        fail,
+                        102 if selection == GREEN else passed,
+                        meaning,
+                    )
+                )
+        records += [
+            (
+                "g1_green",
+                [(ALIGN, g1 + ALIGN)],
+                GREEN,
+                0,
+                102,
+                "entire green suite admits G1 without losing unchanged-population controls",
+            )
+        ]
+        strings = (
+            SCHEMA
+            + '\n    if any(pd.api.types.is_string_dtype(X_pred_df[c]) for c in X_pred_df.columns):\n        raise ValueError("Non-numeric feature columns cannot reach the model")'
+        )
+        records += [
+            (
+                "reordered_schema_diagnostic",
+                [(SCHEMA, strings)],
+                GREEN,
+                0,
+                102,
+                "Claude A06 diagnostic is accepted at the bridge boundary",
+            )
+        ]
+        for name, expression in (
+            ("float16_real_loss", SCHEMA + '.astype("float16")'),
+            (
+                "real_columns_permuted",
+                SCHEMA + ".iloc[:, ::-1].set_axis(needed, axis=1)",
+            ),
+            ("real_significant_perturbation", SCHEMA + ".mul(1 + 1e-6)"),
+        ):
+            records.append(
+                (
+                    name,
+                    [(SCHEMA, expression)],
+                    [GREEN[1]],
+                    3,
+                    2,
+                    "numerical booster-input assertion must reject changed values",
+                )
+            )
+        return records
     if phase == "r1":
         selection = [PROOF, "-k", "loader_population"]
         return [
@@ -510,7 +634,9 @@ def execute(directory, selection):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--phase", choices=["r1", "r2", "r3", "all_proofs", "green"], required=True
+        "--phase",
+        choices=["r1", "r2", "r3", "all_proofs", "green", "final"],
+        required=True,
     )
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
