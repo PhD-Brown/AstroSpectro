@@ -1,0 +1,1155 @@
+{
+  "git_head_at_run": "15f5cc5e90346b6aa4dfc9481ae7b9695455d7df",
+  "working_tree_at_run": "",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.2.0",
+    "pytest": "8.4.2",
+    "black": "24.4.2",
+    "ruff": "0.5.0",
+    "pytest-socket": "0.7.0",
+    "joblib": "1.6.0"
+  },
+  "environment": {
+    "PYTHONHASHSEED": "7",
+    "MPLBACKEND": "Agg",
+    "PYTHONIOENCODING": "utf-8"
+  },
+  "inputs": {
+    "src/dimred/xgboost_bridge.py": {
+      "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+      "git_blob": "eab849e4bb80be03a50ebc9128d2737530262358"
+    },
+    "src/dimred/data_loader.py": {
+      "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+      "git_blob": "cf6eaa4cadac90b04a2960ef214fce38b216d61b"
+    },
+    "src/pipeline/classifier.py": {
+      "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+      "git_blob": "6e967e075497f49bceb26466f72c9b19c34ff794"
+    },
+    "src/utils.py": {
+      "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+      "git_blob": "7f36fbb1ae53aa807d62ea46b27656111b88ada0"
+    },
+    "tests/conftest.py": {
+      "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+      "git_blob": "22caba53fbccb14cb45b8d95c7f1b751825d7a37"
+    },
+    "tests/test_dimred_xgboost_bridge.py": {
+      "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+      "git_blob": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3"
+    },
+    "tests/test_dimred_xgboost_bridge_real.py": {
+      "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+      "git_blob": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793"
+    },
+    "audit/check_m26_mutations.py": {
+      "sha256_lf": "40b341a3432230723760722e42ea926e82bb326c8af1007a767b6a1992089635",
+      "git_blob": "537d15011bf8dcaa33bce1ed4a9120ecb965397e"
+    },
+    "audit/check_m26_review_mutations.py": {
+      "sha256_lf": "5a935c286920ba85cbb353ad4dab260c7cb651ca7864284692dc81e3520e09ff",
+      "git_blob": "e6b1b6f4e4b17df35630280c42d155e8d40bba6f"
+    },
+    "pyproject.toml": {
+      "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+      "git_blob": "95c1daca7bc20fffa5cc0d7e182a15815a039331"
+    }
+  },
+  "results": [
+    {
+      "name": "targeted_warnings_errors",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_xgboost_bridge.py",
+        "tests/test_dimred_xgboost_bridge_real.py",
+        "-W",
+        "error",
+        "--junitxml=test-results/m26-review-final-targeted.xml"
+      ],
+      "returncode": 0,
+      "stdout": ".......................................................................  [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-review-final-targeted.xml -\n71 passed in 3.83s\n",
+      "stderr": ""
+    },
+    {
+      "name": "full_fast",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--junitxml=test-results/m26-review-final-full.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 14%]\n........................................................................ [ 29%]\n........................................................................ [ 44%]\n........................................................................ [ 59%]\n........................................................................ [ 73%]\n........................................................................ [ 88%]\n.......................................................                  [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-review-final-full.xml -\n487 passed, 62 deselected, 7 warnings in 14.41s\n",
+      "stderr": ""
+    },
+    {
+      "name": "full_importlib",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--import-mode=importlib",
+        "--junitxml=test-results/m26-review-final-importlib.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 14%]\n........................................................................ [ 29%]\n........................................................................ [ 44%]\n........................................................................ [ 59%]\n........................................................................ [ 73%]\n........................................................................ [ 88%]\n.......................................................                  [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m26\\test-results\\m26-review-final-importlib.xml -\n487 passed, 62 deselected, 7 warnings in 13.70s\n",
+      "stderr": ""
+    },
+    {
+      "name": "black",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black",
+        "--check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m26_mutations.py",
+        "audit/check_m26_review_mutations.py"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "All done! \u2728 \ud83c\udf70 \u2728\n39 files would be left unchanged.\n"
+    },
+    {
+      "name": "ruff",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m26_mutations.py",
+        "audit/check_m26_review_mutations.py"
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "name": "pip_check",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "returncode": 0,
+      "stdout": "No broken requirements found.\n",
+      "stderr": ""
+    },
+    {
+      "name": "diff_check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "production_unchanged",
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "18302e68cf25289873aa170a27834d99b516f376",
+        "--",
+        "src",
+        "pyproject.toml",
+        "requirements",
+        ".github",
+        "notebooks"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "archive_ancestor_0da7581",
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "0da758111daaf7ba33283c1462ec1fb1368c6cff",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "archive_ancestor_7b32abb",
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "7b32abbd1881a487c0ea1bcc7355883e5797ea82",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "name": "archive_ancestor_fe25d1a",
+      "command": [
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        "fe25d1a39e83f46b743e5524cf5b70d2169d6183",
+        "HEAD"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "git_head_after": "15f5cc5e90346b6aa4dfc9481ae7b9695455d7df",
+  "reverse_order_validation": {
+    "returncode": 0,
+    "state_restored": true,
+    "order": "reversed",
+    "checks": [
+      "pipeline",
+      "pipeline.classifier",
+      "classifier",
+      "utils",
+      "sys.path"
+    ],
+    "cases": [
+      "test_real_pipeline_explicitly_refuses_infinity[-inf]",
+      "test_real_pipeline_explicitly_refuses_infinity[inf]",
+      "test_real_transformed_rows_distinguish_same_class_observations",
+      "test_real_xgboost_saved_pipeline_inference_parity[True]",
+      "test_real_xgboost_saved_pipeline_inference_parity[False]",
+      "test_path_resolution_side_effect_is_idempotent_observation",
+      "test_refusal_helper_rejects_unrelated_value_errors[probability]",
+      "test_refusal_helper_rejects_unrelated_value_errors[preprocessing]",
+      "test_refusal_helper_rejects_unrelated_value_errors[identity]",
+      "test_actual_loader_shared_population_preserves_all_values",
+      "test_model_discovery_ignores_other_pickle_families[True]",
+      "test_model_discovery_ignores_other_pickle_families[False]",
+      "test_postload_exceptions_remain_visible[decode]",
+      "test_postload_exceptions_remain_visible[predict]",
+      "test_postload_exceptions_remain_visible[csv]",
+      "test_probability_row_maximum_does_not_override_decision_rule",
+      "test_unusable_probability_shape_is_not_advertised[empty_class_axis]",
+      "test_unusable_probability_shape_is_not_advertised[vector]",
+      "test_probability_unavailable_has_explicit_flag[raises]",
+      "test_probability_unavailable_has_explicit_flag[absent]",
+      "test_no_encoder_preserves_labels_as_strings[prediction1]",
+      "test_no_encoder_preserves_labels_as_strings[prediction0]",
+      "test_decoding_observed_classes_and_fg_mask[labels1-expected1-mask1]",
+      "test_decoding_observed_classes_and_fg_mask[labels0-expected0-mask0]",
+      "test_missing_feature_fraction_characterization[7-2-True]",
+      "test_missing_feature_fraction_characterization[10-4-False]",
+      "test_missing_feature_fraction_characterization[10-3-True]",
+      "test_missing_feature_fraction_characterization[4-1-True]",
+      "test_missing_feature_fraction_characterization[3-1-False]",
+      "test_missing_feature_fraction_characterization[3-0-True]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[string]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[boolean]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[Float64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[Int64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[float64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[float32]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[int64]",
+      "test_representable_dataframe_dtypes_are_passed_by_name[int32]",
+      "test_candidate_selection_keeps_named_model_columns[constant_after_snr]",
+      "test_candidate_selection_keeps_named_model_columns[all_nan]",
+      "test_candidate_selection_keeps_named_model_columns[boolean]",
+      "test_candidate_selection_keeps_named_model_columns[string]",
+      "test_candidate_selection_keeps_named_model_columns[constant]",
+      "test_nonconsecutive_pandas_index_preserves_row_values",
+      "test_candidate_variance_and_dtype_control_row_selection[nullable_boolean]",
+      "test_candidate_variance_and_dtype_control_row_selection[string]",
+      "test_candidate_variance_and_dtype_control_row_selection[constant]",
+      "test_excluded_metadata_nan_cannot_remove_rows[subclass]",
+      "test_excluded_metadata_nan_cannot_remove_rows[snr_g]",
+      "test_excluded_metadata_nan_cannot_remove_rows[teff_gspphot]",
+      "test_excluded_metadata_nan_cannot_remove_rows[source_id]",
+      "test_excluded_metadata_nan_cannot_remove_rows[obsid]",
+      "test_candidate_nan_fraction_boundary[2-keep2]",
+      "test_candidate_nan_fraction_boundary[1-keep1]",
+      "test_candidate_nan_fraction_boundary[0-keep0]",
+      "test_snr_inclusive_boundary_and_absent_snr",
+      "test_explicit_csv_wins_and_fallback_is_lexical",
+      "test_classifier_both_imports_unavailable",
+      "test_classifier_script_import_fallback",
+      "test_utils_import_fallback_is_lexical_characterization",
+      "test_model_selection_uses_actual_utils_mtime",
+      "test_early_failures_return_complete_empty_result[missing_schema]",
+      "test_early_failures_return_complete_empty_result[no_csv]",
+      "test_early_failures_return_complete_empty_result[metadata]",
+      "test_early_failures_return_complete_empty_result[load]",
+      "test_early_failures_return_complete_empty_result[no_model]",
+      "test_repeat_inference_and_second_call_failure_have_no_stale_state",
+      "test_coherent_permutation_preserves_observation_values[order1]",
+      "test_coherent_permutation_preserves_observation_values[order0]",
+      "test_nominal_named_values_decode_confidence_and_integrity",
+      "test_empty_structure_is_fresh"
+    ],
+    "command_description": "pytest.main on both M26 files with -W error and reverse collection; sessionfinish asserts identity of pipeline/pipeline.classifier/classifier/utils module entries and sys.path restoration"
+  },
+  "archive_reconstruction": {
+    "phase": "all_proofs",
+    "proofs_ref": "fe25d1a39e83f46b743e5524cf5b70d2169d6183",
+    "selected_records": [
+      "all_proof_baseline"
+    ],
+    "git_head_at_run": "15f5cc5e90346b6aa4dfc9481ae7b9695455d7df",
+    "working_tree_at_run": "",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "versions": {
+      "numpy": "2.4.6",
+      "pandas": "3.1.1",
+      "scikit-learn": "1.9.1",
+      "xgboost": "3.2.0",
+      "pytest": "8.4.2"
+    },
+    "inputs": {
+      "src/dimred/xgboost_bridge.py": {
+        "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+        "git_blob_at_ref": "eab849e4bb80be03a50ebc9128d2737530262358",
+        "file_origin_ref": "HEAD"
+      },
+      "src/dimred/data_loader.py": {
+        "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+        "git_blob_at_ref": "cf6eaa4cadac90b04a2960ef214fce38b216d61b",
+        "file_origin_ref": "HEAD"
+      },
+      "src/utils.py": {
+        "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+        "git_blob_at_ref": "7f36fbb1ae53aa807d62ea46b27656111b88ada0",
+        "file_origin_ref": "HEAD"
+      },
+      "src/pipeline/classifier.py": {
+        "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+        "git_blob_at_ref": "6e967e075497f49bceb26466f72c9b19c34ff794",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/conftest.py": {
+        "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+        "git_blob_at_ref": "22caba53fbccb14cb45b8d95c7f1b751825d7a37",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/test_dimred_xgboost_bridge.py": {
+        "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+        "git_blob_at_ref": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/test_dimred_xgboost_bridge_real.py": {
+        "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+        "git_blob_at_ref": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/proofs_dimred_xgboost_bridge_review.py": {
+        "sha256_lf": "3456fd316caf5828265dc4c5a80a9ecd99a8f9070ba76b5307ffd9afd626d18d",
+        "git_blob_at_ref": "e9961a5d2ef69a5b3d36a58ffcb8fcb28fadb972",
+        "file_origin_ref": "fe25d1a39e83f46b743e5524cf5b70d2169d6183"
+      },
+      "pyproject.toml": {
+        "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+        "git_blob_at_ref": "95c1daca7bc20fffa5cc0d7e182a15815a039331",
+        "file_origin_ref": "HEAD"
+      },
+      "audit/check_m26_mutations.py": {
+        "sha256_lf": "40b341a3432230723760722e42ea926e82bb326c8af1007a767b6a1992089635",
+        "git_blob_at_ref": "537d15011bf8dcaa33bce1ed4a9120ecb965397e",
+        "file_origin_ref": "HEAD"
+      },
+      "audit/check_m26_review_mutations.py": {
+        "sha256_lf": "5a935c286920ba85cbb353ad4dab260c7cb651ca7864284692dc81e3520e09ff",
+        "git_blob_at_ref": "e6b1b6f4e4b17df35630280c42d155e8d40bba6f",
+        "file_origin_ref": "HEAD"
+      }
+    },
+    "results": [
+      {
+        "name": "all_proof_baseline",
+        "scope": [
+          "tests/proofs_dimred_xgboost_bridge_review.py"
+        ],
+        "patches": [],
+        "meaning": "all supplementary proofs on unchanged source",
+        "expected_fail": 13,
+        "expected_pass": 3,
+        "counts": {
+          "FAIL": 13,
+          "PASS": 3,
+          "ERROR": 0,
+          "SKIP": 0
+        },
+        "assertion_failures_only": true,
+        "collection_matches_baseline": true,
+        "changed_sites_executed": [],
+        "expectation_met": true,
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/proofs_dimred_xgboost_bridge_review.py",
+          "-p",
+          "m26_trace",
+          "--tb=short",
+          "--junitxml=result.xml",
+          "-W",
+          "error"
+        ],
+        "returncode": 1,
+        "cases": [
+          {
+            "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (44.44444 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]"
+          },
+          {
+            "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (55.55556 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 9.0, 10.0]"
+          },
+          {
+            "name": "test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\nE   AssertionError: DataFrame are different\nE   \nE   DataFrame shape mismatch\nE   [left]:  (9, 3)\nE   [right]: (10, 3)"
+          },
+          {
+            "name": "test_shared_actual_loader_population_is_positive_control",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 2]: -0.9534625892455922 (ACTUAL), 0.23836564731139806 (DESIRED)\nE   Max absolute difference among violations: 1.19182824\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628, -0.953463],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628,  0.238366],..."
+          },
+          {
+            "name": "test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 0]: -2.375772569505217 (ACTUAL), 0.0819231920519042 (DESIRED)\nE   Max absolute difference among violations: 2.45769576\nE   Max relative difference among violations: 30.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-2.375773,  1.205628,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [ 0.081923,  1.205628,  0.238366],..."
+          },
+          {
+            "name": "test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:103: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    observation.compare(observation.inputs[0], observation.expected(selected))\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 1]: -0.29987700196467165 (ACTUAL), 0.0 (DESIRED)\nE   Max absolute difference among violations: 0.299877\nE   Max relative difference among violations: inf\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616, -0.299877,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  0.      ,  0.238366],..."
+          },
+          {
+            "name": "test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:100: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    assert set(query.loc[query.feature_alpha.notna(), \"obsid\"]).issubset(set(ids))\nE   assert False\nE    +  where False = <built-in method issubset of set object at 0x00000267DBF1AF80>({np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...})\nE    +    where <built-in method issubset of set object at 0x00000267DBF1AF80> = {19, 33, 104, 250, 6001, 6002, ...}.issubset\nE    +      where {19, 33, 104, 250, 6001, 6002, ...} = set(0     104\\n1      19\\n3      33\\n4     250\\n5    6001\\n6    6002\\n7    6003\\n8    6004\\n9    6005\\nName: obsid, dtype: int64)\nE    +    and   {np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...} = set(array([ 104,   19,  807,   33,  250, 6001, 6002, 6003, 6004]))"
+          },
+          {
+            "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+          },
+          {
+            "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))"
+          },
+          {
+            "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+          },
+          {
+            "name": "test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))"
+          },
+          {
+            "name": "test_real_undefined_probabilities_cannot_become_invented_available_confidence",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+          },
+          {
+            "name": "test_tensor_probabilities_require_refusal_not_flattening",
+            "outcome": "FAIL",
+            "detail": "tests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False"
+          },
+          {
+            "name": "test_valid_vectors_and_probabilities_are_positive_control",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_complete_finite_preprocessing_is_positive_control",
+            "outcome": "PASS",
+            "detail": null
+          }
+        ],
+        "executed_bridge_lines": [
+          169,
+          170,
+          171,
+          172,
+          173,
+          180,
+          181,
+          186,
+          190,
+          191,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          210,
+          211,
+          218,
+          223,
+          224,
+          226,
+          234,
+          235,
+          236,
+          237,
+          238,
+          239,
+          240,
+          242,
+          243,
+          244,
+          245,
+          246,
+          249,
+          252,
+          253,
+          254,
+          255,
+          256,
+          257,
+          259,
+          260,
+          261,
+          262,
+          265,
+          266,
+          267,
+          285,
+          286,
+          289,
+          290,
+          292,
+          297,
+          300,
+          301,
+          302,
+          309,
+          310,
+          311,
+          312,
+          317,
+          319,
+          320,
+          321,
+          322,
+          323,
+          324,
+          325,
+          326,
+          327,
+          328,
+          329
+        ],
+        "stdout": "FFF.FFFFFFFFFF..                                                         [100%]\n================================== FAILURES ===================================\n_ test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default] _\ntests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (44.44444 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]\n_ test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01] _\ntests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\n..\\..\\..\\..\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\_testing\\asserters.py:858: in _raise\n    raise_assert_detail(obj, msg, left, right, index_values=index_values)\nE   AssertionError: DataFrame.iloc[:, 0] (column name=\"feature_gamma\") are different\nE   \nE   DataFrame.iloc[:, 0] (column name=\"feature_gamma\") values are different (55.55556 %)\nE   [index]: [0, 1, 2, 3, 4, 5, 6, 7, 8]\nE   [left]:  [1.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]\nE   [right]: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 9.0, 10.0]\n_ test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal] _\ntests\\proofs_dimred_xgboost_bridge_review.py:22: in test_actual_loader_population_is_prediction_identity_or_explicit_refusal\n    assert_frame_equal(received, expected, check_dtype=False, check_exact=True)\nE   AssertionError: DataFrame are different\nE   \nE   DataFrame shape mismatch\nE   [left]:  (9, 3)\nE   [right]: (10, 3)\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\u00e9 au minimum commun : 9\n_ test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta] _\ntests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 2]: -0.9534625892455922 (ACTUAL), 0.23836564731139806 (DESIRED)\nE   Max absolute difference among violations: 1.19182824\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628, -0.953463],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  1.205628,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach0\\models\\spectral_classifier_synthetic_meta.json\n_ test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma] _\ntests\\proofs_dimred_xgboost_bridge_review.py:69: in test_fitted_train_median_reaches_booster_without_inference_refit\n    observation.compare(observation.inputs[0], expected)\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 0]: -2.375772569505217 (ACTUAL), 0.0819231920519042 (DESIRED)\nE   Max absolute difference among violations: 2.45769576\nE   Max relative difference among violations: 30.\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-2.375773,  1.205628,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [ 0.081923,  1.205628,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_fitted_train_median_reach1\\models\\spectral_classifier_synthetic_meta.json\n__ test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:103: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    observation.compare(observation.inputs[0], observation.expected(selected))\ntests\\conftest.py:428: in compare\n    np.testing.assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1.77636e-15, atol=2e-14\nE   \nE   Mismatched elements: 1 / 15 (6.67%)\nE   Mismatch at index:\nE    [2, 1]: -0.29987700196467165 (ACTUAL), 0.0 (DESIRED)\nE   Max absolute difference among violations: 0.299877\nE   Max relative difference among violations: inf\nE    ACTUAL: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616, -0.299877,  0.238366],...\nE    DESIRED: array([[-0.901155, -1.266827,  0.715097],\nE          [-1.392694, -0.00612 ,  1.191828],\nE          [-0.409616,  0.      ,  0.238366],...\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps0\\models\\spectral_classifier_synthetic_meta.json\n__ test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10] __\ntests\\proofs_dimred_xgboost_bridge_review.py:100: in test_same_missing_object_keeps_correct_preprocessing_and_row_identity\n    assert set(query.loc[query.feature_alpha.notna(), \"obsid\"]).issubset(set(ids))\nE   assert False\nE    +  where False = <built-in method issubset of set object at 0x00000267DBF1AF80>({np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...})\nE    +    where <built-in method issubset of set object at 0x00000267DBF1AF80> = {19, 33, 104, 250, 6001, 6002, ...}.issubset\nE    +      where {19, 33, 104, 250, 6001, 6002, ...} = set(0     104\\n1      19\\n3      33\\n4     250\\n5    6001\\n6    6002\\n7    6003\\n8    6004\\n9    6005\\nName: obsid, dtype: int64)\nE    +    and   {np.int64(19), np.int64(33), np.int64(104), np.int64(250), np.int64(807), np.int64(6001), ...} = set(array([ 104,   19,  807,   33,  250, 6001, 6002, 6003, 6004]))\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_same_missing_object_keeps1\\models\\spectral_classifier_synthetic_meta.json\n------------------------------ Captured log call ------------------------------\nWARNING  m26_bridge:xgboost_bridge.py:257 Alignement tronqu\u00e9 au minimum commun : 9\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[3-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 3 == 5\nE    +  where 3 = len(array([1200, 1201, 1202]))\n__ test_incompatible_vectors_require_refusal_without_silent_truncation[7-y] ___\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels] _\ntests\\proofs_dimred_xgboost_bridge_review.py:119: in test_incompatible_vectors_require_refusal_without_silent_truncation\n    assert len(result[key]) == 5\nE   assert 7 == 5\nE    +  where 7 = len(array([1200, 1201, 1202, 1203, 1204, 1205, 1206]))\n_ test_real_undefined_probabilities_cannot_become_invented_available_confidence _\ntests\\proofs_dimred_xgboost_bridge_review.py:141: in test_real_undefined_probabilities_cannot_become_invented_available_confidence\n    bridge_review_contracts.unavailable(result, 5)\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n---------------------------- Captured stdout setup ----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n---------------------------- Captured stdout call -----------------------------\n  > Model saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata saved to: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n  > Model loaded from: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic.pkl\n  > Metadata available: C:\\Users\\alexb\\AppData\\Local\\Temp\\pytest-of-alexb\\pytest-1080\\test_real_undefined_probabilit0\\models\\spectral_classifier_synthetic_meta.json\n__________ test_tensor_probabilities_require_refusal_not_flattening ___________\ntests\\proofs_dimred_xgboost_bridge_review.py:149: in test_tensor_probabilities_require_refusal_not_flattening\n    bridge_review_contracts.unavailable(\ntests\\conftest.py:160: in unavailable\n    assert (\nE   AssertionError: Invalid probabilities cannot become invented confidence.\nE   assert True is False\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-9f24sv9b\\result.xml -\n=========================== short test summary info ===========================\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_actual_loader_population_is_prediction_identity_or_explicit_refusal[default]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_actual_loader_population_is_prediction_identity_or_explicit_refusal[nb01]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_actual_loader_population_is_prediction_identity_or_explicit_refusal[unequal]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_fitted_train_median_reaches_booster_without_inference_refit[feature_beta]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_fitted_train_median_reaches_booster_without_inference_refit[feature_gamma]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_same_missing_object_keeps_correct_preprocessing_and_row_identity[5]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_same_missing_object_keeps_correct_preprocessing_and_row_identity[10]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[3-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-y]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_incompatible_vectors_require_refusal_without_silent_truncation[7-cluster_labels]\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_real_undefined_probabilities_cannot_become_invented_available_confidence\nFAILED tests/proofs_dimred_xgboost_bridge_review.py::test_tensor_probabilities_require_refusal_not_flattening\n13 failed, 3 passed in 3.65s\n",
+        "stderr": ""
+      }
+    ]
+  },
+  "green_runner_final_baseline": {
+    "phase": "green",
+    "proofs_ref": null,
+    "selected_records": [
+      "green_baseline"
+    ],
+    "git_head_at_run": "15f5cc5e90346b6aa4dfc9481ae7b9695455d7df",
+    "working_tree_at_run": "",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "versions": {
+      "numpy": "2.4.6",
+      "pandas": "3.1.1",
+      "scikit-learn": "1.9.1",
+      "xgboost": "3.2.0",
+      "pytest": "8.4.2"
+    },
+    "inputs": {
+      "src/dimred/xgboost_bridge.py": {
+        "sha256_lf": "b8fac07571999422fe8f066b706021df0c635b8db766ce5404b7a9cc93ee8e6d",
+        "git_blob_at_ref": "eab849e4bb80be03a50ebc9128d2737530262358",
+        "file_origin_ref": "HEAD"
+      },
+      "src/dimred/data_loader.py": {
+        "sha256_lf": "96f39dc0b80a68903ec938f2680015e5014c37140afa69e2d3f77ed29595ab19",
+        "git_blob_at_ref": "cf6eaa4cadac90b04a2960ef214fce38b216d61b",
+        "file_origin_ref": "HEAD"
+      },
+      "src/utils.py": {
+        "sha256_lf": "1f74714bdf28e33491e772f3b3a0c5889c0bddda990f86961dd0f714ba5203b9",
+        "git_blob_at_ref": "7f36fbb1ae53aa807d62ea46b27656111b88ada0",
+        "file_origin_ref": "HEAD"
+      },
+      "src/pipeline/classifier.py": {
+        "sha256_lf": "52308f58f88e3a2d831d312137630fd572c883bfedd6a5b3f17010ec5eba8ebe",
+        "git_blob_at_ref": "6e967e075497f49bceb26466f72c9b19c34ff794",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/conftest.py": {
+        "sha256_lf": "ae50f5d6deaad8258ba546961f59c65b11f46c62bcffb9745556ece7162a1f56",
+        "git_blob_at_ref": "22caba53fbccb14cb45b8d95c7f1b751825d7a37",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/test_dimred_xgboost_bridge.py": {
+        "sha256_lf": "401a34c1e5d4ce214db702f619c2f7d0bdfa2821c09fa5fad052f79912046f74",
+        "git_blob_at_ref": "d4f4479ee8880f1cd2ab97c01ea4c814146a15e3",
+        "file_origin_ref": "HEAD"
+      },
+      "tests/test_dimred_xgboost_bridge_real.py": {
+        "sha256_lf": "fa98ef847adaf56619b78057e012ff8ff85c5ba6e5413981d9b6101b3eaba818",
+        "git_blob_at_ref": "fb3b59384efaf1c98b61d4eb24114a2f8d2bb793",
+        "file_origin_ref": "HEAD"
+      },
+      "pyproject.toml": {
+        "sha256_lf": "75e41a9a4cb4e91ee437a23eba790bd2d91e859d1a00564771e7eba5b50344fc",
+        "git_blob_at_ref": "95c1daca7bc20fffa5cc0d7e182a15815a039331",
+        "file_origin_ref": "HEAD"
+      },
+      "audit/check_m26_mutations.py": {
+        "sha256_lf": "40b341a3432230723760722e42ea926e82bb326c8af1007a767b6a1992089635",
+        "git_blob_at_ref": "537d15011bf8dcaa33bce1ed4a9120ecb965397e",
+        "file_origin_ref": "HEAD"
+      },
+      "audit/check_m26_review_mutations.py": {
+        "sha256_lf": "5a935c286920ba85cbb353ad4dab260c7cb651ca7864284692dc81e3520e09ff",
+        "git_blob_at_ref": "e6b1b6f4e4b17df35630280c42d155e8d40bba6f",
+        "file_origin_ref": "HEAD"
+      }
+    },
+    "results": [
+      {
+        "name": "green_baseline",
+        "scope": [
+          "tests/test_dimred_xgboost_bridge.py",
+          "tests/test_dimred_xgboost_bridge_real.py"
+        ],
+        "patches": [],
+        "meaning": "entire revised M2.6 suite",
+        "expected_fail": 0,
+        "expected_pass": 71,
+        "counts": {
+          "FAIL": 0,
+          "PASS": 71,
+          "ERROR": 0,
+          "SKIP": 0
+        },
+        "assertion_failures_only": true,
+        "collection_matches_baseline": true,
+        "changed_sites_executed": [],
+        "expectation_met": true,
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_dimred_xgboost_bridge.py",
+          "tests/test_dimred_xgboost_bridge_real.py",
+          "-p",
+          "m26_trace",
+          "--tb=short",
+          "--junitxml=result.xml",
+          "-W",
+          "error"
+        ],
+        "returncode": 0,
+        "cases": [
+          {
+            "name": "test_empty_structure_is_fresh",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_nominal_named_values_decode_confidence_and_integrity",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_coherent_permutation_preserves_observation_values[order0]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_coherent_permutation_preserves_observation_values[order1]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_repeat_inference_and_second_call_failure_have_no_stale_state",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_early_failures_return_complete_empty_result[no_model]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_early_failures_return_complete_empty_result[load]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_early_failures_return_complete_empty_result[metadata]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_early_failures_return_complete_empty_result[no_csv]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_early_failures_return_complete_empty_result[missing_schema]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_model_selection_uses_actual_utils_mtime",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_utils_import_fallback_is_lexical_characterization",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_classifier_script_import_fallback",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_classifier_both_imports_unavailable",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_explicit_csv_wins_and_fallback_is_lexical",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_snr_inclusive_boundary_and_absent_snr",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_nan_fraction_boundary[0-keep0]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_nan_fraction_boundary[1-keep1]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_nan_fraction_boundary[2-keep2]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_excluded_metadata_nan_cannot_remove_rows[obsid]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_excluded_metadata_nan_cannot_remove_rows[source_id]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_excluded_metadata_nan_cannot_remove_rows[teff_gspphot]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_excluded_metadata_nan_cannot_remove_rows[snr_g]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_excluded_metadata_nan_cannot_remove_rows[subclass]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_variance_and_dtype_control_row_selection[constant]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_variance_and_dtype_control_row_selection[string]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_variance_and_dtype_control_row_selection[nullable_boolean]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_nonconsecutive_pandas_index_preserves_row_values",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_selection_keeps_named_model_columns[constant]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_selection_keeps_named_model_columns[string]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_selection_keeps_named_model_columns[boolean]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_selection_keeps_named_model_columns[all_nan]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_candidate_selection_keeps_named_model_columns[constant_after_snr]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[int32]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[int64]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[float32]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[float64]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[Int64]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[Float64]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[boolean]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_representable_dataframe_dtypes_are_passed_by_name[string]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_missing_feature_fraction_characterization[3-0-True]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_missing_feature_fraction_characterization[3-1-False]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_missing_feature_fraction_characterization[4-1-True]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_missing_feature_fraction_characterization[10-3-True]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_missing_feature_fraction_characterization[10-4-False]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_missing_feature_fraction_characterization[7-2-True]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_decoding_observed_classes_and_fg_mask[labels0-expected0-mask0]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_decoding_observed_classes_and_fg_mask[labels1-expected1-mask1]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_no_encoder_preserves_labels_as_strings[prediction0]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_no_encoder_preserves_labels_as_strings[prediction1]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_probability_unavailable_has_explicit_flag[absent]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_probability_unavailable_has_explicit_flag[raises]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_unusable_probability_shape_is_not_advertised[vector]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_unusable_probability_shape_is_not_advertised[empty_class_axis]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_probability_row_maximum_does_not_override_decision_rule",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_postload_exceptions_remain_visible[csv]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_postload_exceptions_remain_visible[predict]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_postload_exceptions_remain_visible[decode]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_model_discovery_ignores_other_pickle_families[False]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_model_discovery_ignores_other_pickle_families[True]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_actual_loader_shared_population_preserves_all_values",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_refusal_helper_rejects_unrelated_value_errors[identity]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_refusal_helper_rejects_unrelated_value_errors[preprocessing]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_refusal_helper_rejects_unrelated_value_errors[probability]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_path_resolution_side_effect_is_idempotent_observation",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_real_xgboost_saved_pipeline_inference_parity[False]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_real_xgboost_saved_pipeline_inference_parity[True]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_real_transformed_rows_distinguish_same_class_observations",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_real_pipeline_explicitly_refuses_infinity[inf]",
+            "outcome": "PASS",
+            "detail": null
+          },
+          {
+            "name": "test_real_pipeline_explicitly_refuses_infinity[-inf]",
+            "outcome": "PASS",
+            "detail": null
+          }
+        ],
+        "executed_bridge_lines": [
+          169,
+          170,
+          171,
+          172,
+          173,
+          174,
+          176,
+          177,
+          178,
+          180,
+          181,
+          183,
+          184,
+          186,
+          190,
+          191,
+          192,
+          193,
+          194,
+          195,
+          196,
+          197,
+          198,
+          199,
+          201,
+          204,
+          205,
+          210,
+          211,
+          212,
+          213,
+          214,
+          215,
+          216,
+          218,
+          223,
+          224,
+          226,
+          234,
+          235,
+          236,
+          237,
+          238,
+          239,
+          240,
+          242,
+          243,
+          244,
+          245,
+          246,
+          249,
+          259,
+          260,
+          261,
+          262,
+          265,
+          266,
+          267,
+          272,
+          273,
+          274,
+          276,
+          277,
+          278,
+          279,
+          280,
+          285,
+          286,
+          289,
+          290,
+          292,
+          295,
+          297,
+          300,
+          301,
+          302,
+          303,
+          306,
+          307,
+          309,
+          310,
+          311,
+          312,
+          317,
+          319,
+          320,
+          321,
+          322,
+          323,
+          324,
+          325,
+          326,
+          327,
+          328,
+          329,
+          341,
+          342,
+          343,
+          344,
+          345,
+          346,
+          347,
+          348,
+          349,
+          350,
+          351
+        ],
+        "stdout": ".......................................................................  [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\astrospectro-m26-review-f_wfd_ot\\result.xml -\n71 passed in 3.94s\n",
+        "stderr": ""
+      }
+    ]
+  }
+}

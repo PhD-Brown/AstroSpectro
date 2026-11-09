@@ -92,6 +92,37 @@ decisions. General provenance, leakage and calibration remain NA; facade
 without Torch remains B/#21. New tests protect precise numeric/identity examples,
 not scientific validity of the entire system.
 
+### Final verification of the R1–R7 revision
+
+[Exact validation ledger](m26_review_validation_results.json): clean input
+snapshot **15f5cc5e90346b6aa4dfc9481ae7b9695455d7df**, production source still
+18302e68 and bridge blobeab849e4. Actual commands, OS/Python/package versions,
+effective LF hashes, Git blobs and stdout/stderr are recorded. Later evidence
+commits do not retroactively become tested HEADs. Windows/Python3.11.9,
+NumPy2.4.6, pandas3.1.1, sklearn1.9.1, XGBoost3.2.0; no dependencies changed.
+
+| Actual command / check | Observed result |
+|---|---|
+| `python -m pytest -q tests/test_dimred_xgboost_bridge.py tests/test_dimred_xgboost_bridge_real.py -W error` | **71PASS**,66 cases in wrapper/loader file and5 real XGBoost CPU cases; no skips/warnings |
+| `python -m pytest -q` | **487PASS /62deselected /7 existing Gaia warnings** |
+| `python -m pytest -q --import-mode=importlib` | **487PASS /62deselected /7 existing Gaia warnings** |
+| Same71 cases in reversed collection order, -W error | **71PASS**; sys.path and four temporary import entries restored by identity |
+| Black/Ruff on src/tests/scripts/app.py and both M26 audit runners | PASS; no reformatting of production |
+| `python -m pip check`, `git diff --check`, src/config/notebook diff against base | PASS; no production/config/notebook differences |
+| Reachability of0da7581,7b32abb,fe25d1a; effective hashes of review campaign inputs | All ancestors; all hashes match their recorded committed snapshots |
+| New runner after proof removal, --proofs-ref fe25d1a --phase all_proofs --only all_proof_baseline | **13FAIL/3PASS**, expected; provenance records the archived file origin, not a nonexistent HEAD file |
+| New runner from green head, --phase green --only green_baseline | **71PASS**, no archived proof needed for the green selection |
+
+The62exclusions still follow the existing slow/network markers; all5 real
+M2.6 CPU cases run in the default suite. The7warnings are the pre-existing
+Gaia pandas-inplace deprecation. Source-direct fixtures still do not validate
+the optional public facade (#21, already reproduced separately). No new claim
+of scientific calibration, astrophysical correctness or measured coverage.
+Hosted CI for the final pushed SHA is verified separately in the updated
+PR91 description and single #43 handoff. Seven inline replies reference the
+review evidence; their threads remain open for Claude. Next action: second
+independent review, then human decision. PR stays Draft; M2.6 is not integrated.
+
 ## Reference and method
 
 Base/source `18302e68cf25289873aa170a27834d99b516f376`, bridge blob
