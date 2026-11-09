@@ -20,6 +20,18 @@ import xml.etree.ElementTree as ET
 
 # name, expected category, exact source expression, replacement
 CANDIDATES = [
+    (
+        "C01b_snapshot_without_buffers",
+        "incorrect",
+        "best_state = {k: v.clone() for k, v in self._model.state_dict().items()}",
+        "best_state = {k: v.clone() for k, v in self._model.named_parameters()}",
+    ),
+    (
+        "C02_patience_not_reset",
+        "incorrect",
+        "                patience_counter = 0",
+        "                pass  # missing improvement reset",
+    ),
     ("C03_relu_identity", "incorrect", "nn.ReLU(inplace=True),", "nn.Identity(),"),
     (
         "C04_relu_before_bn",
@@ -305,6 +317,11 @@ def main():
             if old and count == 0:
                 raise ValueError(f"Missing source anchor: {name}")
             mutated = source.replace(old, new) if old else source
+            if name == "C01b_snapshot_without_buffers":
+                mutated = mutated.replace(
+                    "self._model.load_state_dict(best_state)",
+                    "self._model.load_state_dict(best_state, strict=False)",
+                )
             compile(mutated, "autoencoder.py", "exec")
             (directory / source_path).write_text(mutated, encoding="utf-8")
             env = {

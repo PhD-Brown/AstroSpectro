@@ -223,8 +223,11 @@ def controlled_network(m, monkeypatch):
         def __init__(self, **kwargs):
             super().__init__()
             self.level = m.nn.Parameter(m.torch.tensor(0.0))
+            self.register_buffer("seen_batches", m.torch.tensor(0.0))
 
         def forward(self, X):
+            if self.training:
+                self.seen_batches.add_(1.0)
             return m.torch.ones_like(X) * self.level, X[:, :1]
 
         def encode(self, X):
@@ -237,13 +240,27 @@ def controlled_network(m, monkeypatch):
     return Network
 
 
-@pytest.mark.parametrize("patience,expected_epochs", [(2, 4), (0, 6), (1, 3)])
+@pytest.mark.parametrize(
+    "validation_path,patience,expected_epochs,best_epoch",
+    [
+        ([5.0, 2.0, 3.0, 4.0, 6.0, 7.0], 2, 4, 2),
+        ([5.0, 2.0, 3.0, 4.0, 6.0, 7.0], 0, 6, 2),
+        ([5.0, 2.0, 3.0, 4.0, 6.0, 7.0], 1, 3, 2),
+        ([5.0, 6.0, 4.0, 7.0, 8.0, 9.0], 2, 5, 3),
+        ([5.0, 2.0, 3.0, 4.0], 0, 4, 2),
+    ],
+)
 def test_early_stopping_restores_actual_best_weights(
-    autoencoder_real_module, monkeypatch, patience, expected_epochs
+    autoencoder_real_module,
+    monkeypatch,
+    validation_path,
+    patience,
+    expected_epochs,
+    best_epoch,
 ):
     m = autoencoder_real_module
     controlled_network(m, monkeypatch)
-    validation_losses = iter([5.0, 2.0, 3.0, 4.0, 6.0, 7.0])
+    validation_losses = iter(validation_path)
     actual_criterion = m.nn.MSELoss
     observed = []
 
@@ -273,7 +290,7 @@ def test_early_stopping_restores_actual_best_weights(
     ae = m.SpectralAutoencoder(1, 1, [1], device="cpu")
     history = ae.fit(
         np.ones((8, 1)),
-        epochs=6,
+        epochs=len(validation_path),
         batch_size=10,
         val_fraction=0.25,
         lr_scheduler=False,
@@ -281,9 +298,11 @@ def test_early_stopping_restores_actual_best_weights(
         verbose=False,
     )
     assert len(history["val_loss"]) == expected_epochs
-    assert history["val_loss"] == [5.0, 2.0, 3.0, 4.0, 6.0, 7.0][:expected_epochs]
+    assert history["val_loss"] == validation_path[:expected_epochs]
     assert observed == list(np.arange(1.0, expected_epochs + 1))
-    assert ae._model.level.item() == 2.0  # epoch 2, not final epoch
+    assert ae._model.level.item() == best_epoch
+    # One actual training forward per epoch; validation does not increment it.
+    assert ae._model.seen_batches.item() == best_epoch
     assert history["train_loss"] == [1.0, 0.0, 1.0, 4.0, 9.0, 16.0][:expected_epochs]
 
 
