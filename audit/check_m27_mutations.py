@@ -222,6 +222,9 @@ def main():
     )
     parser.add_argument("--reverse", action="store_true")
     parser.add_argument("--proofs", action="store_true")
+    parser.add_argument(
+        "--proofs-ref", default="51fe4d1ff3645aea28cda59f0260acc86fa0c834"
+    )
     parser.add_argument("--only", nargs="*")
     args = parser.parse_args()
     protected = {p: digest(ROOT / p) for p in [SOURCE, TEST, "tests/conftest.py"]}
@@ -248,7 +251,20 @@ def main():
             paths.append("tests/proofs_dimred_run_reporter.py")
         for path in paths:
             (tree / path).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / path, tree / path)
+            if args.proofs and path in [
+                "tests/proofs_dimred_run_reporter.py",
+                "tests/conftest.py",
+            ]:
+                content = subprocess.check_output(
+                    ["git", "show", f"{args.proofs_ref}:{path}"], cwd=ROOT
+                )
+                (tree / path).write_bytes(content)
+                ledger.setdefault("archived_inputs", {})[path] = {
+                    "ref": args.proofs_ref,
+                    "lf_sha256": digest(tree / path),
+                }
+            else:
+                shutil.copyfile(ROOT / path, tree / path)
         trials = (
             [("baseline", None, None)]
             if args.reverse or args.proofs
@@ -327,6 +343,10 @@ def main():
     assert protected == {
         p: digest(ROOT / p) for p in protected
     }, "Protected input changed"
+    if args.proofs:
+        assert all(t["counts"]["ERROR"] == 0 for t in ledger["trials"])
+    else:
+        assert all(t["outcome"] in ["PASS", "KILLED"] for t in ledger["trials"])
 
 
 if __name__ == "__main__":

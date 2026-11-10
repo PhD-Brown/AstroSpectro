@@ -124,6 +124,80 @@ def main():
         blocker.write_text("synthetic", encoding="utf-8")
         record("run_directory_file_collision", lambda: r.make_run_dir(blocker, "nb"))
 
+        class AE:
+            history_ = {"train_loss": [4.0, 2.0, 3.0], "val_loss": [3.0, 1.0, 2.0]}
+
+            def encode(self, X):
+                return X[:, :2]
+
+            def reconstruction_mse(self, X):
+                return 1 / 9
+
+        X = np.array([[1.0, 6], [2, 5], [4, 3], [3, 4], [5, 2], [6, 1]])
+        base = dict(
+            ae=AE(),
+            X=X,
+            y=["F", "G", "M", "F", "G", "F"],
+            meta=pd.DataFrame({"teff_gspphot": [10.0, 20, 30, 40, 50, 60]}),
+            feature_names=["a", "b"],
+            FIGURES_DIR=figures,
+            paths={"REPORTS_DIR": root / "ae_reports"},
+        )
+        cases = [
+            ("constant_parameter", {"meta": pd.DataFrame({"teff_gspphot": [1.0] * 6})}),
+            ("constant_latent", {"Z_ae": np.ones((6, 2))}),
+            (
+                "two_valid_parameters",
+                {
+                    "meta": pd.DataFrame(
+                        {"teff_gspphot": [1.0, 2, np.nan, np.nan, np.nan, np.nan]}
+                    )
+                },
+            ),
+            (
+                "two_finite_pairs",
+                {
+                    "Z_ae": np.array(
+                        [
+                            [1.0, 6],
+                            [2, 5],
+                            [np.nan, 4],
+                            [np.nan, 3],
+                            [np.nan, 2],
+                            [np.nan, 1],
+                        ]
+                    )
+                },
+            ),
+            (
+                "nonfinite_history",
+                {"history": {"train_loss": [4.0, np.inf], "val_loss": [np.nan, 1.0]}},
+            ),
+            (
+                "array_history",
+                {
+                    "history": {
+                        "train_loss": np.array([4.0, 2.0, 3.0]),
+                        "val_loss": np.array([3.0, 1.0, 2.0]),
+                    }
+                },
+            ),
+            ("short_latent", {"Z_ae": X[:3]}),
+            ("one_latent_axis", {"Z_ae": X[:, :1]}),
+        ]
+        for i, (name, overrides) in enumerate(cases):
+            r.make_timestamp = lambda i=i: f"20261109T1704{i:02d}Z"
+
+            def summarize(overrides=overrides):
+                result = r.save_autoencoder_run(**dict(base, **overrides))
+                report = json.loads(result["json_path"].read_text(encoding="utf-8"))
+                return {
+                    "metrics": report["metrics"],
+                    "correlations": report["correlations"],
+                }
+
+            record("ae_" + name, summarize)
+
     source = SOURCE.read_text(encoding="utf-8")
     inventory = [
         {"name": node.name, "line": node.lineno, "signature": ast.unparse(node.args)}

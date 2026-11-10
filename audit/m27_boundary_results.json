@@ -380,7 +380,63 @@
       "name": "run_directory_file_collision",
       "value": null,
       "exception": "FileExistsError",
-      "message": "[WinError 183] Impossible de créer un fichier déjà existant: 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\m27-synthetic-probes-_7zclpts\\\\not_a_directory'",
+      "message": "[WinError 183] Impossible de créer un fichier déjà existant: 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\m27-synthetic-probes-z22ps27l\\\\not_a_directory'",
+      "warnings": []
+    },
+    {
+      "name": "ae_constant_parameter",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': None, 'latent_axis_2': None}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": [
+        "An input array is constant; the correlation coefficient is not defined.",
+        "An input array is constant; the correlation coefficient is not defined."
+      ]
+    },
+    {
+      "name": "ae_constant_latent",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': None, 'latent_axis_2': None}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": [
+        "An input array is constant; the correlation coefficient is not defined.",
+        "An input array is constant; the correlation coefficient is not defined."
+      ]
+    },
+    {
+      "name": "ae_two_valid_parameters",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': None, 'latent_axis_2': None}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_two_finite_pairs",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': 0.9999999999999999, 'latent_axis_2': -1.0}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_nonfinite_history",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 2, 'ae_best_val_loss': nan, 'ae_final_train_loss': inf, 'ae_final_val_loss': 1.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': 0.942857142857143, 'latent_axis_2': -0.942857142857143}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_array_history",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': None, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': 0.942857142857143, 'latent_axis_2': -0.942857142857143}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_short_latent",
+      "value": null,
+      "exception": "IndexError",
+      "message": "boolean index did not match indexed array along axis 0; size of axis is 3 but size of corresponding boolean axis is 6",
+      "warnings": []
+    },
+    {
+      "name": "ae_one_latent_axis",
+      "value": null,
+      "exception": "IndexError",
+      "message": "index 1 is out of bounds for axis 1 with size 1",
       "warnings": []
     }
   ],
