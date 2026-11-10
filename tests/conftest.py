@@ -15,6 +15,16 @@ import pytest
 
 
 @pytest.fixture
+def reporter_module():
+    """Load the actual reporter independently of the optional facade (#21)."""
+    path = Path(__file__).resolve().parents[1] / "src/dimred/run_reporter.py"
+    spec = importlib.util.spec_from_file_location("m27_reporter", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
 def bridge_module(monkeypatch):
     """Execute the actual bridge source while restoring its sys.path changes."""
     monkeypatch.setattr(sys, "path", sys.path.copy())
