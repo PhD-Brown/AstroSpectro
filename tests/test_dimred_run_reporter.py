@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 
 import joblib
 import numpy as np
@@ -389,3 +390,422 @@ def test_joblib_without_legacy_and_missing_parent(reporter_module, tmp_path):
     assert joblib.load(run) == joblib.load(latest) == {"x": 7}
     with pytest.raises(FileNotFoundError):
         reporter_module.save_joblib_pair({}, tmp_path / "absent", "run", "latest")
+
+
+def check_saved_pair(result, joblib_key):
+    report = strict_load(result["json_path"])
+    text = result["txt_path"].read_text(encoding="utf-8")
+    assert result["timestamp"] == report["run_timestamp_utc"]
+    assert result["timestamp"] in text
+    assert str(result[joblib_key]) in text
+    for key in ["json_path", "txt_path", joblib_key]:
+        assert result[key].is_file()
+        assert str(result[key]) in result["summary"]
+    return report, joblib.load(result[joblib_key]), text
+
+
+@pytest.mark.integration
+def test_pca_notebook_roundtrip_thresholds_and_rows(reporter_module, reporter_case):
+    c = reporter_case
+    c.pca_args.update(
+        corr_df=pd.DataFrame({"teff": [0.7, -0.2]}, index=["PC1", "PC2"]),
+        sep_df=pd.DataFrame({"distance": [3.5, 8.25]}),
+        recon_df=pd.DataFrame({"mse": [0.25, 0.125]}),
+    )
+    figure = c.figures / "pca.png"
+    figure.write_bytes(b"synthetic inventory only")
+    result = reporter_module.save_pca_run(**c.pca_args)
+    report, payload, text = check_saved_pair(result, "joblib_path")
+    for key in [
+        "scores",
+        "scores_spec",
+        "y",
+        "y_spec",
+        "meta",
+        "meta_spec",
+        "feature_names",
+    ]:
+        assert_payload({key: payload[key]}, {key: c.pca_args[key]})
+    np.testing.assert_array_equal(payload["scores_95pct"], c.scores[:, :3])
+    np.testing.assert_array_equal(payload["scores_spec_95pct"], c.scores[:, [2, 0]])
+    assert payload["n_components_95pct"] == 3
+    assert payload["n_keep_spec"] == 2
+    assert payload["features_stem"] == "features_synthetic"
+    assert report["pca_features"]["n_components_for_variance"] == {
+        "80pct": 1,
+        "90pct": 2,
+        "95pct": 3,
+        "99pct": 4,
+    }
+    assert report["pca_spectra"]["n_components_for_variance"] == {
+        "80pct": 1,
+        "90pct": 2,
+        "95pct": 2,
+        "99pct": 2,
+    }
+    assert report["shapes"]["scores_95pct"] == [6, 3]
+    assert report["shapes"]["scores_spec_95pct"] == [6, 2]
+    assert report["class_counts"] == {
+        "y": {"STAR": 3, "QSO": 2, "GALAXY": 1},
+        "y_spec": {"STAR": 3, "QSO": 2, "GALAXY": 1},
+    }
+    assert report["paths"]["features_path"] == str(c.pca_args["FEATURES_PATH"])
+    assert report["paths"]["catalog_path"] == str(c.pca_args["CATALOG_PATH"])
+    assert report["figures_saved"] == [str(figure)]
+    assert report["pca_features"]["variance_explained_total"] == 1
+    assert report["pca_features"]["top_features_pc2"][0] == {
+        "feature": "gamma",
+        "loading": 2,
+    }
+    assert report["corrélations_pc_gaia_spearman"] == [
+        {"index": "PC1", "teff": 0.7},
+        {"index": "PC2", "teff": -0.2},
+    ]
+    assert report["class_séparation"] == [{"distance": 3.5}, {"distance": 8.25}]
+    assert report["reconstruction_error"] == [{"mse": 0.25}, {"mse": 0.125}]
+    assert "80pct" in text and "99pct" in text
+    for path in [
+        c.reports / "phy3500_pca_output.joblib",
+        result["run_dir"] / "phy3500_pca_run_latest.joblib",
+    ]:
+        assert_payload(joblib.load(path), payload)
+    assert strict_load(result["run_dir"] / "phy3500_pca_run_latest.json") == report
+
+
+@pytest.mark.integration
+def test_pca_reporter_real_fitted_sign_invariant(
+    reporter_module, reporter_case, dimred_pca_class
+):
+    c = reporter_case
+    pca = dimred_pca_class(n_components=3, svd_solver="full")
+    scores = pca.fit_transform(c.X, c.pca_args["feature_names"])
+    result = reporter_module.save_pca_run(
+        **dict(c.pca_args, pca=pca, pca_spec=pca, scores=scores, scores_spec=scores)
+    )
+    report, payload, _ = check_saved_pair(result, "joblib_path")
+    # Six paired coordinates have total squared energy 28, eigenvalue ratios 9:4:1.
+    np.testing.assert_allclose(payload["scores"] ** 2, c.X**2, atol=1e-25)
+    np.testing.assert_allclose(payload["scores"], scores, atol=1e-14)
+    assert report["pca_features"]["n_components_for_variance"] == {
+        "80pct": 2,
+        "90pct": 2,
+        "95pct": 3,
+        "99pct": 3,
+    }
+    assert report["pca_features"]["variance_explained_total"] == pytest.approx(1)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("mode", ["umap", "tsne", "both", "3d"])
+def test_embedding_optional_modes_roundtrip(reporter_module, reporter_case, mode):
+    c = reporter_case
+    args = dict(c.embedding_args, Z_umap=None, Z_tsne=None)
+    if mode in ["umap", "both"]:
+        args["Z_umap"] = c.scores[:, :2]
+    if mode in ["tsne", "both"]:
+        args["Z_tsne"] = c.scores[:, [2, 3]]
+    if mode == "3d":
+        args["Z_umap3"] = c.scores[:, :3]
+    result = reporter_module.save_umap_tsne_run(**args)
+    report, payload, _ = check_saved_pair(result, "joblib_run")
+    for name in ["Z_umap", "Z_tsne", "Z_umap3"]:
+        expected = args.get(name)
+        assert report["captured_sections"][f"has_{name}"] == (expected is not None)
+        if expected is None:
+            assert payload[name] is None
+        else:
+            np.testing.assert_array_equal(payload[name], expected)
+    np.testing.assert_array_equal(payload["y"], c.y)
+    pd.testing.assert_frame_equal(payload["meta"], c.meta)
+    assert report["xgboost_summary"] is None and report["hdbscan_summary"] is None
+    assert report["zoom_pair_summary"] is None
+    assert report["stability"]["umap"] is None
+    assert report["sensitivity"]["umap_shapes"] is None
+    assert_payload(joblib.load(result["joblib_latest"]), payload)
+    assert_payload(joblib.load(c.reports / "phy3500_embeddings.joblib"), payload)
+    assert (
+        strict_load(result["run_dir"] / "phy3500_umap_tsne_run_latest.json") == report
+    )
+
+
+def test_embedding_no_input_refused_before_writes(reporter_module, reporter_case):
+    c = reporter_case
+    with pytest.raises(RuntimeError, match="embedding"):
+        reporter_module.save_umap_tsne_run(**dict(c.embedding_args, Z_umap=None))
+    assert not c.reports.exists()
+
+
+@pytest.mark.integration
+def test_embedding_all_sections_exact(reporter_module, reporter_case):
+    c = reporter_case
+    Z = np.array([[0.0, 0], [1, 1], [1, 0], [-1, 0], [np.nan, 0.5], [np.inf, 0]])
+    # Inclusive rectangle [0,1]x[0,1] includes rows 0,1,2 only.
+    png = c.figures / "prediction.png"
+    html = c.figures / "umap.html"
+    png.write_bytes(b"synthetic inventory only")
+    html.write_text("<p>synthetic</p>", encoding="utf-8")
+    stability = pd.DataFrame(
+        {"seed": [3, 11], "distance": [0.2, 0.8], "label": ["a", "b"]}
+    )
+    engine = SimpleNamespace(
+        fit_time_=2.375, params_used={"random_state": 17, "min_dist": 0.23}
+    )
+    args = dict(
+        c.embedding_args,
+        Z_umap=Z,
+        Z_tsne=c.scores[:, [2, 3]],
+        Z_umap3=c.scores[:, :3],
+        Z_umap_neg=-c.scores[:, :2],
+        y=np.array([" star ", "glaxaxy", " qs0", "galaxie", "STAR", "QSO"]),
+        umap_engine=engine,
+        tsne_engine=SimpleNamespace(fit_time_=7.25, params_used={"perplexity": 2}),
+        cluster_labels=np.array([7, -1, 2, 7, 2, 7]),
+        labels_pres=np.array([7, 7, 2, 7, 2, 7]),
+        clusterer=SimpleNamespace(
+            min_cluster_size=2,
+            min_samples=1,
+            metric="euclidean",
+            cluster_selection_method="leaf",
+        ),
+        y_pred=np.array(["F", "G", "F", "M", "G", "F"]),
+        y_aligned=np.array(["F", "G", "M", "F", "G", "M"]),
+        cl_aligned=np.array([7, -1, 2, 7, 2, 7]),
+        confidence=np.array([0.2, 0.3, 0.4, 0.5, 0.7, 0.9]),
+        classes_pred=["M", "F", "G"],
+        fg_mask=np.array([True, True, True, False, True, True]),
+        path_xgb=png,
+        path_fg=c.figures / "fg.png",
+        pca_output_path="pca_synthetic.joblib",
+        axis3_best_param="teff_gspphot",
+        axis3_best_corr=-0.75,
+        path_3d_html=html,
+        path_3d_teff=c.figures / "teff.html",
+        path_3d_feh=c.figures / "feh.html",
+        stab_umap=stability,
+        stab_tsne=stability.iloc[::-1],
+        sensitivity_umap={"n=2": Z},
+        sensitivity_tsne={"p=3": c.scores[:, :3]},
+        ZOOM_X=(0, 1),
+        ZOOM_Y=(0, 1),
+        features_stem="features_synthetic",
+    )
+    # Finite embedding summaries are checked elsewhere; Inf here specifically probes zoom.
+    with np.errstate(invalid="ignore"):
+        result = reporter_module.save_umap_tsne_run(**args)
+    report = json.loads(result["json_path"].read_text(encoding="utf-8"))
+    payload = joblib.load(result["joblib_run"])
+    assert report["zoom_pair_summary"] == {
+        "zoom_x": [0, 1],
+        "zoom_y": [0, 1],
+        "n_points_total": 3,
+        "counts_in_zoom": {"STAR": 1, "GALAXY": 1, "QSO": 1},
+    }
+    assert report["class_counts"] == {"STAR": 2, "GALAXY": 2, "QSO": 2}
+    h = report["hdbscan_summary"]
+    assert {
+        k: h[k] for k in ["n_points", "n_clusters", "n_noise", "largest_clusters"]
+    } == {
+        "n_points": 6,
+        "n_clusters": 2,
+        "n_noise": 1,
+        "largest_clusters": {"7": 3, "2": 2},
+    }
+    assert h["pct_noise"] == pytest.approx(100 / 6)
+    assert h["presentation_mode"]["n_noise"] == 0
+    assert h["presentation_mode"]["largest_clusters"] == {"7": 4, "2": 2}
+    assert h["params"] == {
+        "min_cluster_size": 2,
+        "min_samples": 1,
+        "metric": "euclidean",
+        "cluster_selection_method": "leaf",
+    }
+    xgb = report["xgboost_summary"]
+    assert xgb["accuracy_vs_reference"] == 0.5
+    assert xgb["confusion_matrix"] == {
+        "index": ["F", "G", "M"],
+        "columns": ["F", "G", "M"],
+        "values": [[1, 0, 1], [0, 2, 0], [2, 0, 0]],
+    }
+    assert xgb["pred_class_counts"] == {"F": 3, "G": 2, "M": 1}
+    assert xgb["top3_pred_by_cluster"] == {
+        "noise": {"G": 1},
+        "2": {"F": 1, "G": 1},
+        "7": {"F": 2, "M": 1},
+    }
+    assert xgb["n_pred_F_or_G"] == 5 and xgb["classes_pred_list"] == ["M", "F", "G"]
+    assert xgb["confidence_stats"]["mean"] == pytest.approx(0.5)
+    assert xgb["confidence_stats"]["n"] == 6
+    assert report["stability"]["umap_numeric_means"] == {"seed": 7, "distance": 0.5}
+    assert report["sensitivity"] == {
+        "umap_shapes": {"n=2": [6, 2]},
+        "tsne_shapes": {"p=3": [6, 3]},
+    }
+    assert report["artifacts"] == {
+        "png_files": [str(png)],
+        "html_files": [str(html)],
+        "n_png": 1,
+        "n_html": 1,
+    }
+    assert report["parameters"]["umap"] == engine.params_used
+    assert report["timings_seconds"] == {"umap_fit_time": 2.375, "tsne_fit_time": 7.25}
+    assert report["umap3d_summary"]["axis3_best_corr"] == -0.75
+    assert report["umap3d_summary"]["html_exports"]["umap3d_classes"] == str(html)
+    assert report["paths"]["pca_output_path"] == "pca_synthetic.joblib"
+    np.testing.assert_array_equal(payload["Z_umap_negative_control"], -c.scores[:, :2])
+    np.testing.assert_array_equal(payload["xgb_predictions"], args["y_pred"])
+    np.testing.assert_array_equal(payload["xgb_confidence"], args["confidence"])
+    pd.testing.assert_frame_equal(payload["stability_umap"], stability)
+    assert payload["features_stem"] == "features_synthetic"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("aligned", [False, True])
+def test_accuracy_is_positional_not_identity_proof(
+    reporter_module, reporter_case, aligned
+):
+    c = reporter_case
+    truth = np.array(["STAR", "QSO", "STAR", "GALAXY", "STAR", "QSO"])
+    reference = truth[[1, 0, 2, 3, 4, 5]] if aligned else None
+    result = reporter_module.save_umap_tsne_run(
+        **dict(c.embedding_args, y_pred=truth, y_aligned=reference)
+    )
+    report = strict_load(result["json_path"])
+    assert report["xgboost_summary"]["accuracy_vs_reference"] == pytest.approx(
+        4 / 6 if aligned else 1
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("explicit", [False, True])
+def test_autoencoder_history_latent_and_mse(reporter_module, reporter_case, explicit):
+    c = reporter_case
+    args = dict(c.ae_args)
+    if explicit:
+        args.update(
+            Z_ae=c.scores[:, [2, 0]],
+            X_recon=c.X * 0.5,
+            history={"train_loss": [12.0, 2.0, 7.0], "val_loss": [5.0, 0.25, 3.0]},
+        )
+    result = reporter_module.save_autoencoder_run(**args)
+    report, payload, text = check_saved_pair(result, "joblib_path")
+    expected_Z = c.scores[:, [2, 0]] if explicit else c.X[:, :2] * [2, 3]
+    np.testing.assert_array_equal(payload["Z_ae"], expected_Z)
+    assert len(c.ae.encoded) == (0 if explicit else 1)
+    if explicit:
+        np.testing.assert_array_equal(payload["X_recon"], c.X * 0.5)
+    else:
+        assert payload["X_recon"] is None
+    assert payload["history"] == (args["history"] if explicit else c.ae.history_)
+    metrics = report["metrics"]
+    assert metrics["ae_epochs_done"] == (3 if explicit else 4)
+    assert metrics["ae_best_val_loss"] == (0.25 if explicit else 1)
+    assert metrics["ae_final_val_loss"] == (3 if explicit else 6)
+    assert metrics["ae_final_train_loss"] == (7 if explicit else 2)
+    assert metrics["ae_fit_time_s"] == 12.345
+    assert metrics["ae_mse_global"] == pytest.approx(1 / 9)
+    # Supplied reconstruction is an artifact; metric is evaluated via the AE API.
+    assert payload["ae_mse_global"] == pytest.approx(1 / 9)
+    np.testing.assert_array_equal(payload["y"], c.y)
+    pd.testing.assert_frame_equal(payload["meta"], c.meta)
+    assert payload["feature_names"] == ["gamma", "alpha", "beta"]
+    assert "12.35s" in text
+    for path in [
+        c.reports / "phy3500_autoencoder_output.joblib",
+        result["run_dir"] / "phy3500_autoencoder_run_latest.joblib",
+    ]:
+        assert_payload(joblib.load(path), payload)
+    assert (
+        strict_load(result["run_dir"] / "phy3500_autoencoder_run_latest.json") == report
+    )
+
+
+@pytest.mark.integration
+def test_autoencoder_real_pca_correlations_and_interpolation(
+    reporter_module, reporter_case, dimred_pca_class
+):
+    c = reporter_case
+    pca = dimred_pca_class(n_components=3, svd_solver="full").fit(
+        c.X, c.ae_args["feature_names"]
+    )
+    # No ties: ranks [1,2,4,3,5,6], sum(d^2)=2 => rho=1-12/210=33/35.
+    Z = np.array([[1.0, 6], [2, 5], [4, 3], [3, 4], [5, 2], [6, 1]])
+    meta = c.meta.assign(
+        teff_gspphot=[10, 20, 30, 40, 50, 60],
+        logg_gspphot=[1, np.nan, 2, np.nan, np.nan, np.nan],
+    )
+    tables = pd.DataFrame({"method": ["AE", "PCA"], "error": [1 / 9, 0.25]})
+    figure = c.figures / "ae.png"
+    figure.write_bytes(b"synthetic inventory only")
+    model = c.root / "model.pt"
+    args = dict(
+        c.ae_args,
+        Z_ae=Z,
+        meta=meta,
+        pca=pca,
+        scores_pca=pca.transform(c.X),
+        Z_interp=np.array([[1.0, 2], [4, 6]]),
+        X_interp=c.X[:2],
+        idx_cold=4,
+        idx_hot=1,
+        teff_cold=3000,
+        teff_hot=7000,
+        ae_model_path=model,
+        MODELS_DIR=c.root / "models",
+        comparison_df=tables,
+        summary_df=tables,
+        df_summary=tables.set_index("method"),
+        corr_pca=pd.DataFrame({"teff": [0.25]}, index=["PC1"]),
+        Z_umap=c.scores[:, :2],
+        Z_tsne=c.scores[:, [2, 3]],
+    )
+    result = reporter_module.save_autoencoder_run(**args)
+    report, payload, text = check_saved_pair(result, "joblib_path")
+    assert report["metrics"]["pca_mse_2_components"] == pytest.approx(1 / 9)
+    assert report["metrics"]["pca_mse_n_components_95"] == pytest.approx(0, abs=1e-28)
+    assert report["metrics"]["n_pcs_95"] == payload["n_pcs_95"] == 3
+    correlations = report["correlations"]["ae_latent_vs_physical_spearman"]
+    assert correlations["teff_gspphot"] == pytest.approx(
+        {"latent_axis_1": 33 / 35, "latent_axis_2": -33 / 35}
+    )
+    assert correlations["logg_gspphot"] == {
+        "latent_axis_1": None,
+        "latent_axis_2": None,
+    }
+    assert report["interpolation"] == {
+        "idx_cold": 4,
+        "idx_hot": 1,
+        "teff_cold": 3000,
+        "teff_hot": 7000,
+        "latent_distance": 5,
+    }
+    assert report["paths"]["ae_model_path"] == str(model)
+    assert report["figures_saved"] == [str(figure)]
+    assert (
+        report["embeddings"]["umap_available"]
+        and report["embeddings"]["tsne_available"]
+    )
+    assert report["tables"]["comparison_df"] == [
+        {"method": "AE", "error": 1 / 9},
+        {"method": "PCA", "error": 0.25},
+    ]
+    pd.testing.assert_frame_equal(payload["comparison_df"], tables)
+    for key in ["scores_pca", "Z_umap", "Z_tsne", "Z_interp", "X_interp"]:
+        np.testing.assert_array_equal(payload[key], args[key])
+    assert "latent_distance" in text and "5.000000" in text
+
+
+@pytest.mark.integration
+def test_autoencoder_empty_history_and_explicit_pca_count(
+    reporter_module, reporter_case, dimred_pca_class
+):
+    c = reporter_case
+    pca = dimred_pca_class(n_components=3, svd_solver="full").fit(c.X)
+    result = reporter_module.save_autoencoder_run(
+        **dict(c.ae_args, pca=pca, n_pcs_95=2, history={})
+    )
+    report = strict_load(result["json_path"])
+    m = report["metrics"]
+    assert m["ae_epochs_done"] == 0
+    assert m["ae_best_val_loss"] is None and m["ae_final_train_loss"] is None
+    assert m["pca_mse_n_components_95"] == pytest.approx(1 / 9)
+    assert m["n_pcs_95"] == 2
