@@ -375,7 +375,9 @@ def test_json_txt_four_destinations_and_unicode(reporter_module, tmp_path):
         }
         assert "étoile" in path.read_text(encoding="utf-8")
     for path in paths[2:]:
-        assert path.read_text(encoding="utf-8").splitlines() == ["étoile", "MSE: 1.25"]
+        assert [
+            line for line in path.read_text(encoding="utf-8").splitlines() if line
+        ] == ["étoile", "MSE: 1.25"]
     old_json, old_text = paths[0].read_bytes(), paths[2].read_bytes()
     newer = reporter_module.save_json_txt_pair(
         {"run": "b"}, tmp_path, "b", "latest", ["run b"]
@@ -401,7 +403,10 @@ def check_saved_pair(result, joblib_key):
     for key in ["json_path", "txt_path", joblib_key]:
         assert result[key].is_file()
         assert str(result[key]) in result["summary"]
-    return report, joblib.load(result[joblib_key]), text
+    payload = joblib.load(result[joblib_key])
+    if joblib_key == "joblib_run":
+        assert payload["timestamp_utc"] == result["timestamp"]
+    return report, payload, text
 
 
 @pytest.mark.integration
@@ -468,6 +473,7 @@ def test_pca_notebook_roundtrip_thresholds_and_rows(reporter_module, reporter_ca
         c.reports / "phy3500_pca_output.joblib",
         result["run_dir"] / "phy3500_pca_run_latest.joblib",
     ]:
+        assert path.is_file(), "Advertised PCA alias was not written"
         assert_payload(joblib.load(path), payload)
     assert strict_load(result["run_dir"] / "phy3500_pca_run_latest.json") == report
 
@@ -538,7 +544,7 @@ def test_embedding_no_input_refused_before_writes(reporter_module, reporter_case
 @pytest.mark.integration
 def test_embedding_all_sections_exact(reporter_module, reporter_case):
     c = reporter_case
-    Z = np.array([[0.0, 0], [1, 1], [1, 0], [-1, 0], [np.nan, 0.5], [np.inf, 0]])
+    Z = np.array([[0.0, 0], [1, 1], [1, 0], [-1, 0], [2, 0.5], [3, 0]])
     # Inclusive rectangle [0,1]x[0,1] includes rows 0,1,2 only.
     png = c.figures / "prediction.png"
     html = c.figures / "umap.html"
@@ -589,10 +595,8 @@ def test_embedding_all_sections_exact(reporter_module, reporter_case):
         ZOOM_Y=(0, 1),
         features_stem="features_synthetic",
     )
-    # Finite embedding summaries are checked elsewhere; Inf here specifically probes zoom.
-    with np.errstate(invalid="ignore"):
-        result = reporter_module.save_umap_tsne_run(**args)
-    report = json.loads(result["json_path"].read_text(encoding="utf-8"))
+    result = reporter_module.save_umap_tsne_run(**args)
+    report = strict_load(result["json_path"])
     payload = joblib.load(result["joblib_run"])
     assert report["zoom_pair_summary"] == {
         "zoom_x": [0, 1],
@@ -713,6 +717,7 @@ def test_autoencoder_history_latent_and_mse(reporter_module, reporter_case, expl
         c.reports / "phy3500_autoencoder_output.joblib",
         result["run_dir"] / "phy3500_autoencoder_run_latest.joblib",
     ]:
+        assert path.is_file(), "Advertised AE alias was not written"
         assert_payload(joblib.load(path), payload)
     assert (
         strict_load(result["run_dir"] / "phy3500_autoencoder_run_latest.json") == report
@@ -809,3 +814,138 @@ def test_autoencoder_empty_history_and_explicit_pca_count(
     assert m["ae_best_val_loss"] is None and m["ae_final_train_loss"] is None
     assert m["pca_mse_n_components_95"] == pytest.approx(1 / 9)
     assert m["n_pcs_95"] == 2
+
+
+@pytest.mark.parametrize("labels", [[], [-1] * 6])
+def test_embedding_degenerate_cluster_summaries(reporter_module, reporter_case, labels):
+    result = reporter_module.save_umap_tsne_run(
+        **dict(reporter_case.embedding_args, cluster_labels=labels)
+    )
+    h = strict_load(result["json_path"])["hdbscan_summary"]
+    assert h["n_clusters"] == 0 and h["largest_clusters"] == {}
+    assert h["n_points"] == h["n_noise"] == len(labels)
+    assert h["pct_noise"] == (100 if labels else 0)
+
+
+def test_embedding_without_labels_metadata_or_scores(reporter_module, reporter_case):
+    args = dict(reporter_case.embedding_args, y=None, meta=None, scores_95=None)
+    result = reporter_module.save_umap_tsne_run(**args)
+    report = strict_load(result["json_path"])
+    assert report["class_counts"] is None
+    for key in ["has_labels", "has_meta", "has_scores_95"]:
+        assert report["captured_sections"][key] is False
+
+
+def test_cluster_top3_ties_allow_any_equal_frequency_order(reporter_module):
+    result = reporter_module.top3_pred_by_cluster([3] * 8, list("FGKMFGKM"))["3"]
+    assert len(result) == 3 and set(result) <= set("FGKM")
+    assert list(result.values()) == [2, 2, 2]
+
+
+def test_zoom_nonfinite_is_excluded_or_explicitly_refused(
+    reporter_module, reporter_case
+):
+    c = reporter_case
+    Z = np.array([[0.0, 0], [1, 1], [1, 0], [-1, 0], [np.nan, 0.5], [np.inf, 0]])
+    try:
+        with np.errstate(invalid="ignore"):
+            result = reporter_module.save_umap_tsne_run(
+                **dict(c.embedding_args, Z_umap=Z, ZOOM_X=(0, 1), ZOOM_Y=(0, 1))
+            )
+    except ValueError as error:
+        assert any(
+            word in str(error).lower()
+            for word in ["finite", "json", "range", "nan", "inf"]
+        )
+        return
+    report = json.loads(result["json_path"].read_text(encoding="utf-8"))
+    assert report["zoom_pair_summary"]["n_points_total"] == 3
+    assert report["zoom_pair_summary"]["counts_in_zoom"] == {
+        "STAR": 2,
+        "QSO": 1,
+        "GALAXY": 0,
+    }
+
+
+def test_autoencoder_tied_rank_oracle(reporter_module, reporter_case):
+    c = reporter_case
+    Z = np.column_stack(([1.0, 3, 2, 4, 5, 6], [6.0, 5, 4, 3, 2, 1]))
+    args = dict(c.ae_args, Z_ae=Z, meta=c.meta.assign(bp_rp=[1.0, 2, 2, 4, 5, 6]))
+    result = reporter_module.save_autoencoder_run(**args)
+    corrs = strict_load(result["json_path"])["correlations"][
+        "ae_latent_vs_physical_spearman"
+    ]["bp_rp"]
+    # Average ranks for ties, then independent centered scalar products.
+    physical = [1, 2.5, 2.5, 4, 5, 6]
+    denominator_p = math.fsum((v - 3.5) ** 2 for v in physical)
+    for name, latent in [
+        ("latent_axis_1", [1, 3, 2, 4, 5, 6]),
+        ("latent_axis_2", [6, 5, 4, 3, 2, 1]),
+    ]:
+        covariance = math.fsum((a - 3.5) * (b - 3.5) for a, b in zip(latent, physical))
+        variance = math.fsum((v - 3.5) ** 2 for v in latent)
+        assert corrs[name] == pytest.approx(
+            covariance / math.sqrt(variance * denominator_p)
+        )
+
+
+@pytest.mark.parametrize("failure_number", [1, 2, 3])
+def test_joblib_failure_propagates_and_retry_recovers(
+    reporter_module, tmp_path, monkeypatch, failure_number
+):
+    real_dump = joblib.dump
+    calls = []
+
+    def interrupted(obj, path, **kwargs):
+        calls.append(path)
+        if len(calls) == failure_number:
+            Path(path).write_bytes(b"synthetic interrupted write")
+            raise OSError("synthetic joblib failure")
+        return real_dump(obj, path, **kwargs)
+
+    legacy = tmp_path / "legacy.joblib"
+    with monkeypatch.context() as patch:
+        patch.setattr(joblib, "dump", interrupted)
+        with pytest.raises(OSError, match="synthetic joblib failure"):
+            reporter_module.save_joblib_pair(
+                {"run": "a"}, tmp_path, "a", "latest", legacy
+            )
+    run, latest = reporter_module.save_joblib_pair(
+        {"run": "b"}, tmp_path, "b", "latest", legacy
+    )
+    assert (
+        joblib.load(run) == joblib.load(latest) == joblib.load(legacy) == {"run": "b"}
+    )
+
+
+@pytest.mark.parametrize("failure_number", [1, 2, 3, 4])
+def test_json_txt_failure_propagates_and_retry_recovers(
+    reporter_module, tmp_path, monkeypatch, failure_number
+):
+    import builtins
+
+    real_open = builtins.open
+    calls = []
+
+    def interrupted(path, mode="r", *args, **kwargs):
+        if "w" in mode:
+            calls.append(path)
+            if len(calls) == failure_number:
+                raise OSError("synthetic report failure")
+        return real_open(path, mode, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(builtins, "open", interrupted)
+        with pytest.raises(OSError, match="synthetic report failure"):
+            reporter_module.save_json_txt_pair(
+                {"run": "a"}, tmp_path, "a", "latest", ["run a"]
+            )
+    paths = reporter_module.save_json_txt_pair(
+        {"run": "b"}, tmp_path, "b", "latest", ["run b"]
+    )
+    assert strict_load(paths[0]) == strict_load(paths[1]) == {"run": "b"}
+    assert (
+        paths[2].read_text(encoding="utf-8")
+        == paths[3].read_text(encoding="utf-8")
+        == "run b"
+    )
