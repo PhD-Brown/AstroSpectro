@@ -1,7 +1,92 @@
 # M2.7 — RunReporter scientific and artifact audit
 
-2026-11-09 · Refs #43 · Delivered for first independent Claude review.
+2026-11-09 · Refs #43 · Revised for second independent Claude review.
 Tests/evidence/documentation only; production remains unchanged.
+
+## Revision after Claude first review — R1–R12
+
+This section supersedes the broad initial AP claims below for publication
+safety, model provenance, failure diagnostics and discrimination of notebook
+populations/metrics. The original report and ledgers at9666d7d remain historical
+evidence. Live AGENTS v1.3, full #43, review5835559133, all12 inline comments and
+handoff6756633434 read before changes. Start9666d7d local=remote, clean existing
+M27 worktree; base/main1e22663 and production blob b966d9b9 unchanged. Same
+branch and Draft PR99, no production/notebook/dependency change, no new worktree.
+
+| Thread | Correction, independent contract and actual discriminating check | Remaining scope |
+|---|---|---|
+| R1 / #92 | Seven table dtypes/cases include float32 NaN, nullable Float64 Inf, all missing, inferred/native string and NaT. IDs/order/finite values survive; identifiable missing representations or relevant converter refusal admitted.12 fresh/existing writer cases use strict parsing, preserve representable values and reject any invented finite replacement. Refusal must leave the complete byte snapshot unchanged. F1 and F8 rejected. | Representation of NaN/Inf/signs/NaT remains open. Explicit missing token `NaT` is recognized as missing, never a valid timestamp; finite timestamps remain ISO strings. C04 is only narrow JSON compliance, not safe publication. |
+| R2 / #93 | All5 APIs snapshot archives and every latest/legacy file after valid A. Same-clock B has different classes/coordinates. Refusal of any pertinent exception type preserves all bytes; successful unique archives retain A and verify B in aliases and formats. F2 rejected; F9 RuntimeError refusal and F9unique both pass. | Collision strategy and ID scheme open; no concurrent-process experiment. |
+| R3 / #94 |14 injections: before/after each3joblib+4JSON/TXT writes, including after actual file close. Read ordinary aliases, legacy and timestamped archives; compare labels/counts/coordinates/JSON means/TXT population plus timestamps. Orphan/truncated archives fail. Original OSError must remain in exception chain. F3 rejected; F10 complete rollback/chained RuntimeError and explicit incomplete-marker alternative pass. | Whole A, whole B or explicit linked unavailability admissible. Marker adapter is bounded, no universal schema or hardware-crash guarantee. |
+| R4 / #95 | All model-named fields under xgboost_summary must be unavailable without a dedicated model input. Figure path remains separately exact after Path normalization. F4 suffix invention and F4b displaced field rejected; F4c accepted. | Bridge already returns actual model_path at328; NB02 receives xgb_result but does not pass that field in its reporter call. Future wiring possible, historical bytes not reconstructed. |
+| R5 / #96 | Nominal AE/PCA calls retain actual values without failure diagnosis. Inject unique cause; admit original exception in a wrapper chain, structured metric+nonempty original cause, or reporter logger>=WARNING with both. Keys/nulls/unrelated/foreign/invariable logs cannot satisfy cause. F5/F5c rejected; F11 chained propagation and F11log accepted.20 green evidence-helper controls cover false diagnoses and other helper boundaries. | Diagnostic parser bounded to current metric domains and observed text/type; not general natural-language understanding. Error policy remains open. |
+| R6 / #97 | Nonmonotone z=[4,1,Inf,2,6,3], Teff=[30,10,50,20,60,40]. Finite paired ranks[4,1,2,5,3]/[3,1,2,5,4], sum d²=2 ->rho.9. Historical ranks give31/35; shifted mask gives.1. F6 and late JSON F8 rejected; F6c and preliminary scientific refusal accepted. | Axis2 finite, so pairwise and complete-case agree; no global policy imposed. Refusal must concern latent/coordinate/pair validity and publish no new files. |
+| R7 / #98 | Existing one-dimensional axis must have rho1, true stored shape[6,1], no numeric axis2. Refusal identifies dimensions and leaves no files. F7 duplicate rejected; actual1D support and preliminary refusal accepted. Added successful2D/3D storage/correlation tests. | General N-axis policy open; NB03 currently2D, historical impact not asserted. |
+| R8 | Separate spectral fake cumulative[.5,.995], ratios[.5,.495], thresholds2/2/2/2 and y_spec M4/F1/G1. Features retain1/2/3/4. Separate real fitted PCA spectral ratio81:4:.25 versus9:4:1, sign-invariant squared scores. N01 four-site PCA substitution and N02 wrong population both fail assertions. | Reporter boundary, not new astrophysical/PCA algorithm validation. |
+| R9 | Controlled AE residual is half coordinate3: energy(.25*2)/18=1/36, distinct from actual fitted PCA2 residual2/18=1/9. Three different tables are each compared in JSON and joblib. N03 and N04 fail numerical/table assertions. | No PyTorch fit is claimed; supplied reconstruction remains an artifact separate from the method evaluated. |
+| R10 | TXT scientific values parsed independently of spaces/blank lines: NB01 variance percentages and retained shapes/counts, NB02 accuracy/prediction counts/classes/noise, NB03 best/final losses and AE/PCA MSE.3D axis3 manually min5,max41,mean17.5,std sqrt185.25. N05/N06/N08 fail assertions; C03 extra spacing passes. | Two-decimal variance text allowance.005 percentage point derives from rounding; no full text-template or image-layout contract. |
+| R11 | Three executed probes: absent/short aligned references use normalized original y (accuracy.5); equal-length raw aligned y gives1/6 due normalization asymmetry; short cluster reference silently disappears. Chosen reference is not recorded. Separate red traceability proof rejects silent substitution; no fallback policy frozen in green. | New distinct reporter provenance finding, to be linked after archive publication; #50 joins and #88 bridge filtering remain separate. No external identity or historical impact established. |
+| R12 | N01–N08 added with exact source changes, AST/unique site counts/executed lines, same86-case collection and assertion-only failures; all8KILLED. Initial18 unchanged mutants not rerun or misrepresented as fresh evidence. C03 and narrow C04 pass86, while publication proofs reject F8. Original ledgers remain byte-identical. | No perfect general mutation score; bounded semantic coverage. C04's historical classification is explicitly superseded for global publication safety. |
+
+### Revised evidence and archive protocol
+
+`tests/proofs_dimred_run_reporter_review.py` is explicit red evidence, excluded
+from ordinary pytest discovery. [Revised manifest](M27_REVIEW_PROOFS.md) and
+[control replay](m27_review_proof_controls_results.json) identify all cases,
+selected original-source baselines, candidate patches, active traces, assertions
+and effective LF hashes. Final red baseline: **38FAIL/7PASS/0ERROR/SKIP**,45cases,
+including the separate R11 provenance observation. These are not38bugs.
+The initial revised44-case ledger is preserved separately; it predates R11.
+The fixed final snapshot will be pushed/read back before normal proof removal;
+its SHA and committed replay are linked in this section after creation.
+
+[Semantic replay](m27_review_semantic_final_results.json): original-source
+baseline86PASS; N01–N08 **8KILLED / 0SURVIVED**, no ERROR/SKIP, source sites
+executed and collection identical. N01 changes four selected references to
+pca_spec (retention/thresholds/JSON variance/table), leaving the separate TXT
+reference untouched, matching the review's proposed counterexample. One early
+harness run expected four total source matches but observed five including TXT;
+the exact replacement was bounded to the four intended sites before the
+recorded successful campaign. No production or scientific expected value changed.
+
+C04 remains demonstrably PASS on the narrow green contract; it is **not** a
+safe publication remedy: F8 leaves a truncated JSON and earlier artifact writes,
+and revised R1/R6 reject it. No historical JSON result was edited to hide that
+old classification. Initial helper artifacts are also retained, not presented
+as the final semantics after the fixture changes.
+
+[Reference probes](m27_review_reference_results.json) make source choice
+inferable from manual values but production does not persist its provenance.
+Their assertions document current behavior, outside green CI policy contracts.
+The bridge's actual model path was verified live in source and NB02 call sites;
+only future explicit wiring can supply it to the reporter. No hashes/versions
+or historical model paths are fabricated.
+
+### Revised validation
+
+Windows/Python3.11.9, same locked NumPy2.4.6/pandas3.1.1/scipy1.17.1/
+sklearn1.9.1/joblib1.6.0/pytest8.4.2 environment. All writes synthetic tmp paths.
+[Validation ledger](m27_review_validation_results.json) distinguishes active
+HEAD from effective tested bytes. [Reverse ledger](m27_review_reverse_results.json)
+uses full106-case reporter+helper collection and hash seed7.
+
+| Current execution | Actual result |
+|---|---|
+| Reporter `-W error` |86PASS|
+| Reporter + evidence-helper controls `-W error` |106PASS|
+| Combined reverse collection, hash seed7 |106PASS|
+| Full fast suite / importlib |624PASS/62deselected/7 existing Gaia warnings each, Windows|
+| Revised false repairs / alternatives |10 false repairs rejected;12 admissible variants accepted, each with relevant baseline+positive controls|
+| N01–N08 |8KILLED by assertions; C03/narrow C04 PASS|
+| Source/notebook/dependency diff, Black/Ruff/pip/diff check |PASS, exact final archive/byte checks recorded at handoff|
+
+After final push, hosted CI for the new head and its logs are checked in PR99
+and #43. The old599/3/62 CI below is pre-review evidence only. All12 reviewer
+threads stay open for Claude; no Ready/merge, issue closure or M2.8. AP now
+means only the exact verified arithmetic, serialization fidelity or reproduced
+defect named above. General identity, model/data provenance, publication safety
+of current production, full reproducibility and astrophysical validity remain
+PA/NA; no external condition blocked this bounded audit (no B claim).
 
 ## Traceability and initial risk matrix
 

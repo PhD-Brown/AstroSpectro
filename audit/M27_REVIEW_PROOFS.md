@@ -47,3 +47,45 @@ causes; admit explicit missing values, structured/logged causes, chained
 exceptions and whitespace-only TXT changes. Existing reporter84 tests still
 pass (`-W error`), combined104PASS. This checkpoint is not the final archive;
 R8–R12 and final immutable proof SHA follow after fixture stabilization.
+
+## Final revised snapshot
+
+Final45cases: **38FAIL/7PASS/0ERROR/SKIP** on unchanged production. The added
+R11 proof demonstrates a distinct reporter boundary: when a supplied aligned
+reference is too short, an ordinary finite accuracy can silently use original
+labels without recording the substitution. Missing/unavailable metric, explicit
+reference provenance or preliminary relevant refusal are alternatives. This
+does not choose a correction in green CI or prove external object identity.
+
+Final replay reconstructs ten false repairs and twelve admissible controls.
+Every selected candidate has its own original-source baseline, identical
+collection, executed changed source, active LF hash and complete failure text.
+**All ten false repairs rejected; all twelve alternatives accepted.** Positive
+valid reports are included with the admissible variants. Added alternatives
+exercise unique file IDs, an explicit incomplete-group marker and a reporter
+log containing the metric plus the actual exception reason. Helper availability
+structures can retain numeric metadata such as population n, while finite
+replacement values remain forbidden.
+
+R1 tables: seven cases, five failures/two supported missing representations.
+R1 writer: twelve cases, ten failures/two explicit NaT-token successes.
+The NaT token is classified as an identifiable missing value, not a real date;
+the finite neighboring timestamp values must still match ISO dates exactly.
+R2: five collision failures. R3: twelve failures and two legitimate complete
+groups out of fourteen before/after injections (failure before first write
+leaves A complete; failure after final close leaves B complete). R4 one failure,
+R5 two failures, R6 one, R7 one, R11 one, plus one informative positive PASS.
+These case counts are not bug counts.
+
+The nonmonotone correlation oracle is rho.9 with paired ranks and1e-12 absolute
+tolerance; historical31/35 and shifted.1 fail. Pairwise/complete-case policy is
+open because the other axis is finite. No generic JSON refusal can masquerade
+as a scientific coordinate validator or leave files behind.
+
+New scripts/mutation controls exist only to validate evidence. Appended source
+variants run inside owned TemporaryDirectory copies; source/notebooks/data in
+the real worktree never change. The original51fe4d1 archive and original result
+JSONs remain byte-identical. The final snapshot is committed/pushed on the
+existing branch, then the proof file is removed in a later regular commit.
+The final fixed SHA and replay command are linked from the current M27 matrix,
+corrective issue qualifications and PR99; no new branch or history rewrite.

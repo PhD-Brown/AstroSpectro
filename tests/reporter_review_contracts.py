@@ -79,7 +79,12 @@ def unavailable(value):
             )
             for _, text in leaves
         )
-        numeric = [v for v in value.values() if isinstance(v, (int, float, bool))]
+        numeric = [
+            v
+            for key, v in value.items()
+            if key.lower() in {"value", "metric", "estimate", "result"}
+            and isinstance(v, (int, float, bool))
+        ]
         return explicit and not numeric and value.get("value") is None
     return False
 

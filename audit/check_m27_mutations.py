@@ -286,6 +286,7 @@ def main():
             "tests/conftest.py",
             "pyproject.toml",
             "tests/reporter_review_contracts.py",
+            "tests/test_reporter_review_contracts.py",
         ]
         if args.proofs:
             paths.append("tests/proofs_dimred_run_reporter.py")
@@ -332,7 +333,13 @@ def main():
             # Avoid equal-size and sub-second timestamp bytecode cache collisions.
             for cache in tree.rglob("__pycache__"):
                 shutil.rmtree(cache)
-            result = execute(tree, name, args.reverse, args.proofs)
+            result = execute(
+                tree,
+                name,
+                args.reverse,
+                args.proofs,
+                target="tests" if args.reverse else None,
+            )
             names = sorted(c["name"] for c in result["cases"])
             if baseline_names is None:
                 baseline_names = names

@@ -331,6 +331,9 @@ def main():
                 )
             else:
                 shutil.copyfile(ROOT / path, tree / path)
+        result["effective_lf_sha256"] = {
+            path: replay.digest(tree / path) for path in paths
+        }
         for name, selection, admissible in [("baseline", "", False)] + trials:
             patched = source if name == "baseline" else candidate(source, name)
             ast.parse(patched)
@@ -415,6 +418,9 @@ def main():
             )
             print(name, actual["outcome"], actual["counts"], flush=True)
     assert protected == {p: replay.digest(ROOT / p) for p in protected}
+    assert all(
+        t["changed_site_executed"] for t in result["trials"] if t["name"] != "baseline"
+    )
     assert all(
         t["outcome"] != "UNEXPECTED" and t.get("collection_matches", True)
         for t in result["trials"]

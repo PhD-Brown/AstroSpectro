@@ -6,7 +6,7 @@ import pytest
 
 
 @pytest.mark.parametrize(
-    "value", [None, "NaT", "-Inf", {"value": None, "reason": "nonfinite input"}]
+    "value", [None, "NaT", "-Inf", {"value": None, "reason": "nonfinite input", "n": 5}]
 )
 def test_explicit_unavailability_is_admissible(reporter_contracts, value):
     assert reporter_contracts.unavailable(value)

@@ -493,6 +493,10 @@ def test_r11_reference_substitution_is_traceable(
         )
     ]
     assert any(
-        "original" in text or "labels_norm" in text or "fallback" in text
+        "original" in text
+        or "labels_norm" in text
+        or "fallback" in text
+        or "normalized" in text
+        or text in {"y", "input labels"}
         for text in sources
     ), "Reference population silently substituted"

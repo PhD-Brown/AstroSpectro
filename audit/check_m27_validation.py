@@ -1,6 +1,7 @@
 """Capture actual validation commands, versions and protected-file boundaries."""
 
 import hashlib
+import argparse
 import importlib.metadata
 import json
 import os
@@ -14,12 +15,23 @@ BASE = "1e2266385eab287d3a1c54c2e919e012293fa44b"
 
 
 def main():
-    output = ROOT / "audit/m27_validation_results.json"
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output", type=Path, default=ROOT / "audit/m27_validation_results.json"
+    )
+    parser.add_argument("--review", action="store_true")
+    args = parser.parse_args()
+    output = args.output
     protected = [
         "src/dimred/run_reporter.py",
         "tests/test_dimred_run_reporter.py",
         "tests/conftest.py",
     ]
+    if args.review:
+        protected += [
+            "tests/reporter_review_contracts.py",
+            "tests/test_reporter_review_contracts.py",
+        ]
 
     def hashes():
         return {
@@ -127,6 +139,13 @@ def main():
         ],
         ["git", "status", "--short", "--branch"],
     ]
+    if args.review:
+        commands[0].insert(5, "tests/test_reporter_review_contracts.py")
+        for command in commands:
+            if "black" in command or "ruff" in command:
+                command.extend(
+                    ["audit/check_m27_review.py", "audit/check_m27_reference.py"]
+                )
     for command in commands:
         completed = subprocess.run(
             command,
