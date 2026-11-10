@@ -25,6 +25,15 @@ def reporter_module():
 
 
 @pytest.fixture
+def reporter_contracts():
+    path = Path(__file__).resolve().parent / "reporter_review_contracts.py"
+    spec = importlib.util.spec_from_file_location("m27_review_contracts", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
 def reporter_case(tmp_path, monkeypatch, reporter_module):
     """Synthetic populations with row markers and deterministic method boundaries."""
     monkeypatch.setattr(reporter_module, "make_timestamp", lambda: "20261109T170304Z")

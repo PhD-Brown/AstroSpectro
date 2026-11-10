@@ -128,7 +128,7 @@ def digest(path):
     return hashlib.sha256(path.read_text(encoding="utf-8").encode()).hexdigest()
 
 
-def execute(tree, name, reverse=False, proofs=False):
+def execute(tree, name, reverse=False, proofs=False, target=None, selection=None):
     # A trace limited to this source proves that the changed site was executed.
     plugin = tree / "m27_trace_plugin.py"
     plugin.write_text(
@@ -150,7 +150,7 @@ def execute(tree, name, reverse=False, proofs=False):
         ),
         encoding="utf-8",
     )
-    target = "tests/proofs_dimred_run_reporter.py" if proofs else TEST
+    target = target or ("tests/proofs_dimred_run_reporter.py" if proofs else TEST)
     command = [
         sys.executable,
         "-m",
@@ -164,6 +164,8 @@ def execute(tree, name, reverse=False, proofs=False):
     ]
     if not proofs:
         command += ["-W", "error"]
+    if selection:
+        command += ["-k", selection]
     env = dict(os.environ, PYTHONHASHSEED="7", PYTHONIOENCODING="utf-8")
     completed = subprocess.run(
         command,
