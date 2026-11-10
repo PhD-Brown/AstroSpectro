@@ -89,3 +89,10 @@ JSONs remain byte-identical. The final snapshot is committed/pushed on the
 existing branch, then the proof file is removed in a later regular commit.
 The final fixed SHA and replay command are linked from the current M27 matrix,
 corrective issue qualifications and PR99; no new branch or history rewrite.
+
+Final archive: `e0680e022ad08e621508913ed1b041640df48177` (ancestor), pushed and
+read back on GitHub before normal removal. Committed replay38FAIL/7PASS,
+zero ERROR/SKIP; R11 has its own #100. From the delivered head:
+`python audit/check_m27_review.py --proofs-ref e0680e022ad08e621508913ed1b041640df48177 --only baseline`.
+Without the selection flag, the scoped false-remedy/positive controls replay
+as well. The fixed ref supplies proof+helper+fixture bytes, not just the proof.

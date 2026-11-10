@@ -25,7 +25,7 @@ branch and Draft PR99, no production/notebook/dependency change, no new worktree
 | R8 | Separate spectral fake cumulative[.5,.995], ratios[.5,.495], thresholds2/2/2/2 and y_spec M4/F1/G1. Features retain1/2/3/4. Separate real fitted PCA spectral ratio81:4:.25 versus9:4:1, sign-invariant squared scores. N01 four-site PCA substitution and N02 wrong population both fail assertions. | Reporter boundary, not new astrophysical/PCA algorithm validation. |
 | R9 | Controlled AE residual is half coordinate3: energy(.25*2)/18=1/36, distinct from actual fitted PCA2 residual2/18=1/9. Three different tables are each compared in JSON and joblib. N03 and N04 fail numerical/table assertions. | No PyTorch fit is claimed; supplied reconstruction remains an artifact separate from the method evaluated. |
 | R10 | TXT scientific values parsed independently of spaces/blank lines: NB01 variance percentages and retained shapes/counts, NB02 accuracy/prediction counts/classes/noise, NB03 best/final losses and AE/PCA MSE.3D axis3 manually min5,max41,mean17.5,std sqrt185.25. N05/N06/N08 fail assertions; C03 extra spacing passes. | Two-decimal variance text allowance.005 percentage point derives from rounding; no full text-template or image-layout contract. |
-| R11 | Three executed probes: absent/short aligned references use normalized original y (accuracy.5); equal-length raw aligned y gives1/6 due normalization asymmetry; short cluster reference silently disappears. Chosen reference is not recorded. Separate red traceability proof rejects silent substitution; no fallback policy frozen in green. | New distinct reporter provenance finding, to be linked after archive publication; #50 joins and #88 bridge filtering remain separate. No external identity or historical impact established. |
+| R11 | Three executed probes: absent/short aligned references use normalized original y (accuracy.5); equal-length raw aligned y gives1/6 due normalization asymmetry; short cluster reference silently disappears. Chosen reference is not recorded. Separate red traceability proof rejects silent substitution; no fallback policy frozen in green. | [New reporter finding #100](https://github.com/PhD-Brown/AstroSpectro/issues/100); #50 joins and #88 bridge filtering remain separate. No external identity or historical impact established. |
 | R12 | N01–N08 added with exact source changes, AST/unique site counts/executed lines, same86-case collection and assertion-only failures; all8KILLED. Initial18 unchanged mutants not rerun or misrepresented as fresh evidence. C03 and narrow C04 pass86, while publication proofs reject F8. Original ledgers remain byte-identical. | No perfect general mutation score; bounded semantic coverage. C04's historical classification is explicitly superseded for global publication safety. |
 
 ### Revised evidence and archive protocol
@@ -37,8 +37,14 @@ selected original-source baselines, candidate patches, active traces, assertions
 and effective LF hashes. Final red baseline: **38FAIL/7PASS/0ERROR/SKIP**,45cases,
 including the separate R11 provenance observation. These are not38bugs.
 The initial revised44-case ledger is preserved separately; it predates R11.
-The fixed final snapshot will be pushed/read back before normal proof removal;
-its SHA and committed replay are linked in this section after creation.
+Fixed final snapshot **[e0680e022ad08e621508913ed1b041640df48177](https://github.com/PhD-Brown/AstroSpectro/tree/e0680e022ad08e621508913ed1b041640df48177)**
+was committed/pushed, remote SHA checked and proof read through GitHub before
+normal removal. [Committed replay](m27_review_archive_replay_results.json):
+38FAIL/7PASS/0ERROR/SKIP. It remains an ancestor on the same issue branch;
+no new branch was created, and the original proof ref stays at51fe4d1.
+From the green head, `python audit/check_m27_review.py --proofs-ref e0680e022ad08e621508913ed1b041640df48177 --only baseline`
+reconstructs the exact archived proof, helper and fixture bytes in a disposable
+tree. Omitting `--only baseline` also replays the scoped remedy controls.
 
 [Semantic replay](m27_review_semantic_final_results.json): original-source
 baseline86PASS; N01–N08 **8KILLED / 0SURVIVED**, no ERROR/SKIP, source sites
@@ -78,7 +84,7 @@ uses full106-case reporter+helper collection and hash seed7.
 | Full fast suite / importlib |624PASS/62deselected/7 existing Gaia warnings each, Windows|
 | Revised false repairs / alternatives |10 false repairs rejected;12 admissible variants accepted, each with relevant baseline+positive controls|
 | N01–N08 |8KILLED by assertions; C03/narrow C04 PASS|
-| Source/notebook/dependency diff, Black/Ruff/pip/diff check |PASS, exact final archive/byte checks recorded at handoff|
+| Source/notebook/dependency diff, Black/Ruff/pip/diff check |PASS; [integrity ledger](m27_review_integrity_results.json) verifies31 historical JSONs unchanged, original51fe4d1 proof/ref intact and production blob unchanged|
 
 After final push, hosted CI for the new head and its logs are checked in PR99
 and #43. The old599/3/62 CI below is pre-review evidence only. All12 reviewer

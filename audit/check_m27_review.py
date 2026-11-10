@@ -293,7 +293,9 @@ def main():
         default=ROOT / "audit/m27_review_proof_controls_results.json",
     )
     parser.add_argument("--only", nargs="*")
-    parser.add_argument("--proofs-ref")
+    parser.add_argument(
+        "--proofs-ref", default="e0680e022ad08e621508913ed1b041640df48177"
+    )
     args = parser.parse_args()
     source = (ROOT / SOURCE).read_text(encoding="utf-8")
     paths = [
