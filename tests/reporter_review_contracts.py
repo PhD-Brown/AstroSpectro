@@ -214,6 +214,12 @@ def embedding_group(root, generations):
             label: list(generation["y"]).count(label) for label in set(generation["y"])
         }
         assert report["class_counts"] == counts, "JSON population differs from joblib"
+        expected_x_mean = math.fsum(
+            float(row[0]) for row in generation["Z_umap"]
+        ) / len(generation["Z_umap"])
+        assert math.isclose(
+            report["embedding_stats"]["umap"]["x_mean"], expected_x_mean, rel_tol=1e-14
+        ), "JSON coordinates differ from joblib"
         assert (
             ast.literal_eval(text_value(text, "y")) == counts
         ), "TXT population differs from joblib"

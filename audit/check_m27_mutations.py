@@ -5,6 +5,7 @@ import ast
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -93,6 +94,42 @@ MUTANTS = [
         '"timestamp_utc": timestamp,',
         '"timestamp_utc": "19990101T000000Z",',
     ),
+    ("N01_spectral_pca_substitution", "pca_spec.", "pca."),
+    (
+        "N02_spectral_class_population",
+        '"y_spec": class_counts(y_spec)',
+        '"y_spec": class_counts(y)',
+    ),
+    (
+        "N03_ae_as_pca_baseline",
+        '"pca_mse_2_components": mse_pca2',
+        '"pca_mse_2_components": mse_ae_global',
+    ),
+    (
+        "N04_reconstruction_table",
+        "safe_df_records(summary_df)",
+        "safe_df_records(comparison_df)",
+    ),
+    (
+        "N05_txt_best_is_last",
+        "f\"- AE best val_loss          : {best_val_loss if best_val_loss is not None else 'N/A'}\"",
+        "f\"- AE best val_loss          : {final_val_loss if final_val_loss is not None else 'N/A'}\"",
+    ),
+    (
+        "N06_txt_prediction_permutation",
+        "f\"- accuracy_vs_reference     : {xgboost_summary.get('accuracy_vs_reference')}\"",
+        'f"- accuracy_vs_reference     : {float(np.mean(yp[::-1] == y_ref)) if y_ref is not None else None}"',
+    ),
+    (
+        "N07_prefer_unaligned_reference",
+        "y_ref = np.asarray(y_aligned).astype(str)",
+        "y_ref = labels_norm if labels_norm is not None else np.asarray(y_aligned).astype(str)",
+    ),
+    (
+        "N08_3d_from_2d",
+        '"embedding_stats": embedding_stats_nd(Z_umap3, max_axes=3)',
+        '"embedding_stats": embedding_stats_nd(Z_umap if Z_umap is not None else Z_umap3, max_axes=3)',
+    ),
 ]
 CONTROLS = [
     ("C01_equivalent_mean", "float(np.mean(vals))", "float(np.sum(vals) / vals.size)"),
@@ -107,7 +144,7 @@ CONTROLS = [
         'text_content = "\\n\\n".join(text_lines)',
     ),
     (
-        "C04_strict_json_refusal",
+        "C04_narrow_strict_json_only",
         "indent=2, ensure_ascii=False, default=json_default",
         "indent=2, ensure_ascii=False, default=json_default, allow_nan=False",
     ),
@@ -248,6 +285,7 @@ def main():
             "src/dimred/pca_analyzer.py",
             "tests/conftest.py",
             "pyproject.toml",
+            "tests/reporter_review_contracts.py",
         ]
         if args.proofs:
             paths.append("tests/proofs_dimred_run_reporter.py")
@@ -283,9 +321,12 @@ def main():
             line = None
             patched = source
             if old is not None:
-                assert source.count(old) == 1, (name, source.count(old))
+                assert source.count(old) == (5 if name.startswith("N01") else 1), (
+                    name,
+                    source.count(old),
+                )
                 line = source[: source.index(old)].count("\n") + 1
-                patched = source.replace(old, new)
+                patched = source.replace(old, new, 4 if name.startswith("N01") else 1)
                 ast.parse(patched)
             (tree / SOURCE).write_text(patched, encoding="utf-8")
             # Avoid equal-size and sub-second timestamp bytecode cache collisions.
@@ -303,6 +344,17 @@ def main():
                 collection_matches=names == baseline_names,
                 active_source_lf_sha256=digest(tree / SOURCE),
             )
+            if old is not None:
+                sites = [
+                    source[: m.start()].count("\n") + 1
+                    for m in re.finditer(re.escape(old), source)
+                ]
+                if name.startswith("N01"):
+                    sites = sites[:4]
+                result["site_lines"] = sites
+                result["site_executed"] = all(
+                    site in result["executed_lines"] for site in sites
+                )
             if args.proofs:
                 result["outcome"] = "RED_PROOF_REPLAY"
             elif name == "baseline" or name.startswith("C"):

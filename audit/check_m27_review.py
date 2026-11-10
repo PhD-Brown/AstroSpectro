@@ -2,6 +2,7 @@
 
 import argparse
 import ast
+import difflib
 import importlib.util
 import json
 from pathlib import Path
@@ -60,6 +61,51 @@ def save_umap_tsne_run(**kwargs):
 
 
 def candidate(source, name):
+    if name == "F9unique":
+        return (
+            source
+            + """
+_review_joblib = save_joblib_pair
+_review_json = save_json_txt_pair
+def _unique_stem(run_dir, stem, suffix):
+    candidate, counter = stem, 1
+    while (run_dir / (candidate + suffix)).exists():
+        counter += 1
+        candidate = stem + '_' + str(counter)
+    return candidate
+def save_joblib_pair(obj, run_dir, stem_run, stem_latest, legacy_path=None):
+    return _review_joblib(obj, run_dir, _unique_stem(run_dir, stem_run, '.joblib'), stem_latest, legacy_path)
+def save_json_txt_pair(report, run_dir, stem_run, stem_latest, text_lines):
+    return _review_json(report, run_dir, _unique_stem(run_dir, stem_run, '.json'), stem_latest, text_lines)
+"""
+        )
+    if name == "F10marker":
+        return (
+            source
+            + """
+_review_embeddings = save_umap_tsne_run
+def save_umap_tsne_run(**kwargs):
+    try:
+        return _review_embeddings(**kwargs)
+    except Exception as exc:
+        root = Path(kwargs['paths']['REPORTS_DIR'])
+        aliases = ['phy3500_embeddings_latest.joblib', 'phy3500_embeddings.joblib', 'phy3500_umap_tsne_run_latest.json', 'phy3500_umap_tsne_run_latest.txt']
+        marker = {'status': 'incomplete', 'reason': str(exc), 'artifacts': aliases + [str(p.relative_to(root)) for p in root.rglob('*') if p.is_file()]}
+        (root / 'publication_status.json').write_text(json.dumps(marker), encoding='utf-8')
+        raise RuntimeError('Publication explicitly unavailable') from exc
+"""
+        )
+    if name == "F11log":
+        source = replace(
+            source,
+            "except Exception:\n        # La sauvegarde reste possible même si cette métrique échoue.\n        mse_ae_global = None",
+            'except Exception as exc:\n        logger.warning("AE reconstruction metric unavailable: %s", exc)\n        mse_ae_global = None',
+        )
+        return replace(
+            source,
+            "        except Exception:\n            pass\n\n    # ── Corrélations",
+            '        except Exception as exc:\n            logger.warning("PCA reconstruction metric unavailable: %s", exc)\n\n    # ── Corrélations',
+        )
     if name == "F1":
         return (
             source
@@ -218,14 +264,17 @@ TRIALS = [
     ("F8", "r1_writer or r6_", False),
     ("F2", "r2_", False),
     ("F9", "r2_ or positive_", True),
+    ("F9unique", "r2_ or positive_", True),
     ("F3", "r3_", False),
     ("F10", "r3_ or positive_", True),
+    ("F10marker", "r3_ or positive_", True),
     ("F4", "r4_", False),
     ("F4b", "r4_", False),
     ("F4c", "r4_ or positive_", True),
     ("F5", "r5_", False),
     ("F5c", "r5_", False),
     ("F11", "r5_ or positive_", True),
+    ("F11log", "r5_ or positive_", True),
     ("F6", "r6_", False),
     ("F6c", "r6_ or positive_", True),
     ("F6refuse", "r6_ or positive_", True),
@@ -304,12 +353,33 @@ def main():
             else:
                 baseline = None
             actual = trial(name)
+            differences, changed_lines = [], []
+            original_lines, patched_lines = source.splitlines(), patched.splitlines()
+            for operation, i1, i2, j1, j2 in difflib.SequenceMatcher(
+                a=original_lines, b=patched_lines
+            ).get_opcodes():
+                if operation != "equal":
+                    differences.append(
+                        {
+                            "original_start": i1 + 1,
+                            "old": original_lines[i1:i2],
+                            "active_start": j1 + 1,
+                            "new": patched_lines[j1:j2],
+                        }
+                    )
+                    changed_lines.extend(
+                        n + 1
+                        for n in range(j1, j2)
+                        if patched_lines[n].strip()
+                        and not patched_lines[n].lstrip().startswith(("#", "def "))
+                    )
             actual.update(
                 admissible=admissible,
                 selection=selection,
                 baseline=baseline,
-                active_source=(
-                    patched[len(source) :] if patched.startswith(source) else patched
+                patches=differences,
+                changed_site_executed=bool(
+                    set(changed_lines) & set(actual["executed_lines"])
                 ),
                 active_source_lf_sha256=replay.digest(tree / SOURCE),
             )

@@ -1,0 +1,232 @@
+[
+  {
+    "case": "absent",
+    "input_original_y": [
+      " star ",
+      "qs0",
+      "galaxie",
+      "star",
+      "STAR",
+      "QSO"
+    ],
+    "input_aligned_y": null,
+    "input_predictions": [
+      "STAR",
+      "STAR",
+      "QSO",
+      "STAR",
+      "GALAXY",
+      "QSO"
+    ],
+    "aligned_cluster_length": null,
+    "inferred_reference_by_manual_oracle": "normalized original y",
+    "expected_accuracy": 0.5,
+    "actual_summary": {
+      "n_predictions": 6,
+      "pred_class_counts": {
+        "GALAXY": 1,
+        "QSO": 2,
+        "STAR": 3
+      },
+      "model_path": null,
+      "accuracy_vs_reference": 0.5,
+      "confusion_matrix": {
+        "index": [
+          "GALAXY",
+          "QSO",
+          "STAR"
+        ],
+        "columns": [
+          "GALAXY",
+          "QSO",
+          "STAR"
+        ],
+        "values": [
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            1
+          ],
+          [
+            1,
+            0,
+            2
+          ]
+        ]
+      }
+    },
+    "reference_provenance_fields": [],
+    "limit": "Source choice inferred from values, not recorded by production; equal lengths do not demonstrate identity."
+  },
+  {
+    "case": "short_aligned",
+    "input_original_y": [
+      " star ",
+      "qs0",
+      "galaxie",
+      "star",
+      "STAR",
+      "QSO"
+    ],
+    "input_aligned_y": [
+      "M",
+      "F",
+      "G",
+      "M",
+      "F"
+    ],
+    "input_predictions": [
+      "STAR",
+      "STAR",
+      "QSO",
+      "STAR",
+      "GALAXY",
+      "QSO"
+    ],
+    "aligned_cluster_length": 5,
+    "inferred_reference_by_manual_oracle": "normalized original y",
+    "expected_accuracy": 0.5,
+    "actual_summary": {
+      "n_predictions": 6,
+      "pred_class_counts": {
+        "GALAXY": 1,
+        "QSO": 2,
+        "STAR": 3
+      },
+      "model_path": null,
+      "accuracy_vs_reference": 0.5,
+      "confusion_matrix": {
+        "index": [
+          "GALAXY",
+          "QSO",
+          "STAR"
+        ],
+        "columns": [
+          "GALAXY",
+          "QSO",
+          "STAR"
+        ],
+        "values": [
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            1
+          ],
+          [
+            1,
+            0,
+            2
+          ]
+        ]
+      }
+    },
+    "reference_provenance_fields": [],
+    "limit": "Source choice inferred from values, not recorded by production; equal lengths do not demonstrate identity."
+  },
+  {
+    "case": "raw_equal_length",
+    "input_original_y": [
+      " star ",
+      "qs0",
+      "galaxie",
+      "star",
+      "STAR",
+      "QSO"
+    ],
+    "input_aligned_y": [
+      " star ",
+      "qs0",
+      "galaxie",
+      "star",
+      "STAR",
+      "QSO"
+    ],
+    "input_predictions": [
+      "STAR",
+      "STAR",
+      "QSO",
+      "STAR",
+      "GALAXY",
+      "QSO"
+    ],
+    "aligned_cluster_length": 6,
+    "inferred_reference_by_manual_oracle": "raw y_aligned",
+    "expected_accuracy": 0.16666666666666666,
+    "actual_summary": {
+      "n_predictions": 6,
+      "pred_class_counts": {
+        "GALAXY": 1,
+        "QSO": 2,
+        "STAR": 3
+      },
+      "model_path": null,
+      "accuracy_vs_reference": 0.16666666666666666,
+      "confusion_matrix": {
+        "index": [
+          " star ",
+          "QSO",
+          "STAR",
+          "galaxie",
+          "qs0",
+          "star"
+        ],
+        "columns": [
+          "GALAXY",
+          "QSO",
+          "STAR"
+        ],
+        "values": [
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "top3_pred_by_cluster": {
+        "7": {
+          "STAR": 3,
+          "QSO": 2,
+          "GALAXY": 1
+        }
+      }
+    },
+    "reference_provenance_fields": [],
+    "limit": "Source choice inferred from values, not recorded by production; equal lengths do not demonstrate identity."
+  }
+]

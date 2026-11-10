@@ -90,9 +90,15 @@ def reporter_case(tmp_path, monkeypatch, reporter_module):
             return values[:, :2] * [2.0, 3.0]
 
         def reconstruction_mse(self, values):
-            # A fixed linear projection discards the third coordinate.
-            residual = values[:, 2]
+            # Controlled metric boundary: half the third-coordinate residual.
+            residual = values[:, 2] * 0.5
             return float(residual @ residual / values.size)
+
+    class SpectralPCA(PCA):
+        cumulative_variance = np.array([0.5, 0.995])
+
+        def variance_summary(self):
+            return pd.DataFrame({"PC": [1, 2], "ratio": [0.5, 0.495]})
 
     common = {"paths": {"REPORTS_DIR": reports}, "FIGURES_DIR": figures}
     features = tmp_path / "features_synthetic.csv"
@@ -101,13 +107,13 @@ def reporter_case(tmp_path, monkeypatch, reporter_module):
     pca_args = dict(
         common,
         pca=PCA(),
-        pca_spec=PCA(),
+        pca_spec=SpectralPCA(),
         scores=scores,
         scores_spec=scores[:, [2, 0]],
         X=X,
         X_spec=X[:, ::-1],
         y=y,
-        y_spec=y[::-1],
+        y_spec=np.array(["M", "M", "F", "M", "G", "M"]),
         meta=meta,
         meta_spec=meta.iloc[::-1],
         feature_names=names,

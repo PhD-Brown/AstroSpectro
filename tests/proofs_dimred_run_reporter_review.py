@@ -213,6 +213,43 @@ def test_r2_collision_preserves_every_existing_artifact(
             assert (
                 a != b and b.is_file()
             ), "Successful distinct runs share an archive path"
+    if kind == "joblib":
+        for path in [*second, c.reports / "legacy.joblib"]:
+            assert joblib.load(path) == {"run": "B", "obsid": [300, 7]}
+    elif kind == "json":
+        for path in second[:2]:
+            assert h.strict_json(path) == {"run": "B", "obsid": [300, 7]}
+        assert all(p.read_text(encoding="utf-8").strip() == "B" for p in second[2:])
+    else:
+        family, legacy = {
+            "pca": ("phy3500_pca", "phy3500_pca_output.joblib"),
+            "embedding": ("phy3500_embeddings", "phy3500_embeddings.joblib"),
+            "ae": ("phy3500_autoencoder", "phy3500_autoencoder_output.joblib"),
+        }[kind]
+        stem = family + ("_latest" if kind == "embedding" else "_run_latest")
+        jb_key = "joblib_run" if kind == "embedding" else "joblib_path"
+        for path in [
+            second[jb_key],
+            second["run_dir"] / (stem + ".joblib"),
+            c.reports / legacy,
+        ]:
+            payload = joblib.load(path)
+            np.testing.assert_array_equal(payload["y"], ["M"] * 5 + ["F"])
+            np.testing.assert_array_equal(payload[key], args[key] + 100)
+        report = h.strict_json(second["json_path"])
+        counts = (
+            report["class_counts"]["y"] if kind == "pca" else report["class_counts"]
+        )
+        assert counts == {"M": 5, "F": 1}
+        report_stem = "phy3500_umap_tsne_run_latest" if kind == "embedding" else stem
+        assert h.strict_json(second["run_dir"] / (report_stem + ".json")) == report
+        for path in [second["txt_path"], second["run_dir"] / (report_stem + ".txt")]:
+            import ast
+
+            assert (
+                ast.literal_eval(h.text_value(path.read_text(encoding="utf-8"), "y"))
+                == counts
+            )
     if kind == "embedding":
         h.embedding_group(
             c.reports,
@@ -327,7 +364,7 @@ def test_r5_metric_identification_and_cause(
         nominal = reporter_module.save_autoencoder_run(**nominal_args)
     good = h.strict_json(nominal["json_path"])
     key = "ae_mse_global" if metric == "ae" else "pca_mse_2_components"
-    assert good["metrics"][key] == pytest.approx(1 / 9 if metric == "ae" else 4)
+    assert good["metrics"][key] == pytest.approx(1 / 36 if metric == "ae" else 4)
     assert not h.metric_diagnostic(
         good, caplog.records, reporter_module.logger.name, metric, original
     ), "Nominal metric falsely declared failed"
@@ -419,5 +456,43 @@ def test_positive_valid_report_remains_informative(
     c = reporter_case
     result = reporter_module.save_autoencoder_run(**c.ae_args)
     report = reporter_contracts.strict_json(result["json_path"])
-    assert report["metrics"]["ae_mse_global"] == pytest.approx(1 / 9)
+    assert report["metrics"]["ae_mse_global"] == pytest.approx(1 / 36)
     np.testing.assert_array_equal(joblib.load(result["joblib_path"])["y"], c.y)
+
+
+def test_r11_reference_substitution_is_traceable(
+    reporter_module, reporter_contracts, reporter_case
+):
+    c, h = reporter_case, reporter_contracts
+    args = dict(
+        c.embedding_args,
+        y=np.array(["STAR", "QSO", "GALAXY", "STAR", "STAR", "QSO"]),
+        y_pred=np.array(["STAR", "STAR", "QSO", "STAR", "GALAXY", "QSO"]),
+        y_aligned=np.array(["M", "F", "G", "M", "F"]),
+    )
+    before = h.snapshot(c.reports)
+    try:
+        result = reporter_module.save_umap_tsne_run(**args)
+    except Exception as error:
+        h.refusal_mentions(
+            error, ["reference", "align", "population", "cardinality", "length"]
+        )
+        assert h.snapshot(c.reports) == before
+        return
+    report = h.strict_json(result["json_path"])
+    summary = report["xgboost_summary"]
+    value = summary.get("accuracy_vs_reference")
+    if h.unavailable(value):
+        return
+    assert value == 0.5
+    sources = [
+        text.lower()
+        for path, text in h.text_leaves(summary)
+        if any(
+            "reference" in key.lower() or "provenance" in key.lower() for key in path
+        )
+    ]
+    assert any(
+        "original" in text or "labels_norm" in text or "fallback" in text
+        for text in sources
+    ), "Reference population silently substituted"

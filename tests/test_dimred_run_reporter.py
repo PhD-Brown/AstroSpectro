@@ -3,6 +3,8 @@
 from datetime import datetime, timedelta, timezone
 import json
 import math
+import ast
+import re
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -443,7 +445,7 @@ def test_pca_notebook_roundtrip_thresholds_and_rows(reporter_module, reporter_ca
         "99pct": 4,
     }
     assert report["pca_spectra"]["n_components_for_variance"] == {
-        "80pct": 1,
+        "80pct": 2,
         "90pct": 2,
         "95pct": 2,
         "99pct": 2,
@@ -452,12 +454,43 @@ def test_pca_notebook_roundtrip_thresholds_and_rows(reporter_module, reporter_ca
     assert report["shapes"]["scores_spec_95pct"] == [6, 2]
     assert report["class_counts"] == {
         "y": {"STAR": 3, "QSO": 2, "GALAXY": 1},
-        "y_spec": {"STAR": 3, "QSO": 2, "GALAXY": 1},
+        "y_spec": {"M": 4, "F": 1, "G": 1},
     }
     assert report["paths"]["features_path"] == str(c.pca_args["FEATURES_PATH"])
     assert report["paths"]["catalog_path"] == str(c.pca_args["CATALOG_PATH"])
     assert report["figures_saved"] == [str(figure)]
     assert report["pca_features"]["variance_explained_total"] == 1
+    assert report["pca_spectra"]["variance_explained_total"] == 0.995
+    assert report["pca_spectra"]["variance_summary_top10"] == [
+        {"PC": 1, "ratio": 0.5},
+        {"PC": 2, "ratio": 0.495},
+    ]
+    assert report["pca_features"]["variance_summary_top10"] == [
+        {"PC": 1, "ratio": 0.8},
+        {"PC": 2, "ratio": 0.1},
+        {"PC": 3, "ratio": 0.06},
+        {"PC": 4, "ratio": 0.04},
+    ]
+    variance_text = [
+        float(v) for v in re.findall(r"Variance\s+explained\s*:\s*([\d.]+)%", text)
+    ]
+    assert variance_text == pytest.approx(
+        [
+            100 * report["pca_features"]["variance_explained_total"],
+            100 * report["pca_spectra"]["variance_explained_total"],
+        ],
+        abs=0.005,
+    )
+    for label, shape, count in [
+        ("Scores", report["shapes"]["scores_95pct"], payload["n_components_95pct"]),
+        ("Scores_spec", report["shapes"]["scores_spec_95pct"], payload["n_keep_spec"]),
+    ]:
+        found = re.search(
+            re.escape(label)
+            + r"\s*\(95% var\)\s*:\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)\s*\((\d+)\s+PCs\)",
+            text,
+        )
+        assert found and list(map(int, found.groups())) == [*shape, count]
     assert report["pca_features"]["top_features_pc2"][0] == {
         "feature": "gamma",
         "loading": 2,
@@ -485,13 +518,25 @@ def test_pca_reporter_real_fitted_sign_invariant(
     c = reporter_case
     pca = dimred_pca_class(n_components=3, svd_solver="full")
     scores = pca.fit_transform(c.X, c.pca_args["feature_names"])
+    X_spec = c.X * [3.0, 1.0, 0.5]
+    pca_spec = dimred_pca_class(n_components=3, svd_solver="full")
+    scores_spec = pca_spec.fit_transform(X_spec)
     result = reporter_module.save_pca_run(
-        **dict(c.pca_args, pca=pca, pca_spec=pca, scores=scores, scores_spec=scores)
+        **dict(
+            c.pca_args,
+            pca=pca,
+            pca_spec=pca_spec,
+            scores=scores,
+            scores_spec=scores_spec,
+            X_spec=X_spec,
+        )
     )
     report, payload, _ = check_saved_pair(result, "joblib_path")
     # Six paired coordinates have total squared energy 28, eigenvalue ratios 9:4:1.
     np.testing.assert_allclose(payload["scores"] ** 2, c.X**2, atol=1e-25)
     np.testing.assert_allclose(payload["scores"], scores, atol=1e-14)
+    np.testing.assert_allclose(payload["scores_spec"] ** 2, X_spec**2, atol=1e-25)
+    np.testing.assert_allclose(payload["scores_spec"], scores_spec, atol=1e-14)
     assert report["pca_features"]["n_components_for_variance"] == {
         "80pct": 2,
         "90pct": 2,
@@ -499,6 +544,14 @@ def test_pca_reporter_real_fitted_sign_invariant(
         "99pct": 3,
     }
     assert report["pca_features"]["variance_explained_total"] == pytest.approx(1)
+    # Spectral eigen-ratio81:4:.25, first-axis share324/341 > .95.
+    assert report["pca_spectra"]["n_components_for_variance"] == {
+        "80pct": 1,
+        "90pct": 1,
+        "95pct": 1,
+        "99pct": 2,
+    }
+    assert payload["n_keep_spec"] == 1
 
 
 @pytest.mark.integration
@@ -542,7 +595,9 @@ def test_embedding_no_input_refused_before_writes(reporter_module, reporter_case
 
 
 @pytest.mark.integration
-def test_embedding_all_sections_exact(reporter_module, reporter_case):
+def test_embedding_all_sections_exact(
+    reporter_module, reporter_case, reporter_contracts
+):
     c = reporter_case
     Z = np.array([[0.0, 0], [1, 1], [1, 0], [-1, 0], [2, 0.5], [3, 0]])
     # Inclusive rectangle [0,1]x[0,1] includes rows 0,1,2 only.
@@ -653,6 +708,33 @@ def test_embedding_all_sections_exact(reporter_module, reporter_case):
     assert report["parameters"]["umap"] == engine.params_used
     assert report["timings_seconds"] == {"umap_fit_time": 2.375, "tsne_fit_time": 7.25}
     assert report["umap3d_summary"]["axis3_best_corr"] == -0.75
+    stats3 = report["umap3d_summary"]["embedding_stats"]
+    assert stats3["shape"] == [6, 3]
+    assert {
+        key: stats3[key]
+        for key in ["axis_3_min", "axis_3_max", "axis_3_mean", "axis_3_std"]
+    } == pytest.approx(
+        {
+            "axis_3_min": 5,
+            "axis_3_max": 41,
+            "axis_3_mean": 17.5,
+            "axis_3_std": math.sqrt(185.25),
+        }
+    )
+    text = result["txt_path"].read_text(encoding="utf-8")
+    assert (
+        float(reporter_contracts.text_value(text, "accuracy_vs_reference"))
+        == xgb["accuracy_vs_reference"]
+    )
+    assert (
+        int(reporter_contracts.text_value(text, "n_predictions"))
+        == xgb["n_predictions"]
+    )
+    assert (
+        ast.literal_eval(reporter_contracts.text_value(text, "pred_class_counts"))
+        == xgb["pred_class_counts"]
+    )
+    assert int(reporter_contracts.text_value(text, "n_noise")) == h["n_noise"]
     assert report["umap3d_summary"]["html_exports"]["umap3d_classes"] == str(html)
     assert report["paths"]["pca_output_path"] == "pca_synthetic.joblib"
     np.testing.assert_array_equal(payload["Z_umap_negative_control"], -c.scores[:, :2])
@@ -681,7 +763,9 @@ def test_accuracy_is_positional_not_identity_proof(
 
 @pytest.mark.integration
 @pytest.mark.parametrize("explicit", [False, True])
-def test_autoencoder_history_latent_and_mse(reporter_module, reporter_case, explicit):
+def test_autoencoder_history_latent_and_mse(
+    reporter_module, reporter_case, reporter_contracts, explicit
+):
     c = reporter_case
     args = dict(c.ae_args)
     if explicit:
@@ -706,9 +790,18 @@ def test_autoencoder_history_latent_and_mse(reporter_module, reporter_case, expl
     assert metrics["ae_final_val_loss"] == (3 if explicit else 6)
     assert metrics["ae_final_train_loss"] == (7 if explicit else 2)
     assert metrics["ae_fit_time_s"] == 12.345
-    assert metrics["ae_mse_global"] == pytest.approx(1 / 9)
+    assert metrics["ae_mse_global"] == pytest.approx(1 / 36)
     # Supplied reconstruction is an artifact; metric is evaluated via the AE API.
-    assert payload["ae_mse_global"] == pytest.approx(1 / 9)
+    assert payload["ae_mse_global"] == pytest.approx(1 / 36)
+    for label, key in [
+        ("AE best val_loss", "ae_best_val_loss"),
+        ("AE final val_loss", "ae_final_val_loss"),
+        ("AE final train_loss", "ae_final_train_loss"),
+        ("AE MSE global", "ae_mse_global"),
+    ]:
+        assert float(reporter_contracts.text_value(text, label)) == pytest.approx(
+            metrics[key]
+        )
     np.testing.assert_array_equal(payload["y"], c.y)
     pd.testing.assert_frame_equal(payload["meta"], c.meta)
     assert payload["feature_names"] == ["gamma", "alpha", "beta"]
@@ -726,7 +819,7 @@ def test_autoencoder_history_latent_and_mse(reporter_module, reporter_case, expl
 
 @pytest.mark.integration
 def test_autoencoder_real_pca_correlations_and_interpolation(
-    reporter_module, reporter_case, dimred_pca_class
+    reporter_module, reporter_case, dimred_pca_class, reporter_contracts
 ):
     c = reporter_case
     pca = dimred_pca_class(n_components=3, svd_solver="full").fit(
@@ -738,7 +831,12 @@ def test_autoencoder_real_pca_correlations_and_interpolation(
         teff_gspphot=[10, 20, 30, 40, 50, 60],
         logg_gspphot=[1, np.nan, 2, np.nan, np.nan, np.nan],
     )
-    tables = pd.DataFrame({"method": ["AE", "PCA"], "error": [1 / 9, 0.25]})
+    tables = pd.DataFrame({"method": ["AE", "PCA"], "error": [1 / 36, 1 / 9]})
+    summary = pd.DataFrame({"class": ["F", "G"], "n": [4, 2], "mean_mse": [0.02, 0.04]})
+    methods = pd.DataFrame(
+        {"mse": [1 / 36, 1 / 9, 0.0], "dimensions": [2, 2, 3]},
+        index=pd.Index(["AE", "PCA2", "PCA95"], name="method"),
+    )
     figure = c.figures / "ae.png"
     figure.write_bytes(b"synthetic inventory only")
     model = c.root / "model.pt"
@@ -757,8 +855,8 @@ def test_autoencoder_real_pca_correlations_and_interpolation(
         ae_model_path=model,
         MODELS_DIR=c.root / "models",
         comparison_df=tables,
-        summary_df=tables,
-        df_summary=tables.set_index("method"),
+        summary_df=summary,
+        df_summary=methods,
         corr_pca=pd.DataFrame({"teff": [0.25]}, index=["PC1"]),
         Z_umap=c.scores[:, :2],
         Z_tsne=c.scores[:, [2, 3]],
@@ -766,6 +864,15 @@ def test_autoencoder_real_pca_correlations_and_interpolation(
     result = reporter_module.save_autoencoder_run(**args)
     report, payload, text = check_saved_pair(result, "joblib_path")
     assert report["metrics"]["pca_mse_2_components"] == pytest.approx(1 / 9)
+    assert report["metrics"]["ae_mse_global"] == pytest.approx(1 / 36)
+    for label, key in [
+        ("AE MSE global", "ae_mse_global"),
+        ("PCA MSE (2)", "pca_mse_2_components"),
+        ("PCA MSE (n95)", "pca_mse_n_components_95"),
+    ]:
+        assert float(reporter_contracts.text_value(text, label)) == pytest.approx(
+            report["metrics"][key], abs=1e-28
+        )
     assert report["metrics"]["pca_mse_n_components_95"] == pytest.approx(0, abs=1e-28)
     assert report["metrics"]["n_pcs_95"] == payload["n_pcs_95"] == 3
     correlations = report["correlations"]["ae_latent_vs_physical_spearman"]
@@ -790,10 +897,16 @@ def test_autoencoder_real_pca_correlations_and_interpolation(
         and report["embeddings"]["tsne_available"]
     )
     assert report["tables"]["comparison_df"] == [
-        {"method": "AE", "error": 1 / 9},
-        {"method": "PCA", "error": 0.25},
+        {"method": "AE", "error": 1 / 36},
+        {"method": "PCA", "error": 1 / 9},
     ]
+    assert report["tables"]["reconstruction_summary"] == summary.to_dict("records")
+    assert report["tables"]["method_summary"] == methods.reset_index().to_dict(
+        "records"
+    )
     pd.testing.assert_frame_equal(payload["comparison_df"], tables)
+    pd.testing.assert_frame_equal(payload["reconstruction_summary"], summary)
+    pd.testing.assert_frame_equal(payload["method_summary"], methods)
     for key in ["scores_pca", "Z_umap", "Z_tsne", "Z_interp", "X_interp"]:
         np.testing.assert_array_equal(payload[key], args[key])
     assert "latent_distance" in text and "5.000000" in text
@@ -814,6 +927,29 @@ def test_autoencoder_empty_history_and_explicit_pca_count(
     assert m["ae_best_val_loss"] is None and m["ae_final_train_loss"] is None
     assert m["pca_mse_n_components_95"] == pytest.approx(1 / 9)
     assert m["n_pcs_95"] == 2
+
+
+@pytest.mark.parametrize("dimensions", [2, 3])
+def test_autoencoder_two_and_three_latent_coordinates(
+    reporter_module, reporter_case, dimensions
+):
+    c = reporter_case
+    Z = np.array(
+        [[1.0, 6, 17], [2, 5, 5], [3, 4, 23], [4, 3, 7], [5, 2, 31], [6, 1, 11]]
+    )[:, :dimensions]
+    result = reporter_module.save_autoencoder_run(
+        **dict(
+            c.ae_args,
+            Z_ae=Z,
+            meta=c.meta.assign(teff_gspphot=[10.0, 20, 30, 40, 50, 60]),
+        )
+    )
+    report, payload, _ = check_saved_pair(result, "joblib_path")
+    np.testing.assert_array_equal(payload["Z_ae"], Z)
+    assert report["shapes"]["Z_ae"] == [6, dimensions]
+    assert report["correlations"]["ae_latent_vs_physical_spearman"][
+        "teff_gspphot"
+    ] == pytest.approx({"latent_axis_1": 1, "latent_axis_2": -1})
 
 
 @pytest.mark.parametrize("labels", [[], [-1] * 6])
