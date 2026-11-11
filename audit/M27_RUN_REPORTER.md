@@ -1,7 +1,49 @@
 # M2.7 — RunReporter scientific and artifact audit
 
-2026-11-09 · Refs #43 · Revised for second independent Claude review.
+2026-11-10 · Refs #43 · Final targeted correction for third Claude review.
 Tests/evidence/documentation only; production remains unchanged.
+
+## Final targeted correction after second review — R3/R5
+
+Scope: review5836154769, R3 comment4520649572, R5 comment4520649868 and
+handoff6757756638 only. Start38acff8 local=remote, clean existing M27 worktree;
+main/base1e22663 and reporter blob b966d9b9 unchanged. Live AGENTS v1.3,
+the review and both remaining threads read. Ten other threads are resolved
+and remain untouched. No new branch, production change or M2.8 work.
+
+| Thread | Narrow correction and independent checks | Actual focused replay |
+|---|---|---|
+| R3 | Successful nominal A must not be declared incomplete. Any marker invoked after B's injected failure must identify all aliases **and** link to B's timestamp or the original failure cause. Stale/generic markers no longer skip content/legacy/orphan checks. Six green helper cases exercise current/stale/generic/cause links and actual fallback to group validation. | F12 permanent unconditional marker **14FAIL** at the nominal-publication assertion. F3 incomplete rollback **13FAIL/1PASS**. F10 complete rollback and F10marker correctly linked unavailability **15PASS each**, including valid positive report. |
+| R5 | Failure cause is now neutral `ValueError("numerical sentinel 4701")`: AE/PCA identity must come from the emitted diagnostic, not the injected message. Two green cases independently test correct/inverted attribution for both domains, reporter logger and structured unavailability. Existing nominal/foreign/unconditional/log/chain checks retained. | F5d inverted attribution **2 assertion FAIL**; F5/F5c still **2FAIL each**. F11 original cause chained and F11log correctly attributed **3PASS each**, including nominal positive. |
+
+[Focused controls](m27_r35_controls_results.json) record exact patches,
+executed changed lines, matching per-selection baseline populations, full
+assertion messages and effective LF hashes. Full45-case red baseline remains
+**38FAIL/7PASS/0ERROR/SKIP**. F12/F5d are reconstructed from Claude's described
+variants in disposable trees; no production patch is applied to this worktree.
+M01–M18 and N01–N08 were not rerun: their previously verified results remain
+historical evidence, not new executions. No historical JSON is overwritten.
+
+The marker adapter remains bounded: an unavailable group must link its files
+to the specific interrupted generation or cause. No manifest schema,
+transaction strategy or hardware-failure guarantee is imposed. Rollback and
+properly linked unavailability both remain admissible. Metric diagnostics
+remain bounded to AE/PCA, with neutral failure causes; propagation, structured
+status or relevant reporter logs are alternatives. All scientific policy,
+identity/provenance and astrophysical limits below remain unchanged.
+
+Third immutable proof snapshot and new CI/head links are recorded below and
+in PR99/#43 after commit/push/read-back verification. R3/R5 stay open for a
+strictly limited third Claude review; the other ten threads are not reopened.
+
+[Local validation](m27_r35_validation_results.json), Windows/Python3.11.9:
+reporter86 + helpers28 = **114PASS** with `-W error`; full normal/importlib
+**632PASS/62deselected/7 preexisting Gaia warnings each**. Black/Ruff (including
+the five M27 audit scripts), pip check and diff/protected-path checks PASS.
+[Integrity ledger](m27_r35_integrity_results.json) confirms all40 historical
+JSONs at38acff8 unchanged, both prior archives available/ancestors and reporter
+blob unchanged. Active parent HEAD and effective tested LF hashes are distinct;
+subsequent archive/result/doc commits do not alter the tested production/tests.
 
 ## Revision after Claude first review — R1–R12
 

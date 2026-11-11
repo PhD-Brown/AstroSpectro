@@ -1,5 +1,35 @@
 # M2.7 — revised evidence after Claude R1–R12
 
+## Third snapshot — targeted second-review corrections R3/R5
+
+2026-11-10. This section supersedes only the first revised snapshot's marker
+association and metric-failure identity checks; every older snapshot remains
+accessible unchanged. Restore proof bytes from e0680e0, then change only:
+nominal A explicitly complete; post-failure marker linked to B timestamp or
+original cause; neutral metric exception text. Eight associated green helper
+cases protect these two contracts without adding production requirements.
+
+Actual working-tree proof baseline45cases: **38FAIL/7PASS/0ERROR/SKIP**, unchanged.
+Focused false repairs: F12 **14FAIL**, F5d **2FAIL**, F3 **13FAIL/1PASS**,
+F5 and F5c **2FAIL each**. Admissible F10/F10marker **15PASS each**,
+F11/F11log **3PASS each**. The successful A assertion is reached before any
+injected failure; F12 is rejected because it misdeclares that valid publication.
+Six marker unit cases show stale/generic links rejected, B/cause links admitted
+and content validation actually resumed when the marker is invalid. Two neutral
+diagnostic cases verify both metric domains and a correct structured status.
+
+The new ledger `m27_r35_controls_results.json` contains only this focused replay,
+with per-selection original baselines, source patches/traces and assertions.
+No M01–M18 or N01–N08 campaign was rerun or relabeled. No old result was edited.
+The third fixed SHA is linked after commit/push verification; the explicit
+proof file is removed from the green head by a subsequent normal commit.
+Original51fe4d1 and revised e0680e0 remain ancestors. No new branch or force-push.
+
+The helper recognizes marker association by supplied generation/cause values,
+not a fixed key/layout. It is not a general manifest validator. Python write
+exceptions still do not model power loss. Diagnostic interpretation remains
+bounded to the current AE/PCA metric domains and a traceable original cause.
+
 2026-11-09 client date · Refs #43 / Draft PR99.
 Review5835559133, twelve open threads, inspected at9666d7d.
 Production base1e22663, blob b966d9b90f056baa37c0ccbb68135c71ff65de92 unchanged.

@@ -165,8 +165,8 @@ def metric_diagnostic(report, records, logger_name, metric, original):
     return structured or logged
 
 
-def incomplete_marker(root, aliases):
-    """Recognize a bounded explicit marker linking every affected public alias."""
+def incomplete_marker(root, aliases, link=None):
+    """Recognize affected aliases and, after failure, its generation or cause."""
     for path in root.rglob("*.json"):
         try:
             marker = strict_json(path)
@@ -178,12 +178,19 @@ def incomplete_marker(root, aliases):
             for text in leaves
         ):
             continue
-        if all(any(alias.name.lower() in text for text in leaves) for alias in aliases):
+        associated = link is None or any(
+            token and str(token).lower().replace("\\", "/") in text
+            for token in link
+            for text in leaves
+        )
+        if associated and all(
+            any(alias.name.lower() in text for text in leaves) for alias in aliases
+        ):
             return True
     return False
 
 
-def embedding_group(root, generations):
+def embedding_group(root, generations, failure_links=None):
     """Read public archives and aliases; verify population, values and timestamp."""
     run_dir = root / "runs/phy3500_umap_tsne"
     legacy = root / "phy3500_embeddings.joblib"
@@ -193,7 +200,7 @@ def embedding_group(root, generations):
         run_dir / "phy3500_umap_tsne_run_latest.json",
         run_dir / "phy3500_umap_tsne_run_latest.txt",
     ]
-    if incomplete_marker(root, aliases):
+    if incomplete_marker(root, aliases, link=failure_links):
         return "explicitly incomplete"
 
     def read_group(paths):

@@ -61,6 +61,31 @@ def save_umap_tsne_run(**kwargs):
 
 
 def candidate(source, name):
+    if name == "F12":
+        return (
+            source
+            + """
+_r35_embeddings = save_umap_tsne_run
+def save_umap_tsne_run(**kwargs):
+    root = Path(kwargs['paths']['REPORTS_DIR'])
+    root.mkdir(parents=True, exist_ok=True)
+    marker = {'status': 'incomplete', 'artifacts': ['phy3500_embeddings_latest.joblib', 'phy3500_embeddings.joblib', 'phy3500_umap_tsne_run_latest.json', 'phy3500_umap_tsne_run_latest.txt']}
+    (root / 'publication_status.json').write_text(json.dumps(marker), encoding='utf-8')
+    return _r35_embeddings(**kwargs)
+"""
+        )
+    if name == "F5d":
+        patched = candidate(source, "F11log")
+        patched = replace(
+            patched,
+            '"AE reconstruction metric unavailable: %s"',
+            '"PCA baseline unavailable: %s"',
+        )
+        return replace(
+            patched,
+            '"PCA reconstruction metric unavailable: %s"',
+            '"Autoencoder reconstruction unavailable: %s"',
+        )
     if name == "F9unique":
         return (
             source
@@ -260,6 +285,8 @@ def save_json_txt_pair(report, *args, **kwargs):
 
 
 TRIALS = [
+    ("F12", "r3_", False),
+    ("F5d", "r5_", False),
     ("F1", "r1_writer", False),
     ("F8", "r1_writer or r6_", False),
     ("F2", "r2_", False),
@@ -293,10 +320,13 @@ def main():
         default=ROOT / "audit/m27_review_proof_controls_results.json",
     )
     parser.add_argument("--only", nargs="*")
+    parser.add_argument("--working-proofs", action="store_true")
     parser.add_argument(
         "--proofs-ref", default="e0680e022ad08e621508913ed1b041640df48177"
     )
     args = parser.parse_args()
+    if args.working_proofs:
+        args.proofs_ref = None
     source = (ROOT / SOURCE).read_text(encoding="utf-8")
     paths = [
         SOURCE,

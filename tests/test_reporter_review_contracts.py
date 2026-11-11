@@ -87,3 +87,102 @@ def test_text_extraction_allows_equivalent_spacing(reporter_contracts):
         )
         == "0.25"
     )
+
+
+@pytest.mark.parametrize(
+    "association,accepted",
+    [
+        ({}, False),
+        ({"generation": "20261109T170304Z"}, False),
+        ({"generation": "20261109T170305Z"}, True),
+        ({"reason": "M27 publication stage 4 before"}, True),
+    ],
+)
+def test_incomplete_marker_matches_failed_generation_or_cause(
+    reporter_contracts, tmp_path, association, accepted
+):
+    import json
+
+    aliases = [
+        tmp_path / name
+        for name in ["latest.joblib", "legacy.joblib", "latest.json", "latest.txt"]
+    ]
+    marker = dict(
+        status="incomplete", artifacts=[p.name for p in aliases], **association
+    )
+    (tmp_path / "status.json").write_text(json.dumps(marker), encoding="utf-8")
+    assert (
+        reporter_contracts.incomplete_marker(
+            tmp_path,
+            aliases,
+            link=("20261109T170305Z", "M27 publication stage 4 before"),
+        )
+        is accepted
+    )
+    # A declaration of unavailability is visible in nominal checks too; it is
+    # never evidence that an otherwise successful publication is complete.
+    assert reporter_contracts.incomplete_marker(tmp_path, aliases)
+
+
+@pytest.mark.parametrize("generation", [None, "20261109T170304Z"])
+def test_generic_or_stale_marker_does_not_bypass_group_contents(
+    reporter_contracts, tmp_path, generation
+):
+    import json
+
+    marker = {
+        "status": "incomplete",
+        "artifacts": [
+            "phy3500_embeddings_latest.joblib",
+            "phy3500_embeddings.joblib",
+            "phy3500_umap_tsne_run_latest.json",
+            "phy3500_umap_tsne_run_latest.txt",
+        ],
+        "generation": generation,
+    }
+    (tmp_path / "status.json").write_text(json.dumps(marker), encoding="utf-8")
+    with pytest.raises(AssertionError, match="missing members"):
+        reporter_contracts.embedding_group(
+            tmp_path, [], failure_links=("20261109T170305Z", "numerical write failure")
+        )
+
+
+@pytest.mark.parametrize(
+    "metric,correct,inverted",
+    [
+        ("ae", "Autoencoder", "PCA"),
+        ("pca", "PCA", "Autoencoder"),
+    ],
+)
+def test_neutral_cause_requires_independent_metric_attribution(
+    reporter_contracts, metric, correct, inverted
+):
+    original = ValueError("numerical sentinel 4701")
+
+    def record(domain):
+        return logging.LogRecord(
+            "m27_reporter",
+            30,
+            __file__,
+            1,
+            f"{domain} unavailable: {original}",
+            (),
+            None,
+        )
+
+    assert reporter_contracts.metric_diagnostic(
+        {}, [record(correct)], "m27_reporter", metric, original
+    )
+    assert not reporter_contracts.metric_diagnostic(
+        {}, [record(inverted)], "m27_reporter", metric, original
+    )
+    assert not reporter_contracts.metric_diagnostic(
+        {}, [record(inverted)], "unrelated_reporter", metric, original
+    )
+    assert reporter_contracts.metric_diagnostic(
+        {metric: {"status": "unavailable", "reason": str(original)}},
+        [],
+        "m27_reporter",
+        metric,
+        original,
+    )
