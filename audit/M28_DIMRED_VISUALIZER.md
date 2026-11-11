@@ -36,8 +36,9 @@ gives1; a row permutation changes neighborhoods. Subsampling is paired and
 repeatable; this cannot establish the external identity of supplied observations.
 [Primary definition and domain](https://scikit-learn.org/stable/modules/generated/sklearn.manifold.trustworthiness.html).
 
-KDE uses actual SciPy plus a separately injected analytic standard normal.
-For the latter, polar integration gives enclosed mass `1-2*pi*threshold`.
+KDE uses actual SciPy plus a separately injected analytic Gaussian with known
+covariance diag(4,9). Polar integration gives enclosed mass
+`max(0,1-12*pi*threshold)`.
 An independent larger401x401 quadrature domain includes tails omitted by the
 display grid. The601x601 green oracle control verifies known68/95/99% solutions
 within.002. Red numerical comparisons allow.006 for contour-cell discretization,
@@ -110,7 +111,7 @@ is needed. #78 noise/population interpretation, #84 training loss aggregation,
 #85 interpolation physical claims, #89 preprocessing and #90 probability
 definition remain open. M2.8 tests do not turn these into approved policy.
 
-## Checkpoint
+## Initial checkpoint
 
 Initial dedicated suite53PASS (Windows/Python3.11.9, matplotlib3.11.2,
 numpy2.4.6, pandas3.1.1, scipy1.17.1, sklearn1.9.1), with real Agg rendering.
@@ -126,3 +127,135 @@ calibration, genuine Gaia source identity, actual UMAP/t-SNE/AE refitting here,
 GPU/W&B/network, visual publication review, cross-version image/PDF agreement,
 all filesystem failures, notebook execution and line coverage. No claim of
 historical figure corruption without its actual run artifact.
+
+## Delivered evidence and first independent review
+
+**53 dedicated green cases**, actual Windows/Python3.11.9 execution:
+[validation ledger](m28_validation_results.json). Normal and importlib full
+suites each **685PASS/62deselected/7preexisting Gaia warnings**. Dedicated suite
+`-W error` **53PASS**. [Reversed collection/hashseed7](m28_reverse_results.json)
+also53PASS. Black/Ruff, pip check and protected-path diff allPASS. The tests
+actually render with Agg; no tight_layout/savefig/artist method is bypassed.
+PDF verification is limited to format header/trailer and successful backend
+write; PNG is opened/verified with Pillow and checked for informative pixels.
+PDF scientific layout and text extraction remain PA, not certified.
+
+The ledgers record the active parent HEAD and effective LF source/test hashes
+separately. Effective tested files are unchanged by subsequent documentary
+commits. The module is imported from its actual file in an isolated package
+namespace, with real bridge local imports. The optional facade is bypassed
+(#21), not declared generally importable or audited under M2.9. rcParams and
+temporary sys.modules entries are restored; every newly created figure closes.
+The backend remains Agg for the offline test process, matching CI configuration.
+
+### Findings and duplicate exclusions
+
+All15 findings have separate corrective issues after open/closed inventory
+and visualizer/KDE/colorbar searches. **No production correction in this PR.**
+D01 was already identified in M1/#43; the other mechanisms were hypotheses or
+new reproductions. They are not15new astrophysical discoveries. P1 for false
+KDE probability/observation reassignment; P2 for bounded representation and
+robustness findings. Historical incidence/impact is unmeasured.
+
+| Proof ID | Corrective issue | Evidence classification |
+|---|---|---|
+| D01 | [#101 KDE probability mass](https://github.com/PhD-Brown/AstroSpectro/issues/101) | AP demonstrated; M1 risk reverified numerically |
+| D02 | [#102 HR gravity units](https://github.com/PhD-Brown/AstroSpectro/issues/102) | AP polygon geometry defect |
+| D03 | [#103 hardcoded population](https://github.com/PhD-Brown/AstroSpectro/issues/103) | AP displayed count mismatch |
+| D04 | [#104 reconstruction identity](https://github.com/PhD-Brown/AstroSpectro/issues/104) | AP wrong group mean after truncation |
+| D05 | [#105 cluster colorbar](https://github.com/PhD-Brown/AstroSpectro/issues/105) | AP mismatch for nonconsecutive IDs; default contiguous fit unaffected in these examples |
+| D06 | [#106 probability availability](https://github.com/PhD-Brown/AstroSpectro/issues/106) | AP invalid inference from ones; provenance policy open |
+| D07 | [#107 class-only AE plots](https://github.com/PhD-Brown/AstroSpectro/issues/107) | AP scalar-Axes crash |
+| D08 | [#108 profile panels](https://github.com/PhD-Brown/AstroSpectro/issues/108) | AP one-slot crash/unused-slot presentation |
+| D09 | [#109 reconstruction panels](https://github.com/PhD-Brown/AstroSpectro/issues/109) | AP unused-slot presentation |
+| D10 | [#110 variance annotations](https://github.com/PhD-Brown/AstroSpectro/issues/110) | AP count/percentage mismatch |
+| D11 | [#111 small positive MSEs](https://github.com/PhD-Brown/AstroSpectro/issues/111) | AP dropped observations in log bins |
+| D12 | [#112 fifth class](https://github.com/PhD-Brown/AstroSpectro/issues/112) | AP omission outside usual <=4LAMOST classes |
+| D13 | [#113 default export directory](https://github.com/PhD-Brown/AstroSpectro/issues/113) | AP ignored configured output for two direct exporters; others statically similar |
+| D14 | [#114 hidden trustworthiness](https://github.com/PhD-Brown/AstroSpectro/issues/114) | AP computed low values outside displayed range |
+| D15 | [#115 default Balmer labels](https://github.com/PhD-Brown/AstroSpectro/issues/115) | AP nominal default rendering failure; NB01 supplies custom labels |
+
+Existing #50/#73/#88 do not repair a renderer's own truncation. #90 is the
+producer probability boundary, whereas #106 concerns its consumer's missing
+availability input. #59 concerns unattainable producer targets, whereas #110
+concerns an attainable full-model target with a truncated display. #65/#78/
+#84/#85/#89/#95/#100 remain linked without duplicate issues or implied fixes.
+
+### Mutation and admissible controls
+
+[Final green mutation replay](m28_mutation_results.json): baseline53PASS,
+**16KILLED/0SURVIVED**, all selected edited sites reached, matching per-selection
+collection and assertion failures only. [Initial replay](m28_mutation_initial_results.json)
+is preserved. Each mutant is run on the named targeted selection, not claimed
+to have executed the whole repository. No perfect mutation coverage is inferred.
+
+| Mutants | Independent contract exercised |
+|---|---|
+| M01/M07/M08/M10/M11/M15 | Row/class/HR/cluster/confidence/method/KDE population association |
+| M02/M03/M04/M05/M06/M12/M13/M14 | Fraction-to-percent, bestepoch, mean-not-median, distinct AE/PCA MSE, reconstruction, signed profile, normalized density |
+| M09 | Real sklearn trustworthiness compared with independent ranks |
+| M16 | Blank saved figure rejected by real PNG pixel variation |
+
+[Admissible/false-remedy campaign](m28_evidence_final_results.json) contains
+C01–C12/C14PASS and F01/F02KILLED. Its C13/F03 isotropic results are superseded
+**only for KDE** by [final anisotropic replay](m28_kde_final_results.json):
+C13 integrated thresholds PASS, F03 fixed normal thresholds KILLED (two
+assertions, same selected collection). Thus **14 admitted alternatives and
+three rejected false remedies**, separate from16incorrect mutants. Baselines,
+patches, traces and failure texts are retained. Aesthetic palette change and
+alternative canvas export pass. Invalid-length explicit refusal passes while
+permanent refusal fails on a valid aligned population; empty HR regions fail.
+
+Initial audit mistakes remain visible: fixture import order, a tied variance
+ranking fixture, AST bare-return handling, multiline constant trace attribution
+and an insufficiently discriminating isotropic KDE. The final anisotropic
+analytic oracle handles density thresholds above the peak with mass0. These
+are corrections to audit instrumentation/oracles, never production edits.
+
+### Immutable red archive and boundary observations
+
+Designated single final archive:
+**[ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac](https://github.com/PhD-Brown/AstroSpectro/tree/ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac)**,
+ref `audit/43-dimred-visualizer-proofs`, also an ancestor of the integration
+head. Pushed SHA verified and proof file read back through GitHub **before**
+normal removal from the green head. [Exact archive replay](m28_archive_replay_results.json)
+**21FAIL/1PASS/0ERROR/SKIP** on22cases. [Green-head reconstruction replay](m28_green_head_archive_replay_results.json)
+has the same results. [Proof manifest](M28_PROOFS.md), issues and
+[issue index](m28_issue_index.json) link the same immutable source.
+
+```powershell
+python audit/check_m28_evidence.py --mode baseline
+python audit/check_m28_evidence.py --mode proofs --proofs-ref ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac
+python audit/check_m28_evidence.py --mode mutations
+python audit/check_m28_boundaries.py --output test-results/m28-boundaries.json
+```
+
+The default reconstruction ref activates only when the explicit proof file is
+absent. The runner checks that current production equals the selected archive,
+then restores exact proof/fixture/green bytes in its own disposable tree.
+Earlier checkpointd399880 also remains an ancestor, but is not advertised as a
+second final archive. All old ledgers remain byte-identical.
+
+[Final boundary ledger](m28_boundary_final_results.json): **38actual method
+signatures/44observations**, plus static notebook calls. Initial38observations
+remain in [initial ledger](m28_boundary_results.json). These are PA observations,
+not green assertions freezing an invalid-input policy: noSTAR/singleton/two
+points/collinear/nonfinite KDE, missing physical data, empty HR, zero/negative/
+nonfinite MSE, invalidsamplecount/k, emptyhistory/stability and zero family
+weights. Eigenspectrum default parser failure became D15. Out-of-range,
+NaN/Inf supplied confidence can be accepted/clipped/masked; this remains PA
+at the consumer and linked to #90/#106, not claimed as calibrated probabilities.
+Collinear/two-point backend acceptance can depend on floating covariance;
+no successful density computation alone certifies a meaningful2D population.
+
+### Questions for Claude
+
+Challenge numerical oracles and adapter limits first: KDE grid tails and label
+meaning; mismatched population refusal versus information unavailable to the
+API; colorbar versus categorical alternatives; between-feature dispersion;
+annotation grammar/diagnostic keyword bounds; fixture state restoration; actual
+render/export limits. Assess fixed183feature/3PC/min_size300 titles, [M/H]
+versus[Fe/H] conventions and noise-as-anomaly prose as PA/open interpretation
+(#65/#78), not validated taxonomy. Review display clipping/zero/nonfinite and
+missing-panel policies before any production correction. No M2.9 work or
+review correction is authorized before this first independent review.

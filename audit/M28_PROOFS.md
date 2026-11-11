@@ -5,7 +5,7 @@ production visualizer blob624b857bca5833c3401204b0a592b9ae6ffc2902 unchanged.
 `tests/proofs_dimred_visualizer.py` is explicitly executed, never discovered
 by the normal test naming pattern. It is committed in one final archive,
 pushed/read back, then removed normally from the Draft PR head. No xfail.
-The designated archive SHA is linked in the matrix after it exists; its
+The designated archive is **ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac**; its
 ancestry preserves exact conftest, green tests, source, scripts and results.
 
 Final baseline: **22 cases,21FAIL/1PASS/0ERROR/SKIP**. This is **15 grouped
@@ -42,8 +42,8 @@ python -m pytest -q tests/proofs_dimred_visualizer.py --tb=short
 From the green checkout with the fixed archive SHA:
 
 ```powershell
-python audit/check_m28_evidence.py --mode baseline --proofs-ref ARCHIVE_SHA
-python audit/check_m28_evidence.py --mode proofs --proofs-ref ARCHIVE_SHA
+python audit/check_m28_evidence.py --mode baseline --proofs-ref ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac
+python audit/check_m28_evidence.py --mode proofs --proofs-ref ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac
 ```
 
 The runner reads exact proof/green/fixture bytes from Git into its own synthetic

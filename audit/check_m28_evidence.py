@@ -375,6 +375,12 @@ def main():
     parser.add_argument("--proofs-ref")
     parser.add_argument("--only", nargs="+")
     args = parser.parse_args()
+    if (
+        args.proofs_ref is None
+        and not (ROOT / PROOF).exists()
+        and args.mode in ["baseline", "proofs"]
+    ):
+        args.proofs_ref = "ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac"
     protected = [SOURCE, GREEN, "tests/conftest.py"]
     before = {p: digest(ROOT / p) for p in protected}
     source = (ROOT / SOURCE).read_text(encoding="utf-8")
@@ -433,6 +439,17 @@ def main():
         for p in [GREEN, "tests/conftest.py", "pyproject.toml"]:
             shutil.copy2(ROOT / p, tree / p)
         if args.proofs_ref:
+            archived_source = (
+                subprocess.check_output(
+                    ["git", "show", f"{args.proofs_ref}:{SOURCE}"], cwd=ROOT
+                )
+                .decode("utf-8")
+                .replace("\r\n", "\n")
+            )
+            if archived_source != source:
+                raise RuntimeError(
+                    "Production differs from the selected M2.8 proof archive; use its checkout"
+                )
             for p in [PROOF, GREEN, "tests/conftest.py"]:
                 content = subprocess.check_output(
                     ["git", "show", f"{args.proofs_ref}:{p}"], cwd=ROOT
