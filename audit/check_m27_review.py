@@ -317,12 +317,12 @@ def main():
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "audit/m27_review_proof_controls_results.json",
+        default=ROOT / "test-results/m27-r35-controls.json",
     )
     parser.add_argument("--only", nargs="*")
     parser.add_argument("--working-proofs", action="store_true")
     parser.add_argument(
-        "--proofs-ref", default="e0680e022ad08e621508913ed1b041640df48177"
+        "--proofs-ref", default="3eab1fd1e23b92fe796fca090ad126a5fd636627"
     )
     args = parser.parse_args()
     if args.working_proofs:

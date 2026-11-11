@@ -32,8 +32,12 @@ remain bounded to AE/PCA, with neutral failure causes; propagation, structured
 status or relevant reporter logs are alternatives. All scientific policy,
 identity/provenance and astrophysical limits below remain unchanged.
 
-Third immutable proof snapshot and new CI/head links are recorded below and
-in PR99/#43 after commit/push/read-back verification. R3/R5 stay open for a
+Third immutable proof snapshot:
+**[3eab1fd1e23b92fe796fca090ad126a5fd636627](https://github.com/PhD-Brown/AstroSpectro/tree/3eab1fd1e23b92fe796fca090ad126a5fd636627)**,
+committed/pushed and read back on GitHub before normal proof removal.
+[Committed replay](m27_r35_archive_replay_results.json): **38FAIL/7PASS/0ERROR/SKIP**.
+All three archives remain ancestors. New CI/head links are recorded in PR99/#43
+after verification. R3/R5 stay open for a
 strictly limited third Claude review; the other ten threads are not reopened.
 
 [Local validation](m27_r35_validation_results.json), Windows/Python3.11.9:

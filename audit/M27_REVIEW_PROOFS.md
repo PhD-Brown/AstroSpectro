@@ -21,9 +21,19 @@ diagnostic cases verify both metric domains and a correct structured status.
 The new ledger `m27_r35_controls_results.json` contains only this focused replay,
 with per-selection original baselines, source patches/traces and assertions.
 No M01–M18 or N01–N08 campaign was rerun or relabeled. No old result was edited.
-The third fixed SHA is linked after commit/push verification; the explicit
-proof file is removed from the green head by a subsequent normal commit.
-Original51fe4d1 and revised e0680e0 remain ancestors. No new branch or force-push.
+Third fixed snapshot:
+**[3eab1fd1e23b92fe796fca090ad126a5fd636627](https://github.com/PhD-Brown/AstroSpectro/tree/3eab1fd1e23b92fe796fca090ad126a5fd636627)**,
+pushed and read back on GitHub. Its committed replay is recorded in
+`m27_r35_archive_replay_results.json`: **38FAIL/7PASS/0ERROR/SKIP**.
+The explicit proof file is removed from the green head by a subsequent normal
+commit. Original51fe4d1 and revised e0680e0 remain ancestors. No new branch or
+force-push.
+
+From the green head, replay the exact third proof/helper/fixture bytes with
+`python audit/check_m27_review.py --only baseline`, or the focused controls with
+`python audit/check_m27_review.py --only F12 F3 F10 F10marker F5d F5 F5c F11 F11log`.
+The default output is ignored `test-results/m27-r35-controls.json`, preserving
+historical ledgers. An explicit `--proofs-ref` still permits older snapshots.
 
 The helper recognizes marker association by supplied generation/cause values,
 not a fixed key/layout. It is not a general manifest validator. Python write
