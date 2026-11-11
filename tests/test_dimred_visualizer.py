@@ -320,6 +320,9 @@ def test_spectral_type_means_for_aligned_unequal_classes(visualizer_case):
         )
     except Exception as exc:
         assert False, f"Valid aligned reconstruction must remain usable: {exc}"
+    assert (
+        isinstance(result, tuple) and result[0] is not None
+    ), "Valid aligned data need an informative figure"
     _, axes = result
     assert_allclose(heights(axes[0]), [4.5, 28.5, 6.5, 25.5])
     assert_allclose(heights(axes[1]), [15.5, 1513 / 6, 17.5, 1513 / 6 - 3])

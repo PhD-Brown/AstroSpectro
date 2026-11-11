@@ -141,6 +141,13 @@ MUTANTS = [
 
 CONTROLS = [
     (
+        "C14_renderable_mathtext",
+        "plot_eigenspectra",
+        "                        nom,",
+        "                        nom.replace(chr(92)*2, chr(92)),",
+        "default_eigenspectrum",
+    ),
+    (
         "C01_equivalent_percent",
         "plot_variance_explained",
         "ratio * 100",
@@ -188,6 +195,41 @@ CONTROLS = [
         "max(vals.min(), 1e-4)",
         "max(vals.min(), np.finfo(float).tiny)",
         "log_histogram_keeps",
+    ),
+    (
+        "C08_scalar_axes_supported",
+        "plot_ae_embedding",
+        "ax = axes[0]",
+        "axes = np.atleast_1d(axes)\n        ax = axes[0]",
+        "no_physical_columns and plot_ae_embedding",
+    ),
+    (
+        "C09_zoom_scalar_axes_supported",
+        "plot_latent_zoomed",
+        "ax = axes[0]",
+        "axes = np.atleast_1d(axes)\n        ax = axes[0]",
+        "no_physical_columns and plot_latent_zoomed",
+    ),
+    (
+        "C10_profile_single_slot",
+        "plot_hdbscan_feature_profiles",
+        "axes_flat = axes.flatten() if n_show > 1 else [axes]",
+        "axes_flat = np.asarray(axes).ravel()",
+        "cluster_profiles_unavailable and 1",
+    ),
+    (
+        "C11_display_whole_trust_range",
+        "plot_trustworthiness",
+        "ax.set_ylim(0.75, 1.01)",
+        "ax.set_ylim(0, 1.01)",
+        "trustworthiness_axis_contains",
+    ),
+    (
+        "C12_hide_unused_reconstructions",
+        "plot_ae_reconstruction",
+        "for i, (ax, si) in enumerate(zip(axes, idx)):",
+        "for unused in axes[len(idx):]:\n            unused.set_visible(False)\n        for i, (ax, si) in enumerate(zip(axes, idx)):",
+        "more_reconstructions or reconstruction_drawn_rows",
     ),
 ]
 
@@ -325,10 +367,13 @@ def run(tree, tests, selection, reverse=False):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--mode", choices=["mutations", "proofs", "reverse"], default="mutations"
+        "--mode",
+        choices=["mutations", "proofs", "reverse", "baseline"],
+        default="mutations",
     )
     parser.add_argument("--output", default="test-results/m28-replay.json")
     parser.add_argument("--proofs-ref")
+    parser.add_argument("--only", nargs="+")
     args = parser.parse_args()
     protected = [SOURCE, GREEN, "tests/conftest.py"]
     before = {p: digest(ROOT / p) for p in protected}
@@ -344,6 +389,39 @@ def main():
     }
     plans = MUTANTS if args.mode == "mutations" else []
     plans += CONTROLS + FALSE_REMEDIES if args.mode == "proofs" else []
+    if args.mode == "proofs":
+        start = source.index("        zz_flat = ZZ.ravel()")
+        stop = source.index("        params = [", start)
+        old_levels = source[start:stop]
+        mass_levels = """        center = Z_stars.mean(axis=0)
+        scale = Z_stars.std(axis=0)
+        qx = np.linspace(center[0]-8*scale[0], center[0]+8*scale[0], 401)
+        qy = np.linspace(center[1]-8*scale[1], center[1]+8*scale[1], 401)
+        a, b = np.meshgrid(qx, qy)
+        density = kde(np.vstack([a.ravel(), b.ravel()]))
+        ordered = np.sort(density)[::-1]
+        mass = np.cumsum(ordered) / ordered.sum()
+        levels = sorted([float(ordered[np.searchsorted(mass, p)]) for p in [.68, .95, .99]])
+
+"""
+        plans += [
+            (
+                "C13_integrated_kde_mass",
+                "plot_latent_kde",
+                old_levels,
+                mass_levels,
+                "kde_labeled_regions or real_kde_reproducible",
+            ),
+            (
+                "F03_normal_thresholds_for_every_kde",
+                "plot_latent_kde",
+                old_levels,
+                "        levels = [(1-p)/(2*np.pi) for p in [.99, .95, .68]]\n\n",
+                "kde_labeled_regions",
+            ),
+        ]
+    if args.only:
+        plans = [plan for plan in plans if plan[0] in args.only]
     with tempfile.TemporaryDirectory(prefix="m28-synthetic-") as directory:
         tree = Path(directory)
         (tree / "tests").mkdir()
@@ -364,7 +442,12 @@ def main():
         elif (ROOT / PROOF).exists():
             shutil.copy2(ROOT / PROOF, tree / PROOF)
         (tree / "m28_trace.py").write_text(PLUGIN, encoding="utf-8")
-        tests = [GREEN] if args.mode != "proofs" else [PROOF]
+        payload["executed_files_lf_sha256"] = {
+            p: digest(tree / p)
+            for p in [SOURCE, GREEN, "tests/conftest.py", PROOF]
+            if (tree / p).exists()
+        }
+        tests = [GREEN] if args.mode in ["mutations", "reverse"] else [PROOF]
         baseline = run(tree, tests, "", reverse=args.mode == "reverse")
         payload["baseline"] = baseline
         for name, method, old, new, selection in plans:

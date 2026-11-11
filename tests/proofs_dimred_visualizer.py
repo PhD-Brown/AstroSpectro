@@ -8,7 +8,7 @@ import re
 from types import SimpleNamespace
 
 import numpy as np
-from numpy.testing import assert_allclose
+from numpy.testing import assert_allclose, assert_array_equal
 import pandas as pd
 import pytest
 
@@ -38,7 +38,7 @@ def call_or_domain_refusal(call, domain):
 
 def gaussian_population(n=250):
     rng = np.random.default_rng(1729)
-    Z = rng.normal(size=(n, 2))
+    Z = rng.normal(size=(n, 2)) * [2.0, 3.0]
     meta = pd.DataFrame({"teff_gspphot": np.arange(n, dtype=float) + 3500})
     return Z, np.array(["STAR"] * n), meta
 
@@ -77,7 +77,9 @@ def test_kde_labeled_regions_enclose_probability_mass(
                 pass
 
             def __call__(self, grid):
-                return np.exp(-np.sum(grid**2, axis=0) / 2) / (2 * np.pi)
+                return np.exp(
+                    -np.sum((grid / np.array([[2.0], [3.0]])) ** 2, axis=0) / 2
+                ) / (12 * np.pi)
 
         monkeypatch.setattr(scipy.stats, "gaussian_kde", StandardNormal)
     else:
@@ -94,20 +96,21 @@ def test_kde_labeled_regions_enclose_probability_mass(
     # The production display grid excludes tails (~1.6% in this fixture).
     # Integrate on an independent larger domain before comparing global mass.
     grid = np.linspace(-8, 8, 401)
-    gx, gy = np.meshgrid(grid, grid)
+    gx, gy = np.meshgrid(grid * 2, grid * 3)
     positions = np.vstack([gx.ravel(), gy.ravel()])
     broad = (
-        np.exp(-np.sum(positions**2, axis=0) / 2) / (2 * np.pi)
+        np.exp(-np.sum((positions / np.array([[2.0], [3.0]])) ** 2, axis=0) / 2)
+        / (12 * np.pi)
         if analytic
         else fitted[0](positions)
     ).reshape(gx.shape)
-    area = (grid[1] - grid[0]) ** 2
+    area = 6 * (grid[1] - grid[0]) ** 2
     assert_allclose(broad.sum() * area, 1, atol=1e-7)
     masses = []
     for level in cs.levels:
         mass = broad[broad >= level].sum() * area
         if analytic:
-            assert_allclose(mass, 1 - 2 * np.pi * level, atol=0.006)
+            assert_allclose(mass, max(0.0, 1 - 12 * np.pi * level), atol=0.006)
         masses.append(mass)
     # Level order low->high corresponds to enclosed masses high->low.
     assert_allclose(
@@ -162,22 +165,35 @@ def test_reconstruction_cardinality_cannot_reassign_spectral_classes(visualizer_
 
 
 @pytest.mark.parametrize("name", ["plot_hdbscan_clusters", "plot_hdbscan_hr"])
-def test_cluster_colorbar_matches_actual_cluster_rgb(visualizer_case, name):
+def test_cluster_colorbar_matches_actual_cluster_rgb(
+    visualizer_case, hdbscan_module, name
+):
     c = visualizer_case
-    colors = {-1: (0.8, 0.8, 0.8, 1), 2: (1, 0, 0, 1), 7: (0, 0, 1, 1)}
-    hdb = SimpleNamespace(
-        labels_=np.array([2, -1, 7, 2, 7, 2]),
-        cluster_ids_=[2, 7],
-        color_map_=colors,
-        n_clusters_=2,
-        n_noise_=1,
-    )
+    hdb = hdbscan_module.HDBSCANAnalyzer()
+    hdb.labels_ = np.array([2, -1, 7, 2, 7, 2])
+    hdb._compute_stats()
+    hdb._build_palette()
     fig, axes = getattr(c.viz, name)(
         c.Z, hdb, c.y if name.endswith("clusters") else c.meta
     )
-    cb = next(
-        a._colorbar for a in fig.axes if getattr(a, "_colorbar", None) is not None
-    )
+    colorbars = [
+        a._colorbar
+        for a in fig.axes
+        if getattr(a, "_colorbar", None) is not None
+        and a._colorbar.ax.get_ylabel() == "Cluster ID"
+    ]
+    if not colorbars:
+        for cid, sc in zip([2, 7], axes[0].collections[1:]):
+            annotation = next(
+                (t for t in axes[0].texts if t.get_text() == f"C{cid}"), None
+            )
+            assert annotation is not None, "Cluster identity must remain interpretable"
+            assert_allclose(
+                annotation.get_bbox_patch().get_facecolor()[:3],
+                sc.get_facecolors()[0, :3],
+            )
+        return
+    cb = colorbars[0]
     for collection, cid in zip(axes[0].collections[1:], [2, 7]):
         assert_allclose(
             cb.mappable.to_rgba(cid)[:3],
@@ -258,7 +274,15 @@ def test_truncated_variance_annotation_does_not_attribute_wrong_mass(visualizer_
     )
     _, axes = c.viz.plot_variance_explained(pca, threshold=0.95, max_pcs=2)
     annotations = " ".join(t.get_text() for t in axes[1].texts)
-    assert "3 PCs\n→ 85.0%" not in annotations, annotations
+    claims = re.findall(r"(\d+) PCs\s*[^\d]*([\d.]+)%", annotations)
+    for count, percentage in claims:
+        true_mass = sum(pca.explained_variance_ratio[: int(count)]) * 100
+        assert_allclose(
+            float(percentage),
+            true_mass,
+            atol=0.05,
+            err_msg="Annotated PC count and explained mass disagree",
+        )
 
 
 def test_log_histogram_keeps_small_positive_errors(visualizer_case):
@@ -274,7 +298,15 @@ def test_log_histogram_keeps_small_positive_errors(visualizer_case):
 def test_histogram_does_not_silently_omit_fifth_class(visualizer_case):
     c = visualizer_case
     labels = np.array(["A", "B", "C", "D", "E", "E"])
-    _, ax = c.viz.plot_ae_error_distribution(np.array([1.0, 2, 3, 4, 5, 9]), labels)
+    result = call_or_domain_refusal(
+        lambda: c.viz.plot_ae_error_distribution(
+            np.array([1.0, 2, 3, 4, 5, 9]), labels
+        ),
+        ["class", "palette", "population"],
+    )
+    if result is None:
+        return
+    _, ax = result
     represented = {label.split(" ")[0] for label in ax.get_legend_handles_labels()[1]}
     assert represented == set(labels), "Palette length silently drops classes"
 
@@ -312,3 +344,19 @@ def test_trustworthiness_axis_contains_computed_values(visualizer_case):
     lo, hi = sorted(ax.get_ylim())
     vals = np.concatenate([line.get_ydata() for line in ax.lines[:2]])
     assert np.all((vals >= lo) & (vals <= hi)), (vals, (lo, hi))
+
+
+def test_default_eigenspectrum_line_labels_are_renderable(visualizer_case):
+    c = visualizer_case
+    pca = SimpleNamespace(
+        loadings=np.array([[0.1, -0.4, 0.9, -0.2]]),
+        explained_variance_ratio=np.array([1.0]),
+    )
+    try:
+        fig, axes = c.viz.plot_eigenspectra(
+            pca, np.array([3800.0, 4400.0, 5500.0, 6800.0]), n_components=1
+        )
+        fig.canvas.draw()
+    except Exception as exc:
+        assert False, f"Valid default eigen-spectrum labels must render: {exc}"
+    assert_array_equal(axes[0].lines[0].get_ydata(), pca.loadings[0])

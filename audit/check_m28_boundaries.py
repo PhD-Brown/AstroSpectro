@@ -1,6 +1,7 @@
 """Observe unsupported/degenerate visualization boundaries without freezing policy."""
 
 import ast
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -30,6 +31,9 @@ def load(name):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", default="test-results/m28-boundaries.json")
+    args = parser.parse_args()
     source = ROOT / "src/dimred/dimred_visualizer.py"
     package = types.ModuleType("dimred")
     package.__path__ = [str(source.parent)]
@@ -176,6 +180,33 @@ def main():
             {},
         ),
     )
+    pca = types.SimpleNamespace(
+        loadings=np.array([[0.1, -0.4, 0.9, -0.2]]),
+        explained_variance_ratio=np.array([1.0]),
+    )
+    add(
+        "eigenspectra_default_lines",
+        lambda: viz.plot_eigenspectra(
+            pca, np.array([3800.0, 4400.0, 5500.0, 6800.0]), n_components=1
+        ),
+    )
+    for label, confidence in [
+        ("negative", np.full(12, -0.1)),
+        ("above_one", np.full(12, 1.2)),
+        ("NaN", np.full(12, np.nan)),
+        ("Inf", np.full(12, np.inf)),
+        ("wrong_length", np.arange(5.0) / 5),
+    ]:
+        add(
+            "confidence_" + label,
+            lambda confidence=confidence: viz.plot_xgboost_umap(
+                Z,
+                np.array(["F"] * 12),
+                confidence,
+                np.zeros(12, dtype=int),
+                {0: "blue"},
+            ),
+        )
     observations = []
     for label, function in jobs:
         with warnings.catch_warnings(record=True) as captured:
@@ -214,14 +245,44 @@ def main():
                 }
             )
             plt.close("all")
+    consumers = []
+    for path in (ROOT / "notebooks/dimred").glob("*.ipynb"):
+        notebook = json.loads(path.read_text(encoding="utf-8"))
+        for index, cell in enumerate(notebook["cells"]):
+            if cell.get("cell_type") != "code":
+                continue
+            content = "".join(cell["source"])
+            try:
+                tree = ast.parse(content)
+            except SyntaxError:
+                consumers.append(
+                    {"notebook": path.name, "cell_index": index, "unparsed_cell": True}
+                )
+                continue
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr.startswith("plot_")
+                ):
+                    consumers.append(
+                        {
+                            "notebook": path.name,
+                            "cell_index": index,
+                            "line": node.lineno,
+                            "call": ast.unparse(node),
+                        }
+                    )
     result = {
         "python": sys.version,
         "source_sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
         "backend": matplotlib.get_backend(),
         "inventory": inventory,
         "observations": observations,
+        "static_notebook_calls": consumers,
     }
-    destination = ROOT / "audit/m28_boundary_results.json"
+    destination = ROOT / args.output
+    destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(
         json.dumps(result, indent=2, ensure_ascii=True, default=float) + "\n",
         encoding="utf-8",
