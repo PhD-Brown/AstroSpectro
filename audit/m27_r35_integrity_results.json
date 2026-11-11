@@ -1,0 +1,57 @@
+{
+  "starting_head": "38acff8fe2082d9f94099df0311b002a29b7ab5b",
+  "historical_json_unchanged": {
+    "audit/m23_mutation_results.json": true,
+    "audit/m24_mutation_results.json": true,
+    "audit/m25_mutation_results.json": true,
+    "audit/m25_review_historical_results.json": true,
+    "audit/m25_review_mutation_results.json": true,
+    "audit/m25_review_proof_limit_results.json": true,
+    "audit/m26_exclusion_inventory.json": true,
+    "audit/m26_final_review_controls_results.json": true,
+    "audit/m26_final_review_validation_results.json": true,
+    "audit/m26_mutation_followup_results.json": true,
+    "audit/m26_mutation_initial_results.json": true,
+    "audit/m26_proof_results.json": true,
+    "audit/m26_review_green_followup_results.json": true,
+    "audit/m26_review_green_initial_results.json": true,
+    "audit/m26_review_proof_results.json": true,
+    "audit/m26_review_proofs_initial_results.json": true,
+    "audit/m26_review_r1_results.json": true,
+    "audit/m26_review_r2_followup_results.json": true,
+    "audit/m26_review_r2_initial_results.json": true,
+    "audit/m26_review_r3_results.json": true,
+    "audit/m26_review_validation_results.json": true,
+    "audit/m26_shape_proof_results.json": true,
+    "audit/m26_validation_results.json": true,
+    "audit/m27_archive_replay_results.json": true,
+    "audit/m27_boundary_results.json": true,
+    "audit/m27_mutation_followup_results.json": true,
+    "audit/m27_mutation_initial_results.json": true,
+    "audit/m27_mutation_results.json": true,
+    "audit/m27_proof_results.json": true,
+    "audit/m27_reverse_results.json": true,
+    "audit/m27_review_archive_replay_results.json": true,
+    "audit/m27_review_integrity_results.json": true,
+    "audit/m27_review_proof_controls_initial_results.json": true,
+    "audit/m27_review_proof_controls_results.json": true,
+    "audit/m27_review_reference_results.json": true,
+    "audit/m27_review_reverse_results.json": true,
+    "audit/m27_review_semantic_final_results.json": true,
+    "audit/m27_review_semantic_mutation_results.json": true,
+    "audit/m27_review_validation_results.json": true,
+    "audit/m27_validation_results.json": true
+  },
+  "archives": {
+    "51fe4d1ff3645aea28cda59f0260acc86fa0c834": {
+      "is_ancestor": true,
+      "proof_blob": "4c5ea5f5b6feded2b518952d58dbab6a2e6b4fa5"
+    },
+    "e0680e022ad08e621508913ed1b041640df48177": {
+      "is_ancestor": true,
+      "proof_blob": "0310847cad909197ea5c4f27a71cdf0ac6202e16"
+    }
+  },
+  "production_blob": "b966d9b90f056baa37c0ccbb68135c71ff65de92",
+  "protected_paths_equal_base": true
+}

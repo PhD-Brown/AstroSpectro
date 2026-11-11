@@ -1,0 +1,444 @@
+{
+  "schema": 1,
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0",
+    "pytest": "8.4.2"
+  },
+  "inventory": [
+    {
+      "name": "class_counts",
+      "line": 60,
+      "signature": "labels"
+    },
+    {
+      "name": "safe_df_records",
+      "line": 75,
+      "signature": "df: Optional[pd.DataFrame], max_rows: Optional[int]=None"
+    },
+    {
+      "name": "json_default",
+      "line": 103,
+      "signature": "obj: Any"
+    },
+    {
+      "name": "embedding_stats",
+      "line": 130,
+      "signature": "Z: Optional[np.ndarray]"
+    },
+    {
+      "name": "embedding_stats_nd",
+      "line": 158,
+      "signature": "Z: Optional[np.ndarray], max_axes: int=3"
+    },
+    {
+      "name": "shape_or_none",
+      "line": 182,
+      "signature": "x: Any"
+    },
+    {
+      "name": "sensitivity_shapes",
+      "line": 198,
+      "signature": "sensitivity_dict: Optional[dict]"
+    },
+    {
+      "name": "numeric_means",
+      "line": 211,
+      "signature": "df: Optional[pd.DataFrame]"
+    },
+    {
+      "name": "fmt_seconds",
+      "line": 225,
+      "signature": "value: Any"
+    },
+    {
+      "name": "vector_stats",
+      "line": 240,
+      "signature": "arr: Any"
+    },
+    {
+      "name": "cluster_top_counts",
+      "line": 266,
+      "signature": "labels, top_n: int=10"
+    },
+    {
+      "name": "top3_pred_by_cluster",
+      "line": 279,
+      "signature": "cluster_arr, pred_arr"
+    },
+    {
+      "name": "make_timestamp",
+      "line": 303,
+      "signature": ""
+    },
+    {
+      "name": "make_run_dir",
+      "line": 313,
+      "signature": "reports_dir: Path, sub: str"
+    },
+    {
+      "name": "save_joblib_pair",
+      "line": 325,
+      "signature": "obj: Any, run_dir: Path, stem_run: str, stem_latest: str, legacy_path: Optional[Path]=None"
+    },
+    {
+      "name": "save_json_txt_pair",
+      "line": 376,
+      "signature": "report: dict, run_dir: Path, stem_run: str, stem_latest: str, text_lines: List[str]"
+    },
+    {
+      "name": "save_pca_run",
+      "line": 422,
+      "signature": "*, pca, pca_spec, scores: np.ndarray, scores_spec: np.ndarray, X: np.ndarray, X_spec: np.ndarray, y: np.ndarray, y_spec: np.ndarray, meta: pd.DataFrame, meta_spec: pd.DataFrame, feature_names: list, paths: dict, FEATURES_PATH: Path, CATALOG_PATH: Path, FIGURES_DIR: Path, corr_df: Optional[pd.DataFrame]=None, sep_df: Optional[pd.DataFrame]=None, recon_df: Optional[pd.DataFrame]=None"
+    },
+    {
+      "name": "save_umap_tsne_run",
+      "line": 696,
+      "signature": "*, Z_umap: Optional[np.ndarray], Z_tsne: Optional[np.ndarray], Z_umap3: Optional[np.ndarray]=None, Z_umap_neg: Optional[np.ndarray]=None, y, meta: Optional[pd.DataFrame], scores_95: Optional[np.ndarray], umap_engine=None, tsne_engine=None, paths: dict, FIGURES_DIR: Path, pca_output_path: Optional[str]=None, cluster_labels=None, labels_pres=None, clusterer=None, y_pred=None, confidence=None, classes_pred=None, y_aligned=None, cl_aligned=None, fg_mask=None, path_xgb: Optional[Path]=None, path_fg: Optional[Path]=None, axis3_best_param: Optional[str]=None, axis3_best_corr: Optional[float]=None, path_3d_html: Optional[Path]=None, path_3d_teff: Optional[Path]=None, path_3d_feh: Optional[Path]=None, sensitivity_umap: Optional[dict]=None, sensitivity_tsne: Optional[dict]=None, stab_umap: Optional[pd.DataFrame]=None, stab_tsne: Optional[pd.DataFrame]=None, ZOOM_X: Optional[tuple]=None, ZOOM_Y: Optional[tuple]=None, features_stem: Optional[str]=None"
+    },
+    {
+      "name": "save_autoencoder_run",
+      "line": 1203,
+      "signature": "*, ae, X: np.ndarray, y, meta: pd.DataFrame, feature_names: list, paths: dict, FEATURES_PATH: Optional[Path]=None, CATALOG_PATH: Optional[Path]=None, FIGURES_DIR: Path, MODELS_DIR: Optional[Path]=None, ae_model_path: Optional[Path]=None, Z_ae: Optional[np.ndarray]=None, X_recon: Optional[np.ndarray]=None, history: Optional[dict]=None, comparison_df: Optional[pd.DataFrame]=None, summary_df: Optional[pd.DataFrame]=None, df_summary: Optional[pd.DataFrame]=None, scores_pca: Optional[np.ndarray]=None, pca=None, n_pcs_95: Optional[int]=None, Z_umap: Optional[np.ndarray]=None, Z_tsne: Optional[np.ndarray]=None, Z_interp: Optional[np.ndarray]=None, X_interp: Optional[np.ndarray]=None, idx_cold: Optional[int]=None, idx_hot: Optional[int]=None, teff_cold: Optional[float]=None, teff_hot: Optional[float]=None, corr_pca: Optional[pd.DataFrame]=None"
+    }
+  ],
+  "probes": [
+    {
+      "name": "class_counts_mixed_coerced",
+      "value": "{'1': 2, 'F': 1}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "class_counts_missing",
+      "value": null,
+      "exception": "TypeError",
+      "message": "'<' not supported between instances of 'NoneType' and 'str'",
+      "warnings": []
+    },
+    {
+      "name": "class_counts_object_noncomparable",
+      "value": null,
+      "exception": "TypeError",
+      "message": "'<' not supported between instances of 'str' and 'int'",
+      "warnings": []
+    },
+    {
+      "name": "df_limit_-1",
+      "value": "[{'x': 1.0}, {'x': 4.0}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_limit_two",
+      "value": null,
+      "exception": "TypeError",
+      "message": "cannot do positional indexing on Index with these indexers [two] of type str",
+      "warnings": []
+    },
+    {
+      "name": "df_limit_0.5",
+      "value": null,
+      "exception": "TypeError",
+      "message": "cannot do positional indexing on Index with these indexers [0.5] of type float",
+      "warnings": []
+    },
+    {
+      "name": "df_infinity",
+      "value": "[{'x': inf}, {'x': -inf}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_missing_float64",
+      "value": "[{'x': 1.0}, {'x': nan}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_missing_Float64",
+      "value": "[{'x': 1.0}, {'x': None}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_missing_str",
+      "value": "[{'x': 'F'}, {'x': nan}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_missing_string",
+      "value": "[{'x': 'F'}, {'x': None}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_missing_Int64",
+      "value": "[{'x': 1}, {'x': None}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "df_missing_boolean",
+      "value": "[{'x': True}, {'x': None}]",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_all_nan_axis",
+      "value": "{'shape': [2, 2], 'x_min': nan, 'x_max': nan, 'y_min': 1.0, 'y_max': 3.0, 'x_mean': nan, 'y_mean': 2.0, 'x_std': nan, 'y_std': 1.0}",
+      "exception": null,
+      "warnings": [
+        "All-NaN slice encountered",
+        "All-NaN slice encountered",
+        "Mean of empty slice",
+        "Degrees of freedom <= 0 for slice."
+      ]
+    },
+    {
+      "name": "embedding_stats_nd_all_nan_axis",
+      "value": "{'shape': [2, 2], 'axis_1_min': nan, 'axis_1_max': nan, 'axis_1_mean': nan, 'axis_1_std': nan, 'axis_2_min': 1.0, 'axis_2_max': 3.0, 'axis_2_mean': 2.0, 'axis_2_std': 1.0}",
+      "exception": null,
+      "warnings": [
+        "All-NaN slice encountered",
+        "All-NaN slice encountered",
+        "Mean of empty slice",
+        "Degrees of freedom <= 0 for slice."
+      ]
+    },
+    {
+      "name": "embedding_stats_infinity",
+      "value": "{'shape': [2, 2], 'x_min': 1.0, 'x_max': inf, 'y_min': 2.0, 'y_max': 3.0, 'x_mean': inf, 'y_mean': 2.5, 'x_std': nan, 'y_std': 0.5}",
+      "exception": null,
+      "warnings": [
+        "invalid value encountered in subtract"
+      ]
+    },
+    {
+      "name": "embedding_stats_nd_infinity",
+      "value": "{'shape': [2, 2], 'axis_1_min': 1.0, 'axis_1_max': inf, 'axis_1_mean': inf, 'axis_1_std': nan, 'axis_2_min': 2.0, 'axis_2_max': 3.0, 'axis_2_mean': 2.5, 'axis_2_std': 0.5}",
+      "exception": null,
+      "warnings": [
+        "invalid value encountered in subtract"
+      ]
+    },
+    {
+      "name": "embedding_stats_zero_rows",
+      "value": null,
+      "exception": "ValueError",
+      "message": "zero-size array to reduction operation fmin which has no identity",
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_nd_zero_rows",
+      "value": null,
+      "exception": "ValueError",
+      "message": "zero-size array to reduction operation fmin which has no identity",
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_zero_columns",
+      "value": "{'shape': [3, 0]}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_nd_zero_columns",
+      "value": "{'shape': [3, 0]}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_one_dimension",
+      "value": "{'shape': [2]}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_nd_one_dimension",
+      "value": "{'shape': [2]}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_nonnumeric",
+      "value": null,
+      "exception": "UFuncTypeError",
+      "message": "ufunc 'fmin' did not contain a loop with signature matching types (dtype('<U1'), dtype('<U1')) -> None",
+      "warnings": []
+    },
+    {
+      "name": "embedding_stats_nd_nonnumeric",
+      "value": null,
+      "exception": "UFuncTypeError",
+      "message": "ufunc 'fmin' did not contain a loop with signature matching types (dtype('<U1'), dtype('<U1')) -> None",
+      "warnings": []
+    },
+    {
+      "name": "max_axes_-1",
+      "value": "{'shape': [2, 2]}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "max_axes_0",
+      "value": "{'shape': [2, 2]}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "max_axes_1",
+      "value": "{'shape': [2, 2], 'axis_1_min': 1.0, 'axis_1_max': 4.0, 'axis_1_mean': 2.5, 'axis_1_std': 1.5}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "max_axes_0.5",
+      "value": null,
+      "exception": "TypeError",
+      "message": "'float' object cannot be interpreted as an integer",
+      "warnings": []
+    },
+    {
+      "name": "max_axes_two",
+      "value": null,
+      "exception": "TypeError",
+      "message": "'<' not supported between instances of 'str' and 'int'",
+      "warnings": []
+    },
+    {
+      "name": "shape_conversion_failure",
+      "value": "None",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "numeric_means_nonfinite",
+      "value": "{'nan': nan, 'inf': inf}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "cluster_noninteger",
+      "value": "{'0': 1}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "cluster_string",
+      "value": null,
+      "exception": "ValueError",
+      "message": "invalid literal for int() with base 10: np.str_('A')",
+      "warnings": []
+    },
+    {
+      "name": "cluster_negative_top_n",
+      "value": "{'2': 2, '1': 1}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "prediction_missing",
+      "value": "{'1': {'F': 2}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "foreign_figure_inventory",
+      "old_figure_included": true,
+      "artifact_fields": [
+        "png_files",
+        "html_files",
+        "n_png",
+        "n_html"
+      ],
+      "top_level_report_fields": [
+        "run_timestamp_utc",
+        "notebook",
+        "captured_sections",
+        "paths",
+        "shapes",
+        "class_counts",
+        "timings_seconds",
+        "parameters",
+        "embedding_stats",
+        "stability",
+        "sensitivity",
+        "zoom_pair_summary",
+        "hdbscan_summary",
+        "xgboost_summary",
+        "umap3d_summary",
+        "artifacts"
+      ]
+    },
+    {
+      "name": "run_directory_file_collision",
+      "value": null,
+      "exception": "FileExistsError",
+      "message": "[WinError 183] Impossible de créer un fichier déjà existant: 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\m27-synthetic-probes-z22ps27l\\\\not_a_directory'",
+      "warnings": []
+    },
+    {
+      "name": "ae_constant_parameter",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': None, 'latent_axis_2': None}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": [
+        "An input array is constant; the correlation coefficient is not defined.",
+        "An input array is constant; the correlation coefficient is not defined."
+      ]
+    },
+    {
+      "name": "ae_constant_latent",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': None, 'latent_axis_2': None}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": [
+        "An input array is constant; the correlation coefficient is not defined.",
+        "An input array is constant; the correlation coefficient is not defined."
+      ]
+    },
+    {
+      "name": "ae_two_valid_parameters",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': None, 'latent_axis_2': None}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_two_finite_pairs",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 3, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': 0.9999999999999999, 'latent_axis_2': -1.0}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_nonfinite_history",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': 2, 'ae_best_val_loss': nan, 'ae_final_train_loss': inf, 'ae_final_val_loss': 1.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': 0.942857142857143, 'latent_axis_2': -0.942857142857143}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_array_history",
+      "value": "{'metrics': {'ae_fit_time_s': None, 'ae_epochs_done': None, 'ae_best_val_loss': 1.0, 'ae_final_train_loss': 3.0, 'ae_final_val_loss': 2.0, 'ae_mse_global': 0.1111111111111111, 'pca_mse_2_components': None, 'pca_mse_n_components_95': None, 'n_pcs_95': None}, 'correlations': {'ae_latent_vs_physical_spearman': {'teff_gspphot': {'latent_axis_1': 0.942857142857143, 'latent_axis_2': -0.942857142857143}}, 'pca_corr_table': None}}",
+      "exception": null,
+      "warnings": []
+    },
+    {
+      "name": "ae_short_latent",
+      "value": null,
+      "exception": "IndexError",
+      "message": "boolean index did not match indexed array along axis 0; size of axis is 3 but size of corresponding boolean axis is 6",
+      "warnings": []
+    },
+    {
+      "name": "ae_one_latent_axis",
+      "value": null,
+      "exception": "IndexError",
+      "message": "index 1 is out of bounds for axis 1 with size 1",
+      "warnings": []
+    }
+  ],
+  "limit": "Observations of current invalid-input policies, not green acceptance requirements; only synthetic temporary data."
+}

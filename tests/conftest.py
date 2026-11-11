@@ -15,6 +15,146 @@ import pytest
 
 
 @pytest.fixture
+def reporter_module():
+    """Load the actual reporter independently of the optional facade (#21)."""
+    path = Path(__file__).resolve().parents[1] / "src/dimred/run_reporter.py"
+    spec = importlib.util.spec_from_file_location("m27_reporter", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def reporter_contracts():
+    path = Path(__file__).resolve().parent / "reporter_review_contracts.py"
+    spec = importlib.util.spec_from_file_location("m27_review_contracts", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def reporter_case(tmp_path, monkeypatch, reporter_module):
+    """Synthetic populations with row markers and deterministic method boundaries."""
+    monkeypatch.setattr(reporter_module, "make_timestamp", lambda: "20261109T170304Z")
+    reports = tmp_path / "reports"
+    figures = tmp_path / "figures"
+    figures.mkdir()
+    # Distinct values make row permutations and method substitutions observable.
+    X = np.array(
+        [[3.0, 0, 0], [-3, 0, 0], [0, 2, 0], [0, -2, 0], [0, 0, 1], [0, 0, -1]]
+    )
+    y = np.array(["STAR", "QSO", "STAR", "GALAXY", "STAR", "QSO"])
+    meta = pd.DataFrame({"obsid": [91, 7, 300, 18, 2, 700]}, index=[8, 3, 9, 1, 0, 6])
+    scores = np.array(
+        [
+            [11.0, 2, 31, 4],
+            [19, 7, 8, 43],
+            [3, 17, 5, 67],
+            [23, 6, 41, 9],
+            [5, 29, 13, 2],
+            [37, 1, 7, 59],
+        ]
+    )
+
+    class PCA:
+        cumulative_variance = np.array([0.80, 0.90, 0.96, 1.0])
+
+        def n_components_for_variance(self, threshold):
+            return next(
+                i
+                for i, total in enumerate(self.cumulative_variance, 1)
+                if total >= threshold
+            )
+
+        def variance_summary(self):
+            return pd.DataFrame({"PC": [1, 2, 3, 4], "ratio": [0.8, 0.1, 0.06, 0.04]})
+
+        def top_features_per_pc(self, pc_idx=0, n_top=10):
+            return pd.DataFrame(
+                {"feature": ["gamma", "alpha"], "loading": [1 + pc_idx, -2 - pc_idx]}
+            )
+
+    class AE:
+        history_ = {
+            "train_loss": [9.0, 3.0, 5.0, 2.0],
+            "val_loss": [8.0, 1.0, 4.0, 6.0],
+        }
+        fit_time_ = 12.345
+
+        def __init__(self):
+            self.encoded = []
+
+        def encode(self, values):
+            self.encoded.append(np.array(values, copy=True))
+            return values[:, :2] * [2.0, 3.0]
+
+        def reconstruction_mse(self, values):
+            # Controlled metric boundary: half the third-coordinate residual.
+            residual = values[:, 2] * 0.5
+            return float(residual @ residual / values.size)
+
+    class SpectralPCA(PCA):
+        cumulative_variance = np.array([0.5, 0.995])
+
+        def variance_summary(self):
+            return pd.DataFrame({"PC": [1, 2], "ratio": [0.5, 0.495]})
+
+    common = {"paths": {"REPORTS_DIR": reports}, "FIGURES_DIR": figures}
+    features = tmp_path / "features_synthetic.csv"
+    catalog = tmp_path / "catalog_synthetic.csv"
+    names = ["gamma", "alpha", "beta"]
+    pca_args = dict(
+        common,
+        pca=PCA(),
+        pca_spec=SpectralPCA(),
+        scores=scores,
+        scores_spec=scores[:, [2, 0]],
+        X=X,
+        X_spec=X[:, ::-1],
+        y=y,
+        y_spec=np.array(["M", "M", "F", "M", "G", "M"]),
+        meta=meta,
+        meta_spec=meta.iloc[::-1],
+        feature_names=names,
+        FEATURES_PATH=features,
+        CATALOG_PATH=catalog,
+    )
+    embedding_args = dict(
+        common,
+        Z_umap=scores[:, :2],
+        Z_tsne=None,
+        y=y,
+        meta=meta,
+        scores_95=scores[:, :3],
+    )
+    ae = AE()
+    ae_args = dict(
+        common,
+        ae=ae,
+        X=X,
+        y=y,
+        meta=meta,
+        feature_names=names,
+        FEATURES_PATH=features,
+        CATALOG_PATH=catalog,
+    )
+    return types.SimpleNamespace(
+        root=tmp_path,
+        reports=reports,
+        figures=figures,
+        X=X,
+        y=y,
+        meta=meta,
+        scores=scores,
+        ae=ae,
+        pca_args=pca_args,
+        embedding_args=embedding_args,
+        ae_args=ae_args,
+    )
+
+
+@pytest.fixture
 def bridge_module(monkeypatch):
     """Execute the actual bridge source while restoring its sys.path changes."""
     monkeypatch.setattr(sys, "path", sys.path.copy())

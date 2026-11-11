@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "head": "51fe4d1ff3645aea28cda59f0260acc86fa0c834",
+  "base": "1e2266385eab287d3a1c54c2e919e012293fa44b",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "executable": "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+  "tested_lf_sha256": {
+    "src/dimred/run_reporter.py": "b4a55744237076ec1a78293651623a701809ba85d1afc9160a2c6e69c326db29",
+    "tests/test_dimred_run_reporter.py": "9c1b0e989133c05bc5e97831720366b775555051e17863d42ca06267bd83f510",
+    "tests/conftest.py": "b96e9a7858bc691b4e91bc346f0138ce7b4a6e06d384d34807cb46d4e438092e"
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "joblib": "1.6.0",
+    "pytest": "8.4.2",
+    "pytest-socket": "0.7.0",
+    "black": "24.4.2",
+    "ruff": "0.5.0"
+  },
+  "checks": [
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_run_reporter.py",
+        "-W",
+        "error",
+        "--junitxml=test-results/m27-final-targeted.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 85%]\n............                                                             [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m27\\test-results\\m27-final-targeted.xml -\n84 passed in 1.63s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--junitxml=test-results/m27-final-fast.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 11%]\n........................................................................ [ 23%]\n........................................................................ [ 35%]\n........................................................................ [ 47%]\n........................................................................ [ 59%]\n........................................................................ [ 71%]\n........................................................................ [ 83%]\n........................................................................ [ 95%]\n..........................                                               [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m27\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m27\\test-results\\m27-final-fast.xml -\n602 passed, 62 deselected, 7 warnings in 15.52s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--import-mode=importlib",
+        "--junitxml=test-results/m27-final-importlib.xml"
+      ],
+      "returncode": 0,
+      "stdout": "........................................................................ [ 11%]\n........................................................................ [ 23%]\n........................................................................ [ 35%]\n........................................................................ [ 47%]\n........................................................................ [ 59%]\n........................................................................ [ 71%]\n........................................................................ [ 83%]\n........................................................................ [ 95%]\n..........................                                               [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m27\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m27\\test-results\\m27-final-importlib.xml -\n602 passed, 62 deselected, 7 warnings in 14.55s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black",
+        "--check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m27_mutations.py",
+        "audit/check_m27_boundaries.py",
+        "audit/check_m27_validation.py"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "All done! ✨ 🍰 ✨\n41 files would be left unchanged.\n"
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m27_mutations.py",
+        "audit/check_m27_boundaries.py",
+        "audit/check_m27_validation.py"
+      ],
+      "returncode": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "returncode": 0,
+      "stdout": "No broken requirements found.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "warning: in the working copy of 'audit/check_m27_boundaries.py', LF will be replaced by CRLF the next time Git touches it\nwarning: in the working copy of 'audit/check_m27_mutations.py', LF will be replaced by CRLF the next time Git touches it\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "1e2266385eab287d3a1c54c2e919e012293fa44b",
+        "--",
+        "src",
+        "notebooks",
+        "data",
+        "requirements",
+        "pyproject.toml",
+        ".github",
+        "scripts",
+        "app.py",
+        "AGENTS.md"
+      ],
+      "returncode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "status",
+        "--short",
+        "--branch"
+      ],
+      "returncode": 0,
+      "stdout": "## audit/43-dimred-run-reporter...origin/audit/43-dimred-run-reporter\n M audit/check_m27_boundaries.py\n M audit/check_m27_mutations.py\n M audit/m27_boundary_results.json\nD  tests/proofs_dimred_run_reporter.py\n?? audit/check_m27_validation.py\n?? audit/m27_archive_replay_results.json\n?? audit/m27_mutation_results.json\n?? audit/m27_validation_results.json\n",
+      "stderr": ""
+    }
+  ],
+  "protected_unchanged": true
+}
