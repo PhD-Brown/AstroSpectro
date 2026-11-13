@@ -2,21 +2,73 @@
 
 from io import BytesIO
 import re
+import unicodedata
 
 import numpy as np
 from numpy.testing import assert_allclose, assert_array_equal
 
 
 def tokens(label):
-    return set(re.findall(r"[\w]+", label.casefold()))
+    folded = "".join(
+        c
+        for c in unicodedata.normalize("NFKD", label.casefold())
+        if not unicodedata.combining(c)
+    )
+    return set(re.findall(r"[\w]+", folded))
 
 
 def numbers(label):
+    """Read decimal dot/comma, spaced thousands, scientific notation and k/M.
+
+    A single comma is decimal (French convention); unambiguous repeated comma
+    thousands are supported. A lone ``1,234`` is inherently locale ambiguous.
+    """
+    label = re.sub(r"\b\d{1,3}(?:,\d{3}){2,}\b", lambda m: m[0].replace(",", ""), label)
     normalized = re.sub(r"(?<=\d)[ \u202f\u00a0](?=\d{3}(?:\D|$))", "", label)
     return [
-        float(n)
-        for n in re.findall(r"[-+]?\d+(?:[.,]\d+)?(?:e[-+]?\d+)?", normalized, re.I)
+        float(n.replace(",", ".")) * ({"k": 1e3, "K": 1e3, "M": 1e6}.get(suffix, 1))
+        for n, suffix in re.findall(
+            r"([-+]?\d+(?:[.,]\d+)?(?:[eE][-+]?\d+)?)\s*([kKM]?)(?!\w)", normalized
+        )
     ]
+
+
+def assert_variance_annotations(ax, ratios, expected_count=None):
+    """Link every variance claim to its component count, independent of prose."""
+    seen = []
+    component = r"(?:PCs?|CPs?|composantes?|components?)"
+    for annotation in ax.texts:
+        label = annotation.get_text()
+        percentages = re.findall(r"(\d+(?:[.,]\d+)?)\s*%", label)
+        counts = re.findall(
+            rf"(\d+)\s*{component}\b|\b{component}\s*[:=]?\s*(\d+)", label, re.I
+        )
+        counts = [int(a or b) for a, b in counts]
+        if percentages and not counts:
+            assert hasattr(
+                annotation, "xy"
+            ), "Variance claim needs a count or annotated coordinate"
+            counts = [int(annotation.xy[0])]
+        for count in counts:
+            assert 1 <= count <= len(ratios), "Invalid component count"
+            for percentage in percentages:
+                assert_allclose(
+                    numbers(percentage)[0],
+                    sum(ratios[:count]) * 100,
+                    atol=0.05,
+                    rtol=0,
+                    err_msg="Annotated component count and variance disagree",
+                )
+                seen.append(count)
+    if expected_count is not None:
+        assert expected_count in seen, "Expected variance/component relation is missing"
+
+
+def visible_legends(fig):
+    """Read displayed Legend artists, including figure and additional legends."""
+    from matplotlib.legend import Legend
+
+    return [legend for legend in fig.findobj(match=Legend) if legend.get_visible()]
 
 
 def assert_class_label(label, cls, count):
@@ -111,7 +163,7 @@ def capture_histograms(monkeypatch):
     return calls
 
 
-def assert_histogram_population(call, expected):
+def assert_histogram_population(call, expected, normalization="conditional"):
     """Count samples independently, including the closed final bin endpoint."""
     expected = np.asarray(expected)
     _, edges, patches = call["result"]
@@ -135,11 +187,69 @@ def assert_histogram_population(call, expected):
     assert sum(wanted) > 0, "A nominal distribution must contain observations"
     plotted = np.array([p.get_height() for p in patches])
     reference = np.array(wanted, dtype=float)
-    if call["density"]:
+    if normalization == "total":
+        reference /= len(expected) * np.diff(edges)
+    elif call["density"]:
         reference /= sum(wanted) * np.diff(edges)
     assert_allclose(plotted, reference, atol=1e-10, rtol=1e-10)
     missing = len(expected) - sum(wanted)
     return missing, edges
+
+
+def assert_histogram_representation(call, expected, cls):
+    """Admit conditional density with disclosure or identified total density.
+
+    Proposed R10 test policy, subject to scientific review. Heights come from
+    independently counted observations; text cannot change the denominator.
+    """
+    ax = call["ax"]
+    texts = [t.get_text() for t in [*ax.texts, *ax.figure.texts] if t.get_visible()]
+    texts += [
+        t.get_text()
+        for legend in visible_legends(ax.figure)
+        for t in legend.texts
+        if t.get_visible()
+    ]
+    relevant = [s for s in texts if cls.casefold() in tokens(s)]
+    norm_words = {
+        "normalized",
+        "normalised",
+        "normalisee",
+        "normalise",
+        "normalisation",
+        "normalization",
+    }
+    total_claims = [
+        s
+        for s in relevant
+        if tokens(s).intersection(norm_words) and "total" in tokens(s)
+    ]
+    convention = "total" if total_claims else "conditional"
+    missing, edges = assert_histogram_population(call, expected, convention)
+    if convention == "total":
+        for label in total_claims:
+            ns = numbers(label)
+            declared = re.search(
+                r"\btotal\b\D*?(\d+(?:[.,]\d+)?\s*[kKM]?)", label, re.I
+            )
+            assert declared and numbers(declared[1]) == [
+                len(expected)
+            ], "Wrong total-normalization reference population"
+            assert tokens(label + " " + ax.get_ylabel()).intersection(
+                {"density", "densite"}
+            ), "Density scale must be identified"
+            assert all(
+                any(abs(v - b) <= max(5e-7, abs(b) * 0.005) for v in ns)
+                for b in [edges[0], edges[-1]]
+            ), "Total density needs its actual support"
+        assert not any(
+            tokens(s).intersection({"conditional", "conditionnelle"}) for s in relevant
+        ), "Contradictory histogram normalization claims"
+    else:
+        assert missing == 0 or exclusion_report(
+            ax, cls, missing, len(expected), edges, expected
+        ), "Undisclosed conditional-density exclusion"
+    return convention, missing, edges
 
 
 def exclusion_report(ax, cls, missing, total, edges, values=None):
@@ -153,11 +263,31 @@ def exclusion_report(ax, cls, missing, total, edges, values=None):
     for artist in ax.texts:
         label = artist.get_text()
         if not tokens(label).intersection(
-            {"outside", "excluded", "hors", "exclus", "exclues", "tronque"}
+            {
+                "outside",
+                "excluded",
+                "hors",
+                "exclus",
+                "exclues",
+                "tronque",
+                "tronquee",
+                "tronques",
+                "tronquees",
+            }
         ):
             continue
         vals = numbers(label)
-        if cls.casefold() in tokens(label) and missing in vals and total in vals:
+        number = r"\d+(?:[ \u202f\u00a0]\d{3})*(?:[.,]\d+)?\s*[kKM]?"
+        reports = []
+        for pattern in [
+            rf"(?:excluded|exclu\w*|outside)\s*({number})\s*(?:of|sur|out of)\s*({number})",
+            rf"({number})\s*(?:observations?\s+)?(?:exclu\w*|tronqu\w*)\s*(?:of|sur)\s*({number})",
+        ]:
+            reports.extend(re.findall(pattern, label, re.I))
+        exact_counts = any(
+            numbers(a) == [missing] and numbers(b) == [total] for a, b in reports
+        )
+        if cls.casefold() in tokens(label) and exact_counts:
             if bounds and all(
                 any(abs(v - bound) <= max(5e-7, abs(bound) * 0.005) for v in vals)
                 for bound in bounds
@@ -184,7 +314,17 @@ def assert_visible_or_disclosed(ax, series):
             label = artist.get_text()
             ns = numbers(label)
             if not tokens(label).intersection(
-                {"outside", "excluded", "hors", "exclus", "clipped"}
+                {
+                    "outside",
+                    "excluded",
+                    "hors",
+                    "exclus",
+                    "clipped",
+                    "tronque",
+                    "tronquee",
+                    "tronques",
+                    "tronquees",
+                }
             ):
                 continue
             if len(clipped) > 1 and name.casefold() not in label.casefold():
@@ -206,15 +346,18 @@ def assert_cluster_encoding(fig, ax, labels, coordinates):
     """Accept colorbar, legend handles, or colored textual cluster annotations."""
     from matplotlib.colors import to_rgba
 
-    legend = ax.get_legend()
-    entries = (
-        []
-        if legend is None
-        else list(zip(legend.legend_handles, [t.get_text() for t in legend.texts]))
-    )
-    colorbars = [
-        a._colorbar for a in fig.axes if getattr(a, "_colorbar", None) is not None
+    entries = [
+        (handle, t.get_text())
+        for legend in visible_legends(fig)
+        for handle, t in zip(legend.legend_handles, legend.texts)
+        if t.get_visible()
     ]
+    colorbars = [
+        a._colorbar
+        for a in fig.axes
+        if a.get_visible() and getattr(a, "_colorbar", None) is not None
+    ]
+    cluster_collections = {}
     for cid in sorted(set(labels) - {-1}):
         expected = coordinates[labels == cid]
         collection = next(
@@ -226,40 +369,60 @@ def assert_cluster_encoding(fig, ax, labels, coordinates):
             None,
         )
         assert collection is not None, f"Missing actual cluster {cid}"
+        cluster_collections[cid] = collection
+    # A physical colorbar is bound to an actual data-bearing collection.
+    # Standalone ScalarMappables cannot acquire that role through label wording.
+    physical = [
+        sc
+        for a in fig.axes
+        for sc in a.collections
+        if sc not in cluster_collections.values()
+        and sc.get_array() is not None
+        and np.asarray(sc.get_array()).size
+    ]
+    categorical_bars = [cb for cb in colorbars if cb.mappable not in physical]
+    for cid, collection in cluster_collections.items():
         rgb = collection.get_facecolors()[0, :3]
-        choices = []
-        for cb in colorbars:
-            # Temperature colorbars are not categorical-ID encodings.
-            if re.search(r"cluster|\bid\b", cb.ax.get_ylabel(), re.I):
-                choices.append(cb.mappable.to_rgba(cid)[:3])
-        if choices:
-            assert all(
-                np.allclose(choice, rgb) for choice in choices
-            ), f"Misleading colorbar for C{cid}"
-            continue
+        choices = [
+            ("colorbar", cb.mappable.to_rgba(cid)[:3]) for cb in categorical_bars
+        ]
         for handle, label in entries:
-            if re.search(rf"\bC\s*{cid}\b|cluster\s*{cid}\b", label, re.I):
+            if re.match(rf"^(?:(?:C|cluster|groupe)\s*)?{cid}\b", label.strip(), re.I):
                 if hasattr(handle, "get_facecolor"):
                     choices.append(
-                        np.asarray(handle.get_facecolor()).reshape(-1, 4)[0, :3]
+                        (
+                            "categorical legend",
+                            np.asarray(handle.get_facecolor()).reshape(-1, 4)[0, :3],
+                        )
                     )
                 elif hasattr(handle, "get_color"):
-                    choices.append(np.asarray(to_rgba(handle.get_color()))[:3])
-        if choices:
-            assert all(
-                np.allclose(choice, rgb) for choice in choices
-            ), f"Misleading categorical legend for C{cid}"
-            continue
-        for annotation in ax.texts:
-            if re.fullmatch(rf"C\s*{cid}", annotation.get_text().strip(), re.I):
+                    choices.append(
+                        (
+                            "categorical legend",
+                            np.asarray(to_rgba(handle.get_color()))[:3],
+                        )
+                    )
+        for annotation in [
+            t for a in fig.axes if a.get_visible() for t in a.texts
+        ] + fig.texts:
+            if not annotation.get_visible():
+                continue
+            if re.match(
+                rf"^(?:(?:C|cluster|groupe)\s*)?{cid}\b",
+                annotation.get_text().strip(),
+                re.I,
+            ):
                 bbox = annotation.get_bbox_patch()
                 choices.append(
-                    np.asarray(
-                        bbox.get_facecolor()
-                        if bbox is not None
-                        else to_rgba(annotation.get_color())
-                    )[:3]
+                    (
+                        "annotation",
+                        np.asarray(
+                            bbox.get_facecolor()
+                            if bbox is not None
+                            else to_rgba(annotation.get_color())
+                        )[:3],
+                    )
                 )
-        assert any(
-            np.allclose(choice, rgb) for choice in choices
-        ), f"No faithful ID/color encoding for C{cid}"
+        assert choices, f"No faithful ID/color encoding for C{cid}"
+        for kind, value in choices:
+            assert np.allclose(value, rgb), f"Misleading {kind} for C{cid}"

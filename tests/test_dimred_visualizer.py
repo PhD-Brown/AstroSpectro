@@ -107,7 +107,9 @@ def test_hr_missing_columns_refused(visualizer_case):
     assert c.viz.plot_hr_teff_regions(pd.DataFrame()) == (None, None)
 
 
-def test_real_pca_variance_and_reconstruction_energy(visualizer_case, dimred_pca_class):
+def test_real_pca_variance_and_reconstruction_energy(
+    visualizer_case, dimred_pca_class, visualizer_contracts
+):
     c = visualizer_case
     X = np.array(
         [[3.0, 0, 0], [-3, 0, 0], [0, 2, 0], [0, -2, 0], [0, 0, 1], [0, 0, -1]]
@@ -118,7 +120,9 @@ def test_real_pca_variance_and_reconstruction_energy(visualizer_case, dimred_pca
     assert_allclose(axes[1].lines[0].get_ydata(), np.array([9, 13, 14]) / 14 * 100)
     assert_allclose(axes[1].lines[1].get_ydata(), [90, 90])
     assert_allclose(axes[1].lines[2].get_xdata(), [2, 2])
-    assert "2 PCs" in text(axes[1]) and "92.9%" in text(axes[1])
+    visualizer_contracts.assert_variance_annotations(
+        axes[1], pca.explained_variance_ratio, expected_count=2
+    )
     df = pca.reconstruction_error_vs_n(X, [1, 2, 3])
     _, ax = c.viz.plot_reconstruction_error(df)
     assert_allclose(ax.lines[0].get_xdata(), [1, 2, 3])

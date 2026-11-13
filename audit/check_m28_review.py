@@ -170,6 +170,83 @@ def disclose_histogram(source):
     return source
 
 
+def categorical_orientation(source, correct=False, horizontal=False):
+    if correct:
+        source = categorical(source, False)
+    for method in ["plot_hdbscan_clusters", "plot_hdbscan_hr"]:
+        source = replace(
+            source,
+            method,
+            'label="Cluster ID"',
+            'label="Groupe HDBSCAN"'
+            + (', orientation="horizontal"' if horizontal else ""),
+        )
+    return source
+
+
+def annotation_only(source):
+    for method in ["plot_hdbscan_clusters", "plot_hdbscan_hr"]:
+        node = next(
+            n
+            for n in ast.walk(ast.parse(source))
+            if isinstance(n, ast.FunctionDef) and n.name == method
+        )
+        statement = next(
+            n
+            for n in node.body
+            if isinstance(n, ast.Expr) and "plt.colorbar(" in ast.unparse(n)
+        )
+        old = "\n".join(
+            source.splitlines()[statement.lineno - 1 : statement.end_lineno]
+        )
+        source = replace(
+            source,
+            method,
+            old,
+            "        pass  # Categorical annotations remain authoritative.",
+        )
+    return replace(source, "plot_hdbscan_hr", "if m.sum() < 20:", "if m.sum() < 1:")
+
+
+def localized_disclosure(source, wrong=False):
+    end = "bins[-1]+.05" if wrong else "bins[-1]"
+    new = f"""                missing = int(((vals<bins[0])|(vals>bins[-1])).sum())
+                if missing:
+                    ax.text(.03,.05,f"{{cls}} : {{missing}} exclues sur {{len(vals)}}, observations tronquées hors support {{bins[0]:.6f}} à {{{end}:.6f}}".replace(".",","),transform=ax.transAxes)
+                ax.hist(
+                    vals,"""
+    return replace(
+        source,
+        "plot_ae_error_distribution_logscale",
+        "                ax.hist(\n                    vals,",
+        new,
+    )
+
+
+def total_histogram(source, false_total=False, false_conditional=False):
+    claim = 'f"{cls}: density normalized by total {len(vals)}, support {bins[0]:.6f} to {bins[-1]:.6f}"'
+    if false_conditional:
+        claim = 'f"{cls}: conditional density"'
+    new = f"""                hist_kwargs = dict(density=True)
+                if xscale == "linear":
+                    hist_kwargs = dict(density={false_total},weights=np.full(len(vals),1/(len(vals)*np.diff(bins)[0])))
+                    ax.text(.03,.12,{claim},transform=ax.transAxes)
+                ax.hist(
+                    vals,"""
+    source = replace(
+        source,
+        "plot_ae_error_distribution_logscale",
+        "                ax.hist(\n                    vals,",
+        new,
+    )
+    return replace(
+        source,
+        "plot_ae_error_distribution_logscale",
+        "                    density=True,",
+        "                    **hist_kwargs,",
+    )
+
+
 def plans():
     p = []
 
@@ -376,6 +453,89 @@ def plans():
     )
     add("AD_HIST", "linear_histogram_truncation", disclose_histogram, True)
     add("AD_LOG", "log_histogram_keeps", disclose_histogram, True)
+    # Third pass: only residual R1/R2b/R6/R7/R10 observations.
+    add(
+        "K10",
+        "kde_labeled_regions",
+        lambda s: replace(
+            kde_levels(s, C13),
+            "plot_latent_kde",
+            'gaussian_kde(Z_stars[idx].T, bw_method="scott")',
+            'gaussian_kde(Z_stars[idx][Z_stars[idx][:,0]<3].T, bw_method="scott")',
+        ),
+    )
+    add(
+        "K11",
+        "kde_labeled_regions",
+        lambda s: replace(
+            kde_levels(s, C13),
+            "plot_latent_kde",
+            'gaussian_kde(Z_stars[idx].T, bw_method="scott")',
+            'gaussian_kde(Z_stars[idx[:max(3,len(idx)//2)]].T, bw_method="scott")',
+        ),
+        True,
+    )
+    add("FD05", "cluster_colorbar", categorical_orientation)
+    add(
+        "FD05_H",
+        "cluster_colorbar",
+        lambda s: categorical_orientation(s, horizontal=True),
+    )
+    add(
+        "AC05_H",
+        "cluster_colorbar",
+        lambda s: categorical_orientation(s, correct=True, horizontal=True),
+        True,
+    )
+    add("AD05_ANN", "cluster_colorbar", annotation_only, True)
+    add(
+        "FD03_K",
+        "hr_population_title",
+        scalar_patch("plot_hr_teff_regions", "43 019 étoiles", "≈ 43k étoiles"),
+    )
+    original_claim = 'f"{n_thresh} PCs\\n→ {cumvar[idx]*100:.1f}%"'
+    add(
+        "FVAR_COMPONENT",
+        "truncated_variance_annotation",
+        scalar_patch(
+            "plot_variance_explained",
+            original_claim,
+            'f"{n_thresh} composantes → {cumvar[idx]*100:.1f} %".replace(".",",")',
+        ),
+    )
+    add(
+        "A_VARIANCE",
+        "truncated_variance_annotation or real_pca_variance",
+        scalar_patch(
+            "plot_variance_explained",
+            original_claim,
+            'f"{n_thresh} composantes → {pca_analyzer.explained_variance_ratio[:n_thresh].sum()*100:.1f} %".replace(".",",")',
+        ),
+        True,
+    )
+    add(
+        "AD_COMMA",
+        "linear_histogram_truncation or log_histogram_keeps",
+        localized_disclosure,
+        True,
+    )
+    add(
+        "FD_COMMA_BOUND",
+        "linear_histogram_truncation or log_histogram_keeps",
+        lambda s: localized_disclosure(s, wrong=True),
+    )
+    add("A_TOTAL", "linear_histogram_truncation", total_histogram, True)
+    add(
+        "F_TOTAL_LIE",
+        "linear_histogram_truncation",
+        lambda s: total_histogram(s, false_total=True),
+    )
+    add(
+        "F_CONDITIONAL_LIE",
+        "linear_histogram_truncation",
+        lambda s: total_histogram(s, false_conditional=True),
+    )
+    add("JOINT_TOTAL", "", lambda s: total_histogram(joint(s)), True)
     add("JOINT", "", joint, True)
     return p
 

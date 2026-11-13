@@ -380,7 +380,7 @@ def main():
         and not (ROOT / PROOF).exists()
         and args.mode in ["baseline", "proofs"]
     ):
-        args.proofs_ref = "refs/tags/audit/m28-review-proofs-2026-11-13"
+        args.proofs_ref = "refs/tags/audit/m28-round3-proofs-2026-11-13"
     protected = [SOURCE, GREEN, "tests/conftest.py"]
     before = {p: digest(ROOT / p) for p in protected}
     source = (ROOT / SOURCE).read_text(encoding="utf-8")

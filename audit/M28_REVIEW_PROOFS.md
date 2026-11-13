@@ -1,5 +1,9 @@
 # M2.8 - revised evidence after Claude review 5858927009
 
+> Third-pass update after review 5895743573: this is the preserved second-pass
+> manifest. See [targeted current revision](M28_ROUND3_PROOFS.md) for R1, R2b,
+> R6/R7 and the proposed R10 normalization policy. Historical results remain unchanged.
+
 Revision date: 2026-11-13. Refs #43 / Draft PR #116. Same worktree
 `AstroSpectro-m28`, same branch `audit/43-dimred-visualizer`; production blob
 `624b857bca5833c3401204b0a592b9ae6ffc2902` and base

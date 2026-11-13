@@ -8,6 +8,27 @@ preserved. Production blob **624b857bca5833c3401204b0a592b9ae6ffc2902**.
 Actual inventory: **38 methods**, including initializer and two helpers,
 not31. Entire3224-line source read. AGENTS v1.3 fetched from current main.
 
+## Targeted third pass - second review 5895743573
+
+Current corrections are limited to **R1, R2b, R6, R7 and R10**; see
+[M28_ROUND3_PROOFS.md](M28_ROUND3_PROOFS.md) for policies, limits, new archive
+and results. K10 tests fitted-population representativeness; K11 admits valid
+random sampling. Colorbar role is structural and independent of caption or
+orientation; all coexisting categorical encodings must agree. Numeric locale,
+component synonyms and independent count/variance relations replace the
+remaining fixed prose. R10 admits disclosed conditional density or correctly
+identified total-class density as a **proposed test policy awaiting scientific
+acceptance**; issue creation still requires explicit human approval. Complete
+advertised KDE regions must remain inside the displayed domain. The previous
+61 nodes and resolved contracts remain; five focused adapter nodes are added.
+Current local evidence: **66 green PASS with -W error**, full default/importlib
+**698 PASS / 62 deselected / 7 preexisting Gaia warnings**; reversed targeted
+66 PASS. Prior 61 nodes preserved. M01-M16 16 KILLED; original C01-C14 14 PASS,
+F01-F03 3 KILLED; extended review campaign 27 KILLED, 18 admissible PASS and
+JOINT/JOINT_TOTAL each 92 PASS. Explicit red baseline remains 25 FAIL/1 PASS,
+26 cases. No production fix or general scientific approval is inferred.
+All earlier sections/results below retain their historical meaning.
+
 ## Revision after Claude review 5858927009 - 2026-11-13
 
 This revision resumes PR #116 at `4364c61f56d91f7ec93c5c6072b9f88c46023241`;
