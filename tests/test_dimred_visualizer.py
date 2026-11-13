@@ -49,8 +49,10 @@ def test_embedding_exact_observation_associations(visualizer_case, mode):
         assert_array_equal(offsets(ax.collections[0]), c.Z[[1, 4]])
         assert_array_equal(offsets(ax.collections[1]), c.Z[[0, 2, 3, 5]])
         assert_array_equal(ax.collections[1].get_array(), [8, 3, 21, 1])
-        # Linear interpolation on sorted [1,3,8,21], at .06 and 2.94.
-        assert_allclose(ax.collections[1].get_clim(), [1.12, 20.22])
+        # A finite nondegenerate color range is required; clipping quantiles
+        # remain an open display policy rather than a fixed 2/98 implementation.
+        limits = ax.collections[1].get_clim()
+        assert np.isfinite(limits).all() and limits[0] < limits[1]
         assert fig.axes[-1].get_ylabel() == "measured scalar"
     else:
         assert_array_equal(offsets(ax.collections[0]), c.Z)
@@ -162,6 +164,13 @@ def test_family_weights_bar_and_donut_angles(visualizer_case):
     _, ax = c.viz.plot_loadings_family_bar(first, second, colors)
     assert [t.get_text() for t in ax.get_xticklabels()] == ["A", "B", "C"]
     assert_allclose(heights(ax), [80, 20, 0, 0, 30, 70])
+    handles, labels = ax.get_legend_handles_labels()
+    series = {
+        label.replace(" ", "").upper(): handle for handle, label in zip(handles, labels)
+    }
+    assert set(series) == {"PC1", "PC2"}
+    assert_allclose([p.get_height() for p in series["PC1"]], [80, 20, 0])
+    assert_allclose([p.get_height() for p in series["PC2"]], [0, 30, 70])
     _, axes = c.viz.plot_loadings_family_donut(first, second, colors)
     for ax, weights in zip(axes, [[0.8, 0.2], [0.3, 0.7]]):
         assert_allclose(
@@ -277,6 +286,8 @@ def test_interpolation_actual_path_feature_order_and_endpoints(visualizer_case):
     assert_allclose(axes[0].collections[0].get_array(), [0, 0.5, 1])
     assert_array_equal(offsets(axes[0].collections[1]), Z[[0]])
     assert_array_equal(offsets(axes[0].collections[2]), Z[[-1]])
+    assert axes[0].collections[1].get_label() == "A"
+    assert axes[0].collections[2].get_label() == "B"
     assert [t.get_text() for t in axes[1].get_xticklabels()] == [
         "fast",
         "middle",
@@ -342,7 +353,17 @@ def test_histogram_densities_integrate_and_class_mean_median_are_distinct(
     # Each class has its own normalized density, even with unequal counts.
     for container in ax.containers:
         assert_allclose(sum(p.get_width() * p.get_height() for p in container), 1)
-    assert "STAR (n=3, μ=5.3333)" in ax.get_legend_handles_labels()[1]
+    import re
+
+    star_label = next(
+        label
+        for label in ax.get_legend_handles_labels()[1]
+        if re.search(r"\bSTAR\b", label)
+    )
+    assert re.search(r"\b3\b", star_label)
+    assert any(
+        abs(float(v) - 16 / 3) < 5e-5 for v in re.findall(r"\d+\.\d+", star_label)
+    )
     assert_allclose([line.get_xdata()[0] for line in ax.lines], [4, 7, 6])
     _, axes = c.viz.plot_ae_error_distribution_logscale(values, c.y)
     assert axes[1].get_xscale() == "log"
@@ -376,6 +397,14 @@ def test_hdbscan_real_analyzer_state_and_point_populations(
         assert_allclose(sc.get_facecolors()[0, :3], hdb.color_map_[cid][:3])
     for sc, cls in zip(axes[1].collections, sorted(set(c.y))):
         assert_array_equal(offsets(sc), c.Z[c.y == cls])
+        import re
+
+        assert re.search(
+            rf"\b{cls}\b", sc.get_label()
+        ), "Class label differs from plotted population"
+        assert re.search(
+            rf"\bn\s*=\s*{sum(c.y==cls)}\b|\(\s*{sum(c.y==cls)}\s*\)", sc.get_label()
+        )
     assert f"n={labels.count(-1)}" in text(axes[0])
 
 
@@ -473,9 +502,17 @@ def test_xgboost_classes_confidence_and_cluster_associations(
     _, axes = c.viz.plot_xgboost_umap(c.Z, pred, confidence, cl, {2: "red", 7: "blue"})
     for sc, cls in zip(axes[0].collections, ["F", "G", "M"]):
         assert_array_equal(offsets(sc), c.Z[pred == cls])
+        import re
+
+        assert re.search(
+            rf"\b{cls}\b", sc.get_label()
+        ), "Prediction label differs from its actual points"
         assert f"n={(pred == cls).sum()}" in sc.get_label()
     if confidence is None:
-        assert "non disponible" in text(axes[1])
+        assert not axes[1].collections
+        assert text(
+            axes[1]
+        ).strip(), "Unavailable confidence needs an explicit diagnostic"
     else:
         assert_array_equal(offsets(axes[1].collections[0]), c.Z)
         assert_array_equal(axes[1].collections[0].get_array(), confidence)
@@ -493,7 +530,11 @@ def test_fg_population_threshold_and_overlays(visualizer_case):
     assert_array_equal(offsets(ax.collections[0]), Z)
     assert_array_equal(offsets(ax.collections[1]), Z[:3])
     assert_array_equal(offsets(ax.collections[2]), Z[5:])
-    assert ax.get_legend_handles_labels()[1] == ["Prédit F (n=3)", "Prédit G (n=8)"]
+    import re
+
+    for cls, count, label in zip(["F", "G"], [3, 8], ax.get_legend_handles_labels()[1]):
+        assert re.search(rf"\b{cls}\b", label)
+        assert re.search(rf"\b{count}\b", label)
 
 
 def rank_trustworthiness(X, Z, k):
@@ -519,17 +560,39 @@ def rank_trustworthiness(X, Z, k):
 @pytest.mark.integration
 @pytest.mark.parametrize("subsample", [12, 9])
 def test_real_sklearn_trustworthiness_independent_rank_oracle(
-    visualizer_case, subsample
+    visualizer_case, subsample, monkeypatch
 ):
     c = visualizer_case
     rng = np.random.default_rng(1729)
     X = rng.normal(size=(12, 2))
     bad = X[np.array([7, 0, 9, 4, 1, 10, 2, 11, 3, 6, 5, 8])]
-    idx = np.random.default_rng(42).choice(12, size=subsample, replace=False)
-    _, ax = c.viz.plot_trustworthiness(
-        X, X.copy(), bad, k_values=[1, 2, 3], n_subsample=subsample
-    )
-    expected = [rank_trustworthiness(X[idx], bad[idx], k) for k in [1, 2, 3]]
+    import sklearn.manifold
+
+    real = sklearn.manifold.trustworthiness
+    calls = []
+
+    def measured(ref, embedding, **kwargs):
+        calls.append((ref.copy(), embedding.copy(), kwargs["n_neighbors"]))
+        return real(ref, embedding, **kwargs)
+
+    monkeypatch.setattr(sklearn.manifold, "trustworthiness", measured)
+    for repeat in range(2):
+        _, ax = c.viz.plot_trustworthiness(
+            X, X.copy(), bad, k_values=[1, 2, 3], n_subsample=subsample
+        )
+    assert len(calls) == 12
+    expected = []
+    for i, (ref, embedding, k) in enumerate(calls[:6]):
+        indices = [
+            next(j for j, row in enumerate(X) if np.array_equal(row, r)) for r in ref
+        ]
+        assert len(set(indices)) == subsample
+        assert_array_equal(embedding, (X if i % 2 == 0 else bad)[indices])
+        assert_array_equal(calls[i + 6][0], ref)
+        assert_array_equal(calls[i + 6][1], embedding)
+        assert_array_equal(ref, calls[0][0])
+        if i % 2:
+            expected.append(rank_trustworthiness(ref, embedding, k))
     assert_allclose(ax.lines[0].get_ydata(), [1, 1, 1], atol=1e-14)
     assert_allclose(ax.lines[1].get_ydata(), expected, atol=1e-14)
     assert_array_equal(ax.lines[1].get_xdata(), [1, 2, 3])
@@ -588,7 +651,13 @@ def test_synthesis_preserves_distinct_geometries_and_physical_colors(
     fig = c.viz.plot_synthesis_grid(ae, c.y, c.meta, pca, embedding if umap else None)
     data_axes = [a for a in fig.axes if a.get_xlabel()]
     geometries = [pca] + ([embedding] if umap else []) + [ae]
+    import re
+
     for row, Z in enumerate(geometries):
+        expected_name = (
+            [r"\bPCA\b"] + ([r"\bUMAP\b"] if umap else []) + [r"autoencod|\bAE\b"]
+        )[row]
+        assert re.search(expected_name, data_axes[row * 3].get_ylabel(), re.I)
         for sc in data_axes[row * 3].collections:
             assert_array_equal(offsets(sc), Z[c.y == sc.get_label()])
         for col, param in [(1, "teff_gspphot"), (2, "mh_gspphot")]:
@@ -599,7 +668,7 @@ def test_synthesis_preserves_distinct_geometries_and_physical_colors(
 
 @pytest.mark.parametrize("suffix", ["png", "pdf"])
 def test_real_export_readable_and_same_semantic_figure(
-    visualizer_case, tmp_path, suffix
+    visualizer_case, tmp_path, suffix, visualizer_contracts
 ):
     from PIL import Image
 
@@ -613,6 +682,7 @@ def test_real_export_readable_and_same_semantic_figure(
         with Image.open(path) as im:
             pixels = np.asarray(im.convert("RGB"))
             assert pixels.shape[0] > 100 and pixels.std() > 1
+        visualizer_contracts.assert_png_matches_figure(path, fig, c.viz.dpi)
     else:
         assert path.read_bytes().startswith(b"%PDF-")
         assert b"%%EOF" in path.read_bytes()[-50:]

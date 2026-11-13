@@ -436,7 +436,24 @@ def main():
             tree / "src/dimred",
             ignore=shutil.ignore_patterns("__pycache__"),
         )
-        for p in [GREEN, "tests/conftest.py", "pyproject.toml"]:
+        extras = [
+            "tests/visualizer_review_contracts.py",
+            "tests/test_visualizer_review_contracts.py",
+        ]
+        archived_paths = (
+            subprocess.check_output(
+                ["git", "ls-tree", "-r", "--name-only", args.proofs_ref, "--", "tests"],
+                cwd=ROOT,
+                text=True,
+            ).splitlines()
+            if args.proofs_ref
+            else []
+        )
+        for p in [GREEN, "tests/conftest.py", "pyproject.toml"] + [
+            p
+            for p in extras
+            if (ROOT / p).exists() and (not args.proofs_ref or p in archived_paths)
+        ]:
             shutil.copy2(ROOT / p, tree / p)
         if args.proofs_ref:
             archived_source = (
@@ -455,23 +472,43 @@ def main():
                     ["git", "show", f"{args.proofs_ref}:{p}"], cwd=ROOT
                 )
                 (tree / p).write_bytes(content)
+            for p in extras:
+                if p in archived_paths:
+                    (tree / p).write_bytes(
+                        subprocess.check_output(
+                            ["git", "show", f"{args.proofs_ref}:{p}"], cwd=ROOT
+                        )
+                    )
             payload["proofs_ref"] = args.proofs_ref
         elif (ROOT / PROOF).exists():
             shutil.copy2(ROOT / PROOF, tree / PROOF)
         (tree / "m28_trace.py").write_text(PLUGIN, encoding="utf-8")
         payload["executed_files_lf_sha256"] = {
             p: digest(tree / p)
-            for p in [SOURCE, GREEN, "tests/conftest.py", PROOF]
+            for p in [SOURCE, GREEN, "tests/conftest.py", PROOF] + extras
             if (tree / p).exists()
         }
-        tests = [GREEN] if args.mode in ["mutations", "reverse"] else [PROOF]
+        green_tests = [GREEN] + [
+            p
+            for p in extras
+            if p.endswith("test_visualizer_review_contracts.py") and (tree / p).exists()
+        ]
+        tests = green_tests if args.mode in ["mutations", "reverse"] else [PROOF]
         baseline = run(tree, tests, "", reverse=args.mode == "reverse")
         payload["baseline"] = baseline
         for name, method, old, new, selection in plans:
-            tests = [GREEN, PROOF] if args.mode == "proofs" else [GREEN]
+            tests = green_tests + [PROOF] if args.mode == "proofs" else green_tests
             (tree / SOURCE).write_text(source, encoding="utf-8")
             original = run(tree, tests, selection)
             changed, sites = edit(source, method, old, new)
+            if name == "C13_integrated_kde_mass" and (tree / extras[0]).exists():
+                changed, domain_sites = edit(
+                    changed,
+                    method,
+                    "margin = (p99 - p1) * 0.15",
+                    "margin = (p99 - p1) * 0.8",
+                )
+                sites |= domain_sites
             (tree / SOURCE).write_text(changed, encoding="utf-8")
             actual = run(tree, tests, selection)
             same = sorted(c["id"] for c in original["cases"]) == sorted(

@@ -22,11 +22,14 @@ def main():
         "src/dimred/dimred_visualizer.py",
         "tests/conftest.py",
         "tests/test_dimred_visualizer.py",
+        "tests/visualizer_review_contracts.py",
+        "tests/test_visualizer_review_contracts.py",
     ]
     helpers = [
         "audit/check_m28_evidence.py",
         "audit/check_m28_boundaries.py",
         "audit/check_m28_validation.py",
+        "audit/check_m28_review.py",
     ]
     result = {
         "active_head": subprocess.check_output(
@@ -52,7 +55,7 @@ def main():
             p: hashlib.sha256(
                 (ROOT / p).read_text(encoding="utf-8").replace("\r\n", "\n").encode()
             ).hexdigest()
-            for p in files
+            for p in files + helpers
         },
         "commands": [],
     }
@@ -65,6 +68,7 @@ def main():
                 "pytest",
                 "-q",
                 "tests/test_dimred_visualizer.py",
+                "tests/test_visualizer_review_contracts.py",
                 "-W",
                 "error",
                 "--junitxml=test-results/m28-targeted-validation.xml",
