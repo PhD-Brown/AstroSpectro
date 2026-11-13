@@ -156,7 +156,11 @@ def joint(source):
         "zip(classes, palette*((len(classes)+len(palette)-1)//len(palette)))",
     )
     source = exports(source)
-    # R10 uses the human-selected visible-or-exactly-disclosed contract.
+    source = disclose_histogram(source)
+    return source
+
+
+def disclose_histogram(source):
     source = replace(
         source,
         "plot_ae_error_distribution_logscale",
@@ -370,7 +374,8 @@ def plans():
         ),
         True,
     )
-    add("AD_HIST", "linear_histogram_truncation", joint, True)
+    add("AD_HIST", "linear_histogram_truncation", disclose_histogram, True)
+    add("AD_LOG", "log_histogram_keeps", disclose_histogram, True)
     add("JOINT", "", joint, True)
     return p
 
@@ -422,6 +427,8 @@ def main():
         ).strip(),
         "python": sys.version,
         "working_hashes": protected,
+        "proofs_ref": args.proofs_ref,
+        "runner_lf_sha256": runner.digest(Path(__file__)),
         "runs": [],
     }
     with tempfile.TemporaryDirectory(prefix="m28-review-synthetic-") as directory:
@@ -516,9 +523,13 @@ def main():
                 json.dumps(ledger, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
             )
             print(name, result, flush=True)
-    assert protected == {
+    ledger["protected_unchanged"] = protected == {
         p: runner.digest(ROOT / p) for p in protected
-    }, "Protected worktree inputs changed"
+    }
+    output.write_text(
+        json.dumps(ledger, indent=2, ensure_ascii=True) + "\n", encoding="utf-8"
+    )
+    assert ledger["protected_unchanged"], "Protected worktree inputs changed"
 
 
 if __name__ == "__main__":

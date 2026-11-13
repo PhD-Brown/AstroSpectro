@@ -341,7 +341,7 @@ def test_log_histogram_keeps_small_positive_errors(
     call = next(call for call in calls if call["ax"] is axes[1])
     missing, edges = visualizer_contracts.assert_histogram_population(call, errors)
     assert missing == 0 or visualizer_contracts.exclusion_report(
-        axes[1], "STAR", missing, 6, edges
+        axes[1], "STAR", missing, 6, edges, errors
     ), "Positive MSE population silently truncated"
 
 
@@ -456,5 +456,5 @@ def test_linear_histogram_truncation_discloses_population(
     area = sum(p.get_width() * p.get_height() for p in call["result"][2])
     assert_allclose(area, 1)
     assert missing == 0 or visualizer_contracts.exclusion_report(
-        axes[0], "QSO", missing, 50, edges
+        axes[0], "QSO", missing, 50, edges, qso
     ), f"Silent conditional histogram: represented={50-missing}/50, area={area}, median={np.median(qso)}"

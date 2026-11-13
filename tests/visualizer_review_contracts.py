@@ -142,8 +142,14 @@ def assert_histogram_population(call, expected):
     return missing, edges
 
 
-def exclusion_report(ax, cls, missing, total, edges):
-    """Bounded disclosure: population, excluded/total counts and support bound."""
+def exclusion_report(ax, cls, missing, total, edges, values=None):
+    """Require population/count and the bound actually crossed by excluded data."""
+    bounds = [edges[0], edges[-1]]
+    if values is not None:
+        values = np.asarray(values)
+        bounds = ([edges[0]] if np.any(values < edges[0]) else []) + (
+            [edges[-1]] if np.any(values > edges[-1]) else []
+        )
     for artist in ax.texts:
         label = artist.get_text()
         if not tokens(label).intersection(
@@ -152,9 +158,9 @@ def exclusion_report(ax, cls, missing, total, edges):
             continue
         vals = numbers(label)
         if cls.casefold() in tokens(label) and missing in vals and total in vals:
-            if any(
-                any(abs(v - bound) <= max(5e-4, abs(bound) * 0.005) for v in vals)
-                for bound in [edges[0], edges[-1]]
+            if bounds and all(
+                any(abs(v - bound) <= max(5e-7, abs(bound) * 0.005) for v in vals)
+                for bound in bounds
             ):
                 return True
     return False

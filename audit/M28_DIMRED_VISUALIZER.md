@@ -8,6 +8,58 @@ preserved. Production blob **624b857bca5833c3401204b0a592b9ae6ffc2902**.
 Actual inventory: **38 methods**, including initializer and two helpers,
 not31. Entire3224-line source read. AGENTS v1.3 fetched from current main.
 
+## Revision after Claude review 5858927009 ? 2026-11-13
+
+This revision resumes PR #116 at `4364c61f56d91f7ec93c5c6072b9f88c46023241`;
+all first-pass results below remain historical. Production and the original
+archive `ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac` are unchanged. The current
+review manifest is [M28_REVIEW_PROOFS.md](M28_REVIEW_PROOFS.md). The 53 original
+green nodes remain; eight adapter controls are added. No production fix is
+part of these tests. All twelve GitHub threads remain reviewer-owned.
+
+| Review | Revised contract and scope |
+|---|---|
+| R1 | Three STAR bimodal anisotropic mixtures (seeds 31/7/83) plus distinct QSO; inspect fitted observations, actual contour labels, vertices and polygon probability. Retain analytic Gaussian and independent expanded quadrature. K1B/K6/K7/K8 and missing-mode K9 exercise different failures. |
+| R2a | Analytic law has dataset/d/n/covariance/factor, coherent evaluate/call/resample; K4 sampling and K5 kernel-support quadrature are admissible solvers. A complete display domain accompanies each solver when testing enclosed polygons. |
+| R2b | Cluster ID -> actual scatter RGB -> colorbar, categorical Patch/Line legend or colored annotation. A contradictory colorbar is rejected even if other annotations are correct. |
+| R3 | HR bounds derive from input K/dex independently; reconstruction needs nonempty paired arrays; histograms require independently counted observations and bar heights; exports match an explicit same-figure rendering. |
+| R4/R5 | Class/count/coordinates, synthesis method/geometry, endpoint identity, PC series/value and exported data collections are linked. Exact French prose is not the contract. |
+| R6 | Population annotations accept grouped numbers and N= wording; variance annotations link PC count and full-model cumulative variance in either word order. Omission of a questionable claim remains admissible. |
+| R7 | Full visibility OR a verifiable disclosure with actual excluded population/count/support or curve boundary/extreme. Generic warnings and false numbers fail. Zero/negative/nonfinite histogram policies remain open. |
+| R8 | Capture real sklearn subsets, recover supplied observation rows and check pairing, independent ranks, values and repeatability. A paired permutation sampler is admissible; no particular RNG choice sequence is required. |
+| R9 | Inventory corrected to 38/38 below. HR missing-column sentinel AP; provided-data scatter/orientation and dimensional region geometry PA; astrophysical region taxonomy/boundaries NA. |
+| R10 | Independently reproduced linear conditional-density clipping: QSO 3/50 retained, area 1. New characterization and a P2 issue proposal only; distinct from #111 log floor. No new issue created. |
+| R11/R12 | D04 reassigns original F row 8, not row 5. Corrected issue anchors #103:3215, #104:2588, #105:1415/1560, #110:185/186, #111:2824, #114:2279 at the unchanged base SHA, with dated documentary notes. |
+| R13 | Six mh_gspphot -> Fe/H labels (437/616/1100/2311/2455/2892) remain PA interpretation, not a validated abundance conversion. Fixed 3-PC/183-feature/min_size300 titles and anomaly prose also PA; #65/#78 retain policy ownership. |
+| R14 | Explicitly lint all four M2.8 audit scripts locally; CI workflow remains unchanged and does not gain audit-script linting implicitly. Historical absolute Windows paths are preserved as execution provenance. |
+
+The KDE mass tolerance .006 is numerical discretization, not astrophysical
+uncertainty. The analytic covariance is diag(4,9); its polar integral is
+max(0,1-12*pi*threshold). Mixture quadrature has 0.05 spacing on [-12,18] x
+[-14,14], total probability within 1e-4 of one. Polygon membership is computed
+independently from actual pre-inline-label paths (even/odd rule for disjoint
+components and holes), in addition to density-threshold integration. The
+geometry interpolation tolerance is 5% on the 200x200 contour mesh. Experiments
+showed that merely correcting levels can leave open 99% arcs on the original
+percentile domain; current admissible controls also complete that domain.
+These bounds and tolerances do not validate all KDE input distributions.
+
+PNG comparison decodes RGBA against the explicit backend export of the same
+returned scientific figure, within the same process (one-channel-unit tolerance).
+It does not use a version-specific golden image. Blank and axes-only exports
+are rejected; PDF scientific rendering and cross-version agreement remain PA.
+
+Current validation: **61 dedicated PASS with -W error**, complete default,
+importlib and reversed suites **693 PASS / 62 deselected / 7 preexisting Gaia
+warnings**. Dedicated reversed and shuffled orders (3/11/29) each 61 PASS.
+Original M01?M16: **16 KILLED**; original C01?C14: **14 PASS** and F01?F03:
+**3 KILLED**. Review campaign: **19 KILLED**, **12 admissible controls PASS**,
+and **87/87 joint PASS**, with zero surviving/inconclusive current candidates.
+Revised red baseline: **25 FAIL / 1 PASS**, 26 cases. This is evidence on bounded
+contracts, not 25 bugs or scientific approval. See the new manifest for exact
+ledgers, code hashes, archive reference and replay commands. Historical results
+below are not attributed to this pass.
+
 ## Delivery contract and evidence boundaries
 
 AP: acquired evidence on the specific tested contract; PA: partial examination;
@@ -64,11 +116,12 @@ limited existing boundaries, not previous coverage of every figure.
 | `plot_loadings_family_donut` | two family frames -> two donut helpers -> `(fig,axes)` | angles/legend weights | AP normalized inputs; hardcoded183-feature title PA |
 | `plot_loadings_family_bar` | family union -> percentages -> `(fig,ax)` | disjoint family weights80/20 vs30/70 | AP numeric; empty/zero-group policy PA |
 | `plot_correlation_heatmap` | correlation frame -> labels/image/text -> `(fig,ax)` | exact matrix/ticks/finite annotations | AP representation; estimator and metallicity interpretation NA |
-| `plot_embedding` | Z/class/scalar -> positional scatter -> `(fig,ax)` | classes/plain/continuous+missing, percentiles | AP paired valid arrays; invalid coordinates boundary PA |
+| `plot_embedding` | Z/class/scalar -> positional scatter -> `(fig,ax)` | classes/plain/continuous+missing, finite scaling | AP paired valid arrays; quantile/clim choice and invalid coordinates boundary PA |
 | `plot_embedding_grid` | Z/y/meta -> class+parameter panels -> `(fig,axes)` | coherent permutation/absent column/missing rows | AP nominal; all-missing/Inf scaling PA |
 | `plot_stability` | ordered report -> bars/reference-excluded mean -> `(fig,ax)` | actual producer with controlled fit; asymmetric mean | AP producer order0..N-1; arbitrary reordered reports PA; stability not astrophysics |
 | `plot_reconstruction_error` | PCA summary -> mean±SD+elbow -> `(fig,ax)` | actual discarded-energy MSE and band | AP statistics; nonuniform count elbow heuristic PA; log zero hidden |
 | `plot_eigenspectra` | PCA vectors/wavelength -> line+markers -> `(fig,axes)` | exact wavelength/values/in-range markers,1/3/10 requested | AP custom marker path; default mathtext and fixed3-PC title PA |
+| `plot_hr_teff_regions` | supplied Teff(K)/log g(dex) -> scatter + illustrative polygons -> `(fig,ax)` | green missing-column sentinel; D02 input-domain geometry and D03 actual population | AP missing-column sentinel only; PA supplied scatter/orientation and dimensional polygon envelope; NA stellar taxonomy and astrophysical delimitations (including N08) |
 | `plot_hr_diagram_embedding` | meta/Z component -> finite triplets -> `(fig,ax)` | missing on distinct rows, two axes, units/inversion | AP provided values; actual stellar stages NA |
 | `plot_training_history` | train/val/LR -> curves/best epoch -> `(fig,axes)` | nonlast minimum, distinct series, real explicit export | AP numeric; direct output_dir mismatch red; train-loss semantics #84 |
 | `plot_ae_embedding` | 2D Z/y/meta -> class+physical panels -> `(fig,axes)` | coherent row permutation/missing physical row | AP nominal; no-physical scalar axes red |
@@ -128,7 +181,7 @@ GPU/W&B/network, visual publication review, cross-version image/PDF agreement,
 all filesystem failures, notebook execution and line coverage. No claim of
 historical figure corruption without its actual run artifact.
 
-## Delivered evidence and first independent review
+## First-pass delivery ? historical results before Claude review
 
 **53 dedicated green cases**, actual Windows/Python3.11.9 execution:
 [validation ledger](m28_validation_results.json). Normal and importlib full
@@ -248,7 +301,7 @@ at the consumer and linked to #90/#106, not claimed as calibrated probabilities.
 Collinear/two-point backend acceptance can depend on floating covariance;
 no successful density computation alone certifies a meaningful2D population.
 
-### Questions for Claude
+### First-pass questions for Claude ? historical
 
 Challenge numerical oracles and adapter limits first: KDE grid tails and label
 meaning; mismatched population refusal versus information unavailable to the

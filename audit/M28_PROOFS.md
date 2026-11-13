@@ -1,5 +1,9 @@
 # M2.8 — immutable red evidence manifest
 
+> Revision 2026-11-13: this manifest and its counts describe the **first pass**.
+> The original archive is preserved unchanged. See [revised proof manifest](M28_REVIEW_PROOFS.md)
+> for corrected oracles, new archive and review campaigns.
+
 Refs #43. Base39dad874610745ccd456d26972e90f6fb3a11405;
 production visualizer blob624b857bca5833c3401204b0a592b9ae6ffc2902 unchanged.
 `tests/proofs_dimred_visualizer.py` is explicitly executed, never discovered

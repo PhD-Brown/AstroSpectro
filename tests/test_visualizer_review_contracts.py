@@ -69,3 +69,23 @@ def test_categorical_legend_maps_ids_to_actual_data_colors(
             visualizer_contracts.assert_cluster_encoding(fig, ax, labels, c.Z)
     else:
         visualizer_contracts.assert_cluster_encoding(fig, ax, labels, c.Z)
+
+
+def test_histogram_disclosure_identifies_the_relevant_exclusion_bound(
+    visualizer_case, visualizer_contracts
+):
+    _, ax = visualizer_case.plt.subplots()
+    values = np.array([0.04, 0.09, 0.1, 4.0, 7.0])
+    for message, admitted in [
+        ("QSO: excluded 2 of 5 above 0.15", True),
+        ("QSO: excluded 2 of 5 outside 0", False),
+        ("QSO: excluded 2 of 50 above 0.15", False),
+        ("Warning: QSO clipped", False),
+    ]:
+        for artist in list(ax.texts):
+            artist.remove()
+        ax.text(0.1, 0.1, message)
+        assert (
+            visualizer_contracts.exclusion_report(ax, "QSO", 2, 5, [0.0, 0.15], values)
+            == admitted
+        ), message
