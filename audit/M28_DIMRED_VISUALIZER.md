@@ -8,11 +8,12 @@ preserved. Production blob **624b857bca5833c3401204b0a592b9ae6ffc2902**.
 Actual inventory: **38 methods**, including initializer and two helpers,
 not31. Entire3224-line source read. AGENTS v1.3 fetched from current main.
 
-## Revision after Claude review 5858927009 ? 2026-11-13
+## Revision after Claude review 5858927009 - 2026-11-13
 
 This revision resumes PR #116 at `4364c61f56d91f7ec93c5c6072b9f88c46023241`;
 all first-pass results below remain historical. Production and the original
-archive `ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac` are unchanged. The current
+archive `ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac` are unchanged. New immutable red archive: **a8bc8506804cf4c89e784e458498d3f229ca81cb**, tag
+`audit/m28-review-proofs-2026-11-13`; the old archive is retained. The current
 review manifest is [M28_REVIEW_PROOFS.md](M28_REVIEW_PROOFS.md). The 53 original
 green nodes remain; eight adapter controls are added. No production fix is
 part of these tests. All twelve GitHub threads remain reviewer-owned.
@@ -27,7 +28,7 @@ part of these tests. All twelve GitHub threads remain reviewer-owned.
 | R6 | Population annotations accept grouped numbers and N= wording; variance annotations link PC count and full-model cumulative variance in either word order. Omission of a questionable claim remains admissible. |
 | R7 | Full visibility OR a verifiable disclosure with actual excluded population/count/support or curve boundary/extreme. Generic warnings and false numbers fail. Zero/negative/nonfinite histogram policies remain open. |
 | R8 | Capture real sklearn subsets, recover supplied observation rows and check pairing, independent ranks, values and repeatability. A paired permutation sampler is admissible; no particular RNG choice sequence is required. |
-| R9 | Inventory corrected to 38/38 below. HR missing-column sentinel AP; provided-data scatter/orientation and dimensional region geometry PA; astrophysical region taxonomy/boundaries NA. |
+| R9 | Inventory corrected to 38/38 below. HR supplied-data scatter/color/orientation and missing-column sentinel AP; dimensional region geometry PA; astrophysical region taxonomy/boundaries NA. |
 | R10 | Independently reproduced linear conditional-density clipping: QSO 3/50 retained, area 1. New characterization and a P2 issue proposal only; distinct from #111 log floor. No new issue created. |
 | R11/R12 | D04 reassigns original F row 8, not row 5. Corrected issue anchors #103:3215, #104:2588, #105:1415/1560, #110:185/186, #111:2824, #114:2279 at the unchanged base SHA, with dated documentary notes. |
 | R13 | Six mh_gspphot -> Fe/H labels (437/616/1100/2311/2455/2892) remain PA interpretation, not a validated abundance conversion. Fixed 3-PC/183-feature/min_size300 titles and anomaly prose also PA; #65/#78 retain policy ownership. |
@@ -52,7 +53,7 @@ are rejected; PDF scientific rendering and cross-version agreement remain PA.
 Current validation: **61 dedicated PASS with -W error**, complete default,
 importlib and reversed suites **693 PASS / 62 deselected / 7 preexisting Gaia
 warnings**. Dedicated reversed and shuffled orders (3/11/29) each 61 PASS.
-Original M01?M16: **16 KILLED**; original C01?C14: **14 PASS** and F01?F03:
+Original M01-M16: **16 KILLED**; original C01-C14: **14 PASS** and F01-F03:
 **3 KILLED**. Review campaign: **19 KILLED**, **12 admissible controls PASS**,
 and **87/87 joint PASS**, with zero surviving/inconclusive current candidates.
 Revised red baseline: **25 FAIL / 1 PASS**, 26 cases. This is evidence on bounded
@@ -121,7 +122,7 @@ limited existing boundaries, not previous coverage of every figure.
 | `plot_stability` | ordered report -> bars/reference-excluded mean -> `(fig,ax)` | actual producer with controlled fit; asymmetric mean | AP producer order0..N-1; arbitrary reordered reports PA; stability not astrophysics |
 | `plot_reconstruction_error` | PCA summary -> mean±SD+elbow -> `(fig,ax)` | actual discarded-energy MSE and band | AP statistics; nonuniform count elbow heuristic PA; log zero hidden |
 | `plot_eigenspectra` | PCA vectors/wavelength -> line+markers -> `(fig,axes)` | exact wavelength/values/in-range markers,1/3/10 requested | AP custom marker path; default mathtext and fixed3-PC title PA |
-| `plot_hr_teff_regions` | supplied Teff(K)/log g(dex) -> scatter + illustrative polygons -> `(fig,ax)` | green missing-column sentinel; D02 input-domain geometry and D03 actual population | AP missing-column sentinel only; PA supplied scatter/orientation and dimensional polygon envelope; NA stellar taxonomy and astrophysical delimitations (including N08) |
+| `plot_hr_teff_regions` | supplied Teff(K)/log g(dex) -> scatter + illustrative polygons -> `(fig,ax)` | green `hr_regions_scatter_preserves_input_triplets_despite_geometry_defect` and missing-column sentinel; D02 input-domain geometry and D03 actual population | AP supplied numeric triplets/color/orientation and sentinel; PA dimensional polygon envelope; NA stellar taxonomy and astrophysical delimitations (including N08) |
 | `plot_hr_diagram_embedding` | meta/Z component -> finite triplets -> `(fig,ax)` | missing on distinct rows, two axes, units/inversion | AP provided values; actual stellar stages NA |
 | `plot_training_history` | train/val/LR -> curves/best epoch -> `(fig,axes)` | nonlast minimum, distinct series, real explicit export | AP numeric; direct output_dir mismatch red; train-loss semantics #84 |
 | `plot_ae_embedding` | 2D Z/y/meta -> class+physical panels -> `(fig,axes)` | coherent row permutation/missing physical row | AP nominal; no-physical scalar axes red |
@@ -181,7 +182,7 @@ GPU/W&B/network, visual publication review, cross-version image/PDF agreement,
 all filesystem failures, notebook execution and line coverage. No claim of
 historical figure corruption without its actual run artifact.
 
-## First-pass delivery ? historical results before Claude review
+## First-pass delivery - historical results before Claude review
 
 **53 dedicated green cases**, actual Windows/Python3.11.9 execution:
 [validation ledger](m28_validation_results.json). Normal and importlib full
@@ -301,7 +302,7 @@ at the consumer and linked to #90/#106, not claimed as calibrated probabilities.
 Collinear/two-point backend acceptance can depend on floating covariance;
 no successful density computation alone certifies a meaningful2D population.
 
-### First-pass questions for Claude ? historical
+### First-pass questions for Claude - historical
 
 Challenge numerical oracles and adapter limits first: KDE grid tails and label
 meaning; mismatched population refusal versus information unavailable to the

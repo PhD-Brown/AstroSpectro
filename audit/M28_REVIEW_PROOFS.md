@@ -1,4 +1,4 @@
-# M2.8 ? revised evidence after Claude review 5858927009
+# M2.8 - revised evidence after Claude review 5858927009
 
 Revision date: 2026-11-13. Refs #43 / Draft PR #116. Same worktree
 `AstroSpectro-m28`, same branch `audit/43-dimred-visualizer`; production blob
@@ -10,14 +10,19 @@ Revision date: 2026-11-13. Refs #43 / Draft PR #116. Same worktree
 - Original archive **ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac**, original ref
   `audit/43-dimred-visualizer-proofs`, preserved byte-for-byte. Historical
   baseline: 22 cases, 21 FAIL / 1 PASS. The first-pass JSON ledgers are unchanged.
-- Revised archive is designated by immutable tag
-  `audit/m28-review-proofs-2026-11-13` (full SHA recorded in the subsequent green
-  manifest and PR #116), read back from GitHub before normal
-  removal of `tests/proofs_dimred_visualizer.py` from the green head.
+- Revised archive **a8bc8506804cf4c89e784e458498d3f229ca81cb**,
+  immutable tag `audit/m28-review-proofs-2026-11-13`. Seven archived files were
+  read back from GitHub and their Git blob IDs verified before normal removal of `tests/proofs_dimred_visualizer.py` from the green head.
 - The revised baseline is **26 cases: 25 FAIL / 1 PASS / 0 ERROR / 0 SKIP**,
   executed in [baseline ledger](m28_review_frozen_controls_results.json).
-  These are the original D01?D15 groups plus one R10 characterization, not
+  These are the original D01-D15 groups plus one R10 characterization, not
   25 independent bugs. The passing profile `n_show=0` refusal remains a control.
+
+[Archive verification](m28_review_archive_verification.json) records GitHub
+blob IDs, preservation of all first-pass JSON files, original-archive ancestry
+and unchanged production. [Red reconstruction replay](m28_review_green_red_replay_results.json)
+and [joint reconstruction replay](m28_review_green_joint_replay_results.json)
+restore exact archived bytes after the proof is removed from the green head.
 
 ## Changes to the proof contracts
 
@@ -115,13 +120,13 @@ pytest 8.4.2, Pillow 13.0.0; Agg rendering and sockets blocked by test setup.
 | Execution | Actual result / ledger |
 |---|---|
 | Original 53 node IDs | All retained; 8 new adapter nodes, 61 total |
-| Targeted `-W error` | 61 PASS ? [frozen validation](m28_review_frozen_validation_results.json) |
-| Complete default/importlib suite | Each 693 PASS / 62 deselected / 7 preexisting Gaia warnings ? same ledger |
-| Complete reversed/hashseed 7 | 693 PASS / 62 deselected / 7 warnings ? [order ledger](m28_review_frozen_order_results.json) |
-| Targeted reversed + shuffle seeds 3/11/29, `-W error` | Each 61 PASS ? same order ledger |
-| Black `--check`, Ruff, pip check, diff/check and protected paths | PASS, including all four M2.8 audit scripts ? frozen validation ledger |
-| M01?M16 | 16 KILLED / 0 SURVIVED / 0 inconclusive, baseline 61 PASS ? [frozen mutations](m28_review_frozen_mutations_results.json) |
-| Old archive replay | 21 FAIL / 1 PASS / 0 ERROR/SKIP ? [old archive verification](m28_review_old_archive_integrity_results.json) |
+| Targeted `-W error` | 61 PASS - [frozen validation](m28_review_frozen_validation_results.json) |
+| Complete default/importlib suite | Each 693 PASS / 62 deselected / 7 preexisting Gaia warnings - same ledger |
+| Complete reversed/hashseed 7 | 693 PASS / 62 deselected / 7 warnings - [order ledger](m28_review_frozen_order_results.json) |
+| Targeted reversed + shuffle seeds 3/11/29, `-W error` | Each 61 PASS - same order ledger |
+| Black `--check`, Ruff, pip check, diff/check and protected paths | PASS, including all four M2.8 audit scripts - frozen validation ledger |
+| M01-M16 | 16 KILLED / 0 SURVIVED / 0 inconclusive, baseline 61 PASS - [frozen mutations](m28_review_frozen_mutations_results.json) |
+| Old archive replay | 21 FAIL / 1 PASS / 0 ERROR/SKIP - [old archive verification](m28_review_old_archive_integrity_results.json) |
 
 Review campaign: **19 KILLED / 0 SURVIVED / 0 inconclusive** for incorrect
 candidates; **12 admissible controls PASS**, plus **87/87 PASS** for the joint
@@ -154,7 +159,7 @@ The review-specific frozen campaign is recorded in
 [m28_review_frozen_results.json](m28_review_frozen_results.json). It includes
 actual pre-patch baselines, all edited statement anchors, matching collections,
 assertion texts, exact candidate patches, tested hashes and a protected-input
-guard. The original C01?C14 and F01?F03 are replayed separately in
+guard. The original C01-C14 and F01-F03 are replayed separately in
 [m28_review_frozen_controls_results.json](m28_review_frozen_controls_results.json).
 C13 additionally completes the display domain for the polygon contract; this
 revision does not alter its broad-grid probability algorithm. Earlier C13-only
@@ -172,9 +177,9 @@ python audit/check_m28_evidence.py --mode proofs --output test-results/m28-contr
 From the green checkout, use the immutable archive SHA below with:
 
 ```powershell
-python audit/check_m28_evidence.py --mode baseline --proofs-ref <revised-full-SHA> --output test-results/m28-red-replay.json
-python audit/check_m28_review.py --proofs-ref <revised-full-SHA> --output test-results/m28-review-replay.json
-python audit/check_m28_review.py --proofs-ref <revised-full-SHA> --only JOINT --output test-results/m28-joint.json
+python audit/check_m28_evidence.py --mode baseline --proofs-ref a8bc8506804cf4c89e784e458498d3f229ca81cb --output test-results/m28-red-replay.json
+python audit/check_m28_review.py --proofs-ref a8bc8506804cf4c89e784e458498d3f229ca81cb --output test-results/m28-review-replay.json
+python audit/check_m28_review.py --proofs-ref a8bc8506804cf4c89e784e458498d3f229ca81cb --only JOINT --output test-results/m28-joint.json
 ```
 
 The runners reconstruct exact archived tests/fixtures/helpers in disposable
@@ -188,11 +193,11 @@ configured checks are recorded in the updated PR #116 and #43 handoff after the
 new green head is pushed. Old CI run 42952227591 is first-pass history only.
 CI does not execute the explicit red proofs or mutation campaigns.
 
-## R10 ? separate corrective issue proposal, awaiting human decision
+## R10 - separate corrective issue proposal, awaiting human decision
 
 **Proposed title:** `fix: disclose population excluded from linear error histograms`
 
-**Probl?me:** at the unchanged production base, line 2833 sets the linear
+**Problème:** at the unchanged production base, line 2833 sets the linear
 histogram support to `[0, 1.5*P99(STAR)]`; `density=True` normalizes only retained
 samples. Supply STAR=`linspace(.01,.1,40)`, QSO=`[.04,.09,.1] + linspace(4,7,47)`.
 Upper support .14865 retains **3 of 50 QSO**, drops **47**, and still has **area 1**;
@@ -208,7 +213,7 @@ no historical astronomical run/publication impact is established.
 which class, how many excluded out of its total and the support used. Conditional
 normalization is admissible when that limitation is explicitly informative.
 
-**V?rification:** run the archived R10 selection. A_HIST full-support alternative
+**Vérification:** run the archived R10 selection. A_HIST full-support alternative
 and AD_HIST exact exclusion disclosure are positive controls. The original
 production fails by the meaningful 3/50 assertion, not a runtime error.
 
@@ -223,8 +228,10 @@ No matching separate issue found in these searches; **no new issue created**.
 
 ## Residual scope and second review
 
-The method table now contains all 38 actual methods. AP denotes only tested
-numeric contracts; regional geometry is PA and astrophysical taxonomy NA.
+The method table now contains all 38 actual methods. AP includes the existing
+`hr_regions_scatter_preserves_input_triplets_despite_geometry_defect` numeric
+triplets/color/orientation and missing-column sentinel; regional margins are PA
+and astrophysical region geometry/taxonomy NA.
 N08's hot/cold taxonomy shift is not claimed rejected. Historical N09 exception
 failure is not promoted to a fresh assertion-based scientific kill. Metallicity
 mh_gspphot versus Fe/H, fixed 3-PC/183-feature/min_size300 prose and anomaly
