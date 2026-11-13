@@ -21,6 +21,8 @@ identified total-class density as a **proposed test policy awaiting scientific
 acceptance**; issue creation still requires explicit human approval. Complete
 advertised KDE regions must remain inside the displayed domain. The previous
 61 nodes and resolved contracts remain; five focused adapter nodes are added.
+New immutable third archive: **8e668780b181948856cacb58650b25a0e03eeddf**, verified on GitHub; prior archives unchanged.
+
 Current local evidence: **66 green PASS with -W error**, full default/importlib
 **698 PASS / 62 deselected / 7 preexisting Gaia warnings**; reversed targeted
 66 PASS. Prior 61 nodes preserved. M01-M16 16 KILLED; original C01-C14 14 PASS,

@@ -1,0 +1,45 @@
+{
+  "archive": "8e668780b181948856cacb58650b25a0e03eeddf",
+  "tag": "audit/m28-round3-proofs-2026-11-13",
+  "github_files_read_before_removal": [
+    {
+      "path": "tests/proofs_dimred_visualizer.py",
+      "sha": "e582e6d0b2a6fc1f8f4aaee4a2a6522448282e25"
+    },
+    {
+      "path": "tests/visualizer_review_contracts.py",
+      "sha": "cad42c53c0ca5926a5225573080d1a0496c9abd1"
+    },
+    {
+      "path": "tests/test_dimred_visualizer.py",
+      "sha": "975212690ce00083d955e401317a7266a7fc254e"
+    },
+    {
+      "path": "tests/test_visualizer_review_contracts.py",
+      "sha": "34a95fea86fcb21cde54b94f5622079e62582dd9"
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha": "0d44271a44abc9b8a55be3383d8a42bc58910ff6"
+    },
+    {
+      "path": "audit/check_m28_review.py",
+      "sha": "54c83eb55ca13379d8f385a5b28943e7e6afd8f0"
+    },
+    {
+      "path": "audit/M28_ROUND3_PROOFS.md",
+      "sha": "a6fa9afdbaf77e071831f48298a543a44bdb84a0"
+    },
+    {
+      "path": "src/dimred/dimred_visualizer.py",
+      "sha": "624b857bca5833c3401204b0a592b9ae6ffc2902"
+    }
+  ],
+  "historical_json_checked_unchanged": 89,
+  "previous_archives": [
+    "ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac",
+    "a8bc8506804cf4c89e784e458498d3f229ca81cb"
+  ],
+  "production_unchanged": true,
+  "archived_test_hashes_match_frozen_execution": true
+}

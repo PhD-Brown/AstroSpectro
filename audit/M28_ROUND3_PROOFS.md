@@ -24,10 +24,10 @@ Historical archives remain immutable:
 - `a8bc8506804cf4c89e784e458498d3f229ca81cb`, tag
   `audit/m28-review-proofs-2026-11-13`, baseline 25 FAIL / 1 PASS (26 cases).
 
-Their JSON logs are not rewritten. A third snapshot will be designated on tag
-`audit/m28-round3-proofs-2026-11-13`, pushed and read back before normal removal
-of the explicit red proof file. The new snapshot will be an ancestor of the
-same PR branch; no second M2.8 branch or PR is created.
+Their JSON logs are not rewritten. The third snapshot is **8e668780b181948856cacb58650b25a0e03eeddf**, tag
+`audit/m28-round3-proofs-2026-11-13`. Eight archived files were read back from
+GitHub and their Git blob IDs verified before normal proof removal. The
+snapshot is an ancestor of the same PR branch; no second M2.8 branch or PR is created.
 
 ## R1 - sampled population and complete probability contours
 
@@ -227,7 +227,7 @@ python audit/check_m28_evidence.py --mode mutations --output test-results/m28-ro
 python audit/check_m28_evidence.py --mode proofs --output test-results/m28-round3-controls.json
 ```
 
-From the green head, add `--proofs-ref <new-full-SHA>` to the baseline/proof
+From the green head, add `--proofs-ref 8e668780b181948856cacb58650b25a0e03eeddf` to the baseline/proof
 reconstruction commands, or to `check_m28_review.py` (optionally `--only JOINT
 JOINT_TOTAL`). The fixed tag is the default baseline ref once the proof file is
 absent. Replays restore exact archived tests, fixtures and helpers and verify
@@ -238,3 +238,7 @@ proofs, mutation campaigns and lint of the four M2.8 audit scripts are separate
 local checks. Hosted logs and their actual head/merge SHA will be linked from
 PR #116 and the #43 handoff. This pass stops for Claude's short verification on
 K10, FD05, R6/R7 and R10. PR remains Draft, M2.8 yellow, #43 open, M2.9 untouched.
+
+[Archive/blob verification](m28_r3_archive_verification.json), [green-head red replay](m28_r3_green_red_replay_results.json) and [joint reconstructions](m28_r3_green_joint_replay_results.json) preserve exact replay evidence.
+
+After normal removal from the green head, exact archive reconstruction returned **25 FAIL / 1 PASS / 0 ERROR/SKIP**, and both JOINT and JOINT_TOTAL returned **92 PASS**. Protected-input guards passed. Green-head validation repeated **66 PASS with -W error**, both full suites **698 PASS / 62 deselected / 7 preexisting warnings**, Black/Ruff, pip check and protected-path diff PASS (`m28_r3_green_validation_results.json`). Hosted CI is recorded separately in PR #116 and the #43 handoff on the actual pushed green SHA.
