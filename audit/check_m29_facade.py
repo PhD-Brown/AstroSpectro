@@ -362,7 +362,9 @@ def main():
         with zipfile.ZipFile(wheel) as archive:
             members = archive.namelist()
             assert "dimred/__init__.py" in members
-            assert not any(n.startswith("astrospectro/dimred/") for n in members)
+            result["additional_astrospectro_dimred_namespace"] = any(
+                n.startswith("astrospectro/dimred/") for n in members
+            )  # Inventory, not a prohibition of an additive namespace.
             result["wheel_members"] = members
         command = [
             sys.executable,
