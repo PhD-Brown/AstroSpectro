@@ -1,5 +1,66 @@
 # M2.9 — Public dimred facade and dependency boundaries
 
+## Revision after Claude's first review — 2026-11-15
+
+Read the complete [review5908931188](https://github.com/PhD-Brown/AstroSpectro/pull/117#pullrequestreview-5908931188),
+all ten inline threads, [handoff6888851382](https://github.com/PhD-Brown/AstroSpectro/issues/43#issuecomment-6888851382),
+#43, #21 and current AGENTS.md. Resumed the clean existing branch/worktree at
+`43fbdac2425e9b36d253ef08c700859a87638f69`; no restart or production changes.
+This section supersedes the initial oracle/coverage claims below. Original
+results remain at [43fbdac](https://github.com/PhD-Brown/AstroSpectro/blob/43fbdac2425e9b36d253ef08c700859a87638f69/audit/m29_experiments.json).
+The current manifest records executable inputs **`1f158597575c44c488a8a4641addfac4c1c52bee`**,
+actual before/after byte hashes, source blobs, commands, outputs and provenance.
+
+| Review | Strengthened contract and discriminating evidence | Remaining limit |
+|---|---|---|
+| R3-1 | `torch_boundary` exercises independent constructors and all three AE exports after each of seven fresh entry requests. AE constructor/protocol and synthetic helper calls reject None, noncallables and empty results. Only typed ImportError with Torch in the **final message line** is an optional refusal; stderr warnings and misleading `cannot import name` are excluded. Red file and valid-remedy campaign share `assert_torch_contract`. C1a/C1b rejected on every entry, plus three helper counterexamples. | No AE training or scientific result inferred from synthetic helper availability. A successful lazy refusal need not attempt a Torch import. Failed original proofs require a real blocker hit and the AE87 NameError frame before being classified as #21. |
+| R5-1 | Deep-copy **all rcParams except backend** before/after import, report changed keys and before/after values. Original changes11; C5 still changes9 and is rejected. Style probe preloads real Torch deliberately, independently of API-isolation probes. Missing Torch gives an explicit unavailable result and no style measurement; red style case skips when Torch is absent. | Backend is initialized before measurement and excluded as environment-dependent. Deferred style A06 and local rc_context A09 preserve caller state. No pixel/scientific validation. |
+| R2-1 | First access all14 public objects, verify callable/star/named imports, **then** import producers for identity/repetition. Additional real subprocesses start directly with named PCA and star. C2's preload-dependent getattr fails the designated fresh-public-attribute assertion. A04 and reversed __all__ remain admitted. | Synthetic sibling wiring is labelled synthetic; fresh real-source subprocesses provide the preload counterexample evidence. |
+| R1-1 | Resolve facade spec; record initial meta_path; inspect live package file/code path at Python exec audit events and loaded __file__ after success. Retain origin/code/exception frames when Python removes a failed partial import. Four private .pth counterexamples reject wrong resolved paths and a forged spec whose selected code path is foreign. | The private .pth is processed before the helper with site.addsitedir, without editing either real venv. This is path provenance, not attestation against arbitrary hostile native/interpreter code. |
+| R6-1 | Add .npy/.npz/.parquet/.feather/.h5/.hdf5/.pth/.ckpt/.safetensors; add gethostbyname/gethostbyaddr/bind. Positive controls exercise actual supported Python audit events, with caught attempts retained. All12 C4 extension/network variants fail the retained-attempt assertion. Private cache JSON reads/writes stay admissible. | **PA**: explicit suffix/event lists, not exhaustive read/network isolation; native calls and unlisted formats remain unproven. |
+| S1 | Notebook import checking uses ast.walk after controlled masking of standalone %/! lines. All15 imports in the three dimred notebooks remain checked. A positive fixture covers aliases, semicolon imports, nested blocks and three-level module names. | No notebook execution. Python embedded in cell-magic strings and arbitrary dynamic imports are not covered. Other notebook syntax is outside this targeted correction; the lexical repository scan is not an AST completeness claim. |
+| S2 | Checker adds --output; default is ignored `test-results/m29-replay.json`. Replay records/checks that the reference manifest stayed byte-identical. Publishing this new reference is an explicit copy after replay, not a side effect of invoking the checker. | An explicit --output pointing at the reference intentionally authorizes replacement; original Git history remains available. |
+| S3 | CPU CUDA observation explicitly documented as **non-falsifiable** under the CPU wheel and CUDA_VISIBLE_DEVICES=-1. | No GPU initialization-attempt or real GPU guarantee; **PA**. |
+| S4 | Parameterize broken-producer tests over PCA, embedding and AE; require the structured final ImportError/message, not a substring in preceding stderr. | Other producers are not individually fault-injected; no general mutation-completeness claim. |
+
+New campaign: **10/10 original candidates rejected**, plus **35/35 review
+counterexample executions rejected**, no survivor or inconclusive result.
+The35 include repeated C1a/C1b routes, four finder scenarios, 12 C4 operations,
+three helper variants, C2 and C5; this is not35 independent bugs/source sites.
+Each review rejection requires the designated child AssertionError/message
+after exercising the faulty path; setup/collection/runtime accidents are not
+counted. Original M10 remains separately labelled an import-boundary refusal.
+
+All six original alternatives remain admitted (14 executions). Twelve additional
+executions admit A04+A05 on all seven requests, explicit AE use-refusal, lazy AE
+access/star refusal and rc_context. They exercise the same Torch acceptance
+oracle as the red file. These are limited oracle-admissibility controls, not
+approved complete production remedies.
+
+| Actual command (fast/CPU interpreters defined below) | Revision result |
+|---|---|
+| Fast `-m pytest -q tests/test_dimred_facade.py` | 41 PASS, 14 excluded |
+| Fast same with `--import-mode=importlib` | 41 PASS, 14 excluded |
+| CPU `-m pytest -q -m slow tests/test_dimred_facade.py` | 14 PASS, 41 excluded |
+| Fast explicit same slow selection | 14 SKIP, 41 excluded; not PASS |
+| Fast `-m pytest -q` | 739 PASS, 76 excluded, 7 existing Gaia warnings |
+| Fast `-m pytest -q -m 'integration and not slow'` | 106 PASS, 709 excluded |
+| CPU `-m pytest -q audit/proofs_m29_facade.py` | 8 FAIL, 0 ERROR/SKIP/XFAIL; seven AE87 NameErrors including new star request, one measured full-style violation |
+| CPU `audit/check_m29_facade.py` (default output) | Original10 + review35 rejected; 14+12 valid executions; wheel PASS; reference preserved; input hashes unchanged |
+| Black/Ruff configured paths + both M29 audit scripts; pip check both envs; diff checks | PASS; production/config/notebook/workflow diff empty |
+
+Full-style measurement changes exactly: axes.grid, axes.labelsize,
+axes.spines.right, axes.spines.top, axes.titlesize, figure.dpi, font.family,
+grid.alpha, legend.fontsize, xtick.labelsize, ytick.labelsize. This is an
+**observed list, not a frozen oracle list**. A separate Torch-blocked plain
+import measurement records the same11 changes and its NameError independently;
+Claude's dotted-PCA observation is consistent with the same parent initializer.
+The style P2 proposal and #21 are still distinct, uncorrected, and no issue was
+created. All eight red cases remain versioned outside normal discovery;
+the old seven-case proof and manifest remain at43fbdac in ordinary Git ancestry.
+No extra archive ref or xfail is needed. Final remote SHA/CI and ten unresolved
+thread replies belong in the PR/#43 after publication. Next: second Claude review.
+
 ## Scope and provenance
 
 Audit/tests only on `audit/43-dimred-facade`, separate `AstroSpectro-m29`
@@ -13,7 +74,8 @@ proof refs were preserved. No production/dependency/notebook/workflow/data edit.
 Executable inputs and source blobs are recorded in [m29_experiments.json](m29_experiments.json),
 including SHA256 of actual local bytes before/after, interpreter, Git HEAD/status,
 commands, subprocess output and versions. A local byte hash is not a Git blob.
-Final experiment input commit: `fd14728e201117df3bceb4477d2ac138374e269f`.
+Initial experiment input commit: `fd14728e201117df3bceb4477d2ac138374e269f`;
+revision input commit is given above.
 The final delivery SHA/CI is recorded in the PR and #43 handoff, avoiding a
 self-referential commit hash here.
 
@@ -144,17 +206,18 @@ requiring one particular pip command; a future installation extra is admissible.
 
 ## Side effects (S, import boundary only)
 
-Successful import probes preserve `sys.path` after deliberate src insertion,
-root logger level/handlers, and deny Python-audited network operations, catalog/
-checkpoint reads and file writes outside private Matplotlib/cache directories.
-Positive controls intercept an attempted DNS lookup and write before either
-reaches a real service/file. Attempt lists survive caught exceptions. `-B`
-suppresses bytecode writes. No application artifacts/catalog/model/network
-access was observed in successful probes. Legitimate cache creation is allowed.
+Successful import probes preserve `sys.path` after deliberate src insertion
+and root logger level/handlers. A documented list of Python audit events and
+scientific suffixes intercepts the tested network, data/checkpoint read and
+write attempts. Coverage is **PA**, not an exhaustive guarantee against every
+format, native operation or network mechanism. Positive controls and retained
+caught attempts are in the revision manifest. `-B` suppresses bytecode writes;
+private Matplotlib/cache activity remains allowed.
 
-Real Torch CPU is eagerly loaded; its CUDA runtime is not initialized in these
-processes (`torch.cuda.is_initialized()` false). Matplotlib pyplot is eager,
-with Agg deliberately selected for headless execution. This does not establish
+Real Torch CPU is eagerly loaded; `torch.cuda.is_initialized()` is false in
+these CPU/masked-device processes. This observation is **not falsifiable here**
+and gives no GPU or initialization-attempt guarantee (PA). Matplotlib pyplot
+is eager, with Agg deliberately selected for headless execution. This does not establish
 default interactive-backend behavior or arbitrary GPU-build behavior. W&B,
 UMAP, HDBSCAN and Plotly are not eagerly needed. Module presence alone is not
 called a defect. No startup-time/memory threshold is invented.
@@ -163,8 +226,9 @@ called a defect. No startup-time/memory threshold is invented.
 style from `dimred_visualizer.py:48–68` to the caller's Matplotlib state. The
 red proof sets grid=False/dpi91, imports the package with real Torch and observes
 grid=True/dpi150. Even a PCA import traverses the same initializer. A failed
-Torch-free import can also reach that update before AE fails (static order;
-this second combination is not a separate measured red case).
+Torch-free import reaches that update before AE fails: the new separate
+partial-import measurement records all11 changed keys and NameError. It is
+an observation, not a passing style-preservation contract.
 
 ### Separate P2 issue proposal (not created)
 
@@ -205,7 +269,7 @@ errors. Last two demonstrate that the corresponding red oracle admits a remedy;
 they do not constitute approved or complete production fixes. Machine output
 retains per-candidate commands/results and unchanged production/test hashes.
 
-The 7 desired-behavior red tests live at `audit/proofs_m29_facade.py`, outside
+The current8 desired-behavior red tests live at `audit/proofs_m29_facade.py`, outside
 default `testpaths=['tests']` and pytest filename discovery. Run explicitly:
 
 ```powershell
@@ -214,7 +278,7 @@ $cpu = '../AstroSpectro-m25/.venv-torch/Scripts/python.exe'
 & $cpu audit/check_m29_facade.py
 ```
 
-Expected unchanged-production result: **7 FAIL**, six import paths for the
+Expected unchanged-production result: **8 FAIL**, seven import paths for the
 single known #21 defect and one global-style proposal. FAIL count is not bug
 count. No xfail/skip converts these expectations into green approval. These
 proofs remain versioned in this delivery and its eventual history; no red file
@@ -223,7 +287,7 @@ SHA and JSON provide replay provenance. Earlier exploratory harness failures
 (null-device guard, notebook import parser and an input-hash abort during edits)
 are development failures, not production findings or mutation kills.
 
-## Execution ledger and limits
+## Initial execution ledger (43fbdac, historical) and current limits
 
 Windows/Python3.11.9. Fast interpreter is `../AstroSpectro/.venv/Scripts/python.exe`
 (no Torch). Optional CPU interpreter is
@@ -256,7 +320,7 @@ excludes `slow`, so it does not execute the real Torch facade tests or red proof
 | Fresh imports, repetition, blocked optional roots, known failure attribution | AP I | Tested Windows/Python3.11/CPU dependency set; real extras-complete environment NA |
 | Packaging wheel and top-level resolution | AP I for tested wheel | Dependency resolution, independent clean editable env, other Python/OS NA locally |
 | Consumer compatibility | PA | Static15 statements + real object/submodule imports; no notebook run |
-| Network/destructive I/O/GPU guards | AP S for audited Python events/CPU process | Not C-extension syscall tracing, arbitrary filesystem operation or GPU-build validation |
+| Network/destructive I/O/GPU guards | **PA** | Enumerated Python events/formats only; CPU CUDA observation is not falsifiable; no native/GPU completeness claim |
 | Global plotting style | AP observation, desired contract RED | Future explicit-style policy and implementation await review |
 | Numerical/physical contracts | No new P tests justified | Producer identity links to M2.1–8; no new algorithm/astrophysical validation |
 | Science, provenance, held-out data and historical runs | NA | No catalogs, models, GPU, W&B, real scientific evaluation or leakage proof |
