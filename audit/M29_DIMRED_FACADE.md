@@ -13,7 +13,7 @@ proof refs were preserved. No production/dependency/notebook/workflow/data edit.
 Executable inputs and source blobs are recorded in [m29_experiments.json](m29_experiments.json),
 including SHA256 of actual local bytes before/after, interpreter, Git HEAD/status,
 commands, subprocess output and versions. A local byte hash is not a Git blob.
-Final experiment input commit: `ae54346d49499b915f1895ad82cecb2cf14b6cd7`.
+Final experiment input commit: `fd14728e201117df3bceb4477d2ac138374e269f`.
 The final delivery SHA/CI is recorded in the PR and #43 handoff, avoiding a
 self-referential commit hash here.
 
@@ -139,6 +139,8 @@ This is a real wheel build/install against the available locked dependencies;
 no clean dependency resolver or new editable-install environment was tested.
 The existing CI uses editable installation. Additional future namespaces and
 different compatible import implementation strategies remain admissible.
+Diagnostic tests require attribution to the actual missing dependency, without
+requiring one particular pip command; a future installation extra is admissible.
 
 ## Side effects (S, import boundary only)
 
