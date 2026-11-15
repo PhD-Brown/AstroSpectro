@@ -4,7 +4,6 @@ import ast
 import importlib.util
 import json
 from pathlib import Path
-import re
 import tomllib
 
 import pytest
@@ -45,7 +44,11 @@ def test_public_producers_exist_in_source():
 
 @pytest.mark.integration
 def test_wiring_against_controlled_siblings_in_fresh_process(tmp_path):
-    assert_success(run_probe(tmp_path, "wiring"))
+    result = run_probe(tmp_path, "wiring")
+    assert_success(result)
+    state = PROBE.probe_record(result, "M29_PROVENANCE")
+    assert Path(state["loaded"]).resolve() == ROOT / "src/dimred/__init__.py"
+    assert state["executed"][0]["code"] == str(ROOT / "src/dimred/__init__.py")
 
 
 @pytest.mark.integration
@@ -54,10 +57,14 @@ def test_side_effect_guard_has_positive_controls(tmp_path):
 
 
 @pytest.mark.integration
-def test_core_producer_failure_is_not_silently_masked(tmp_path):
-    result = run_probe(tmp_path, "wiring_failure")
+@pytest.mark.parametrize("source", ["pca_analyzer", "embedding", "autoencoder"])
+def test_core_producer_failure_is_not_silently_masked(tmp_path, source):
+    result = run_probe(tmp_path, "wiring_failure", operation=source)
     assert result.returncode == 1
-    assert "ImportError: M29 producer ABI failure PCA" in result.stderr
+    label = "PCA" if source == "pca_analyzer" else source
+    error = PROBE.probe_record(result, "M29_PROVENANCE")["exception"]
+    assert error["type"] == "ImportError"
+    assert error["message"] == f"M29 producer ABI failure {label}"
     assert "M29_OK" not in result.stdout
 
 
@@ -125,24 +132,23 @@ def test_missing_required_dependency_is_attributable(tmp_path, dependency, state
 @pytest.mark.unit
 def test_notebook_imports_reference_existing_public_objects():
     found = []
-    for path in ROOT.rglob("*.ipynb"):
-        if any(part.startswith(".") for part in path.relative_to(ROOT).parts):
-            continue
+    for path in (ROOT / "notebooks/dimred").glob("*.ipynb"):
         notebook = json.loads(path.read_text(encoding="utf-8"))
         for index, cell in enumerate(notebook["cells"]):
             if cell["cell_type"] != "code":
                 continue
-            # Read import statements only: notebook magic is not Python syntax.
             source = "".join(cell["source"])
-            for match in re.finditer(
-                r"(?m)^[ \t]*from (dimred(?:\.\w+)?) import ([^\n]+)", source
-            ):
-                statement = match[0].strip()
-                # Parenthesized multiline imports need their complete statement.
-                if "(" in statement:
-                    start = match.start()
-                    statement = source[start : source.index(")", start) + 1].strip()
-                node = ast.parse(statement).body[0]
+            for node in PROBE.notebook_imports(source):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.split(".")[0] == "dimred":
+                            assert (
+                                ROOT / "src" / alias.name.replace(".", "/")
+                            ).is_dir()
+                    found.append(
+                        (path.name, index, "import", [a.name for a in node.names])
+                    )
+                    continue
                 names = [a.name for a in node.names]
                 if node.module == "dimred":
                     assert set(names) <= set(EXPORTS), (path, index, names)
@@ -166,7 +172,86 @@ def test_notebook_imports_reference_existing_public_objects():
                     )
                     assert set(names) <= producers, (path, index, names)
                 found.append((path.name, index, node.module, names))
-    assert len({name for name, *_ in found}) >= 3
+    assert len({name for name, *_ in found}) == 3
+    assert len(found) == 15
+
+
+@pytest.mark.unit
+def test_notebook_parser_handles_aliases_inline_nested_and_magics():
+    nodes = PROBE.notebook_imports(
+        "%matplotlib inline\n!echo ignored\nimport dimred as dr\n"
+        "x = 1; from dimred import PCAAnalyzer as P\n"
+        "if True:\n    from dimred.a.b import (C, D)\n"
+    )
+    assert len(nodes) == 3
+    assert isinstance(nodes[0], ast.Import) and nodes[0].names[0].asname == "dr"
+    assert {n.module for n in nodes if isinstance(n, ast.ImportFrom)} == {
+        "dimred",
+        "dimred.a.b",
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "kind,message,accepted",
+    [
+        (ImportError, "PyTorch required; install torch", True),
+        (
+            ImportError,
+            "cannot import name 'SpectralAutoencoder' from '/venv-torch/dimred'",
+            False,
+        ),
+        (TypeError, "torch is missing", False),
+        (NameError, "nn is undefined", False),
+        (AttributeError, "torch", False),
+        (ImportError, "unrelated optional backend", False),
+        (ImportError, "PyTorch warning\nunrelated final diagnostic", False),
+        (ImportError, "Optional backend\nPyTorch required", True),
+    ],
+)
+def test_torch_refusal_uses_final_typed_diagnostic(kind, message, accepted):
+    assert PROBE.torch_refusal(kind(message)) is accepted
+
+
+@pytest.mark.integration
+def test_style_unavailable_is_not_a_style_measurement(tmp_path):
+    result = run_probe(tmp_path, "style", blocked=("torch",))
+    state = PROBE.probe_record(result, "M29_PROVENANCE")
+    assert result.returncode == 1
+    assert state["exception"]["type"] == "RuntimeError"
+    assert "M29_STYLE_UNAVAILABLE" in state["exception"]["message"]
+    assert "M29_STYLE " not in result.stdout
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "mode,statement,partial",
+    [
+        ("entry", "import dimred", False),
+        ("entry", "from dimred import PCAAnalyzer", False),
+        ("wiring", None, False),
+        ("entry", "import dimred", True),
+    ],
+)
+def test_private_pth_finder_cannot_replace_checkout_facade(
+    tmp_path, mode, statement, partial
+):
+    fake = tmp_path / "fake.py"
+    fake.write_text(
+        "class PCAAnalyzer: pass\nraise RuntimeError('fake partial import')\n"
+    )
+    startup = tmp_path / "startup"
+    PROBE.make_hijack(
+        startup, fake, ROOT / "src/dimred/__init__.py" if partial else None
+    )
+    result = run_probe(tmp_path / "cwd", mode, operation=statement, startup_dir=startup)
+    state = PROBE.probe_record(result, "M29_PROVENANCE")
+    assert result.returncode == 1 and "provenance mismatch" in result.stderr
+    assert "m29_hijack.Finder" in state["meta_path"]
+    if partial:
+        assert state["executed"][0]["code"] == str(fake)
+    else:
+        assert state["resolved"] == str(fake)
 
 
 @pytest.mark.unit
@@ -188,6 +273,8 @@ def test_packaging_units_are_distinct_and_dimred_is_discovered():
         (None, ()),
         (None, ("umap", "hdbscan", "plotly", "wandb")),
         (None, ("xgboost", "lightgbm", "catboost")),
+        ("from dimred import PCAAnalyzer", ()),
+        ("from dimred import *", ()),
         ("from dimred.pca_analyzer import PCAAnalyzer", ()),
         ("from dimred.autoencoder import SpectralAutoencoder", ()),
         (

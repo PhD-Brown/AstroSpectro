@@ -1,5 +1,7 @@
 """Fresh-process probes for M2.9; controlled wiring is explicitly synthetic."""
 
+import ast
+import copy
 import importlib
 import importlib.abc
 import importlib.util
@@ -7,8 +9,10 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
+import traceback
 import types
 
 
@@ -30,9 +34,52 @@ EXPORTS = {
     "latent_arithmetic": ("autoencoder", "latent_arithmetic"),
 }
 OPTIONAL = ("torch", "umap", "hdbscan", "plotly", "wandb")
+AE_EXPORTS = ("SpectralAutoencoder", "tester_candidat", "latent_arithmetic")
+TORCH_STATEMENTS = (
+    "import dimred",
+    "from dimred import PCAAnalyzer",
+    "from dimred import SpectralAutoencoder",
+    "from dimred.pca_analyzer import PCAAnalyzer",
+    "from dimred.embedding import EmbeddingEngine",
+    "from dimred.data_loader import DimRedDataLoader",
+    "from dimred import *",
+)
+SCIENTIFIC_SUFFIXES = {
+    ".fits",
+    ".csv",
+    ".pkl",
+    ".joblib",
+    ".pt",
+    ".npy",
+    ".npz",
+    ".parquet",
+    ".feather",
+    ".h5",
+    ".hdf5",
+    ".pth",
+    ".ckpt",
+    ".safetensors",
+}
+NETWORK_EVENTS = {
+    "socket.connect",
+    "socket.getaddrinfo",
+    "socket.sendto",
+    "socket.gethostbyname",
+    "socket.gethostbyaddr",
+    "socket.bind",
+}
 
 
-def run_probe(tmp_path, mode, *, root=None, blocked=(), operation=None, real=False):
+def run_probe(
+    tmp_path,
+    mode,
+    *,
+    root=None,
+    blocked=(),
+    operation=None,
+    real=False,
+    startup_dir=None,
+):
     """Run a probe with -I, explicit source path, alien cwd and private caches."""
     root = Path(root or Path(__file__).resolve().parents[1])
     tmp_path.mkdir(parents=True, exist_ok=True)
@@ -56,6 +103,15 @@ def run_probe(tmp_path, mode, *, root=None, blocked=(), operation=None, real=Fal
         str(Path(__file__).resolve()),
         json.dumps(args),
     ]
+    if startup_dir is not None:
+        # Process a private .pth before the helper starts, without editing a venv.
+        bootstrap = (
+            "import site, sys, runpy; "
+            f"site.addsitedir({str(startup_dir)!r}); "
+            f"sys.argv = {command[3:]!r}; "
+            f"runpy.run_path({str(Path(__file__).resolve())!r}, run_name='__main__')"
+        )
+        command = [sys.executable, "-I", "-B", "-c", bootstrap]
     return subprocess.run(
         command,
         cwd=tmp_path,
@@ -71,6 +127,72 @@ def run_probe(tmp_path, mode, *, root=None, blocked=(), operation=None, real=Fal
 def assert_success(result):
     assert result.returncode == 0, result.stdout + result.stderr
     assert "M29_OK" in result.stdout, result.stdout + result.stderr
+
+
+def probe_record(result, prefix):
+    """Read one structured child record; missing telemetry is a harness failure."""
+    records = [
+        json.loads(line[len(prefix) + 1 :])
+        for line in result.stdout.splitlines()
+        if line.startswith(prefix + " ")
+    ]
+    assert len(records) == 1, result.stdout + result.stderr
+    return records[0]
+
+
+def make_hijack(startup_dir, facade, expected=None):
+    """Create a private .pth finder counterexample, without changing site-packages."""
+    startup_dir.mkdir(parents=True, exist_ok=True)
+    code = (
+        "import sys, importlib.abc, importlib.util\n"
+        "class Finder(importlib.abc.MetaPathFinder):\n"
+        "    def find_spec(self, fullname, path=None, target=None):\n"
+        "        if fullname == 'dimred':\n"
+        f"            spec = importlib.util.spec_from_file_location(fullname, {str(facade)!r}, submodule_search_locations=[])\n"
+    )
+    if expected is not None:
+        code += f"            spec.origin = {str(expected)!r}\n"
+    code += "            return spec\nsys.meta_path.insert(0, Finder())\n"
+    (startup_dir / "m29_hijack.py").write_text(code, encoding="utf-8")
+    (startup_dir / "m29_hijack.pth").write_text("import m29_hijack\n", encoding="utf-8")
+
+
+def torch_refusal(error):
+    """Attribute only the final ImportError diagnostic, never preceding warnings."""
+    diagnostic = str(error).splitlines()[-1] if str(error) else ""
+    return (
+        isinstance(error, ImportError)
+        and "cannot import name" not in diagnostic.lower()
+        and re.search(r"\b(?:torch|pytorch)\b", diagnostic, re.IGNORECASE) is not None
+    )
+
+
+def notebook_imports(source):
+    """Parse static imports after masking standalone Jupyter commands, without execution."""
+    lines = source.splitlines(keepends=True)
+    # These notebooks use standalone magics, not Python inside cell-magic strings.
+    normalized = "".join(
+        (
+            re.match(r"\s*", line)[0].replace("\n", "") + "pass\n"
+            if line.lstrip().startswith(("%", "!"))
+            else line
+        )
+        for line in lines
+    )
+    tree = ast.parse(normalized)  # Parse failure is explicit, not an empty inventory.
+    return [
+        node
+        for node in ast.walk(tree)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.split(".")[0] == "dimred"
+        )
+        or (
+            isinstance(node, ast.Import)
+            and any(a.name.split(".")[0] == "dimred" for a in node.names)
+        )
+    ]
 
 
 class BlockImports(importlib.abc.MetaPathFinder):
@@ -92,16 +214,28 @@ def check_exports(package):
     assert set(package.__all__) == set(EXPORTS), "public export surface"
     assert package.__version__ == "0.3.0"
     assert package.__author__ == "AstroSpectro \u2014 PHY-3500"
-    for name, (source, producer) in EXPORTS.items():
-        module = importlib.import_module(f"dimred.{source}")
-        assert hasattr(package, name), f"missing public attribute {name}"
-        assert getattr(package, name) is getattr(module, producer), f"identity {name}"
-        assert callable(getattr(package, name)), f"callable {name}"
+    # First pass: no voluntary producer imports. A lazy facade resolves itself.
+    public = {}
+    for name in EXPORTS:
+        try:
+            public[name] = getattr(package, name)
+        except Exception as error:
+            raise AssertionError(
+                f"fresh public attribute {name}: {type(error).__name__}"
+            ) from error
+        assert callable(public[name]), f"callable {name}"
     namespace = {}
     exec("from dimred import *", namespace)
     assert set(namespace) - {"__builtins__"} == set(EXPORTS), "star surface"
     for name in EXPORTS:
-        assert namespace[name] is getattr(package, name)
+        assert namespace[name] is public[name]
+        named = {}
+        exec(f"from dimred import {name}", named)
+        assert named[name] is public[name], f"fresh named identity {name}"
+    # Second pass: independent producer identity, after exercising the facade.
+    for name, (source, producer) in EXPORTS.items():
+        module = importlib.import_module(f"dimred.{source}")
+        assert public[name] is getattr(module, producer), f"identity {name}"
     for _ in range(3):
         assert importlib.import_module("dimred") is package
         for name in EXPORTS:
@@ -126,17 +260,14 @@ def guarded_imports(scratch):
     violations = []
 
     def audit(event, args):
-        forbidden = event in {"socket.connect", "socket.getaddrinfo", "socket.sendto"}
+        forbidden = event in NETWORK_EVENTS
         paths = []
         if event == "open":
             path, mode, flags = args
-            if isinstance(path, (str, bytes)) and Path(os.fsdecode(path)).suffix in {
-                ".fits",
-                ".csv",
-                ".pkl",
-                ".joblib",
-                ".pt",
-            }:
+            if (
+                isinstance(path, (str, bytes))
+                and Path(os.fsdecode(path)).suffix.lower() in SCIENTIFIC_SUFFIXES
+            ):
                 forbidden = True  # No catalog/model is needed to import the API.
             if isinstance(path, (str, bytes)) and (
                 (mode and any(c in mode for c in "wax+"))
@@ -192,13 +323,103 @@ def optional_operation(module, operation):
         raise AssertionError(operation)
 
 
-def main(args):
-    sys.stdout.reconfigure(encoding="utf-8")
+def check_torch_boundary(package):
+    """Exercise independent constructors and AE exports without requiring Torch."""
+    import numpy as np
+    import pandas as pd
+
+    for name in ("PCAAnalyzer", "DimRedDataLoader", "EmbeddingEngine"):
+        assert callable(getattr(package, name, None)), f"independent export {name}"
+    package.PCAAnalyzer(n_components=1)
+    package.DimRedDataLoader("not-read-features.csv", "not-read-catalog.csv")
+    package.EmbeddingEngine(method="tsne")
+    outcomes = {}
+    for name in AE_EXPORTS:
+        try:
+            value = getattr(package, name)
+        except ImportError as error:
+            assert torch_refusal(error), f"AE attribution {name}: {error}"
+            outcomes[name] = "explicit Torch refusal at access"
+            continue
+        except Exception as error:
+            raise AssertionError(f"AE access {name}: {type(error).__name__}") from error
+        assert value is not None and callable(
+            value
+        ), f"AE export {name} must be callable"
+        try:
+            if name == "SpectralAutoencoder":
+                model = value(input_dim=4, latent_dim=2, hidden_dims=[4], device="cpu")
+                assert all(
+                    callable(getattr(model, method, None))
+                    for method in ("fit", "encode", "decode", "reconstruct")
+                ), "AE instance protocol"
+            else:
+                import matplotlib.pyplot as plt
+
+                class NumericModel:
+                    def encode(self, X):
+                        return np.zeros((len(X), 2))
+
+                    def reconstruct(self, X):
+                        return np.asarray(X).copy()
+
+                figures = set(plt.get_fignums())
+                try:
+                    if name == "tester_candidat":
+                        output = value(
+                            x_raw=np.arange(4.0),
+                            ae_model=NumericModel(),
+                            loader_ref=types.SimpleNamespace(scaler_=None),
+                            feature_names_ref=list("abcd"),
+                            Z_train=np.zeros((4, 2)),
+                        )
+                        assert isinstance(output, dict) and {
+                            "z",
+                            "mse",
+                            "x_recon",
+                        } <= set(output), "AE helper tester_candidat result"
+                    else:
+                        output = value(
+                            Z_ae=np.zeros((4, 2)),
+                            meta=pd.DataFrame(
+                                {
+                                    "teff_gspphot": [12000.0] * 4,
+                                    "logg_gspphot": [4.0] * 4,
+                                }
+                            ),
+                            y=np.repeat("STAR", 4),
+                        )
+                        assert isinstance(output, dict) and {
+                            "populations",
+                            "tests",
+                            "fig",
+                        } <= set(output), "AE helper latent_arithmetic result"
+                finally:
+                    for number in set(plt.get_fignums()) - figures:
+                        plt.close(number)
+        except ImportError as error:
+            assert torch_refusal(error), f"AE attribution {name}: {error}"
+            outcomes[name] = "explicit Torch refusal at use"
+        except (TypeError, NameError, AttributeError) as error:
+            raise AssertionError(f"AE use {name}: {type(error).__name__}") from error
+        else:
+            outcomes[name] = "usable synthetic invocation"
+    print("M29_AE", json.dumps(outcomes))
+
+
+def rc_snapshot(mpl):
+    """Copy caller state; backend selection is environmental, not plotting style."""
+    return {
+        key: copy.deepcopy(value)
+        for key, value in mpl.rcParams.items()
+        if key != "backend"
+    }
+
+
+def execute_probe(args):
     root = Path(args["root"]).resolve()
-    sys.path.insert(0, str(root / "src"))
-    assert not any(n == "dimred" or n.startswith("dimred.") for n in sys.modules)
-    assert not any(n.split(".")[0] in args["blocked"] for n in sys.modules)
     blocker = BlockImports(args["blocked"])
+    args["_blocker"] = blocker
     sys.meta_path.insert(0, blocker)
     # Positive controls run BEFORE the operation; clear recorded control hits.
     for dependency in args["blocked"]:
@@ -232,41 +453,85 @@ def main(args):
         if mode == "wiring_failure":
             # Fail while executing the producer, rather than simulate absence.
             # The public import must not silently replace a broken core PCA API.
-            del sys.modules["dimred.pca_analyzer"]
+            source = operation or "pca_analyzer"
+            export = next(
+                name for name, (module, _) in EXPORTS.items() if module == source
+            )
+            label = "PCA" if source == "pca_analyzer" else source
+            del sys.modules[f"dimred.{source}"]
 
             class BrokenProducer(importlib.abc.MetaPathFinder):
                 def find_spec(self, fullname, path=None, target=None):
-                    if fullname == "dimred.pca_analyzer":
-                        raise ImportError("M29 producer ABI failure PCA")
+                    if fullname == f"dimred.{source}":
+                        raise ImportError(f"M29 producer ABI failure {label}")
 
             sys.meta_path.insert(0, BrokenProducer())
         package = importlib.import_module("dimred")
         if mode == "wiring_failure":
-            getattr(package, "PCAAnalyzer")  # A legitimate lazy facade may defer it.
+            getattr(package, export)  # A legitimate lazy facade may defer it.
             raise AssertionError("core producer failure was hidden")
         check_exports(package)
-    elif mode in {"real", "optional_real", "style"}:
-        if mode == "style":
+    elif mode in {"real", "optional_real", "style", "style_failed_import"}:
+        if mode in {"style", "style_failed_import"}:
+            if mode == "style":
+                try:
+                    import torch  # Deliberate style precondition, separate from API probes.
+                except ImportError as error:
+                    raise RuntimeError(
+                        "M29_STYLE_UNAVAILABLE: real Torch required"
+                    ) from error
+                print("M29_STYLE_ENV", json.dumps({"torch": torch.__version__}))
             import matplotlib as mpl
+            import matplotlib.pyplot as plt
 
+            plt.get_backend()  # Resolve backend before the snapshot (backend is excluded).
             mpl.rcParams["axes.grid"] = False
             mpl.rcParams["figure.dpi"] = 91
-            before = {k: mpl.rcParams[k] for k in ("axes.grid", "figure.dpi")}
+            before = rc_snapshot(mpl)
         if mode == "real" and operation:
             exec(operation, {})
-        package = importlib.import_module("dimred")
+        failure = None
+        try:
+            package = importlib.import_module("dimred")
+        except Exception as error:
+            if mode != "style_failed_import":
+                raise
+            failure = {"type": type(error).__name__, "message": str(error)}
+        if mode in {"style", "style_failed_import"}:
+            after = rc_snapshot(mpl)
+            changed = sorted(key for key in before if before[key] != after[key])
+            print(
+                "M29_STYLE",
+                json.dumps(
+                    dict(
+                        changed=changed,
+                        values={
+                            key: {
+                                "before": repr(before[key]),
+                                "after": repr(after[key]),
+                            }
+                            for key in changed
+                        },
+                        import_failure=failure,
+                        excluded=["backend"],
+                    )
+                ),
+            )
+            if mode == "style":
+                assert not changed, "import changed caller Matplotlib configuration"
+        if mode == "style_failed_import":
+            print("M29_OK measured failed-import state, not a style-contract PASS")
+            return
         assert Path(package.__file__).resolve() == root / "src/dimred/__init__.py"
-        check_exports(package)
-        if mode == "style":
-            after = {k: mpl.rcParams[k] for k in before}
-            print(json.dumps(dict(before=before, after=after)))
-            assert before == after, "import changed caller Matplotlib configuration"
-        elif mode == "optional_real":
+        if mode != "style":
+            check_exports(package)
+        if mode == "optional_real":
             optional_operation(package, operation)
         else:
             # Inspect eager loads without declaring module presence a defect.
             print(json.dumps({d: d in sys.modules for d in OPTIONAL}))
             if "torch" in sys.modules:
+                # CPU wheel + masked devices: observational, not a falsifiable GPU guard.
                 assert not sys.modules["torch"].cuda.is_initialized(), "GPU initialized"
     elif mode in {"isolated", "optional"}:
         source = (
@@ -285,22 +550,60 @@ def main(args):
             pca = module.PCAAnalyzer(n_components=1)
             pca.fit(np.array([[-2.0, 0.0], [-1.0, 0.0], [1.0, 0.0], [2.0, 0.0]]))
             assert pca is not None  # Producer's numerical contracts belong to M2.2.
-    elif mode == "entry":
-        exec(operation, {})
+    elif mode in {"entry", "torch_boundary"}:
+        if mode == "torch_boundary":
+            try:
+                exec(operation, {})
+            except ImportError as error:
+                assert operation in (
+                    "from dimred import SpectralAutoencoder",
+                    "from dimred import *",
+                ) and torch_refusal(error), f"AE import attribution: {error}"
+            except (TypeError, AttributeError, KeyError) as error:
+                raise AssertionError(
+                    f"public entry unusable: {type(error).__name__}"
+                ) from error
+            package = importlib.import_module("dimred")
+            check_torch_boundary(package)
+        else:
+            exec(operation, {})
     elif mode == "guard_control":
         import socket
 
-        for action in (
-            lambda: socket.getaddrinfo("m29.invalid", 443),
-            lambda: (root / "m29_forbidden_write").write_text("forbidden"),
-        ):
+        actions = [
+            ("socket.getaddrinfo", lambda: socket.getaddrinfo("m29.invalid", 443)),
+            ("socket.gethostbyname", lambda: socket.gethostbyname("localhost")),
+            ("socket.gethostbyaddr", lambda: socket.gethostbyaddr("127.0.0.1")),
+            ("socket.bind", lambda: socket.socket().bind(("127.0.0.1", 0))),
+            ("open", lambda: (root / "m29_forbidden_write").write_text("forbidden")),
+        ]
+        actions.extend(
+            (
+                "open",
+                lambda suffix=suffix: open(Path.cwd() / ("not-read" + suffix), "rb"),
+            )
+            for suffix in sorted(SCIENTIFIC_SUFFIXES)
+        )
+        controls = []
+        for event, action in actions:
+            count = len(violations)
             try:
                 action()
             except RuntimeError as error:
                 assert "M29 forbidden" in str(error)
             else:
                 raise AssertionError("guard did not intercept forbidden action")
-        assert len(violations) == 2
+            assert violations[count:] == [event], (event, violations[count:])
+            controls.append(event)
+        # Legitimate writes/reads in private caches remain possible.
+        cache = Path.cwd() / "cache"
+        cache.mkdir(exist_ok=True)
+        (cache / "legitimate.json").write_text("{}")
+        assert (cache / "legitimate.json").read_text() == "{}"
+        print(
+            "M29_GUARDS",
+            json.dumps(dict(controls=controls, scope="Python audit events only")),
+        )
         violations.clear()
     else:
         raise AssertionError(mode)
@@ -311,6 +614,76 @@ def main(args):
     ) == before_logging, "import changed root logging"
     assert not violations, f"caught forbidden attempts: {violations}"
     print("M29_OK", json.dumps(dict(hits=blocker.hits)))
+
+
+def main(args):
+    """Trace the actual facade even if Python removes its partial failed import."""
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+    root = Path(args["root"]).resolve()
+    sys.path.insert(0, str(root / "src"))
+    assert not any(n == "dimred" or n.startswith("dimred.") for n in sys.modules)
+    assert not any(n.split(".")[0] in args["blocked"] for n in sys.modules)
+    expected = root / "src/dimred/__init__.py"
+    state = dict(
+        expected=str(expected),
+        executed=[],
+        loaded=None,
+        meta_path=[
+            f"{getattr(f, '__module__', type(f).__module__)}.{getattr(f, '__qualname__', type(f).__qualname__)}"
+            for f in sys.meta_path
+        ],
+    )
+    facade_mode = args["mode"] not in {"guard_control", "isolated", "optional"}
+
+    def observe(event, values):
+        if event == "exec" and facade_mode:
+            module = sys.modules.get("dimred")
+            if module is not None and not state["executed"]:
+                path = getattr(module, "__file__", None)
+                filename = values[0].co_filename
+                state["executed"].append(dict(file=path, code=filename))
+                assert (
+                    path and Path(path).resolve() == expected
+                ), "facade provenance mismatch"
+                assert (
+                    Path(filename).resolve() == expected
+                ), "facade code provenance mismatch"
+
+    sys.addaudithook(observe)
+    try:
+        if facade_mode:
+            spec = importlib.util.find_spec(
+                "dimred"
+            )  # Resolve, do not execute producers.
+            state["resolved"] = None if spec is None else spec.origin
+            assert (
+                spec and spec.origin and Path(spec.origin).resolve() == expected
+            ), "facade provenance mismatch"
+        execute_probe(args)
+    except BaseException as error:
+        state["exception"] = dict(
+            type=type(error).__name__,
+            message=str(error),
+            final=traceback.format_exception_only(type(error), error)[-1].strip(),
+            frames=[
+                dict(file=f.filename, line=f.lineno, name=f.name)
+                for f in traceback.extract_tb(error.__traceback__)
+            ],
+        )
+        raise
+    finally:
+        state["blocked_hits"] = (
+            list(args["_blocker"].hits) if "_blocker" in args else []
+        )
+        module = sys.modules.get("dimred")
+        if module is not None:
+            state["loaded"] = getattr(module, "__file__", None)
+        print("M29_PROVENANCE", json.dumps(state))
+        if facade_mode and module is not None:
+            assert (
+                state["loaded"] and Path(state["loaded"]).resolve() == expected
+            ), "facade provenance mismatch"
 
 
 if __name__ == "__main__":
