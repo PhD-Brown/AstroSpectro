@@ -1,6 +1,7 @@
 # M3.1 — AstroVisualizer : contrats scientifiques et techniques
 
-Refs #43. Audit et tests seulement, pour **première revue indépendante Claude**.
+Refs #43. Audit et tests seulement, révision après première revue Claude.
+Voir [M31_REVIEW.md](M31_REVIEW.md) pour la seconde livraison et ses preuves.
 Production inchangée ; aucune décision de correction ou de convention physique
 n'est prise par cette PR. Aucun travail M3.2–M3.4 ou nouvel audit M2/M4.
 
@@ -14,9 +15,10 @@ n'est prise par cette PR. Aucun travail M3.2–M3.4 ou nouvel audit M2/M4.
   transfert de fichiers ni changement des autres worktrees.
 - `AGENTS.md` v1.3 sur main, corps complet de #43, commentaires récents dont
   [passation 6898324768](https://github.com/PhD-Brown/AstroSpectro/issues/43#issuecomment-6898324768),
-  #117, #21/#25/#27 et commentaire #27 lus. M1 corroborait déjà les risques
-  d'indices et les défauts de préparation/agrégation SHAP ; ils ne sont pas
-  présentés comme découvertes nouvelles.
+  #117, #21/#25/#27 et commentaire #27 lus. Le rapport historique déclare ce module
+  non audité. Les indices et le SHAP sont de nouvelles manifestations dans ce module ;
+  la similarité avec #27 dans master/notebook ne prouve ni antériorité ni cause commune.
+  Le choix d'un rattachement correctif reste humain.
 - Lecture intégrale du module (3 627 lignes), inventaire AST de ses **35 méthodes**,
   signatures, appels internes, handlers, appels I/O et effets de bord dans le
   champ `inventory` du [manifeste](m31_experiments.json).
@@ -47,18 +49,18 @@ préfixes non ambigus ; les noms complets et résultats sont dans les manifestes
 | `_format_header_line`, `_display_formatted_header`, `_display_formatted_header_for_streamlit`, `_display_header_for_streamlit` | Métadonnées, unité et erreur explicite (U/I) | Header synthétique unique, clé absente, fichier absent ; collecteur d'affichage | `header_units_identity_and_explicit_error`, AP borné ; rendu visuel UI et HTML hostile NA |
 | `_plot_spectrum_analysis`, `_plot_peak_detection_notebook`, `_plot_spectrum_analysis_plotly` | Paires pixel/flux/λ, pics et raies appariées, axes/labels (I/P/S), élevé | Progression géométrique indépendante, gaussienne absorbante centrée au pixel 200 ; artistes rouges/verts et traces Plotly | `finite_gaussian_peak_identity_all_renderers` vert sur 3 routes ; `nonfinite_prefix...` rouge sur 3 routes ; PA |
 | Même famille, erreurs | Pas de fausse détection pour flux constant/tout invalide ; absence/échec explicite (U/I) | FITS 1D/une seule ligne, gzip corrompu, aucun minimum, tout NaN | `no_peaks_and_all_invalid_plotly...`, `invalid_fits_dimensions...` verts ; tout-NaN encore tracé comme courbe, sans mesure ; PA |
-| Notebook : métriques et exports | EW/FWHM/incertitudes, unités Å ; élevé (I/P) | EW analytique `A σ sqrt(2π)` ; FWHM `2 sqrt(2 ln2) σ` ; flux ×6, invvar=4 | EW unitaire et exports CSV/LaTeX/PNG verts ; FWHM et sigma rouges ; PA ; continuum incliné/émission générale non validés (#25) |
+| Notebook : métriques et exports | EW/FWHM/incertitudes, unités Å ; élevé (I/P) | EW analytique `A σ sqrt(2π)` ; FWHM `2 sqrt(2 ln2) σ` ; flux ×6, invvar=4 | EW/pics aux continuums1/6, exports CSV/PNG et présence de tabular LaTeX verts ; FWHM à3largeurs×2fenêtres rouge ; sigma latent P2 ; PA ; continuum incliné/émission générale non validés (#25) |
 | `_plot_spectra_comparison`, `plot_normalization_comparison` | Médiane, invariance d'échelle, grilles propres, dédoublonnage, offsets (I/P/S) | `[2,4,6,8,10]` et ×3 ; grilles distinctes, fichier illisible entre deux valides | `comparison_scale_invariance_offsets_and_skip_rank`, `normalization_comparator...` verts ; offset = indice dans sélection dédoublonnée (trous admis et documentés) ; échec de normalisation et légendes ambiguës rouges ; PA |
 | `analyze_feature_zeros` | Dénominateur = lignes traitées, zéros ≠ NaN, constantes, stats/export (U/I/P/S), élevé | Trois vecteurs contrôlés + un fichier absent ; moyenne 3, écart-type population sqrt(6) | `zero_statistics...` vert ; calcul de features remplacé seulement pour cet oracle statistique ; extraction réelle testée séparément ; RNG rouge ; AP borné/PA global |
-| `_generate_position_catalog` | Domaines RA/Dec, comptes par plan, centroïdes et cache (I/P/S), élevé | RA30/50 →40 sur arc court ; RA390→30 ; Dec91 et RA NaN rejetés ; RA359/1 ; nouveau FITS antidaté | `position_catalog_validity_counts_cache_and_force` vert ; moyenne près de coupure et cache antidaté rouges ; cache de contenu/identité PA |
-| `plot_sky_coverage` | Mollweide, sens RA, heures, Dec, taille/couleur (I/P/S), élevé | RA0/90/180 ; Dec -30/0/60 ; comptes1/2/4 ; points réellement tracés et ticks correspondants | `sky_artists...` vert sur Dec/comptes/tailles ; `sky_ra_tick...` rouge ; PA (coordonnées x/labels contradictoires) ; fond image non testé |
-| `plot_subclass_distribution` | Comptes et dénominateur annoncé (I/P/S), élevé | Cinq classes d'effectifs5/4/3/2/1 ; top3 et population entière | `subclass_raw_counts...` vert ; pourcentages conditionnels cachés rouges ; deux remèdes admis (total ou conditionnel déclaré), aucune politique ratifiée ; PA |
+| `_generate_position_catalog` | Domaines RA/Dec, comptes par plan, centroïdes et cache (I/P/S), élevé | RA30/50 →40 sur arc court ; RA390→30 ; Dec91 et RA NaN rejetés ; RA359/1 ; ajout antidaté et suppression | `position_catalog_validity_counts_cache_and_force` vert ; direction près de coupure et cache périmé rouges ; convention et gravité à arbitrer ; PA |
+| `plot_sky_coverage` | Mollweide, sens RA, heures, Dec, taille/couleur (I/P/S), élevé | RA0/90/180 ; Dec -30/0/60 ; comptes1/2/4 ; points réellement tracés et ticks correspondants | `sky_artists...` vert sur Dec/comptes/tailles ; `sky_ra_tick...` rouge ; miroir6h–18h ; centre/sens libres si cohérents ; PA ; fond image non testé |
+| `plot_subclass_distribution` | Comptes et dénominateur annoncé (I/P/S), élevé | Effectifs5/4/3/2/1 top3 et11/7/4/3/2 top2 ; labels manquants | `subclass_raw_counts...` vert ; pourcentages sans rôle de dénominateur et label manquant rouges ; total ou conditionnel déclaré admis, aucune politique ratifiée ; PA |
 | `display_dataset_dashboard`, `_resolve_trained_log_path` | KPI/identités/sous-classes/plans (U/I/S), élevé | Ledger réel mono-colonne `file_path`, doublons Windows/POSIX, fichier absent de la collection | `dashboard_single_column_producer_ledger...` vert ; le fallback mono-colonne fonctionne malgré l'absence de `file_path` dans la liste de colonnes. Pas de bug KPI déclaré sur ce format ; ledger enrichi/chemins absolus PA |
-| `_prepare_for_model` | Ordre, imputation/scaling/sélection appris, noms exacts (I/P/S), élevé | Vrais SimpleImputer/StandardScaler/VarianceThreshold, constantes non préfixes ; vrai `_build_preprocessor` | `prepare_flat_pipeline...` vert (API plate) ; `actual_classifier_prep...`, `selected_feature_names_derive...` rouges ; #27 connu, PA ; sampler/PCA/calibration complets non validés |
+| `_prepare_for_model` | Ordre, imputation/scaling/sélection appris, noms exacts (I/P/S), élevé | Vrais CollinearityFilter, prep et sélection optionnelle ; valeurs, noms, ordre et entrée à l'inférence réelle | `prepare_flat_pipeline...` vert ; `actual_classifier_prep...`, `selected_feature_names_derive...` rouges ; nouveau chemin apparenté à #27, rattachement ouvert ; PA ; sampler/PCA/calibration complets non validés |
 | `_get_features_sample` | Source, cible exclue, ordre, échantillon reproductible, valeurs manquantes (I/P/S), élevé | CSV synthétique associé gamma=7alpha ; vrais FITS et FeatureEngineer | `features_csv_sampling...`, `real_raw_feature_sample...` verts ; feature manquante convertie en zéro rouge ; PA : aucune preuve que CSV choisi est un holdout |
 | `_build_shap_explainer` | Modes tree/linear/kernel/auto et erreur inconnue (U/I) | Vrais RF/LogisticRegression et vrais explainers sur4 lignes/2features | `explainer_factory_real_small_models` vert ; dimensions/valeurs finies, pas validation complète d'additivité ; permutation et kmeans>1000 PA |
-| `_run_shap_analysis` | Réduction sur échantillons/classes, pas sur features, noms, nombre d'appels, mode (I/P/S), élevé | Vraie `shap.Explanation` contrôlée 4×3 et4×3×2 ; sommes absolues manuelles ; chargement modèle remplacé | `binary_shap_mean...` vert ; axes3D/double appel/mode ignoré rouges ; #27 connu pour axes/double appel ; PA |
-| `_analyze_saved_model` | Ordre des classes, association importance/nom après sélection (U/I/S), élevé | Wrapper synthétique connu, importances.2/.8, classes M/F/G | `model_inspector_selected_names...` vert ; sans métadonnées sélection, préfixe inventé rouge (#27) ; PA ; aucun pickle externe chargé |
+| `_run_shap_analysis` | Réduction sur échantillons/classes, pas sur features, noms, nombre d'appels, mode (I/P/S), élevé | Vraie `shap.Explanation` contrôlée 4×3 et4×3×2 ; références par classe ; chargement modèle remplacé | `binary_shap_mean...` vert ; axes3D/double appel/mode ignoré rouges ; nouvelles manifestations, similarité avec #27 sans cause commune établie ; PA |
+| `_analyze_saved_model` | Ordre des classes, association importance/nom après sélection (U/I/S), élevé | Wrapper synthétique connu, importances.2/.8, classes M/F/G | `model_inspector_selected_names...` vert ; sans métadonnées sélection, préfixe inventé rouge ; nouvelle manifestation apparentée à #27, rattachement humain ; PA ; aucun pickle externe chargé |
 | `plot_shap_summary_bar`, `_plot_feature_importances_bar` | Valeurs/noms associés, topN et exports (U/I/P) | Importances non interchangeables9/4/1 et.7/.2/.1, inspection barres et ticks | `binary_shap_mean...`, `feature_importance_bar...` verts ; export basename rouge ; PA |
 | `plot_shap_beeswarm` | Explication réelle et fallbacks explicites (I) | Vraie Explanation2D puis erreurs contrôlées des deux sorties SHAP | `beeswarm_real_explanation_and_explicit_fallback` vert ; multisorties non validées (amont rouge), PA |
 | `feature_explorer` | EDA/corrélation, RF, permutation, exports (I/P/S), élevé |24lignes, constante, NaN ; Pearson via sommes centrées indépendantes et médiane12 ; vraies bibliothèques | `feature_explorer_eda_real_rf_and_exports`, `feature_explorer_no_labels...` verts ; Inf et chevauchement d'objets entre partitions rouges ; PA ; pas de performance astrophysique ni split par objet validés |
@@ -81,13 +83,19 @@ FeatureEngineer du même profil utilise un profil d'absorption et passe le test.
 L'EW unitaire passe ; cela ne résout pas #25 sur continuum local incliné et signe.
 La métrique de centroïde sur flux avec continuum n'est pas validée pour des raies
 asymétriques (PA). Le sigma brut est aussi associé au flux normalisé : violation
-de propagation d'unités, sans mesure d'impact sur un run réel.
+de propagation d'unités, latente P2 proposée : le test
+`notebook_point_metric_csv_is_independent_of_latent_sigma` confirme des CSV identiques
+pour sigma×1/6 et×100. Une absence d'incertitude attachée est admise si aucune n'est publiée.
+Aucun impact sur un run réel n'est établi.
 
 La [documentation TreeExplainer](https://shap.readthedocs.io/en/latest/generated/shap.TreeExplainer.html)
-situe les sorties sur le dernier axe. La preuve3D choisit une moyenne absolue sur
-échantillons et classes, à poids égaux, comme statistique explicitement bornée.
-Des résumés par classe ou pondérés sont admissibles avec labels/axes correspondants ;
-ils ne doivent pas être rejetés au seul motif qu'ils diffèrent de cette moyenne.
+situe les sorties sur le dernier axe. L'oracle3D accepte des moyennes sur les classes,
+des sommes sur les classes (moyennées sur les échantillons), ou des valeurs par classe,
+lorsque la statistique et les classes sont déclarées. Les références indépendantes
+sont les moyennes par classe [4,25,250] et [6,50,500]. La réduction de l'axe des features,
+les permutations de noms et une normalisation non déclarée sont rejetées ; aucune
+politique d'agrégation finale n'est ratifiée. Le contrôle de somme déclare son mode
+dans les métadonnées de la table ; sa propagation dans les légendes/CSV UI reste PA.
 Le mode2D ne prouve pas qu'un classifieur binaire fournit toujours une sortie2D.
 
 Les wrappers de chargement de modèles/affichage sont remplacés aux frontières,
@@ -97,13 +105,18 @@ pour distinguer une erreur du visualiseur d'une erreur de bibliothèque.
 
 ## Validation et contre-essais
 
+Résultats actuels de seconde livraison : [M31_REVIEW.md](M31_REVIEW.md),
+[m31_review_experiments.json](m31_review_experiments.json),
+[m31_review_adversarial.json](m31_review_adversarial.json).
+Les références qui suivent décrivent la première livraison historique.
+
 Commandes, sorties, versions, SHA d'entrée et SHA256 des fichiers effectivement
 testés : [m31_experiments.json](m31_experiments.json).
 Copies de source temporaires et résultats discriminants :
 [m31_adversarial.json](m31_adversarial.json),
 [checker rejouable](check_m31_visualizer.py).
-Rejeu par défaut vers `test-results/m31-replay.json` ; les références publiées
-ne sont jamais écrasées sans `--output` explicite.
+Rejeu actuel par défaut vers `test-results/m31-review-replay.json` ; le checker
+refuse d'écraser les deux JSON historiques. Résultats actuels dans M31_REVIEW.md.
 
 Les tests rapides sont offline (`--disable-socket`), CPU/Agg, FITS/CSV/modèles
 synthétiques dans `tmp_path` uniquement ; un `rc_context` et la restauration
@@ -120,7 +133,11 @@ ouvert/fermé et lecture de #21/#22/#25/#27/#30/#34 ; aucun ticket nouveau cré�
 Les propositions sont regroupées par mécanisme ; le responsable scientifique
 décide du regroupement, des priorités et des politiques avant création.
 
-## Livraison
+## Livraison initiale historique — HEAD2b4545b
+
+**Section conservée pour provenance, remplacée pour la seconde revue par [M31_REVIEW.md](M31_REVIEW.md).**
+Les anciennes étiquettes ADMITTED ne valent pas admission avec absence de régression :
+A08 est non généralisable, A15 sur-rejette, A04 était codée en dur, A13 contourne le cache.
 
 Entrées exécutables figées à **`8d320090ce6cab9f965bc53b5a0902c468dbf9f1`** ;
 les commits suivants ne publient que documentation et manifestes. SHA256 avant/après
