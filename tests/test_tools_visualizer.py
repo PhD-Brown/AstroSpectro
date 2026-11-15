@@ -159,7 +159,9 @@ def test_comparison_scale_invariance_offsets_and_skip_rank(tools_case, capsys):
     # Current documented i*offset convention: deduplicated selection index;
     # skipped files leave a gap. This is a display convention, not physics.
     assert_allclose(ax.lines[1].get_ydata(), [4 / 3, 5 / 3, 2, 7 / 3, 8 / 3])
-    contracts.assert_curve_identities(ax, [a, b])
+    contracts.assert_curve_identities(
+        ax, [a, b], {a: (wa, fa / 6), b: (wb, fb / 18 + 1.0)}
+    )
     assert "Skipped" in capsys.readouterr().out
     from PIL import Image
 
@@ -168,6 +170,7 @@ def test_comparison_scale_invariance_offsets_and_skip_rank(tools_case, capsys):
     _, raw = c.viz._plot_spectra_comparison([a, b], normalize=False)
     assert_array_equal(raw.lines[0].get_ydata(), fa)
     assert_array_equal(raw.lines[1].get_ydata(), fb)
+    contracts.assert_curve_identities(raw, [a, b], {a: (wa, fa), b: (wb, fb)})
 
 
 def test_normalization_comparator_uses_each_grid_and_both_panels(tools_case):
@@ -622,7 +625,11 @@ def test_multiclass_oracle_accepts_declared_alternatives(mode):
         table = pd.DataFrame(
             {
                 "feature": ["alpha", "beta", "gamma"],
-                "mean_abs_shap": np.array([5.0, 37.5, 375.0])
+                (
+                    "mean_sample_sum_class_abs_shap"
+                    if mode == "sum"
+                    else "mean_abs_shap"
+                ): np.array([5.0, 37.5, 375.0])
                 * (2 if mode == "sum" else 1),
             }
         )
@@ -639,9 +646,92 @@ def test_partition_oracle_accepts_groups_and_explicit_descriptive_limit():
         [{"A"}],
         [{"A"}],
         "Descriptive only: not an independent holdout because observations repeat",
+        {
+            "metric": "Permutation importance (descriptive)",
+            "CSV": "permutation_importances.csv, descriptive_context=non-independent",
+        },
     )
     with pytest.raises(AssertionError, match="contaminate"):
         contracts.assert_eda_partitions([{"A"}], [{"A"}], "Validation importance")
+
+
+@pytest.mark.parametrize(
+    "surface",
+    [
+        "Permutation importance (split de validation)",
+        "Calculate permutation importance (validation split)",
+        "permutation_importances.csv,feature,perm_importance",
+        "Independent holdout evaluation",
+    ],
+)
+def test_partition_oracle_rejects_cosmetic_disclaimer(surface):
+    with pytest.raises(AssertionError, match="Contradictory|Unqualified"):
+        contracts.assert_eda_partitions(
+            [{"A"}],
+            [{"A"}],
+            "Note: descriptive EDA, not an independent holdout.",
+            {"exposed": surface},
+        )
+
+
+@pytest.mark.parametrize("same_basename", [True, False])
+def test_curve_identity_oracle_checks_actual_flux_and_allows_relative_paths(
+    tools_case, same_basename
+):
+    c = tools_case
+    a, wa, fa = c.write("A/same.fits.gz", [1, 2, 3])
+    b, wb, fb = c.write(
+        "B/same.fits.gz" if same_basename else "B/other.fits.gz", [4, 5, 6]
+    )
+    _, ax = c.plt.subplots()
+    ax.plot(wb, fb, label=b)
+    ax.plot(wa, fa, label=a)
+    expected = {a: (wa, fa), b: (wb, fb)}
+    contracts.assert_curve_identities(ax, [a, b], expected)
+    ax.lines[0].set_label(a)
+    ax.lines[1].set_label(b)
+    with pytest.raises(AssertionError, match="Curve data"):
+        contracts.assert_curve_identities(ax, [a, b], expected)
+
+
+@pytest.mark.parametrize("mode", ["mean", "sum", "per_class"])
+def test_multiclass_oracle_checks_table_metadata_and_actual_bars(tools_case, mode):
+    c = tools_case
+    classes = ["F", "G"] if mode == "per_class" else [None]
+    column = "mean_sample_sum_class_abs_shap" if mode == "sum" else "mean_abs_shap"
+    rows = []
+    _, axes = c.plt.subplots(1, len(classes), squeeze=False)
+    for cls, ax in zip(classes, axes.ravel()):
+        values = {"F": [4, 25, 250], "G": [6, 50, 500], None: [5, 37.5, 375]}[cls]
+        if mode == "sum":
+            values = np.array(values) * 2
+        for feature, value in zip(["alpha", "beta", "gamma"], values):
+            rows.append(
+                {"feature": feature, column: value, **({"class": cls} if cls else {})}
+            )
+        ax.barh(["alpha", "beta", "gamma"], values)
+        ax.set_xlabel(
+            "mean_sample_sum_class_abs_SHAP" if mode == "sum" else "mean(|SHAP value|)"
+        )
+        ax.set_title(f"SHAP class {cls}" if cls else "SHAP importances")
+    table = pd.DataFrame(rows)
+    table.attrs["class_reduction"] = mode
+    contracts.assert_multiclass_importances(table, axes)
+    if mode == "per_class":
+        contracts.assert_multiclass_importances(table, axes.ravel()[::-1])
+    if mode != "per_class":
+        table.attrs["class_reduction"] = "mean" if mode == "sum" else "sum"
+        with pytest.raises(AssertionError, match="metadata contradict"):
+            contracts.assert_multiclass_importances(table, axes)
+        table.attrs["class_reduction"] = mode
+    ax = axes.ravel()[0]
+    ax.set_yticks(range(3), ["beta", "alpha", "gamma"])
+    with pytest.raises(AssertionError, match="bars have permuted"):
+        contracts.assert_multiclass_importances(table, axes)
+    ax.set_yticks(range(3), ["alpha", "beta", "gamma"])
+    ax.set_xlabel("mean(|SHAP value|)" if mode == "sum" else "sum_class_abs_SHAP")
+    with pytest.raises(AssertionError, match="statistic"):
+        contracts.assert_multiclass_importances(table, axes)
 
 
 def test_pipeline_peak_analysis_uses_cleaned_coordinates(tools_case):

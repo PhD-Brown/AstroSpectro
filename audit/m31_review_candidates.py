@@ -272,6 +272,12 @@ def candidates(source, historical, local_style):
         sites=2,
     )
     group = edit(source, "feature_explorer", SPLIT, GROUP_SPLIT)
+    group = edit(
+        group,
+        "feature_explorer",
+        "Calcule aussi la permutation importance (validation split).",
+        "Compute permutation importance using group-disjoint object identities; refuse when identities are missing.",
+    )
     add(
         "A18_group_shuffle_split",
         "remedy",
@@ -285,12 +291,80 @@ def candidates(source, historical, local_style):
         "Permutation importance (split de validation)",
         "Permutation importance (descriptive only: not an independent holdout; object identities may repeat)",
     )
+    descriptive = edit(
+        descriptive,
+        "feature_explorer",
+        "Calcule aussi la permutation importance (validation split).",
+        "Compute descriptive permutation importance only: not an independent holdout; object identities may repeat.",
+    )
+    descriptive = edit(
+        descriptive,
+        "feature_explorer",
+        "display(perm_df.head(30))",
+        'perm_df["descriptive_context"] = "Descriptive only: not an independent holdout; object identities may repeat"\n                        display(perm_df.head(30))',
+    )
+    descriptive = edit(
+        descriptive,
+        "feature_explorer",
+        '"permutation_importances.csv"',
+        '"descriptive_permutation_importances.csv"',
+    )
     add(
         "A19_descriptive_limit",
         "remedy",
         descriptive,
         "repeat_observations",
         scope="descriptive computation with explicit non-independence, not a repaired split",
+        sites=4,
+    )
+    contradiction = edit(
+        source,
+        "feature_explorer",
+        "pipe.fit(X_train, y_train)",
+        'pipe.fit(X_train, y_train)\n                print("Note: descriptive EDA, not an independent holdout.")',
+    )
+    add(
+        "V_contradict",
+        "remedy",
+        contradiction,
+        "repeat_observations",
+        scope="Claude cosmetic warning counterexample; unchanged row split and contradictory exposed surfaces",
+    )
+    row_split = edit(
+        group,
+        "feature_explorer",
+        GROUP_SPLIT,
+        "                X_train, X_test, y_train, y_test = train_test_split(X_num, y, test_size=0.25, random_state=random_state, stratify=stratify_vec)",
+    )
+    row_split = edit(
+        row_split,
+        "feature_explorer",
+        "pipe.fit(X_train, y_train)",
+        'pipe.fit(X_train, y_train)\n                print("Note: descriptive EDA, not an independent holdout.")',
+    )
+    add(
+        "V_contradict_mutant",
+        "mutant_red",
+        row_split,
+        "repeat_observations",
+        reference=group,
+        sites=2,
+        scope="admissible grouped baseline changed to row split plus cosmetic warning",
+    )
+    identity = next(item["source"] for item in out if item["id"].startswith("A14"))
+    swapped = edit(
+        identity,
+        "_plot_spectra_comparison",
+        "label=rel_path",
+        "label=(next(r for r in file_paths if r != rel_path and os.path.basename(r) == os.path.basename(rel_path)) if sum(os.path.basename(r) == os.path.basename(rel_path) for r in file_paths) > 1 else rel_path)",
+    )
+    add(
+        "V_swapped_identity",
+        "mutant_red",
+        swapped,
+        "duplicate_basename_legend",
+        reference=identity,
+        scope="Claude swapped curve labels on basename collision",
     )
     add(
         "A20_missing_subclass",
@@ -390,7 +464,76 @@ def candidates(source, historical, local_style):
         "remedy",
         shapsum,
         "multiclass_shap",
-        scope="sample mean of class sums; metadata declares class reduction",
+        scope="historical contradictory sum under mean name; negative control, must be rejected",
+    )
+    correct_sum = edit(
+        shapsum,
+        "_run_shap_analysis",
+        "# Cache for plotting helpers",
+        'if np.asarray(sv.values).ndim == 3:\n            df_out = df_out.rename(columns={"mean_abs_shap": "mean_sample_sum_class_abs_shap"})\n        # Cache for plotting helpers',
+    )
+    correct_sum = edit(
+        correct_sum,
+        "plot_shap_summary_bar",
+        'x_vals = top["mean_abs_shap"].astype(float).iloc[::-1]',
+        'column = "mean_sample_sum_class_abs_shap" if "mean_sample_sum_class_abs_shap" in top else "mean_abs_shap"\n        x_vals = top[column].astype(float).iloc[::-1]',
+    )
+    correct_sum = edit(
+        correct_sum,
+        "plot_shap_summary_bar",
+        'ax.set_xlabel("mean(|SHAP value|)")',
+        'ax.set_xlabel("mean_sample_sum_class_abs_SHAP" if column == "mean_sample_sum_class_abs_shap" else "mean(|SHAP value|)")',
+    )
+    correct_sum = edit(
+        correct_sum,
+        "plot_shap_summary_bar",
+        "with a `mean(|SHAP value|)` scale.",
+        "with the sample-mean class-sum or mean absolute SHAP scale declared by the statistic column.",
+    )
+    add(
+        "A27_correctly_named_and_plotted",
+        "remedy",
+        correct_sum,
+        "multiclass_shap",
+        sites=6,
+        scope="class sum: coherent numeric table, metadata and summary bars on bounded fixture; widget not validated",
+    )
+    mean = next(item["source"] for item in out if item["id"].startswith("A05"))
+    add(
+        "V_shap_feature_names",
+        "mutant_red",
+        edit(
+            mean,
+            "_run_shap_analysis",
+            "# Cache for plotting helpers",
+            'df_out["feature"] = df_out["feature"].replace({"alpha": "beta", "beta": "alpha"})\n        # Cache for plotting helpers',
+        ),
+        "multiclass_shap",
+        reference=mean,
+    )
+    add(
+        "V_shap_feature_axis",
+        "mutant_red",
+        edit(
+            mean,
+            "_run_shap_analysis",
+            "vals = np.mean(np.abs(vals), axis=2)",
+            "vals = np.mean(np.abs(vals[:, [1, 0, 2], :]), axis=2)",
+        ),
+        "multiclass_shap",
+        reference=mean,
+    )
+    add(
+        "V_shap_sum_axis_mislabeled",
+        "mutant_red",
+        edit(
+            correct_sum,
+            "plot_shap_summary_bar",
+            'ax.set_xlabel("mean_sample_sum_class_abs_SHAP" if column == "mean_sample_sum_class_abs_shap" else "mean(|SHAP value|)")',
+            'ax.set_xlabel("mean(|SHAP value|)")',
+        ),
+        "multiclass_shap",
+        reference=correct_sum,
     )
     sky = edit(source, "plot_sky_coverage", "x = np.pi - lon", "x = -lon")
     sky = edit(sky, "plot_sky_coverage", "((L % 360) / 15)", "(((-L) % 360) / 15)")

@@ -211,15 +211,34 @@ def render_spectrum(c, route, path, *, allow_rejection=False, window=8):
     return pairs("Detected peaks"), pairs("Matched peaks"), ax
 
 
-def assert_curve_identities(ax, paths):
+def assert_curve_identities(ax, paths, expected_curves):
     """Each curve's visible label must identify its own observation uniquely."""
     labels = [line.get_label().replace("\\", "/") for line in ax.lines]
     assert len(labels) == len(paths) and len(set(labels)) == len(
         paths
     ), "Ambiguous spectrum identities"
-    for label, path in zip(labels, paths):
-        matches = [p for p in paths if label == p or label == Path(p).name]
-        assert matches == [path], f"Legend {label!r} does not uniquely identify {path}"
+    identified = []
+    for line, label in zip(ax.lines, labels):
+        matches = [
+            p
+            for p in paths
+            if label == str(p).replace("\\", "/")
+            or label == Path(p).name
+            or label.endswith("/" + str(p).replace("\\", "/"))
+        ]
+        assert len(matches) == 1, f"Legend {label!r} does not uniquely identify a file"
+        path = matches[0]
+        identified.append(path)
+        wave, flux = expected_curves[path]
+        assert_allclose(line.get_xdata(), wave, rtol=2e-14)
+        assert_allclose(
+            line.get_ydata(),
+            flux,
+            rtol=2e-14,
+            atol=2e-14,
+            err_msg=f"Curve data do not belong to legend {label!r}",
+        )
+    assert set(identified) == set(paths), "A spectrum identity is missing"
 
 
 def preparation_case(c, select):
@@ -345,7 +364,7 @@ def assert_population_percentages(ax, counts, top_n):
         ), "Displayed/total or excluded population is missing or has the wrong semantic role"
 
 
-def assert_multiclass_importances(result):
+def assert_multiclass_importances(result, axes=None):
     """Accept declared class mean, class sum, or class-specific sample means."""
     assert isinstance(result, pd.DataFrame) and set(result.feature) == {
         "alpha",
@@ -355,26 +374,87 @@ def assert_multiclass_importances(result):
     names = ["alpha", "beta", "gamma"]
     class_means = np.array([[4.0, 25.0, 250.0], [6.0, 50.0, 500.0]])
     if "class" in result:
+        assert result.attrs.get("class_reduction", "per_class") == "per_class"
         assert set(result["class"]) == {"F", "G"}, "SHAP class identities are lost"
         for cls, expected in zip(["F", "G"], class_means):
             rows = result[result["class"] == cls].set_index("feature")
             assert len(rows) == 3
             assert_allclose(rows.loc[names, "mean_abs_shap"], expected)
-        return
-    assert len(result) == 3
-    columns = [col for col in result if col != "feature"]
-    assert len(columns) == 1, "Aggregated SHAP statistic is ambiguous"
-    column = columns[0]
-    mode = result.attrs.get("class_reduction")
-    if mode is None:
-        mode = (
-            "sum"
-            if column == "mean_sample_sum_class_abs_shap"
-            else "mean" if column == "mean_abs_shap" else None
+        mode, column = "per_class", "mean_abs_shap"
+    else:
+        assert len(result) == 3
+        columns = [col for col in result if col != "feature"]
+        assert len(columns) == 1, "Aggregated SHAP statistic is ambiguous"
+        column = columns[0]
+        mode = {
+            "mean_sample_sum_class_abs_shap": "sum",
+            "mean_abs_shap": "mean",
+        }.get(column)
+        assert (
+            mode is not None
+        ), "Class aggregation is not declared in the statistic name"
+        assert (
+            result.attrs.get("class_reduction", mode) == mode
+        ), "SHAP metadata contradict the statistic name"
+        expected = (
+            class_means.sum(axis=0) if mode == "sum" else class_means.mean(axis=0)
         )
-    assert mode in {"sum", "mean"}, "Class aggregation is not declared"
-    expected = class_means.sum(axis=0) if mode == "sum" else class_means.mean(axis=0)
-    assert_allclose(result.set_index("feature").loc[names, column], expected)
+        assert_allclose(result.set_index("feature").loc[names, column], expected)
+    if axes is None:
+        return
+    axes = list(np.atleast_1d(axes).ravel())
+    assert len(axes) == (2 if mode == "per_class" else 1)
+    plotted_classes = []
+    for ax in axes:
+        label = plain_text(ax.get_xlabel())
+        if mode == "sum":
+            assert all(
+                token in label for token in ("mean", "sample", "sum", "class")
+            ), "Class sum is not identified on the plotted statistic axis"
+        else:
+            assert (
+                "mean" in label and "sum" not in label
+            ), "SHAP figure contradicts the mean statistic"
+        assert "shap" in label
+        rows = result
+        if mode == "per_class":
+            legend = ax.get_legend()
+            text = (
+                ax.get_title()
+                + " "
+                + " ".join(t.get_text() for t in legend.get_texts())
+                if legend
+                else ax.get_title()
+            )
+            identities = [cls for cls in ["F", "G"] if re.search(rf"\b{cls}\b", text)]
+            assert len(identities) == 1, "Figure loses SHAP class identity"
+            cls = identities[0]
+            plotted_classes.append(cls)
+            rows = result[result["class"] == cls]
+        tick_names = [t.get_text() for t in ax.get_yticklabels()]
+        assert len(tick_names) == 3 and set(tick_names) == set(names)
+        assert_allclose(
+            [bar.get_width() for bar in ax.patches],
+            rows.set_index("feature").loc[tick_names, column],
+            err_msg="SHAP bars have permuted feature identities or wrong aggregation",
+        )
+        other = plain_text(
+            " ".join(
+                [ax.get_title(), ax.get_ylabel()]
+                + [t.get_text() for t in ax.texts + ax.figure.texts]
+                + (
+                    [t.get_text() for t in ax.get_legend().get_texts()]
+                    if ax.get_legend()
+                    else []
+                )
+            )
+        )
+        if mode == "sum":
+            assert "mean(|shap value|)" not in other, "Figure presents a sum as a mean"
+        else:
+            assert "sum" not in other, "Figure presents a mean as a sum"
+    if mode == "per_class":
+        assert set(plotted_classes) == {"F", "G"}, "Figure omits a SHAP class"
 
 
 def eda_partition_case(c, with_ids):
@@ -424,7 +504,43 @@ def eda_partition_case(c, with_ids):
     return path, fitted, evaluated
 
 
-def assert_eda_partitions(fitted, evaluated, disclosure):
+def eda_surfaces(c, result):
+    """Read the documentation, visible artists, tables and actual CSV exports."""
+    surfaces = {"documentation": c.viz.feature_explorer.__doc__ or ""}
+    for i, obj in enumerate(c.displayed):
+        surfaces[f"display {i}"] = str(getattr(obj, "data", obj))
+    for i in c.plt.get_fignums():
+        fig = c.plt.figure(i)
+        surfaces[f"figure {i}"] = " ".join(
+            [t.get_text() for t in fig.texts]
+            + [
+                text
+                for ax in fig.axes
+                for text in (
+                    ax.get_title(),
+                    ax.get_xlabel(),
+                    ax.get_ylabel(),
+                    *[t.get_text() for t in ax.texts],
+                    *(
+                        [t.get_text() for t in ax.get_legend().get_texts()]
+                        if ax.get_legend()
+                        else []
+                    ),
+                )
+            ]
+        )
+    for path in Path(c.paths["LOGS_DIR"]).rglob("*.csv"):
+        surfaces[f"CSV {path.name}"] = (
+            path.name + " " + path.read_text(encoding="utf-8")
+        )
+    if result is not None:
+        for key in ("perm_importances", "rf_importances"):
+            if result.get(key) is not None:
+                surfaces[f"returned {key}"] = str(result[key])
+    return surfaces
+
+
+def assert_eda_partitions(fitted, evaluated, disclosure, surfaces=None):
     text = plain_text(disclosure)
     explicit = re.search(
         r"not (?:an? )?independent holdout|no independent holdout|aucun holdout independant|pas (?:un |d.)?holdout independant",
@@ -437,6 +553,27 @@ def assert_eda_partitions(fitted, evaluated, disclosure):
             or "repeat" in text
             or "descript" in text
         ), "Holdout refusal lacks its scientific reason"
+        # Refusal must stop evaluation. A descriptive evaluation must qualify
+        # every exposed metric, not just an unrelated warning in stdout.
+        descriptive = bool(fitted or evaluated)
+        assert (
+            not descriptive or surfaces
+        ), "Descriptive evaluation lacks exposed-surface evidence"
+        for name, value in (surfaces or {}).items():
+            surface = plain_text(value)
+            negated = re.sub(
+                r"not (?:an? )?independent holdout|no independent holdout|non.independent holdout",
+                "",
+                surface,
+            )
+            assert not re.search(
+                r"split de validation|validation split|independent (?:holdout|validation|evaluation)|\bholdout\b",
+                negated,
+            ), f"Contradictory independent-validation claim in {name}"
+            if descriptive and re.search(r"permutation|perm_importance", surface):
+                assert re.search(
+                    r"descript|non.independent|not (?:an? )?independent", surface
+                ), f"Unqualified descriptive evaluation in {name}"
         return
     assert (
         fitted and evaluated

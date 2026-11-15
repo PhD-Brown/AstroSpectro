@@ -232,6 +232,17 @@ def test_multiclass_shap_reduces_samples_and_classes_only(tools_case):
     contracts.shap_case(c, values)
     result = c.viz._run_shap_analysis("synthetic")
     contracts.assert_multiclass_importances(result)
+    explanation = c.viz._last_shap_explanation
+    assert explanation.values.shape == (
+        4,
+        3,
+        2,
+    ), "SHAP axes are not samples/features/classes"
+    assert list(explanation.feature_names) == ["alpha", "beta", "gamma"]
+    assert_allclose(explanation.values, values)
+    plotted = c.viz.plot_shap_summary_bar(top_n=20)
+    assert plotted is not None, "Computed SHAP statistic has no summary representation"
+    contracts.assert_multiclass_importances(result, plotted[1])
 
 
 def test_shap_explanation_is_computed_once(tools_case):
@@ -290,13 +301,10 @@ def test_added_backdated_fits_invalidates_position_cache(tools_case):
 
 def test_duplicate_basename_legend_preserves_spectrum_identity(tools_case):
     c = tools_case
-    a, _, _ = c.write("A/same.fits.gz", [1, 2, 3])
-    b, _, _ = c.write("B/same.fits.gz", [4, 5, 6])
+    a, wa, fa = c.write("A/same.fits.gz", [1, 2, 3])
+    b, wb, fb = c.write("B/same.fits.gz", [4, 5, 6])
     _, ax = c.viz._plot_spectra_comparison([a, b], normalize=False)
-    labels = [line.get_label() for line in ax.lines]
-    assert (
-        len(set(labels)) == 2
-    ), f"Distinct observations share indistinguishable labels: {labels}"
+    contracts.assert_curve_identities(ax, [a, b], {a: (wa, fa), b: (wb, fb)})
 
 
 def test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten(
@@ -422,8 +430,9 @@ def test_feature_explorer_does_not_split_repeat_observations_across_holdout(
     c = tools_case
     path, fitted, evaluated = contracts.eda_partition_case(c, with_ids)
     diagnostic = ""
+    result = None
     try:
-        c.viz.feature_explorer(
+        result = c.viz.feature_explorer(
             str(path), max_hists=0, corr_top_n=0, rf_estimators=3, do_permutation=True
         )
     except ValueError as error:
@@ -433,7 +442,9 @@ def test_feature_explorer_does_not_split_repeat_observations_across_holdout(
         + capsys.readouterr().out
         + " ".join(str(getattr(x, "data", "")) for x in c.displayed)
     )
-    contracts.assert_eda_partitions(fitted, evaluated, text)
+    contracts.assert_eda_partitions(
+        fitted, evaluated, text, contracts.eda_surfaces(c, result)
+    )
 
 
 def test_deleted_fits_invalidates_position_cache(tools_case):

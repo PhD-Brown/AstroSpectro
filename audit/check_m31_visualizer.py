@@ -483,6 +483,8 @@ def main():
     if args.output.resolve() in {
         (ROOT / "audit/m31_experiments.json").resolve(),
         (ROOT / "audit/m31_adversarial.json").resolve(),
+        (ROOT / "audit/m31_review_experiments.json").resolve(),
+        (ROOT / "audit/m31_review_adversarial.json").resolve(),
     }:
         parser.error("Historical manifests are immutable; choose a review output path")
     before = hashes()
