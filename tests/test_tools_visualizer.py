@@ -651,6 +651,15 @@ def test_partition_oracle_accepts_groups_and_explicit_descriptive_limit():
             "CSV": "permutation_importances.csv, descriptive_context=non-independent",
         },
     )
+    contracts.assert_eda_partitions(
+        [{"A"}],
+        [{"A"}],
+        "Descriptive only; repeated object observations",
+        {
+            "metric": "Permutation importance (descriptive only)",
+            "CSV": "descriptive_permutation_importances.csv,descriptive_context",
+        },
+    )
     with pytest.raises(AssertionError, match="contaminate"):
         contracts.assert_eda_partitions([{"A"}], [{"A"}], "Validation importance")
 

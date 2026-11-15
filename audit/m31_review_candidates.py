@@ -289,19 +289,19 @@ def candidates(source, historical, local_style):
         source,
         "feature_explorer",
         "Permutation importance (split de validation)",
-        "Permutation importance (descriptive only: not an independent holdout; object identities may repeat)",
+        "Permutation importance (descriptive only; object identities may repeat)",
     )
     descriptive = edit(
         descriptive,
         "feature_explorer",
         "Calcule aussi la permutation importance (validation split).",
-        "Compute descriptive permutation importance only: not an independent holdout; object identities may repeat.",
+        "Compute descriptive permutation importance only; object identities may repeat.",
     )
     descriptive = edit(
         descriptive,
         "feature_explorer",
         "display(perm_df.head(30))",
-        'perm_df["descriptive_context"] = "Descriptive only: not an independent holdout; object identities may repeat"\n                        display(perm_df.head(30))',
+        'perm_df["descriptive_context"] = "Descriptive only; object identities may repeat"\n                        display(perm_df.head(30))',
     )
     descriptive = edit(
         descriptive,

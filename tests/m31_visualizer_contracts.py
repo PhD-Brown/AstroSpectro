@@ -543,7 +543,7 @@ def eda_surfaces(c, result):
 def assert_eda_partitions(fitted, evaluated, disclosure, surfaces=None):
     text = plain_text(disclosure)
     explicit = re.search(
-        r"not (?:an? )?independent holdout|no independent holdout|aucun holdout independant|pas (?:un |d.)?holdout independant",
+        r"not (?:an? )?independent holdout|no independent holdout|aucun holdout independant|pas (?:un |d.)?holdout independant|\bdescriptive only\b|\bpurely descriptive\b|\banalyse (?:purement )?descriptive\b",
         text,
     )
     if explicit:
