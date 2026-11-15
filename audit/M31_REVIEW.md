@@ -1,5 +1,14 @@
 # M3.1 — corrections après première revue Claude
 
+**Compte rendu historique de la livraison `39423aa`. Les limites R1/R14/R16/R18
+identifiées à la deuxième revue sont corrigées et revérifiées séparément dans
+[M31_ROUND3.md](M31_ROUND3.md). Les admissions A19/A27 ci-dessous décrivent l'ancien
+oracle ; elles ne constituent plus le verdict actuel.**
+
+Suivi réconcilié depuis cette livraison : [19 mécanismes → #121–#139](M31_FINDINGS.md#r1--suivi-correctif-réconcilié).
+« Aucune issue créée » ci-dessous décrit l'action de Codex à cette livraison ;
+la coordination ultérieure a ouvert les tickets. #119/#120 relèvent de M2.8/M2.9.
+
 Refs #43. Même branche `audit/43-tools-visualizer`, même Draft PR#118.
 Revue d'entrée : [5912550396](https://github.com/PhD-Brown/AstroSpectro/pull/118#pullrequestreview-5912550396),
 [annexe adversariale](https://github.com/PhD-Brown/AstroSpectro/pull/118#issuecomment-6900238945),

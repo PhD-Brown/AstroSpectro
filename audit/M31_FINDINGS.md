@@ -3,10 +3,56 @@
 Refs #43. Base `b4018074269011e5fbec232df068b8d3326a4e8d` ; aucun correctif.
 Les liens fichier:ligne ci-dessous visent cette base, pas les lignes des tests.
 Les contre-exemples sont dans [proofs_m31_visualizer.py](proofs_m31_visualizer.py),
-les sorties exactes dans [m31_experiments.json](m31_experiments.json).
-**Ces textes sont des propositions ; aucune nouvelle issue n'est créée.**
+les sorties initiales archivées dans [m31_experiments.json](m31_experiments.json).
+La validation actuelle R1/R14/R16/R18 et ses nouveaux manifestes sont dans
+[M31_ROUND3.md](M31_ROUND3.md) ; les résultats anciens ne sont pas transférés au
+nouvel oracle sans rejeu.
+**À la première livraison Codex, ces textes étaient des propositions sans nouvelle
+issue créée. La réconciliation ultérieure du 15 novembre a ouvert #121–#139 pour
+M3.1 ; aucun correctif de production n'en découle dans cette PR.**
 Priorités proposées, à valider humainement ; aucune incidence chiffrée sur des
 catalogues, modèles ou publications historiques n'est établie.
+
+## R1 — suivi correctif réconcilié
+
+Table vérifiée contre les corps des issues ouvertes et la
+[passation de coordination](https://github.com/PhD-Brown/AstroSpectro/issues/43#issuecomment-6901747695).
+Les 19 tickets regroupent des mécanismes/ensembles correctifs, pas les 47 preuves
+rouges ni les commentaires de revue. Une issue ouverte ne signifie pas une
+production corrigée. Les manifestes des livraisons précédentes sont conservés.
+
+| Mécanisme confirmé dans M3.1 | Issue corrective |
+|---|---|
+| Mapping des pixels après non-finis, trois rendus et deux consommateurs de features | [#121](https://github.com/PhD-Brown/AstroSpectro/issues/121) |
+| FWHM calculée avec continuum | [#122](https://github.com/PhD-Brown/AstroSpectro/issues/122) |
+| Préparation réellement ajustée, noms après filtrage/sélection, feature absente mise à zéro | [#123](https://github.com/PhD-Brown/AstroSpectro/issues/123) |
+| Axes SHAP, identités des features/classes et agrégation correctement déclarée | [#124](https://github.com/PhD-Brown/AstroSpectro/issues/124) |
+| Mode d'explainer ignoré et double évaluation SHAP | [#125](https://github.com/PhD-Brown/AstroSpectro/issues/125) |
+| Centroïde RA au passage 359°/1° | [#126](https://github.com/PhD-Brown/AstroSpectro/issues/126) |
+| Graduations RA incohérentes avec les points | [#127](https://github.com/PhD-Brown/AstroSpectro/issues/127) |
+| Dénominateur/exclusions des pourcentages top N | [#128](https://github.com/PhD-Brown/AstroSpectro/issues/128) |
+| Flux brut présenté comme normalisé après échec | [#129](https://github.com/PhD-Brown/AstroSpectro/issues/129) |
+| Incertitude brute attachée au flux normalisé, défaut latent | [#130](https://github.com/PhD-Brown/AstroSpectro/issues/130) |
+| Cache périmé après ajout antidaté ou suppression de FITS | [#131](https://github.com/PhD-Brown/AstroSpectro/issues/131) |
+| Identité des courbes et légendes avec basenames en collision | [#132](https://github.com/PhD-Brown/AstroSpectro/issues/132) |
+| Écrasement de labels contradictoires pour une même identité de catalogue | [#133](https://github.com/PhD-Brown/AstroSpectro/issues/133) |
+| Style Matplotlib global modifié par le rendu des pics | [#134](https://github.com/PhD-Brown/AstroSpectro/issues/134) |
+| État RNG global modifié par les échantillonnages | [#135](https://github.com/PhD-Brown/AstroSpectro/issues/135) |
+| Six routes d'export échouant avec un basename seul | [#136](https://github.com/PhD-Brown/AstroSpectro/issues/136) |
+| Inf non traité explicitement dans l'histogramme EDA | [#137](https://github.com/PhD-Brown/AstroSpectro/issues/137) |
+| Observations d'un même objet des deux côtés du holdout EDA | [#138](https://github.com/PhD-Brown/AstroSpectro/issues/138) |
+| Sous-classe manquante provoquant TypeError dans la distribution | [#139](https://github.com/PhD-Brown/AstroSpectro/issues/139) |
+
+[#119](https://github.com/PhD-Brown/AstroSpectro/issues/119) relève de M2.8
+(histogrammes linéaires), [#120](https://github.com/PhD-Brown/AstroSpectro/issues/120)
+de M2.9 (style à l'import DimRed) : ils ne comptent pas parmi les découvertes M3.1.
+#123/#124/#125 distinguent préparation, réduction et déclenchement SHAP ; #132/#133
+distinguent identité de courbe et conflit de catalogue. Les sites multiples de
+#121/#131/#135/#136 ne sont pas comptés comme tickets supplémentaires.
+R15, présence réelle d'identifiants comme features dans les CSV privés, reste **NA**.
+L'écart brut/pipeline R3 reste à étayer comme violation contractuelle.
+Agrégation SHAP, centroïde RA/gravité, méridien/sens RA et dénominateur top N restent
+soumis à décision humaine ; les recommandations de Claude ne valent pas ratification.
 
 ## Nouvelles manifestations dans le visualiseur : préparation/importance/SHAP — P1 proposé
 
@@ -27,14 +73,17 @@ catalogues, modèles ou publications historiques n'est établie.
   déclarée valide ou un refus explicite ; calcul unique sans effet de bord inutile.
 - **Vérification :** `actual_classifier_prep`, `selected_feature_names_derive`,
   `model_inspector_missing_selection_metadata`, `multiclass_shap`, `computed_once`.
-  Moyennes absolues attendues `[5,37.5,375]` pour les trois features du cube contrôlé.
+  `[5,37.5,375]` pour la moyenne uniforme seulement ; `[10,75,750]` pour la somme
+  des classes moyennée sur les échantillons ; F/G séparées également admissibles.
+  Noms, métadonnées et barres doivent décrire la même statistique (R16).
 - **Hors scope :** attribuer ce défaut au notebook04, aux figures publiées ou aux
   modèles réels sans provenance ; corriger master/classifier/notebooks dans M3.1.
 
 Extensions observées sur le même chemin : `explainer_mode` ignoré (`2633`) et
 feature CSV absente remplacée par zéro (`2456`) avant l'imputation entraînée.
-Le choix entre extension de #27 et ticket dédié pour ces nouvelles manifestations,
-y compris `explainer_mode_is_respected` et `missing_measurement`, appartient à l'humain.
+Le rattachement était ouvert lors de la première livraison ; la réconciliation
+a depuis créé #123 (préparation/noms/manquants), #124 (axes SHAP) et #125
+(mode/double appel), distincts de #27. Ce suivi ne démontre pas de cause commune.
 La provenance holdout du CSV le plus récent reste **NA** : ne pas interpréter
 ces explications comme une évaluation indépendante du modèle.
 
@@ -61,8 +110,9 @@ ces explications comme une évaluation indépendante du modèle.
   avec extraction réelle ; leur coordonnée de raie est vérifiée indépendamment.
 - **Hors scope :** #30 (air/vide/repos et centres subpixel), audit intégral M4.2.
 
-Pas de ticket spécifique trouvé dans l'inventaire ouvert/fermé ; proposition
-distincte à valider. L'antériorité de ce défaut précis n'est pas déduite d'une similarité.
+Aucun ticket spécifique n'avait été trouvé lors de la livraison initiale ; #121
+suit désormais cette interface et ses cinq consommateurs. L'antériorité de ce
+défaut précis n'est pas déduite d'une similarité.
 
 ## Nouveau : centroïde de plan près de la coupure RA — gravité à arbitrer
 
@@ -204,7 +254,7 @@ distincte à valider. L'antériorité de ce défaut précis n'est pas déduite d
   reste un risque statique lié à #24, non une mesure de biais.
 - **Hors scope :** #22/#24 du pipeline principal ; proposer une extension ciblée
   du même invariant au visualiseur, aucun run réel ni nouvel audit M4.
-  Ce sont de nouvelles manifestations sur un autre chemin ; une cause racine
+  #137 et #138 suivent désormais ces mécanismes du visualiseur. Ce sont de nouvelles manifestations sur un autre chemin ; une cause racine
   commune avec les implémentations de #22/#24 n'est pas démontrée.
 
 ## Nouveau en revue R9 : sous-classe manquante — P2 proposé
