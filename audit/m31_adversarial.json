@@ -1,0 +1,1670 @@
+{
+  "base": "b4018074269011e5fbec232df068b8d3326a4e8d",
+  "input_head": "8d320090ce6cab9f965bc53b5a0902c468dbf9f1",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "executable": "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "astropy": "8.0.2",
+    "specutils": "2.4.0",
+    "scipy": "1.17.1",
+    "matplotlib": "3.11.2",
+    "plotly": "7.1.0",
+    "shap": "0.51.0",
+    "scikit-learn": "1.9.1",
+    "pytest": "8.4.2",
+    "black": "24.4.2",
+    "ruff": "0.5.0"
+  },
+  "input_hashes": {
+    "src/tools/visualizer.py": "2774b9b07cbda70603d27044083ba41ce2e5e9d66ef886ec2a3c407c569a0bab",
+    "tests/test_tools_visualizer.py": "21aaddc24d3855d4ef32cf997e8b59a177a3bdfe641b36962eca15a6b52a62fb",
+    "audit/proofs_m31_visualizer.py": "51d87b101142f4a46afda875b99e77510dc4e17ab49bbeb4161e1dd99cb83e92",
+    "tests/m31_visualizer_contracts.py": "b815bb2bde33a30fe84298ed8346ed224c7f00d7cb6869df32f41e132e73c37d",
+    "audit/check_m31_visualizer.py": "51c84f33c848524a7811cd065b48c82d88dac65c60ed5807941cdb22e7fb8998",
+    "src/pipeline/preprocessor.py": "9b9687f763dfc751d0e40ec88f3980baf283e47c5f621bf97a4fd29571ef6a94",
+    "src/pipeline/peak_detector.py": "eca120ef0787b3b71a9174e6a1505b39fed60a40d7dd23a7bd60ad584d6c1e0d",
+    "src/pipeline/feature_engineering.py": "4fe4823301de3f66e24651dea5a463185af9477bf9d7cb9b4ac69cd7edd11c27",
+    "src/pipeline/classifier.py": "0ade76cef459a28b5ca946d96a14b761ad150d0cc556106fc8eba1b4112ad382",
+    "src/tools/dataset_builder.py": "1606946dd65032b0f0ff2a5bc6c60eb60cf332467820fac673999ea8ea508fe4",
+    "src/tools/generate_catalog_from_fits.py": "69fbf719754d8070155bca7537025619b5389acaf075d098d26e0b6b52c7f5ec",
+    "src/utils.py": "ce1991d8964dc9d4ce834e555f12e17e9c5448c3edb455e83146a2788b461745"
+  },
+  "source_blob": "f70aee91b15a4ad242667b2717c0100be494e807",
+  "base_blob": "f70aee91b15a4ad242667b2717c0100be494e807",
+  "inventory": {
+    "imports": [
+      "from __future__ import annotations",
+      "import base64",
+      "import io",
+      "import os",
+      "import gzip",
+      "import glob",
+      "import warnings",
+      "import random",
+      "from typing import Dict, Tuple, Optional",
+      "from datetime import datetime, timezone",
+      "import numpy as np",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "import plotly.graph_objects as go",
+      "from astropy.io import fits",
+      "from astropy.nddata import StdDevUncertainty",
+      "from astropy import units as u",
+      "from specutils import Spectrum, SpectralRegion",
+      "from specutils.analysis import centroid, gaussian_fwhm, equivalent_width",
+      "from IPython.display import display, Markdown, HTML",
+      "from ipywidgets import interact, widgets",
+      "from tqdm.notebook import tqdm",
+      "import shap",
+      "from pipeline.preprocessor import SpectraPreprocessor",
+      "from pipeline.feature_engineering import FeatureEngineer",
+      "from pipeline.classifier import SpectralClassifier",
+      "from pipeline.peak_detector import PeakDetector",
+      "from utils import safe_sigma_from_invvar, latest_file",
+      "import builtins",
+      "from ipywidgets import HBox, VBox, Dropdown, Button, HTML",
+      "from IPython.display import display, Markdown",
+      "import streamlit as st",
+      "import shap",
+      "import shap",
+      "import ipywidgets as widgets",
+      "from IPython.display import display, Markdown",
+      "from datetime import datetime, timezone",
+      "import os",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "from IPython.display import display, Markdown",
+      "import random",
+      "import os",
+      "from textwrap import dedent",
+      "import numpy as np",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "from IPython.display import display, Markdown",
+      "from sklearn.model_selection import train_test_split",
+      "from sklearn.ensemble import RandomForestClassifier",
+      "from sklearn.impute import SimpleImputer",
+      "from sklearn.pipeline import Pipeline",
+      "from sklearn.inspection import permutation_importance",
+      "import os",
+      "import matplotlib.pyplot as plt",
+      "from ipywidgets import Button",
+      "from PIL import Image"
+    ],
+    "methods": [
+      {
+        "name": "__init__",
+        "line": 108,
+        "end_line": 133,
+        "signature": "self, paths: dict",
+        "self_calls": [
+          "_load_labels_catalog",
+          "_scan_for_spectra"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "self._load_labels_catalog"
+        ]
+      },
+      {
+        "name": "_load_labels_catalog",
+        "line": 135,
+        "end_line": 173,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "pd.read_csv"
+        ]
+      },
+      {
+        "name": "_scan_for_spectra",
+        "line": 175,
+        "end_line": 199,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_format_header_line",
+        "line": 205,
+        "end_line": 227,
+        "signature": "self, header, label, key, unit=''",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_display_formatted_header",
+        "line": 229,
+        "end_line": 263,
+        "signature": "self, fits_relative_path",
+        "self_calls": [
+          "_format_header_line"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fits.open",
+          "gzip.open"
+        ]
+      },
+      {
+        "name": "interactive_header_explorer",
+        "line": 265,
+        "end_line": 283,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display"
+        ]
+      },
+      {
+        "name": "_plot_spectrum_analysis",
+        "line": 289,
+        "end_line": 414,
+        "signature": "self, file_path, prominence, window, xlim, ylim",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open",
+          "plt.style.use",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "interactive_spectrum_analyzer",
+        "line": 416,
+        "end_line": 516,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display"
+        ]
+      },
+      {
+        "name": "_plot_peak_detection_notebook",
+        "line": 522,
+        "end_line": 882,
+        "signature": "self, file_path: str, prominence: float, window: int, xlim: tuple[float, float], ylim: tuple[float, float], model_path: str",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "(TypeError, ValueError)"
+        ],
+        "io_and_effect_calls": [
+          "SpectralClassifier.load_model",
+          "b.read",
+          "base64.b64encode(b.read()).decode",
+          "base64.b64encode(buf.read()).decode",
+          "buf.read",
+          "builtins.log_analyses.iterrows",
+          "df_an.style.apply",
+          "df_an.to_csv",
+          "df_an.to_latex",
+          "display",
+          "fits.open",
+          "gzip.open",
+          "plt.savefig",
+          "plt.style.use",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "interactive_peak_tuner",
+        "line": 884,
+        "end_line": 945,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display"
+        ]
+      },
+      {
+        "name": "analyze_feature_zeros",
+        "line": 951,
+        "end_line": 1135,
+        "signature": "self, n_files: int=100, *, prominence: float=0.2, window: int=15, eps: float=1e-12, random_state: int=42, export: bool=True, show_plot: bool=False",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fits.open",
+          "gzip.open",
+          "preprocessor.load_spectrum",
+          "random.seed",
+          "summary.style.apply",
+          "summary.style.apply(_row_style, axis=1).format",
+          "summary.to_csv",
+          "summary.to_latex"
+        ]
+      },
+      {
+        "name": "_generate_position_catalog",
+        "line": 1141,
+        "end_line": 1281,
+        "signature": "self, force_regenerate: bool=False",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "df_plan.to_csv",
+          "fits.open",
+          "gzip.open",
+          "os.makedirs",
+          "pd.read_csv"
+        ]
+      },
+      {
+        "name": "plot_sky_coverage",
+        "line": 1283,
+        "end_line": 1420,
+        "signature": "self, save_path: str | None=None",
+        "self_calls": [
+          "_generate_position_catalog"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "Image.open",
+          "display",
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "_analyze_saved_model",
+        "line": 1426,
+        "end_line": 1542,
+        "signature": "self, model_path: str",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "SpectralClassifier.load_model",
+          "display",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "interactive_model_inspector",
+        "line": 1544,
+        "end_line": 1650,
+        "signature": "self",
+        "self_calls": [
+          "_analyze_saved_model"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "self._analyze_saved_model"
+        ]
+      },
+      {
+        "name": "_plot_spectra_comparison",
+        "line": 1656,
+        "end_line": 1761,
+        "signature": "self, file_paths: list[str], normalize: bool=True, offset: float=0.0, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "fits.open",
+          "gzip.open",
+          "os.makedirs",
+          "plt.style.use",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "interactive_spectra_comparator",
+        "line": 1763,
+        "end_line": 1861,
+        "signature": "self",
+        "self_calls": [
+          "_plot_spectra_comparison"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display",
+          "os.makedirs"
+        ]
+      },
+      {
+        "name": "_display_formatted_header_for_streamlit",
+        "line": 1867,
+        "end_line": 1897,
+        "signature": "self, st, fits_relative_path",
+        "self_calls": [
+          "_format_header_line"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open"
+        ]
+      },
+      {
+        "name": "_plot_spectrum_analysis_plotly",
+        "line": 1899,
+        "end_line": 2060,
+        "signature": "self, st, file_path_or_buffer, prominence, window",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "app",
+        "line": 2062,
+        "end_line": 2110,
+        "signature": "self",
+        "self_calls": [
+          "_display_header_for_streamlit",
+          "_plot_spectrum_analysis_plotly"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "self._display_header_for_streamlit",
+          "st.sidebar.file_uploader"
+        ]
+      },
+      {
+        "name": "_display_header_for_streamlit",
+        "line": 2112,
+        "end_line": 2128,
+        "signature": "self, st, header",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_resolve_trained_log_path",
+        "line": 2134,
+        "end_line": 2155,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "display_dataset_dashboard",
+        "line": 2157,
+        "end_line": 2366,
+        "signature": "self, show_charts: bool=True",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "_read_any_trained",
+          "_style",
+          "df.style.hide",
+          "display",
+          "f.read",
+          "open",
+          "pd.read_csv",
+          "st.set_table_styles"
+        ]
+      },
+      {
+        "name": "refresh_available_spectra",
+        "line": 2376,
+        "end_line": 2379,
+        "signature": "self",
+        "self_calls": [
+          "_scan_for_spectra"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_prepare_for_model",
+        "line": 2385,
+        "end_line": 2426,
+        "signature": "self, df: pd.DataFrame, clf_wrapper",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_get_features_sample",
+        "line": 2432,
+        "end_line": 2504,
+        "signature": "self, clf, sample_n: int, source: str='auto'",
+        "self_calls": [
+          "refresh_available_spectra"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open",
+          "pd.read_csv",
+          "pre.load_spectrum"
+        ]
+      },
+      {
+        "name": "_build_shap_explainer",
+        "line": 2509,
+        "end_line": 2564,
+        "signature": "self, *, pipe, model, X_df, mode: str",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_run_shap_analysis",
+        "line": 2570,
+        "end_line": 2670,
+        "signature": "self, model_path: str, sample_n: int=500, *, explainer_mode: str='auto', data_source: str='auto'",
+        "self_calls": [
+          "_get_features_sample",
+          "_prepare_for_model"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "SpectralClassifier.load_model"
+        ]
+      },
+      {
+        "name": "interactive_shap_explainer",
+        "line": 2676,
+        "end_line": 2810,
+        "signature": "self",
+        "self_calls": [
+          "_run_shap_analysis"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "os.makedirs",
+          "shap_df.to_csv",
+          "shap_df.to_latex"
+        ]
+      },
+      {
+        "name": "plot_shap_summary_bar",
+        "line": 2816,
+        "end_line": 2869,
+        "signature": "self, top_n: int=20, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "plot_shap_beeswarm",
+        "line": 2871,
+        "end_line": 2932,
+        "signature": "self, max_display: int=15, save_path: str | None=None",
+        "self_calls": [
+          "plot_shap_summary_bar"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "plot_subclass_distribution",
+        "line": 2938,
+        "end_line": 3038,
+        "signature": "self, top_n: int=20, normalize: bool=False, save_path: Optional[str]=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fig.savefig",
+          "os.makedirs",
+          "pd.read_csv",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "plot_normalization_comparison",
+        "line": 3044,
+        "end_line": 3198,
+        "signature": "self, sample_paths: list[str] | None=None, *, n_samples: int=2, random_state: int | None=None, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "fits.open",
+          "gzip.open",
+          "os.makedirs",
+          "plt.style.use",
+          "preprocessor.load_spectrum",
+          "random.seed"
+        ]
+      },
+      {
+        "name": "feature_explorer",
+        "line": 3204,
+        "end_line": 3581,
+        "signature": "self, pattern: str | None=None, *, save_dir: str | None=None, max_hists: int=24, corr_top_n: int=30, rf_estimators: int=300, random_state: int=42, do_permutation: bool=True",
+        "self_calls": [
+          "_plot_feature_importances_bar"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fig.savefig",
+          "os.makedirs",
+          "pd.read_csv",
+          "perm_df.to_csv",
+          "plt.style.use",
+          "rf_df.to_csv"
+        ]
+      },
+      {
+        "name": "_plot_feature_importances_bar",
+        "line": 3587,
+        "end_line": 3626,
+        "signature": "self, importances_df: pd.DataFrame | None=None, *, top_n: int=25, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      }
+    ]
+  },
+  "protected_diff": "",
+  "adversarial": [
+    {
+      "id": "M01_wavelength_pair",
+      "status": "KILLED",
+      "site": "peak_wl = wavelength[peak_idx]",
+      "replacement": "peak_wl = wavelength[peak_idx] + 1.0",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M01_wavelength_pair-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "finite_gaussian"
+        ],
+        "exit_code": 0,
+        "seconds": 6.22,
+        "output": "...                                                                      [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M01_wavelength_pair-base.xml -\n3 passed, 30 deselected, 25 warnings in 3.99s\n",
+        "counts": {
+          "collected": 3,
+          "passed": 3,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M01_wavelength_pair.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "finite_gaussian"
+        ],
+        "exit_code": 1,
+        "seconds": 7.38,
+        "output": "FF.                                                                      [100%]\n================================== FAILURES ===================================\n________ test_finite_gaussian_peak_identity_all_renderers[matplotlib] _________\ntests\\test_tools_visualizer.py:70: in test_finite_gaussian_peak_identity_all_renderers\n    contracts.assert_peak_pairs(red, green, wave, flux)\ntests\\m31_visualizer_contracts.py:181: in assert_peak_pairs\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=0, atol=2e-09\nE   Detected peak lost its original pixel identity\nE   Mismatched elements: 1 / 2 (50%)\nE   Mismatch at index:\nE    [0, 0]: 4862.000000000093 (ACTUAL), 4861.0 (DESIRED)\nE   Max absolute difference among violations: 1.\nE   Max relative difference among violations: 0.00020572\nE    ACTUAL: array([[4.862e+03, 5.000e-01]])\nE    DESIRED: array([[4.861e+03, 5.000e-01]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_________ test_finite_gaussian_peak_identity_all_renderers[notebook] __________\ntests\\test_tools_visualizer.py:70: in test_finite_gaussian_peak_identity_all_renderers\n    contracts.assert_peak_pairs(red, green, wave, flux)\ntests\\m31_visualizer_contracts.py:181: in assert_peak_pairs\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=0, atol=2e-09\nE   Detected peak lost its original pixel identity\nE   Mismatched elements: 1 / 2 (50%)\nE   Mismatch at index:\nE    [0, 0]: 4862.000000000093 (ACTUAL), 4861.0 (DESIRED)\nE   Max absolute difference among violations: 1.\nE   Max relative difference among violations: 0.00020572\nE    ACTUAL: array([[4.862e+03, 5.000e-01]])\nE    DESIRED: array([[4.861e+03, 5.000e-01]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M01_wavelength_pair.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_finite_gaussian_peak_identity_all_renderers[matplotlib]\nFAILED tests/test_tools_visualizer.py::test_finite_gaussian_peak_identity_all_renderers[notebook]\n2 failed, 1 passed, 30 deselected, 25 warnings in 4.53s\n",
+        "counts": {
+          "collected": 3,
+          "passed": 1,
+          "failed": 2,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_finite_gaussian_peak_identity_all_renderers[matplotlib]",
+            "type": "AssertionError",
+            "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=2e-09\nDetected peak lost its original pixel identity\nMismatched elements: 1 / 2 (50%)\nMismatch at index:\n [0, 0]: 4862.000000000093 (ACTUAL), 4861.0 (DESIRED)\nMax absolute difference among violations: 1.\nMax relative difference among violations: 0.00020572\n ACTUAL: array([[4.862e+03, 5.000e-01]])\n DESIRED: array([[4.861e+03, 5.000e-01]])"
+          },
+          {
+            "name": "test_finite_gaussian_peak_identity_all_renderers[notebook]",
+            "type": "AssertionError",
+            "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=2e-09\nDetected peak lost its original pixel identity\nMismatched elements: 1 / 2 (50%)\nMismatch at index:\n [0, 0]: 4862.000000000093 (ACTUAL), 4861.0 (DESIRED)\nMax absolute difference among violations: 1.\nMax relative difference among violations: 0.00020572\n ACTUAL: array([[4.862e+03, 5.000e-01]])\n DESIRED: array([[4.861e+03, 5.000e-01]])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M02_normalization",
+      "status": "KILLED",
+      "site": "y = flux + (i * offset if offset else 0.0)",
+      "replacement": "y = flux * 2 + (i * offset if offset else 0.0)",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M02_normalization-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "comparison_scale_invariance"
+        ],
+        "exit_code": 0,
+        "seconds": 5.86,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M02_normalization-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.51s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M02_normalization.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "comparison_scale_invariance"
+        ],
+        "exit_code": 1,
+        "seconds": 5.33,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n___________ test_comparison_scale_invariance_offsets_and_skip_rank ____________\ntests\\test_tools_visualizer.py:156: in test_comparison_scale_invariance_offsets_and_skip_rank\n    assert_allclose(ax.lines[0].get_ydata(), [1 / 3, 2 / 3, 1, 4 / 3, 5 / 3])\nE   AssertionError: \nE   Not equal to tolerance rtol=1e-07, atol=0\nE   \nE   Mismatched elements: 5 / 5 (100%)\nE   Mismatch at indices:\nE    [0]: 0.6666666666666666 (ACTUAL), 0.3333333333333333 (DESIRED)\nE    [1]: 1.3333333333333333 (ACTUAL), 0.6666666666666666 (DESIRED)\nE    [2]: 2.0 (ACTUAL), 1.0 (DESIRED)\nE    [3]: 2.6666666666666665 (ACTUAL), 1.3333333333333333 (DESIRED)\nE    [4]: 3.3333333333333335 (ACTUAL), 1.6666666666666667 (DESIRED)\nE   Max absolute difference among violations: 1.66666667\nE   Max relative difference among violations: 1.\nE    ACTUAL: array([0.666667, 1.333333, 2.      , 2.666667, 3.333333])\nE    DESIRED: array([0.333333, 0.666667, 1.      , 1.333333, 1.666667])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n[!] Skipped (unreadable) : missing.fits.gz -> [Errno 2] No such file or directory: 'C:\\\\Users\\\\alexb\\\\AppData\\\\Local\\\\Temp\\\\pytest-of-alexb\\\\pytest-1692\\\\test_comparison_scale_invarian0\\\\raw_data_dir\\\\missing.fits.gz'\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M02_normalization.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_comparison_scale_invariance_offsets_and_skip_rank\n1 failed, 32 deselected, 3 warnings in 3.40s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_comparison_scale_invariance_offsets_and_skip_rank",
+            "type": "AssertionError",
+            "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 5 / 5 (100%)\nMismatch at indices:\n [0]: 0.6666666666666666 (ACTUAL), 0.3333333333333333 (DESIRED)\n [1]: 1.3333333333333333 (ACTUAL), 0.6666666666666666 (DESIRED)\n [2]: 2.0 (ACTUAL), 1.0 (DESIRED)\n [3]: 2.6666666666666665 (ACTUAL), 1.3333333333333333 (DESIRED)\n [4]: 3.3333333333333335 (ACTUAL), 1.6666666666666667 (DESIRED)\nMax absolute difference among violations: 1.66666667\nMax relative difference among violations: 1.\n ACTUAL: array([0.666667, 1.333333, 2.      , 2.666667, 3.333333])\n DESIRED: array([0.333333, 0.666667, 1.      , 1.333333, 1.666667])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M03_population_counts",
+      "status": "KILLED",
+      "site": "values = counts\n",
+      "replacement": "values = counts * 2\n",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M03_population_counts-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "subclass_raw_counts"
+        ],
+        "exit_code": 0,
+        "seconds": 5.06,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M03_population_counts-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.06s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M03_population_counts.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "subclass_raw_counts"
+        ],
+        "exit_code": 1,
+        "seconds": 5.09,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n__________ test_subclass_raw_counts_and_full_population_percentages ___________\ntests\\test_tools_visualizer.py:249: in test_subclass_raw_counts_and_full_population_percentages\n    assert_array_equal([p.get_height() for p in ax.patches], [5, 4, 3])\nE   AssertionError: \nE   Arrays are not equal\nE   \nE   Mismatched elements: 3 / 3 (100%)\nE   Mismatch at indices:\nE    [0]: 10 (ACTUAL), 5 (DESIRED)\nE    [1]: 8 (ACTUAL), 4 (DESIRED)\nE    [2]: 6 (ACTUAL), 3 (DESIRED)\nE   Max absolute difference among violations: 5\nE   Max relative difference among violations: 1.\nE    ACTUAL: array([10,  8,  6])\nE    DESIRED: array([5, 4, 3])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M03_population_counts.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_subclass_raw_counts_and_full_population_percentages\n1 failed, 32 deselected, 3 warnings in 3.08s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_subclass_raw_counts_and_full_population_percentages",
+            "type": "AssertionError",
+            "message": "AssertionError: \nArrays are not equal\n\nMismatched elements: 3 / 3 (100%)\nMismatch at indices:\n [0]: 10 (ACTUAL), 5 (DESIRED)\n [1]: 8 (ACTUAL), 4 (DESIRED)\n [2]: 6 (ACTUAL), 3 (DESIRED)\nMax absolute difference among violations: 5\nMax relative difference among violations: 1.\n ACTUAL: array([10,  8,  6])\n DESIRED: array([5, 4, 3])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M04_shap_signed_mean",
+      "status": "KILLED",
+      "site": "vals = np.abs(vals)",
+      "replacement": "vals = vals",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M04_shap_signed_mean-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "binary_shap_mean"
+        ],
+        "exit_code": 0,
+        "seconds": 5.08,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M04_shap_signed_mean-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.13s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M04_shap_signed_mean.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "binary_shap_mean"
+        ],
+        "exit_code": 1,
+        "seconds": 4.95,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n_____________ test_binary_shap_mean_absolute_values_and_bar_names _____________\ntests\\test_tools_visualizer.py:370: in test_binary_shap_mean_absolute_values_and_bar_names\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1e-07, atol=0\nE   \nE   Mismatched elements: 3 / 3 (100%)\nE   Mismatch at indices:\nE    [0]: -1.0 (ACTUAL), 4 (DESIRED)\nE    [1]: 0.0 (ACTUAL), 4 (DESIRED)\nE    [2]: 1.0 (ACTUAL), 5 (DESIRED)\nE   Max absolute difference among violations: 5.\nE   Max relative difference among violations: 1.25\nE    ACTUAL: array([-1.,  0.,  1.])\nE    DESIRED: array([4, 4, 5])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n✓ TreeExplainer created for DummyClassifier\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M04_shap_signed_mean.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_binary_shap_mean_absolute_values_and_bar_names\n1 failed, 32 deselected, 3 warnings in 3.00s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_binary_shap_mean_absolute_values_and_bar_names",
+            "type": "AssertionError",
+            "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 3 / 3 (100%)\nMismatch at indices:\n [0]: -1.0 (ACTUAL), 4 (DESIRED)\n [1]: 0.0 (ACTUAL), 4 (DESIRED)\n [2]: 1.0 (ACTUAL), 5 (DESIRED)\nMax absolute difference among violations: 5.\nMax relative difference among violations: 1.25\n ACTUAL: array([-1.,  0.,  1.])\n DESIRED: array([4, 4, 5])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M05_column_alignment",
+      "status": "KILLED",
+      "site": "Xt = imp.transform(X)",
+      "replacement": "Xt = imp.transform(X)[:, ::-1]",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M05_column_alignment-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "prepare_flat"
+        ],
+        "exit_code": 0,
+        "seconds": 5.28,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M05_column_alignment-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.25s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M05_column_alignment.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "prepare_flat"
+        ],
+        "exit_code": 1,
+        "seconds": 6.47,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n______ test_prepare_flat_pipeline_alignment_imputation_scaling_selection ______\ntests\\test_tools_visualizer.py:342: in test_prepare_flat_pipeline_alignment_imputation_scaling_selection\n    assert_allclose(Xt, [[np.sqrt(1.5), np.sqrt(1.5)], [-np.sqrt(1.5), 0]], atol=1e-14)\nE   AssertionError: \nE   Not equal to tolerance rtol=1e-07, atol=1e-14\nE   \nE   Mismatched elements: 4 / 4 (100%)\nE   Mismatch at indices:\nE    [0, 0]: 16.53405576378645 (ACTUAL), 1.224744871391589 (DESIRED)\nE    [0, 1]: -1.8371173070873834 (ACTUAL), 1.224744871391589 (DESIRED)\nE    [1, 0]: 10.410331406828506 (ACTUAL), -1.224744871391589 (DESIRED)\nE    [1, 1]: -2.327015255644019 (ACTUAL), 0.0 (DESIRED)\nE   Max absolute difference among violations: 15.30931089\nE   Max relative difference among violations: 12.5\nE    ACTUAL: array([[16.534056, -1.837117],\nE          [10.410331, -2.327015]])\nE    DESIRED: array([[ 1.224745,  1.224745],\nE          [-1.224745,  0.      ]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M05_column_alignment.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_prepare_flat_pipeline_alignment_imputation_scaling_selection\n1 failed, 32 deselected, 3 warnings in 4.11s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_prepare_flat_pipeline_alignment_imputation_scaling_selection",
+            "type": "AssertionError",
+            "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-14\n\nMismatched elements: 4 / 4 (100%)\nMismatch at indices:\n [0, 0]: 16.53405576378645 (ACTUAL), 1.224744871391589 (DESIRED)\n [0, 1]: -1.8371173070873834 (ACTUAL), 1.224744871391589 (DESIRED)\n [1, 0]: 10.410331406828506 (ACTUAL), -1.224744871391589 (DESIRED)\n [1, 1]: -2.327015255644019 (ACTUAL), 0.0 (DESIRED)\nMax absolute difference among violations: 15.30931089\nMax relative difference among violations: 12.5\n ACTUAL: array([[16.534056, -1.837117],\n       [10.410331, -2.327015]])\n DESIRED: array([[ 1.224745,  1.224745],\n       [-1.224745,  0.      ]])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M06_feature_labels",
+      "status": "KILLED",
+      "site": "names_sorted = np.array(feature_names_for_plot)[order]",
+      "replacement": "names_sorted = np.array(feature_names_for_plot)[order[::-1]]",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M06_feature_labels-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "model_inspector_selected"
+        ],
+        "exit_code": 0,
+        "seconds": 5.02,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M06_feature_labels-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.03s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M06_feature_labels.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "model_inspector_selected"
+        ],
+        "exit_code": 1,
+        "seconds": 5.16,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n____ test_model_inspector_selected_names_preserve_importance_associations _____\ntests\\test_tools_visualizer.py:398: in test_model_inspector_selected_names_preserve_importance_associations\n    assert [t.get_text() for t in ax.get_yticklabels()] == [\"calcium\", \"hydrogen\"]\nE   AssertionError: assert ['hydrogen', 'calcium'] == ['calcium', 'hydrogen']\nE     \nE     At index 0 diff: 'hydrogen' != 'calcium'\nE     Use -v to get more diff\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M06_feature_labels.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_model_inspector_selected_names_preserve_importance_associations\n1 failed, 32 deselected, 3 warnings in 3.32s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_model_inspector_selected_names_preserve_importance_associations",
+            "type": "AssertionError",
+            "message": "AssertionError: assert ['hydrogen', 'calcium'] == ['calcium', 'hydrogen']\n  \n  At index 0 diff: 'hydrogen' != 'calcium'\n  Use -v to get more diff"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M07_zero_denominator",
+      "status": "KILLED",
+      "site": "zero_count / len(df)",
+      "replacement": "zero_count / (len(df) + 1)",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M07_zero_denominator-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "zero_statistics"
+        ],
+        "exit_code": 0,
+        "seconds": 5.06,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M07_zero_denominator-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.09s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M07_zero_denominator.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "zero_statistics"
+        ],
+        "exit_code": 1,
+        "seconds": 5.05,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n________ test_zero_statistics_use_processed_rows_and_keep_nan_separate ________\ntests\\test_tools_visualizer.py:300: in test_zero_statistics_use_processed_rows_and_keep_nan_separate\n    assert summary.loc[\"mixed\", \"zero_rate\"] == 1 / 3\nE   assert np.float64(0.25) == (1 / 3)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M07_zero_denominator.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_zero_statistics_use_processed_rows_and_keep_nan_separate\n1 failed, 32 deselected, 3 warnings in 3.17s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_zero_statistics_use_processed_rows_and_keep_nan_separate",
+            "type": "AssertionError",
+            "message": "assert np.float64(0.25) == (1 / 3)"
+          }
+        ]
+      }
+    },
+    {
+      "id": "M08_declination",
+      "status": "KILLED",
+      "site": "y = np.radians(dec_deg)",
+      "replacement": "y = np.radians(-dec_deg)",
+      "baseline": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M08_declination-base.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "sky_artists"
+        ],
+        "exit_code": 0,
+        "seconds": 5.03,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M08_declination-base.xml -\n1 passed, 32 deselected, 3 warnings in 3.07s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      },
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M08_declination.xml",
+          "tests/test_tools_visualizer.py",
+          "-k",
+          "sky_artists"
+        ],
+        "exit_code": 1,
+        "seconds": 5.49,
+        "output": "F                                                                        [100%]\n================================== FAILURES ===================================\n_______________ test_sky_artists_encode_counts_and_declinations _______________\ntests\\test_tools_visualizer.py:239: in test_sky_artists_encode_counts_and_declinations\n    assert_allclose(sc.get_offsets()[:, 1], [-np.pi / 6, 0, np.pi / 3])\nE   AssertionError: \nE   Not equal to tolerance rtol=1e-07, atol=0\nE   \nE   Mismatched elements: 2 / 3 (66.7%)\nE   Mismatch at indices:\nE    [0]: 0.5235987755982988 (ACTUAL), -0.5235987755982988 (DESIRED)\nE    [2]: -1.0471975511965976 (ACTUAL), 1.0471975511965976 (DESIRED)\nE   Max absolute difference among violations: 2.0943951\nE   Max relative difference among violations: 2.\nE    ACTUAL: MaskedArray([ 0.523599, -0.      , -1.047198])\nE    DESIRED: array([-0.523599,  0.      ,  1.047198])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\M08_declination.xml -\n=========================== short test summary info ===========================\nFAILED tests/test_tools_visualizer.py::test_sky_artists_encode_counts_and_declinations\n1 failed, 32 deselected, 3 warnings in 3.35s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 0,
+          "failed": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": [
+          {
+            "name": "test_sky_artists_encode_counts_and_declinations",
+            "type": "AssertionError",
+            "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=0\n\nMismatched elements: 2 / 3 (66.7%)\nMismatch at indices:\n [0]: 0.5235987755982988 (ACTUAL), -0.5235987755982988 (DESIRED)\n [2]: -1.0471975511965976 (ACTUAL), 1.0471975511965976 (DESIRED)\nMax absolute difference among violations: 2.0943951\nMax relative difference among violations: 2.\n ACTUAL: MaskedArray([ 0.523599, -0.      , -1.047198])\n DESIRED: array([-0.523599,  0.      ,  1.047198])"
+          }
+        ]
+      }
+    },
+    {
+      "id": "A01_circular_RA",
+      "status": "ADMITTED",
+      "site": "ra=(\"ra\", \"mean\")",
+      "replacement": "ra=(\"ra\", lambda s: np.degrees(np.arctan2(np.sin(np.radians(s)).mean(), np.cos(np.radians(s)).mean())) % 360)",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A01_circular_RA.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "ra_wrap_centroid"
+        ],
+        "exit_code": 0,
+        "seconds": 5.22,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A01_circular_RA.xml -\n1 passed, 25 deselected, 3 warnings in 3.95s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A02_tick_labels",
+      "status": "ADMITTED",
+      "site": "((L % 360) / 15)",
+      "replacement": "(((180 - L) % 360) / 15)",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A02_tick_labels.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "sky_ra_tick"
+        ],
+        "exit_code": 0,
+        "seconds": 5.69,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A02_tick_labels.xml -\n1 passed, 25 deselected, 3 warnings in 4.24s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A03_total_population",
+      "status": "ADMITTED",
+      "site": "total = counts.sum()",
+      "replacement": "total = len(df)",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A03_total_population.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "truncated_percentages"
+        ],
+        "exit_code": 0,
+        "seconds": 6.41,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A03_total_population.xml -\n1 passed, 25 deselected, 3 warnings in 4.93s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A04_disclosed_conditional",
+      "status": "ADMITTED",
+      "site": "ax.set_title(\"Spectral Sub-class Distribution\")",
+      "replacement": "ax.set_title(\"Top 3 classes: 12 of 15 examples; 3 excluded; conditional frequency\")",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A04_disclosed_conditional.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "truncated_percentages"
+        ],
+        "exit_code": 0,
+        "seconds": 6.02,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A04_disclosed_conditional.xml -\n1 passed, 25 deselected, 3 warnings in 4.03s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A05_shap_axes",
+      "status": "ADMITTED",
+      "site": "vals = np.mean(np.abs(vals), axis=1)",
+      "replacement": "vals = np.mean(np.abs(vals), axis=2)",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A05_shap_axes.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "multiclass_shap"
+        ],
+        "exit_code": 0,
+        "seconds": 5.05,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A05_shap_axes.xml -\n1 passed, 25 deselected, 3 warnings in 3.80s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A06_selector_support",
+      "status": "ADMITTED",
+      "site": "or used_cols[: Xt.shape[1]]",
+      "replacement": "or list(np.asarray(used_cols)[sel.get_support()])",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A06_selector_support.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "selected_feature_names_derive"
+        ],
+        "exit_code": 0,
+        "seconds": 5.19,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A06_selector_support.xml -\n1 passed, 25 deselected, 4 warnings in 3.80s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A07_uncertainty_scale",
+      "status": "ADMITTED",
+      "site": "sigma = safe_sigma_from_invvar(invvar)  # helper utils.py",
+      "replacement": "sigma = safe_sigma_from_invvar(invvar) / np.median(flux)  # normalized sigma",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A07_uncertainty_scale.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "normalized_flux_uncertainties"
+        ],
+        "exit_code": 0,
+        "seconds": 5.42,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A07_uncertainty_scale.xml -\n1 passed, 25 deselected, 3 warnings in 4.11s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A08_actual_prep",
+      "status": "ADMITTED",
+      "site": "Xt = X.values",
+      "replacement": "Xt = pipe.named_steps[\"prep\"].transform(X) if \"prep\" in pipe.named_steps else X.values",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A08_actual_prep.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "actual_classifier_prep"
+        ],
+        "exit_code": 0,
+        "seconds": 5.33,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A08_actual_prep.xml -\n1 passed, 25 deselected, 3 warnings in 3.95s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A09_no_duplicate_SHAP",
+      "status": "ADMITTED",
+      "site": "        # 4) SHAP values (uniform API: direct call)\n        with warnings.catch_warnings():\n            warnings.filterwarnings(\"ignore\", category=RuntimeWarning)\n            sv = explainer(Xt)\n",
+      "replacement": "",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A09_no_duplicate_SHAP.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "computed_once"
+        ],
+        "exit_code": 0,
+        "seconds": 5.03,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A09_no_duplicate_SHAP.xml -\n1 passed, 25 deselected, 3 warnings in 3.77s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A10_missing_stays_nan",
+      "status": "ADMITTED",
+      "site": "df[c] = 0.0",
+      "replacement": "df[c] = np.nan",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A10_missing_stays_nan.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "missing_measurement"
+        ],
+        "exit_code": 0,
+        "seconds": 4.91,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A10_missing_stays_nan.xml -\n1 passed, 25 deselected, 3 warnings in 3.73s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A12_absorption_profile",
+      "status": "ADMITTED",
+      "site": "gaussian_fwhm(spec_full, regions=region)",
+      "replacement": "gaussian_fwhm(Spectrum(spectral_axis=wavelength*u.AA, flux=(1-flux_norm)*u.adu), regions=region)",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A12_absorption_profile.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "absorption_fwhm_export"
+        ],
+        "exit_code": 0,
+        "seconds": 5.14,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A12_absorption_profile.xml -\n1 passed, 25 deselected, 3 warnings in 4.02s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A13_fresh_cache",
+      "status": "ADMITTED",
+      "site": "if os.path.exists(catalog_path) and not force_regenerate:",
+      "replacement": "if os.path.exists(catalog_path) and not force_regenerate and False:",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A13_fresh_cache.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "added_backdated_fits"
+        ],
+        "exit_code": 0,
+        "seconds": 4.77,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A13_fresh_cache.xml -\n1 passed, 25 deselected, 3 warnings in 3.57s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A14_relative_identity",
+      "status": "ADMITTED",
+      "site": "label=os.path.basename(rel_path)",
+      "replacement": "label=rel_path",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A14_relative_identity.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "duplicate_basename_legend"
+        ],
+        "exit_code": 0,
+        "seconds": 4.88,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A14_relative_identity.xml -\n1 passed, 25 deselected, 3 warnings in 3.69s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A15_explicit_catalog_conflict",
+      "status": "ADMITTED",
+      "site": "labels = pd.Series(df_cat[\"subclass\"].values, index=key_series).to_dict()",
+      "replacement": "if key_series.duplicated().any():\n                print(\"Conflicting catalogue identities\")\n                return {}\n            labels = pd.Series(df_cat[\"subclass\"].values, index=key_series).to_dict()",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A15_explicit_catalog_conflict.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "duplicate_conflicting_catalog"
+        ],
+        "exit_code": 0,
+        "seconds": 4.7,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\A15_explicit_catalog_conflict.xml -\n1 passed, 25 deselected, 3 warnings in 3.54s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A11_local_style",
+      "status": "ADMITTED",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\style.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "restores_global_matplotlib"
+        ],
+        "exit_code": 0,
+        "seconds": 4.91,
+        "output": ".                                                                        [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\style.xml -\n1 passed, 25 deselected, 3 warnings in 3.66s\n",
+        "counts": {
+          "collected": 1,
+          "passed": 1,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    },
+    {
+      "id": "A16_pixel_mapping",
+      "status": "ADMITTED",
+      "result": {
+        "command": [
+          "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+          "-m",
+          "pytest",
+          "-q",
+          "--tb=short",
+          "--disable-warnings",
+          "--junitxml=C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\pixels.xml",
+          "audit/proofs_m31_visualizer.py",
+          "-k",
+          "nonfinite_prefix"
+        ],
+        "exit_code": 0,
+        "seconds": 5.86,
+        "output": "...                                                                      [100%]\n- generated xml file: C:\\Users\\alexb\\AppData\\Local\\Temp\\m31-candidates-5qtdb3m3\\pixels.xml -\n3 passed, 23 deselected, 30 warnings in 4.52s\n",
+        "counts": {
+          "collected": 3,
+          "passed": 3,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "failures": []
+      }
+    }
+  ],
+  "hashes_after": {
+    "src/tools/visualizer.py": "2774b9b07cbda70603d27044083ba41ce2e5e9d66ef886ec2a3c407c569a0bab",
+    "tests/test_tools_visualizer.py": "21aaddc24d3855d4ef32cf997e8b59a177a3bdfe641b36962eca15a6b52a62fb",
+    "audit/proofs_m31_visualizer.py": "51d87b101142f4a46afda875b99e77510dc4e17ab49bbeb4161e1dd99cb83e92",
+    "tests/m31_visualizer_contracts.py": "b815bb2bde33a30fe84298ed8346ed224c7f00d7cb6869df32f41e132e73c37d",
+    "audit/check_m31_visualizer.py": "51c84f33c848524a7811cd065b48c82d88dac65c60ed5807941cdb22e7fb8998",
+    "src/pipeline/preprocessor.py": "9b9687f763dfc751d0e40ec88f3980baf283e47c5f621bf97a4fd29571ef6a94",
+    "src/pipeline/peak_detector.py": "eca120ef0787b3b71a9174e6a1505b39fed60a40d7dd23a7bd60ad584d6c1e0d",
+    "src/pipeline/feature_engineering.py": "4fe4823301de3f66e24651dea5a463185af9477bf9d7cb9b4ac69cd7edd11c27",
+    "src/pipeline/classifier.py": "0ade76cef459a28b5ca946d96a14b761ad150d0cc556106fc8eba1b4112ad382",
+    "src/tools/dataset_builder.py": "1606946dd65032b0f0ff2a5bc6c60eb60cf332467820fac673999ea8ea508fe4",
+    "src/tools/generate_catalog_from_fits.py": "69fbf719754d8070155bca7537025619b5389acaf075d098d26e0b6b52c7f5ec",
+    "src/utils.py": "ce1991d8964dc9d4ce834e555f12e17e9c5448c3edb455e83146a2788b461745"
+  },
+  "inputs_unchanged": true
+}
