@@ -1,0 +1,95 @@
+{
+  "archive": "ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac",
+  "issues": [
+    {
+      "id": "D01",
+      "number": 101,
+      "title": "fix: derive latent KDE contour labels from enclosed probability mass",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/101"
+    },
+    {
+      "id": "D02",
+      "number": 102,
+      "title": "fix: keep HR region polygon margins in gravity units",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/102"
+    },
+    {
+      "id": "D03",
+      "number": 103,
+      "title": "fix: count or omit the HR figure stellar population label",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/103"
+    },
+    {
+      "id": "D04",
+      "number": 104,
+      "title": "fix: reject reconstruction population mismatches before spectral grouping",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/104"
+    },
+    {
+      "id": "D05",
+      "number": 105,
+      "title": "fix: make HDBSCAN colorbars agree with plotted cluster colors",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/105"
+    },
+    {
+      "id": "D06",
+      "number": 106,
+      "title": "fix: carry probability availability into XGBoost visualizations",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/106"
+    },
+    {
+      "id": "D07",
+      "number": 107,
+      "title": "fix: support class-only AE plots without scalar subplot crashes",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/107"
+    },
+    {
+      "id": "D08",
+      "number": 108,
+      "title": "fix: size HDBSCAN profile panels from actual selected clusters",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/108"
+    },
+    {
+      "id": "D09",
+      "number": 109,
+      "title": "fix: omit empty AE reconstruction panels when samples exceed rows",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/109"
+    },
+    {
+      "id": "D10",
+      "number": 110,
+      "title": "fix: keep PCA variance annotations consistent when display is truncated",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/110"
+    },
+    {
+      "id": "D11",
+      "number": 111,
+      "title": "fix: retain small positive MSE values in logarithmic histograms",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/111"
+    },
+    {
+      "id": "D12",
+      "number": 112,
+      "title": "fix: avoid dropping reconstruction-error classes beyond the palette",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/112"
+    },
+    {
+      "id": "D13",
+      "number": 113,
+      "title": "fix: honor configured output directories in direct AE plot exports",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/113"
+    },
+    {
+      "id": "D14",
+      "number": 114,
+      "title": "fix: display computed trustworthiness values below the fixed plot floor",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/114"
+    },
+    {
+      "id": "D15",
+      "number": 115,
+      "title": "fix: render default Balmer labels in PCA eigenspectra",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/issues/115"
+    }
+  ]
+}

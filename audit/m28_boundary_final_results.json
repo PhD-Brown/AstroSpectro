@@ -1,0 +1,2035 @@
+{
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "source_sha256": "f77107af006706586a839744fcea8a98656de29677b12d2b67a6971dea739e68",
+  "backend": "Agg",
+  "inventory": [
+    {
+      "name": "__init__",
+      "line": 100,
+      "signature": "self, figsize: Tuple[float, float]=(9, 6), dpi: int=150, cmap_continuous: str='plasma', output_dir: Optional[str | Path]=None",
+      "returns": []
+    },
+    {
+      "name": "plot_variance_explained",
+      "line": 121,
+      "signature": "self, pca_analyzer, threshold: float=0.95, max_pcs: int=50, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_loadings_heatmap",
+      "line": 213,
+      "signature": "self, pca_analyzer, n_pcs: int=10, n_features: int=30, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_loadings_bar",
+      "line": 270,
+      "signature": "self, pca_analyzer, pc_idx: int=0, n_top: int=15, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_loadings_family_donut",
+      "line": 316,
+      "signature": "self, contrib_pc1: pd.DataFrame, contrib_pc2: pd.DataFrame, color_map: dict, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_loadings_family_bar",
+      "line": 341,
+      "signature": "self, contrib_pc1: pd.DataFrame, contrib_pc2: pd.DataFrame, color_map: dict, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_correlation_heatmap",
+      "line": 418,
+      "signature": "self, corr_df: pd.DataFrame, save_path: Optional[str]=None, title: str='Corr\u00e9lations PC \u2194 Param\u00e8tres physiques (Spearman)'",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_embedding",
+      "line": 491,
+      "signature": "self, Z: np.ndarray, y: Optional[np.ndarray]=None, color_by: Optional[np.ndarray]=None, color_label: str='', title: str='Embedding 2D', method: str='UMAP', alpha: float=0.5, s: float=3.0, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_embedding_grid",
+      "line": 588,
+      "signature": "self, Z: np.ndarray, y: np.ndarray, meta: pd.DataFrame, method: str='UMAP', params: Optional[List[str]]=None, s: float=2.5, alpha: float=0.45, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_stability",
+      "line": 712,
+      "signature": "self, stability_df: pd.DataFrame, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_reconstruction_error",
+      "line": 760,
+      "signature": "self, recon_df: pd.DataFrame, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_eigenspectra",
+      "line": 810,
+      "signature": "self, pca_analyzer, wl_grid: np.ndarray, spectral_lines: Optional[dict[str, float]]=None, n_components: int=3, save_path: Optional[str]=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_hr_diagram_embedding",
+      "line": 892,
+      "signature": "self, meta: pd.DataFrame, Z: np.ndarray, component: int=0, method: str='UMAP', save_path: Optional[str]=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "_draw_loadings_family_donut",
+      "line": 950,
+      "signature": "self, ax, contrib_df, title, color_map",
+      "returns": []
+    },
+    {
+      "name": "_save",
+      "line": 1001,
+      "signature": "self, fig: plt.Figure, save_path: Optional[str], default_name: str",
+      "returns": [
+        "None"
+      ]
+    },
+    {
+      "name": "plot_training_history",
+      "line": 1025,
+      "signature": "self, history, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_ae_embedding",
+      "line": 1092,
+      "signature": "self, Z, meta, y, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_ae_reconstruction",
+      "line": 1165,
+      "signature": "self, X, X_recon, feature_names, n_samples=5, y=None, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_ae_vs_pca",
+      "line": 1216,
+      "signature": "self, comparison_df, save_path=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_latent_interpolation",
+      "line": 1256,
+      "signature": "self, Z_interp, X_interp, feature_names, label_a='\u00c9toile A', label_b='\u00c9toile B', save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_ae_error_distribution",
+      "line": 1315,
+      "signature": "self, mse_per_sample, y, save_path=None",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_clusters",
+      "line": 1352,
+      "signature": "self, Z: np.ndarray, hdb, y: np.ndarray, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_hr",
+      "line": 1471,
+      "signature": "self, Z: np.ndarray, hdb, meta: 'pd.DataFrame', save_path=None",
+      "returns": [
+        "(fig, axes)",
+        "(None, None)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_sensitivity",
+      "line": 1597,
+      "signature": "self, sensitivity_df: 'pd.DataFrame', min_cluster_val: int=75, pres_cluster_val: int=300, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_presentation",
+      "line": 1639,
+      "signature": "self, Z: np.ndarray, hdb, meta: 'pd.DataFrame', save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_present_split",
+      "line": 1772,
+      "signature": "self, Z: np.ndarray, hdb, meta: 'pd.DataFrame', save_path_umap: Optional[str]=None, save_path_hr: Optional[str]=None",
+      "returns": [
+        "(fig_umap, fig_hr)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_feature_heatmap",
+      "line": 1952,
+      "signature": "self, cluster_means: 'pd.DataFrame', cluster_labels_aligned: np.ndarray, save_path=None, n_top: int=30",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_hdbscan_feature_profiles",
+      "line": 2003,
+      "signature": "self, cluster_means: 'pd.DataFrame', cluster_labels_aligned: np.ndarray, save_path=None, n_show: int=12",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_xgboost_umap",
+      "line": 2055,
+      "signature": "self, Z_umap_aligned: np.ndarray, y_pred: np.ndarray, confidence: np.ndarray, cl_aligned: np.ndarray, color_map: dict, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_fg_confusion",
+      "line": 2162,
+      "signature": "self, Z_umap_aligned: np.ndarray, y_pred: np.ndarray, save_path=None",
+      "returns": [
+        "(fig, ax)",
+        "(None, None)"
+      ]
+    },
+    {
+      "name": "plot_trustworthiness",
+      "line": 2214,
+      "signature": "self, X_ref: np.ndarray, Z_umap: np.ndarray, Z_tsne: np.ndarray, save_path=None, k_values=None, n_subsample: int=5000",
+      "returns": [
+        "(fig, ax)"
+      ]
+    },
+    {
+      "name": "plot_latent_zoomed",
+      "line": 2288,
+      "signature": "self, Z_ae: np.ndarray, y: np.ndarray, meta: 'pd.DataFrame', save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_latent_kde",
+      "line": 2390,
+      "signature": "self, Z_ae: np.ndarray, y: np.ndarray, meta: 'pd.DataFrame', save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_ae_recon_by_spectral_type",
+      "line": 2527,
+      "signature": "self, X: np.ndarray, X_recon: np.ndarray, spectral_types: np.ndarray, feature_names: list, save_path=None",
+      "returns": [
+        "(fig, axes)",
+        "(None, None)",
+        "(None, None)"
+      ]
+    },
+    {
+      "name": "plot_ae_error_by_family",
+      "line": 2672,
+      "signature": "self, X: np.ndarray, X_recon: np.ndarray, feature_names: list, pca_analyzer=None, save_path=None",
+      "returns": [
+        "(fig, axes)",
+        "'Autres'",
+        "fam"
+      ]
+    },
+    {
+      "name": "plot_ae_error_distribution_logscale",
+      "line": 2801,
+      "signature": "self, mse_per_sample: np.ndarray, y: np.ndarray, save_path=None",
+      "returns": [
+        "(fig, axes)"
+      ]
+    },
+    {
+      "name": "plot_synthesis_grid",
+      "line": 2863,
+      "signature": "self, Z_ae: np.ndarray, y: np.ndarray, meta: 'pd.DataFrame', scores_pca: np.ndarray, Z_umap: Optional[np.ndarray]=None, save_path=None",
+      "returns": [
+        "fig"
+      ]
+    },
+    {
+      "name": "plot_hr_teff_regions",
+      "line": 2983,
+      "signature": "self, meta: 'pd.DataFrame', save_path=None",
+      "returns": [
+        "(fig, ax)",
+        "(None, None)"
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "case": "KDE_no_stars",
+      "exception": "ValueError",
+      "message": "`dataset` input should have multiple elements.",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 97, in <lambda>\n    lambda points=points, labels=labels, frame=frame: viz.plot_latent_kde(\n                                                      ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2424, in plot_latent_kde\n    kde = gaussian_kde(Z_stars[idx].T, bw_method=\"scott\")\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 212, in __init__\n    raise ValueError(\"`dataset` input should have multiple elements.\")\nValueError: `dataset` input should have multiple elements.\n",
+      "warnings": []
+    },
+    {
+      "case": "KDE_singleton",
+      "exception": "ValueError",
+      "message": "Number of dimensions is greater than number of samples. This results in a singular data covariance matrix, which cannot be treated using the algorithms implemented in `gaussian_kde`. Note that `gaussian_kde` interprets each *column* of `dataset` to be a point; consider transposing the input to `dataset`.",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 97, in <lambda>\n    lambda points=points, labels=labels, frame=frame: viz.plot_latent_kde(\n                                                      ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2424, in plot_latent_kde\n    kde = gaussian_kde(Z_stars[idx].T, bw_method=\"scott\")\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 233, in __init__\n    raise ValueError(msg)\nValueError: Number of dimensions is greater than number of samples. This results in a singular data covariance matrix, which cannot be treated using the algorithms implemented in `gaussian_kde`. Note that `gaussian_kde` interprets each *column* of `dataset` to be a point; consider transposing the input to `dataset`.\n",
+      "warnings": []
+    },
+    {
+      "case": "KDE_two_points",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Densit\u00e9 + T_eff",
+              "xlim": [
+                -0.36767059235993405,
+                0.9296980539082346
+              ],
+              "ylim": [
+                -0.4311102204158015,
+                0.8163213139674581
+              ],
+              "lines": 0,
+              "collections": 3
+            },
+            {
+              "title": "Densit\u00e9 + log g",
+              "xlim": [
+                -0.36767059235993405,
+                0.9296980539082346
+              ],
+              "ylim": [
+                -0.4311102204158015,
+                0.8163213139674581
+              ],
+              "lines": 0,
+              "collections": 3
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                3009.090909090909,
+                3445.4545454545455
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                1.0072727272727273,
+                1.3563636363636364
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "KDE_collinear",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Densit\u00e9 + T_eff",
+              "xlim": [
+                -1.5070000000000001,
+                12.507000000000001
+              ],
+              "ylim": [
+                -1.5070000000000001,
+                12.507000000000001
+              ],
+              "lines": 0,
+              "collections": 3
+            },
+            {
+              "title": "Densit\u00e9 + log g",
+              "xlim": [
+                -1.5070000000000001,
+                12.507000000000001
+              ],
+              "ylim": [
+                -1.5070000000000001,
+                12.507000000000001
+              ],
+              "lines": 0,
+              "collections": 3
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                3100.0,
+                7900.0
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                1.08,
+                4.92
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "KDE_NaN_coordinate",
+      "exception": "ValueError",
+      "message": "array must not contain infs or NaNs",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 97, in <lambda>\n    lambda points=points, labels=labels, frame=frame: viz.plot_latent_kde(\n                                                      ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2424, in plot_latent_kde\n    kde = gaussian_kde(Z_stars[idx].T, bw_method=\"scott\")\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 236, in __init__\n    self.set_bandwidth(bw_method=bw_method)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 579, in set_bandwidth\n    self._compute_covariance()\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 591, in _compute_covariance\n    self._data_cho_cov = linalg.cholesky(self._data_covariance,\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\_lib\\_util.py\", line 1181, in wrapper\n    return f(*arrays, *other_args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\linalg\\_decomp_cholesky.py\", line 106, in cholesky\n    c, lower = _cholesky(a, lower=lower, overwrite_a=overwrite_a, clean=True,\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\linalg\\_decomp_cholesky.py\", line 19, in _cholesky\n    a1 = asarray_chkfinite(a) if check_finite else asarray(a)\n         ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 673, in asarray_chkfinite\n    raise ValueError(\nValueError: array must not contain infs or NaNs\n",
+      "warnings": []
+    },
+    {
+      "case": "KDE_Inf_coordinate",
+      "exception": "ValueError",
+      "message": "array must not contain infs or NaNs",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 97, in <lambda>\n    lambda points=points, labels=labels, frame=frame: viz.plot_latent_kde(\n                                                      ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2424, in plot_latent_kde\n    kde = gaussian_kde(Z_stars[idx].T, bw_method=\"scott\")\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 236, in __init__\n    self.set_bandwidth(bw_method=bw_method)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 579, in set_bandwidth\n    self._compute_covariance()\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\stats\\_kde.py\", line 591, in _compute_covariance\n    self._data_cho_cov = linalg.cholesky(self._data_covariance,\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\_lib\\_util.py\", line 1181, in wrapper\n    return f(*arrays, *other_args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\linalg\\_decomp_cholesky.py\", line 106, in cholesky\n    c, lower = _cholesky(a, lower=lower, overwrite_a=overwrite_a, clean=True,\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\scipy\\linalg\\_decomp_cholesky.py\", line 19, in _cholesky\n    a1 = asarray_chkfinite(a) if check_finite else asarray(a)\n         ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 673, in asarray_chkfinite\n    raise ValueError(\nValueError: array must not contain infs or NaNs\n",
+      "warnings": [
+        "invalid value encountered in subtract"
+      ]
+    },
+    {
+      "case": "KDE_no_physical",
+      "exception": "ValueError",
+      "message": "Number of columns must be a positive integer, not 0",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 97, in <lambda>\n    lambda points=points, labels=labels, frame=frame: viz.plot_latent_kde(\n                                                      ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2463, in plot_latent_kde\n    fig, axes = plt.subplots(1, len(params), figsize=(18, 6), dpi=self.dpi)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\pyplot.py\", line 1887, in subplots\n    axs = fig.subplots(nrows=nrows, ncols=ncols, sharex=sharex, sharey=sharey,\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\figure.py\", line 925, in subplots\n    gs = self.add_gridspec(nrows, ncols, figure=self, **gridspec_kw)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\figure.py\", line 1608, in add_gridspec\n    gs = GridSpec(nrows=nrows, ncols=ncols, figure=self, **kwargs)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\gridspec.py\", line 364, in __init__\n    super().__init__(nrows, ncols,\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\gridspec.py\", line 52, in __init__\n    raise ValueError(\nValueError: Number of columns must be a positive integer, not 0\n",
+      "warnings": []
+    },
+    {
+      "case": "KDE_all_missing_physical",
+      "exception": "IndexError",
+      "message": "index -1 is out of bounds for axis 0 with size 0",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 97, in <lambda>\n    lambda points=points, labels=labels, frame=frame: viz.plot_latent_kde(\n                                                      ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2505, in plot_latent_kde\n    vmin=float(np.percentile(P_v, 2)),\n               ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4246, in percentile\n    return _quantile_unchecked(\n           ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4510, in _quantile_unchecked\n    return _ureduce(a,\n           ^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 3880, in _ureduce\n    r = func(a, **kwargs)\n        ^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4669, in _quantile_ureduce_func\n    result = _quantile(arr,\n             ^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4793, in _quantile\n    slices_having_nans = np.isnan(arr[-1, ...])\n                                  ~~~^^^^^^^^^\nIndexError: index -1 is out of bounds for axis 0 with size 0\n",
+      "warnings": []
+    },
+    {
+      "case": "plot_embedding_all_missing",
+      "exception": "IndexError",
+      "message": "index -1 is out of bounds for axis 0 with size 0",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 111, in call\n    return {\n           ^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 112, in <lambda>\n    \"plot_embedding\": lambda: viz.plot_embedding(\n                              ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 564, in plot_embedding\n    vmin=np.percentile(color_by[valid], 2),\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4246, in percentile\n    return _quantile_unchecked(\n           ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4510, in _quantile_unchecked\n    return _ureduce(a,\n           ^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 3880, in _ureduce\n    r = func(a, **kwargs)\n        ^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4669, in _quantile_ureduce_func\n    result = _quantile(arr,\n             ^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_function_base_impl.py\", line 4793, in _quantile\n    slices_having_nans = np.isnan(arr[-1, ...])\n                                  ~~~^^^^^^^^^\nIndexError: index -1 is out of bounds for axis 0 with size 0\n",
+      "warnings": []
+    },
+    {
+      "case": "plot_embedding_grid_all_missing",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Type spectral (LAMOST)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "$T_{\\rm eff}$ (K)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                -0.1,
+                0.1
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "All-NaN slice encountered",
+        "All-NaN slice encountered"
+      ]
+    },
+    {
+      "case": "plot_ae_embedding_all_missing",
+      "exception": "TypeError",
+      "message": "cannot unpack non-iterable numpy.float64 object",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 111, in call\n    return {\n           ^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 116, in <lambda>\n    \"plot_ae_embedding\": lambda: viz.plot_ae_embedding(Z, missing, y),\n                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 1136, in plot_ae_embedding\n    vmin, vmax = np.nanpercentile(vals[valid], [2, 98])\n    ^^^^^^^^^^\nTypeError: cannot unpack non-iterable numpy.float64 object\n",
+      "warnings": [
+        "Mean of empty slice"
+      ]
+    },
+    {
+      "case": "plot_latent_zoomed_all_missing",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Type spectral",
+              "xlim": [
+                -1.4921400736875274,
+                1.8767081923167024
+              ],
+              "ylim": [
+                -2.5454256739457644,
+                2.3585051129440853
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "T_eff (K)",
+              "xlim": [
+                -1.4921400736875274,
+                1.8767081923167024
+              ],
+              "ylim": [
+                -2.5454256739457644,
+                2.3585051129440853
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                -0.1,
+                0.1
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "Mean of empty slice",
+        "Mean of empty slice"
+      ]
+    },
+    {
+      "case": "plot_synthesis_grid_all_missing",
+      "result_type": "Figure",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Classe spectrale",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "T_eff (K)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                -0.1,
+                0.1
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "[Fe/H]",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                -0.1,
+                0.1
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice"
+      ]
+    },
+    {
+      "case": "HR_empty",
+      "exception": "ValueError",
+      "message": "Axis limits cannot be NaN or Inf",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 129, in <lambda>\n    add(\"HR_\" + label, lambda frame=frame: viz.plot_hr_teff_regions(frame))\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 3205, in plot_hr_teff_regions\n    ax.set_xlim(T_HI + T_PAD * 5, T_LO - T_PAD * 5)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 3992, in set_xlim\n    return self.xaxis._set_lim(left, right, emit=emit, auto=auto)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axis.py\", line 1263, in _set_lim\n    v0 = self.axes._validate_converted_limits(v0, self.convert_units)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 3913, in _validate_converted_limits\n    raise ValueError(\"Axis limits cannot be NaN or Inf\")\nValueError: Axis limits cannot be NaN or Inf\n",
+      "warnings": [
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice"
+      ]
+    },
+    {
+      "case": "HR_all_missing",
+      "exception": "ValueError",
+      "message": "Axis limits cannot be NaN or Inf",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 129, in <lambda>\n    add(\"HR_\" + label, lambda frame=frame: viz.plot_hr_teff_regions(frame))\n                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 3205, in plot_hr_teff_regions\n    ax.set_xlim(T_HI + T_PAD * 5, T_LO - T_PAD * 5)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 3992, in set_xlim\n    return self.xaxis._set_lim(left, right, emit=emit, auto=auto)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axis.py\", line 1263, in _set_lim\n    v0 = self.axes._validate_converted_limits(v0, self.convert_units)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 3913, in _validate_converted_limits\n    raise ValueError(\"Axis limits cannot be NaN or Inf\")\nValueError: Axis limits cannot be NaN or Inf\n",
+      "warnings": [
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice",
+        "Mean of empty slice"
+      ]
+    },
+    {
+      "case": "HR_singleton",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Diagramme de Hertzsprung-Russell\nLAMOST DR5 $\\times$ Gaia DR3  \u00b7  43 019 \u00e9toiles",
+              "xlim": [
+                2850.0,
+                3150.0
+              ],
+              "ylim": [
+                0.95,
+                1.05
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                2700.0,
+                3300.0
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "Attempting to set identical low and high xlims makes transformation singular; automatically expanding.",
+        "Attempting to set identical low and high ylims makes transformation singular; automatically expanding."
+      ]
+    },
+    {
+      "case": "log_MSE_all_zero",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "\u00c9chelle lin\u00e9aire (P99 \u00e9toiles)",
+              "xlim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 1,
+              "collections": 0
+            },
+            {
+              "title": "\u00c9chelle logarithmique (toutes classes)",
+              "xlim": [
+                8.912509381337387e-18,
+                1.122018454301959e-16
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 1,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "divide by zero encountered in divide",
+        "invalid value encountered in divide",
+        "invalid value encountered in dot",
+        "invalid value encountered in divide"
+      ]
+    },
+    {
+      "case": "log_MSE_negative",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "\u00c9chelle lin\u00e9aire (P99 \u00e9toiles)",
+              "xlim": [
+                -0.6667500000000001,
+                14.001750000000001
+              ],
+              "ylim": [
+                0.0,
+                0.4645669291338592
+              ],
+              "lines": 1,
+              "collections": 0
+            },
+            {
+              "title": "\u00c9chelle logarithmique (toutes classes)",
+              "xlim": [
+                5.6234132519034893e-05,
+                17.782794100389236
+              ],
+              "ylim": [
+                0.0,
+                0.5629898488870896
+              ],
+              "lines": 1,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "log_MSE_NaN",
+      "exception": "ValueError",
+      "message": "Data cannot be log-scaled because all values are <= 0.",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 139, in <lambda>\n    lambda errors=errors: viz.plot_ae_error_distribution_logscale(errors, y),\n                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2859, in plot_ae_error_distribution_logscale\n    plt.tight_layout()\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\pyplot.py\", line 2992, in tight_layout\n    gcf().tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\figure.py\", line 3665, in tight_layout\n    engine.execute(self)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\layout_engine.py\", line 188, in execute\n    kwargs = get_tight_layout_figure(\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_tight_layout.py\", line 266, in get_tight_layout_figure\n    kwargs = _auto_adjust_subplotpars(fig, renderer,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_tight_layout.py\", line 82, in _auto_adjust_subplotpars\n    bb += [martist._get_tightbbox_for_layout_only(ax, renderer)]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\artist.py\", line 1485, in _get_tightbbox_for_layout_only\n    return obj.get_tightbbox(*args, **{**kwargs, \"for_layout_only\": True})\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 4763, in get_tightbbox\n    ba = martist._get_tightbbox_for_layout_only(axis, renderer)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\artist.py\", line 1485, in _get_tightbbox_for_layout_only\n    return obj.get_tightbbox(*args, **{**kwargs, \"for_layout_only\": True})\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axis.py\", line 1425, in get_tightbbox\n    ticks_to_draw = self._update_ticks()\n                    ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axis.py\", line 1344, in _update_ticks\n    major_locs = self.get_majorticklocs()\n                 ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axis.py\", line 1673, in get_majorticklocs\n    return self.major.locator()\n           ^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\ticker.py\", line 2470, in __call__\n    return self.tick_values(vmin, vmax)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\ticker.py\", line 2492, in tick_values\n    raise ValueError(\nValueError: Data cannot be log-scaled because all values are <= 0.\n",
+      "warnings": []
+    },
+    {
+      "case": "log_MSE_Inf",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "\u00c9chelle lin\u00e9aire (P99 \u00e9toiles)",
+              "xlim": [
+                6.236999999999998,
+                6.962999999999999
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 1,
+              "collections": 0
+            },
+            {
+              "title": "\u00c9chelle logarithmique (toutes classes)",
+              "xlim": [
+                0.8912509381337456,
+                11.220184543019636
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 1,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "invalid value encountered in subtract",
+        "invalid value encountered in multiply",
+        "invalid value encountered in subtract",
+        "invalid value encountered in subtract"
+      ]
+    },
+    {
+      "case": "log_MSE_tiny_positive",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "\u00c9chelle lin\u00e9aire (P99 \u00e9toiles)",
+              "xlim": [
+                -7.032122805689355e-08,
+                1.4767457891947646e-06
+              ],
+              "ylim": [
+                0.0,
+                25694588.24777838
+              ],
+              "lines": 1,
+              "collections": 0
+            },
+            {
+              "title": "\u00c9chelle logarithmique (toutes classes)",
+              "xlim": [
+                8.912509381337412e-09,
+                1.1220184543019622e-07
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 1,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "invalid value encountered in divide"
+      ]
+    },
+    {
+      "case": "reconstruction_n0",
+      "exception": "ValueError",
+      "message": "Number of rows must be a positive integer, not 0",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 144, in <lambda>\n    lambda n=n: viz.plot_ae_reconstruction(Z, Z + 1, [\"a\", \"b\"], n_samples=n),\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 1173, in plot_ae_reconstruction\n    fig, axes = plt.subplots(\n                ^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\pyplot.py\", line 1887, in subplots\n    axs = fig.subplots(nrows=nrows, ncols=ncols, sharex=sharex, sharey=sharey,\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\figure.py\", line 925, in subplots\n    gs = self.add_gridspec(nrows, ncols, figure=self, **gridspec_kw)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\figure.py\", line 1608, in add_gridspec\n    gs = GridSpec(nrows=nrows, ncols=ncols, figure=self, **kwargs)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\gridspec.py\", line 364, in __init__\n    super().__init__(nrows, ncols,\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\gridspec.py\", line 49, in __init__\n    raise ValueError(\nValueError: Number of rows must be a positive integer, not 0\n",
+      "warnings": []
+    },
+    {
+      "case": "reconstruction_n-1",
+      "exception": "ValueError",
+      "message": "negative dimensions are not allowed",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 144, in <lambda>\n    lambda n=n: viz.plot_ae_reconstruction(Z, Z + 1, [\"a\", \"b\"], n_samples=n),\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 1172, in plot_ae_reconstruction\n    idx = rng.choice(len(X), size=min(n_samples, len(X)), replace=False)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"numpy/random/_generator.pyx\", line 920, in numpy.random._generator.Generator.choice\nValueError: negative dimensions are not allowed\n",
+      "warnings": []
+    },
+    {
+      "case": "reconstruction_n20",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Spectre #2  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -1.289655234175141,
+                2.0014727648666217
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #5  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -1.0291990864417548,
+                0.7823976063811758
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #9  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                0.6420020134174822,
+                3.106826096987536
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #1  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                0.6267780256406745,
+                1.845585435838436
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #4  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -1.1620064206395782,
+                0.5065265148193921
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #0  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -0.35040775048885,
+                0.8252828441096967
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #3  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -1.3332738790313339,
+                1.2565408705434888
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #10  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -0.7315800779749745,
+                1.1689115078400798
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #6  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -1.5142795691330018,
+                0.9953333376121217
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #7  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -1.231565390892273,
+                1.3354807876132873
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #8  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -0.24988892307319632,
+                2.29321281573766
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "Spectre #11  |  MSE = 1.00000",
+              "xlim": [
+                -0.05,
+                1.05
+              ],
+              "ylim": [
+                -2.420758344308468,
+                2.8839935034279445
+              ],
+              "lines": 2,
+              "collections": 1
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.0,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "trust_k0",
+      "exception": "InvalidParameterError",
+      "message": "The 'n_neighbors' parameter of trustworthiness must be an int in the range [1, inf). Got 0 instead.",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 147, in <lambda>\n    add(f\"trust_k{k}\", lambda k=k: viz.plot_trustworthiness(Z, Z, Z, k_values=[k]))\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2243, in plot_trustworthiness\n    tu = trustworthiness(X_sub, Zu_sub, n_neighbors=k, metric=\"euclidean\")\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 208, in wrapper\n    validate_parameter_constraints(\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 98, in validate_parameter_constraints\n    raise InvalidParameterError(\nsklearn.utils._param_validation.InvalidParameterError: The 'n_neighbors' parameter of trustworthiness must be an int in the range [1, inf). Got 0 instead.\n",
+      "warnings": []
+    },
+    {
+      "case": "trust_k-1",
+      "exception": "InvalidParameterError",
+      "message": "The 'n_neighbors' parameter of trustworthiness must be an int in the range [1, inf). Got -1 instead.",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 147, in <lambda>\n    add(f\"trust_k{k}\", lambda k=k: viz.plot_trustworthiness(Z, Z, Z, k_values=[k]))\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2243, in plot_trustworthiness\n    tu = trustworthiness(X_sub, Zu_sub, n_neighbors=k, metric=\"euclidean\")\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 208, in wrapper\n    validate_parameter_constraints(\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 98, in validate_parameter_constraints\n    raise InvalidParameterError(\nsklearn.utils._param_validation.InvalidParameterError: The 'n_neighbors' parameter of trustworthiness must be an int in the range [1, inf). Got -1 instead.\n",
+      "warnings": []
+    },
+    {
+      "case": "trust_k1",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Fid\u00e9lit\u00e9 de voisinage \u2014 UMAP vs t-SNE\nLAMOST DR5 \u00b7 12 spectres \u00b7 entr\u00e9e : 2 PCs",
+              "xlim": [
+                0.945,
+                1.0550000000000002
+              ],
+              "ylim": [
+                0.75,
+                1.01
+              ],
+              "lines": 3,
+              "collections": 1
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "trust_k6",
+      "exception": "ValueError",
+      "message": "n_neighbors (6) should be less than n_samples / 2 (6.0)",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 147, in <lambda>\n    add(f\"trust_k{k}\", lambda k=k: viz.plot_trustworthiness(Z, Z, Z, k_values=[k]))\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2243, in plot_trustworthiness\n    tu = trustworthiness(X_sub, Zu_sub, n_neighbors=k, metric=\"euclidean\")\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 218, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\manifold\\_t_sne.py\", line 523, in trustworthiness\n    raise ValueError(\nValueError: n_neighbors (6) should be less than n_samples / 2 (6.0)\n",
+      "warnings": []
+    },
+    {
+      "case": "trust_k12",
+      "exception": "ValueError",
+      "message": "n_neighbors (12) should be less than n_samples / 2 (6.0)",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 147, in <lambda>\n    add(f\"trust_k{k}\", lambda k=k: viz.plot_trustworthiness(Z, Z, Z, k_values=[k]))\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2243, in plot_trustworthiness\n    tu = trustworthiness(X_sub, Zu_sub, n_neighbors=k, metric=\"euclidean\")\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\utils\\_param_validation.py\", line 218, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\sklearn\\manifold\\_t_sne.py\", line 523, in trustworthiness\n    raise ValueError(\nValueError: n_neighbors (12) should be less than n_samples / 2 (6.0)\n",
+      "warnings": []
+    },
+    {
+      "case": "stability_rows0",
+      "exception": "IndexError",
+      "message": "single positional indexer is out-of-bounds",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 156, in <lambda>\n    add(f\"stability_rows{count}\", lambda frame=frame: viz.plot_stability(frame))\n                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 726, in plot_stability\n    method = stability_df[\"method\"].iloc[0]\n             ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\core\\indexing.py\", line 1342, in __getitem__\n    return self._getitem_axis(maybe_callable, axis=axis)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\core\\indexing.py\", line 2432, in _getitem_axis\n    self._validate_integer(key, axis)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\pandas\\core\\indexing.py\", line 2365, in _validate_integer\n    raise IndexError(\"single positional indexer is out-of-bounds\")\nIndexError: single positional indexer is out-of-bounds\n",
+      "warnings": []
+    },
+    {
+      "case": "stability_rows1",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Stabilit\u00e9 de l'embedding UMAP (analyse multi-seeds)",
+              "xlim": [
+                -0.32999999999999996,
+                0.32999999999999996
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 1,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "stability_rows7",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Stabilit\u00e9 de l'embedding UMAP (analyse multi-seeds)",
+              "xlim": [
+                -0.63,
+                6.63
+              ],
+              "ylim": [
+                0.0,
+                0.63
+              ],
+              "lines": 1,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "history_empty",
+      "exception": "ValueError",
+      "message": "attempt to get argmin of an empty sequence",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 164, in <lambda>\n    lambda history=history: viz.plot_training_history(history),\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 1048, in plot_training_history\n    best_epoch = int(np.argmin(val_loss)) + 1\n                     ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\_core\\fromnumeric.py\", line 1414, in argmin\n    return _wrapfunc(a, 'argmin', axis=axis, out=out, **kwds)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\_core\\fromnumeric.py\", line 51, in _wrapfunc\n    return _wrapit(obj, method, *args, **kwds)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\_core\\fromnumeric.py\", line 43, in _wrapit\n    result = getattr(arr, method)(*args, **kwds)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nValueError: attempt to get argmin of an empty sequence\n",
+      "warnings": []
+    },
+    {
+      "case": "history_mismatched",
+      "exception": "ValueError",
+      "message": "x and y must have same first dimension, but have shapes (2,) and (1,)",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 164, in <lambda>\n    lambda history=history: viz.plot_training_history(history),\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 1046, in plot_training_history\n    ax.plot(epochs, val_loss, color=\"#DD8452\", lw=2, ls=\"--\", label=\"Validation\")\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py\", line 1792, in plot\n    lines = [*self._get_lines(self, *args, data=data, **kwargs)]\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 331, in __call__\n    yield from self._plot_args(\n               ^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 509, in _plot_args\n    raise ValueError(f\"x and y must have same first dimension, but \"\nValueError: x and y must have same first dimension, but have shapes (2,) and (1,)\n",
+      "warnings": []
+    },
+    {
+      "case": "history_NaN",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Courbe d'apprentissage \u2014 Autoencodeur",
+              "xlim": [
+                0.95,
+                2.05
+              ],
+              "ylim": [
+                0.9659363289248456,
+                2.070529847682755
+              ],
+              "lines": 3,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "embedding_length",
+      "exception": "IndexError",
+      "message": "boolean index did not match indexed array along axis 0; size of axis is 12 but size of corresponding boolean axis is 5",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 166, in <lambda>\n    add(\"embedding_length\", lambda: viz.plot_embedding(Z, y=y[:5]))\n                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 530, in plot_embedding\n    Z[mask, 0],\n    ~^^^^^^^^^\nIndexError: boolean index did not match indexed array along axis 0; size of axis is 12 but size of corresponding boolean axis is 5\n",
+      "warnings": []
+    },
+    {
+      "case": "family_zero_weights",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Contribution par famille spectroscopique \u2014 PC1 vs PC2\n(opaque = PC1, hachur\u00e9 = PC2)",
+              "xlim": [
+                -0.43499999999999994,
+                1.4349999999999998
+              ],
+              "ylim": [
+                -0.05,
+                0.05
+              ],
+              "lines": 0,
+              "collections": 0
+            }
+          ]
+        }
+      ],
+      "warnings": [
+        "Attempting to set identical low and high ylims makes transformation singular; automatically expanding."
+      ]
+    },
+    {
+      "case": "family_donut_zero",
+      "exception": "ValueError",
+      "message": "All wedge sizes are zero",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 177, in <lambda>\n    lambda: viz.plot_loadings_family_donut(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 327, in plot_loadings_family_donut\n    self._draw_loadings_family_donut(axes[0], contrib_pc1, \"PC1\", color_map)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 956, in _draw_loadings_family_donut\n    _, _, autotexts = ax.pie(\n                      ^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_api\\deprecation.py\", line 477, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\__init__.py\", line 1531, in inner\n    return func(\n           ^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py\", line 3667, in pie\n    raise ValueError('All wedge sizes are zero')\nValueError: All wedge sizes are zero\n",
+      "warnings": []
+    },
+    {
+      "case": "eigenspectra_default_lines",
+      "exception": "ValueError",
+      "message": "\nH$\\\\alpha$\n ^\nParseException: Expected end of text, found '$'  (at char 1), (line:1, col:2)",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 189, in <lambda>\n    lambda: viz.plot_eigenspectra(\n            ^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 884, in plot_eigenspectra\n    plt.tight_layout()\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\pyplot.py\", line 2992, in tight_layout\n    gcf().tight_layout(pad=pad, h_pad=h_pad, w_pad=w_pad, rect=rect)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\figure.py\", line 3665, in tight_layout\n    engine.execute(self)\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\layout_engine.py\", line 188, in execute\n    kwargs = get_tight_layout_figure(\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_tight_layout.py\", line 266, in get_tight_layout_figure\n    kwargs = _auto_adjust_subplotpars(fig, renderer,\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_tight_layout.py\", line 82, in _auto_adjust_subplotpars\n    bb += [martist._get_tightbbox_for_layout_only(ax, renderer)]\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\artist.py\", line 1485, in _get_tightbbox_for_layout_only\n    return obj.get_tightbbox(*args, **{**kwargs, \"for_layout_only\": True})\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_base.py\", line 4788, in get_tightbbox\n    bbox = a.get_tightbbox(renderer)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\text.py\", line 1091, in get_tightbbox\n    return super().get_tightbbox(renderer)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\artist.py\", line 393, in get_tightbbox\n    bbox = self.get_window_extent(renderer)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\text.py\", line 1076, in get_window_extent\n    bbox, _, _ = self._get_layout(self._renderer)\n                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\text.py\", line 479, in _get_layout\n    w, h, d = _get_text_metrics_with_cache(\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\text.py\", line 59, in _get_text_metrics_with_cache\n    return get_text_metrics(text, fontprop.copy(), ismath, dpi)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\text.py\", line 125, in _text_metrics\n    return local_renderer.get_text_width_height_descent(text, fontprop, ismath)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\backends\\backend_agg.py\", line 259, in get_text_width_height_descent\n    parse = self.mathtext_parser.parse(s, self.dpi, prop)\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\mathtext.py\", line 86, in parse\n    return self._parse_cached(s, dpi, prop, antialiased, load_glyph_flags)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\mathtext.py\", line 100, in _parse_cached\n    box = self._parser.parse(s, fontset, fontsize, dpi)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_mathtext.py\", line 2350, in parse\n    raise ValueError(\"\\n\" + err.explain(0)) from None\nValueError: \nH$\\\\alpha$\n ^\nParseException: Expected end of text, found '$'  (at char 1), (line:1, col:2)\n",
+      "warnings": []
+    },
+    {
+      "case": "confidence_negative",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Pr\u00e9dictions XGBoost",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Confiance XGBoost (P_max)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Clusters HDBSCAN (r\u00e9f\u00e9rence)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.4,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "confidence_above_one",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Pr\u00e9dictions XGBoost",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Confiance XGBoost (P_max)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Clusters HDBSCAN (r\u00e9f\u00e9rence)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.4,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "confidence_NaN",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Pr\u00e9dictions XGBoost",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Confiance XGBoost (P_max)",
+              "xlim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Clusters HDBSCAN (r\u00e9f\u00e9rence)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.4,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "confidence_Inf",
+      "result_type": "tuple",
+      "figures": [
+        {
+          "axes": [
+            {
+              "title": "Pr\u00e9dictions XGBoost",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Confiance XGBoost (P_max)",
+              "xlim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "ylim": [
+                -0.05500000000000001,
+                0.05500000000000001
+              ],
+              "lines": 0,
+              "collections": 1
+            },
+            {
+              "title": "Clusters HDBSCAN (r\u00e9f\u00e9rence)",
+              "xlim": [
+                -1.3584761990888259,
+                1.7857895917508189
+              ],
+              "ylim": [
+                -2.3883543552686444,
+                2.203509733591637
+              ],
+              "lines": 0,
+              "collections": 2
+            },
+            {
+              "title": "",
+              "xlim": [
+                0.0,
+                1.0
+              ],
+              "ylim": [
+                0.4,
+                1.0
+              ],
+              "lines": 0,
+              "collections": 2
+            }
+          ]
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "case": "confidence_wrong_length",
+      "exception": "ValueError",
+      "message": "'c' argument has 5 elements, which is inconsistent with 'x' and 'y' with size 12.",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py\", line 5154, in _parse_scatter_color_args\n    colors = mcolors.to_rgba_array(c)\n             ^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\colors.py\", line 542, in to_rgba_array\n    rgba = np.array([to_rgba(cc) for cc in c])\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\colors.py\", line 542, in <listcomp>\n    rgba = np.array([to_rgba(cc) for cc in c])\n                     ^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\colors.py\", line 353, in to_rgba\n    rgba = _to_rgba_no_colorcycle(c, alpha)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\colors.py\", line 428, in _to_rgba_no_colorcycle\n    raise ValueError(f\"Invalid RGBA argument: {orig_c!r}\")\nValueError: Invalid RGBA argument: np.float64(0.0)\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 215, in main\n    result = function()\n             ^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\audit\\check_m28_boundaries.py\", line 202, in <lambda>\n    lambda confidence=confidence: viz.plot_xgboost_umap(\n                                  ^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\dimred\\dimred_visualizer.py\", line 2095, in plot_xgboost_umap\n    sc = ax.scatter(\n         ^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\_api\\deprecation.py\", line 477, in wrapper\n    return func(*args, **kwargs)\n           ^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\__init__.py\", line 1531, in inner\n    return func(\n           ^^^^^\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py\", line 5347, in scatter\n    self._parse_scatter_color_args(\n  File \"C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py\", line 5160, in _parse_scatter_color_args\n    raise invalid_shape_exception(c.size, xsize) from err\nValueError: 'c' argument has 5 elements, which is inconsistent with 'x' and 'y' with size 12.\n",
+      "warnings": []
+    }
+  ],
+  "static_notebook_calls": [
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 14,
+      "line": 5,
+      "call": "viz.plot_variance_explained(pca, threshold=0.95, max_pcs=50, save_path=FIGURES_DIR / 'pca_variance_explained.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 18,
+      "line": 3,
+      "call": "viz.plot_loadings_heatmap(pca, n_pcs=10, n_features=25, save_path=FIGURES_DIR / 'pca_loadings_heatmap.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 20,
+      "line": 2,
+      "call": "viz.plot_loadings_bar(pca, pc_idx=0, n_top=15, save_path=FIGURES_DIR / 'pca_loadings_pc1.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 20,
+      "line": 9,
+      "call": "viz.plot_loadings_bar(pca, pc_idx=1, n_top=15, save_path=FIGURES_DIR / 'pca_loadings_pc2.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 23,
+      "line": 37,
+      "call": "viz.plot_loadings_family_donut(contrib_pc1=contrib_pc1, contrib_pc2=contrib_pc2, color_map=color_map, save_path=save_path)"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 23,
+      "line": 48,
+      "call": "viz.plot_loadings_family_bar(contrib_pc1=contrib_pc1, contrib_pc2=contrib_pc2, color_map=color_map, save_path=save_path2)"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 27,
+      "line": 13,
+      "call": "viz.plot_correlation_heatmap(corr_df, save_path=FIGURES_DIR / 'pca_correlation_heatmap.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 30,
+      "line": 3,
+      "call": "viz.plot_embedding(scores[:, :2], y=y, title='Scores PCA \u2014 PC1 vs PC2 (type spectral LAMOST)', method='PCA', s=3, alpha=0.4, save_path=FIGURES_DIR / 'pca_scores_classes.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 32,
+      "line": 6,
+      "call": "viz.plot_embedding_grid(scores[mask_star, :2], y=y[mask_star], meta=meta[mask_star].reset_index(drop=True), method='PCA', params=['teff_gspphot', 'logg_gspphot', 'mh_gspphot', 'bp_rp'], s=3, alpha=0.4, save_path=FIGURES_DIR / 'pca_scores_grid.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 38,
+      "line": 8,
+      "call": "viz.plot_reconstruction_error(recon_df, save_path=FIGURES_DIR / 'pca_reconstruction_error.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 43,
+      "line": 15,
+      "call": "viz.plot_variance_explained(pca_spec, threshold=0.95, save_path=FIGURES_DIR / 'pca_spectra_variance_explained.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 45,
+      "line": 8,
+      "call": "viz.plot_eigenspectra(pca_analyzer=pca_spec, wl_grid=spec_loader.wl_grid, spectral_lines=RAIES, n_components=3, save_path=FIGURES_DIR / 'pca_eigenspectra.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 49,
+      "line": 2,
+      "call": "viz.plot_hr_diagram_embedding(meta=meta, Z=scores, component=0, method='PCA', save_path=FIGURES_DIR / 'hr_diagram_pca_pc1.png')"
+    },
+    {
+      "notebook": "phy3500_01_pca.ipynb",
+      "cell_index": 49,
+      "line": 9,
+      "call": "viz.plot_hr_diagram_embedding(meta=meta, Z=scores, component=1, method='PCA', save_path=FIGURES_DIR / 'hr_diagram_pca_pc2.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 6,
+      "line": 3,
+      "call": "viz.plot_embedding(Z_umap, y=y, title='UMAP \u2014 Spectres LAMOST DR5 (n_neighbors=15, min_dist=0.1)', method='UMAP', s=2, alpha=0.45, save_path=FIGURES_DIR / 'umap_classes.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 9,
+      "line": 3,
+      "call": "viz.plot_embedding_grid(Z_umap, y=y, meta=meta, method='UMAP', params=['teff_gspphot', 'logg_gspphot', 'mh_gspphot', 'bp_rp'], s=2, alpha=0.4, save_path=FIGURES_DIR / 'umap_grid.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 10,
+      "line": 5,
+      "call": "_viz_pres.plot_embedding(Z_umap, color_by=teff_vals, color_label='$T_{\\\\rm eff}$ (K)', title='UMAP \u2014 T$_{\\\\rm eff}$ (LAMOST DR5 \u00d7 Gaia DR3)', method='UMAP', s=2, alpha=0.5, save_path=FIGURES_DIR / 'umap_teff.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 12,
+      "line": 28,
+      "call": "viz.plot_hdbscan_clusters(Z_umap, hdb, y, save_path=FIGURES_DIR / 'umap_hdbscan_clusters.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 12,
+      "line": 32,
+      "call": "viz.plot_hdbscan_hr(Z_umap, hdb, meta, save_path=FIGURES_DIR / 'umap_hdbscan_hr.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 12,
+      "line": 41,
+      "call": "viz.plot_hdbscan_sensitivity(df_sens, min_cluster_val=HDBSCAN_MIN_CLUSTER, pres_cluster_val=300, save_path=FIGURES_DIR / 'umap_hdbscan_sensitivity.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 12,
+      "line": 49,
+      "call": "viz.plot_hdbscan_presentation(Z_umap, hdb, meta, save_path=FIGURES_DIR / 'umap_hdbscan_present.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 14,
+      "line": 3,
+      "call": "viz.plot_hdbscan_present_split(Z_umap, hdb, meta=meta, save_path_umap=FIGURES_DIR / 'umap_hdbscan_present_umap.png', save_path_hr=FIGURES_DIR / 'umap_hdbscan_present_hr.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 15,
+      "line": 2,
+      "call": "viz.plot_hr_teff_regions(meta=meta, save_path=FIGURES_DIR / 'hr_teff_regions.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 18,
+      "line": 13,
+      "call": "viz.plot_hdbscan_feature_heatmap(cluster_means, cluster_labels_aligned, save_path=FIGURES_DIR / 'umap_hdbscan_feature_heatmap.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 18,
+      "line": 20,
+      "call": "viz.plot_hdbscan_feature_profiles(cluster_means, cluster_labels_aligned, save_path=FIGURES_DIR / 'umap_hdbscan_feature_profiles.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 21,
+      "line": 26,
+      "call": "viz.plot_xgboost_umap(Z_umap_aligned, y_pred, confidence, cl_aligned, color_map, save_path=FIGURES_DIR / 'umap_xgboost_predictions.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 21,
+      "line": 34,
+      "call": "viz.plot_fg_confusion(Z_umap_aligned, y_pred, save_path=FIGURES_DIR / 'umap_xgboost_FG_confusion.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 30,
+      "line": 3,
+      "call": "viz.plot_embedding_grid(Z_tsne, y=y, meta=meta, method='t-SNE', params=['teff_gspphot', 'logg_gspphot', 'mh_gspphot', 'bp_rp'], s=2, alpha=0.4, save_path=FIGURES_DIR / 'tsne_grid.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 31,
+      "line": 4,
+      "call": "_viz_pres.plot_embedding(Z_tsne, y=y, title='t-SNE \u2014 Spectres LAMOST DR5 (perplexity=30)', method='t-SNE', s=2, alpha=0.45, save_path=FIGURES_DIR / 'tsne_classes.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 32,
+      "line": 4,
+      "call": "_viz_pres.plot_embedding(Z_tsne, color_by=teff_vals, color_label='$T_{\\\\rm eff}$ (K)', title='t-SNE \u2014 T$_{\\\\rm eff}$ (LAMOST DR5 \u00d7 Gaia DR3)', method='t-SNE', s=2, alpha=0.5, save_path=FIGURES_DIR / 'tsne_teff.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 35,
+      "line": 7,
+      "call": "viz.plot_stability(stab_umap, save_path=FIGURES_DIR / 'stability_umap.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 37,
+      "line": 3,
+      "call": "viz.plot_trustworthiness(X_ref=scores_95, Z_umap=Z_umap, Z_tsne=Z_tsne, save_path=FIGURES_DIR / 'umap_trustworthiness.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 46,
+      "line": 2,
+      "call": "viz.plot_hr_diagram_embedding(meta=meta, Z=Z_umap, component=0, method='UMAP', save_path=FIGURES_DIR / 'hr_diagram_umap_ax1.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 46,
+      "line": 8,
+      "call": "viz.plot_hr_diagram_embedding(meta=meta, Z=Z_umap, component=1, method='UMAP', save_path=FIGURES_DIR / 'hr_diagram_umap_ax2.png')"
+    },
+    {
+      "notebook": "phy3500_02_umap_tsne.ipynb",
+      "cell_index": 46,
+      "line": 15,
+      "call": "viz.plot_hr_diagram_embedding(meta=meta, Z=Z_tsne, component=0, method='t-SNE', save_path=FIGURES_DIR / 'hr_diagram_tsne_ax1.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 13,
+      "line": 5,
+      "call": "viz.plot_training_history(history, save_path=FIGURES_DIR / 'ae_training_history.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 16,
+      "line": 4,
+      "call": "viz.plot_ae_embedding(Z_ae, meta, y, save_path=FIGURES_DIR / 'ae_latent_grid.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 18,
+      "line": 3,
+      "call": "viz.plot_latent_zoomed(Z_ae=Z_ae, y=y, meta=meta, save_path=FIGURES_DIR / 'ae_latent_grid_zoomed.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 20,
+      "line": 3,
+      "call": "viz.plot_latent_kde(Z_ae=Z_ae, y=y, meta=meta, save_path=FIGURES_DIR / 'ae_latent_kde.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 27,
+      "line": 3,
+      "call": "viz.plot_ae_reconstruction(X, X_recon, feature_names, n_samples=5, y=y, save_path=FIGURES_DIR / 'ae_reconstruction_examples.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 29,
+      "line": 20,
+      "call": "viz.plot_ae_recon_by_spectral_type(X=X, X_recon=X_recon, spectral_types=spectral_types, feature_names=feature_names, save_path=FIGURES_DIR / 'ae_recon_by_spectral_type.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 32,
+      "line": 9,
+      "call": "viz.plot_ae_vs_pca(comparison_df, save_path=FIGURES_DIR / 'ae_vs_pca_mse.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 35,
+      "line": 10,
+      "call": "viz.plot_ae_error_distribution(mse_per, y, save_path=FIGURES_DIR / 'ae_error_distribution.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 37,
+      "line": 5,
+      "call": "viz.plot_ae_error_by_family(X=X, X_recon=X_recon, feature_names=feature_names, pca_analyzer=pca, save_path=FIGURES_DIR / 'ae_recon_error_by_family.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 40,
+      "line": 5,
+      "call": "viz.plot_ae_error_distribution_logscale(mse_per_sample=mse_per, y=y, save_path=FIGURES_DIR / 'ae_error_distribution_logscale.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 47,
+      "line": 10,
+      "call": "viz.plot_latent_interpolation(Z_interp, X_interp, feature_names=feature_names, label_a=label_a, label_b=label_b, save_path=FIGURES_DIR / 'ae_latent_interpolation.png')"
+    },
+    {
+      "notebook": "phy3500_03_autoencoder.ipynb",
+      "cell_index": 59,
+      "line": 3,
+      "call": "viz.plot_synthesis_grid(Z_ae=Z_ae, y=y, meta=meta, scores_pca=scores_pca, Z_umap=Z_umap if 'Z_umap' in dir() else None, save_path=FIGURES_DIR / 'synthesis_pca_umap_ae.png')"
+    }
+  ]
+}

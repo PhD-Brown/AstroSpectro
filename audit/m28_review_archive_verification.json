@@ -1,0 +1,47 @@
+{
+  "archive": "a8bc8506804cf4c89e784e458498d3f229ca81cb",
+  "tag": "audit/m28-review-proofs-2026-11-13",
+  "original_archive": "ed1d91ec0efb619aeb77a5bf7e4a0ab43fa84cac",
+  "base": "39dad874610745ccd456d26972e90f6fb3a11405",
+  "github_files_read_before_proof_removal": [
+    {
+      "path": "tests/proofs_dimred_visualizer.py",
+      "sha": "d77396ae9d7aeabafdd014b0934a008ed664af7a",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/tests/proofs_dimred_visualizer.py"
+    },
+    {
+      "path": "tests/visualizer_review_contracts.py",
+      "sha": "99f1a07581c7841bac5bdd1f719e8d7f3bedb7e7",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/tests/visualizer_review_contracts.py"
+    },
+    {
+      "path": "tests/test_dimred_visualizer.py",
+      "sha": "1de00d18d05197962ce9fccf8540cdbb2167eca8",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/tests/test_dimred_visualizer.py"
+    },
+    {
+      "path": "tests/test_visualizer_review_contracts.py",
+      "sha": "4418a485f51aedb35b451d866167e204deddfe39",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/tests/test_visualizer_review_contracts.py"
+    },
+    {
+      "path": "tests/conftest.py",
+      "sha": "0d44271a44abc9b8a55be3383d8a42bc58910ff6",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/tests/conftest.py"
+    },
+    {
+      "path": "audit/check_m28_review.py",
+      "sha": "cefd7bb48b956ca44a7755d8ad8c3b0aa58af703",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/audit/check_m28_review.py"
+    },
+    {
+      "path": "audit/M28_REVIEW_PROOFS.md",
+      "sha": "c9f9a2bb6771ef1dcec2d4a14aa57dda543283c8",
+      "url": "https://github.com/PhD-Brown/AstroSpectro/blob/a8bc8506804cf4c89e784e458498d3f229ca81cb/audit/M28_REVIEW_PROOFS.md"
+    }
+  ],
+  "old_archive_ancestor": true,
+  "historical_json_unchanged": true,
+  "historical_json_files_checked": 61,
+  "production_blob": "624b857bca5833c3401204b0a592b9ae6ffc2902"
+}

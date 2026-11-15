@@ -1,0 +1,151 @@
+{
+  "active_head": "e924f36f24412a435f5ca54a95cdfad914835ff2",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "executable": "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "scipy": "1.17.1",
+    "scikit-learn": "1.9.1",
+    "matplotlib": "3.11.2",
+    "pytest": "8.4.2",
+    "black": "24.4.2",
+    "ruff": "0.5.0",
+    "pillow": "13.0.0"
+  },
+  "effective_lf_sha256": {
+    "src/dimred/dimred_visualizer.py": "968207ab322c2eea40f8d1e3721c1e361a9d1f7912d511a48c5f6a2cb0f82b8a",
+    "tests/conftest.py": "a7d34a7227d4c62201975c4165c6b181e27290f6ac42924269bc5d0a98f9c8d6",
+    "tests/test_dimred_visualizer.py": "c62c2c3ededf2d0dfb74d394efddc05f7abfa2b5e9a6acf3baf8478050b6614e",
+    "tests/visualizer_review_contracts.py": "79671f840cc76d57ebdc1257b624c8de6078bc5db79023738f7128d3a77b0dec",
+    "tests/test_visualizer_review_contracts.py": "1d2818457af205945f30ea1774bab0aadcde707a4ded95f3bc92ac0c09e40e9a",
+    "audit/check_m28_evidence.py": "bac3e5210eb94a2642c3dbb6e79824899cb66920d1c11233f900de38a61d1485",
+    "audit/check_m28_boundaries.py": "72f0c956c8719acafe0d9c07fa05e93c3f4d69ce297a8befeccef73bad4cdfb0",
+    "audit/check_m28_validation.py": "fda730977f875e9b951171a89e5e14d44ca0fa7524e2c7651e45d743bc581e1b",
+    "audit/check_m28_review.py": "9a2a2e41e9e87a965f6f345432f619db60c697456d883a3b3a56f6ba4c8540e9"
+  },
+  "commands": [
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_dimred_visualizer.py",
+        "tests/test_visualizer_review_contracts.py",
+        "-W",
+        "error",
+        "--junitxml=test-results/m28-targeted-validation.xml"
+      ],
+      "exit_code": 0,
+      "stdout": "..................................................................       [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\test-results\\m28-targeted-validation.xml -\n66 passed in 7.87s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--junitxml=test-results/m28-complete-validation.xml"
+      ],
+      "exit_code": 0,
+      "stdout": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 30%]\n........................................................................ [ 41%]\n........................................................................ [ 51%]\n........................................................................ [ 61%]\n........................................................................ [ 72%]\n........................................................................ [ 82%]\n........................................................................ [ 92%]\n..................................................                       [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\test-results\\m28-complete-validation.xml -\n698 passed, 62 deselected, 7 warnings in 23.13s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--import-mode=importlib",
+        "--junitxml=test-results/m28-importlib-validation.xml"
+      ],
+      "exit_code": 0,
+      "stdout": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 30%]\n........................................................................ [ 41%]\n........................................................................ [ 51%]\n........................................................................ [ 61%]\n........................................................................ [ 72%]\n........................................................................ [ 82%]\n........................................................................ [ 92%]\n..................................................                       [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\test-results\\m28-importlib-validation.xml -\n698 passed, 62 deselected, 7 warnings in 22.57s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black",
+        "--check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m28_evidence.py",
+        "audit/check_m28_boundaries.py",
+        "audit/check_m28_validation.py",
+        "audit/check_m28_review.py"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "All done! \u2728 \ud83c\udf70 \u2728\n48 files would be left unchanged.\n"
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m28_evidence.py",
+        "audit/check_m28_boundaries.py",
+        "audit/check_m28_validation.py",
+        "audit/check_m28_review.py"
+      ],
+      "exit_code": 0,
+      "stdout": "All checks passed!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "exit_code": 0,
+      "stdout": "No broken requirements found.\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "39dad874610745ccd456d26972e90f6fb3a11405",
+        "--",
+        "src",
+        "notebooks",
+        "data",
+        "models",
+        "requirements",
+        "pyproject.toml",
+        ".github",
+        "app.py",
+        "AGENTS.md"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "all_commands_passed": true
+}

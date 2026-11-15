@@ -1,0 +1,87 @@
+{
+  "active_head": "0c06cfd497579c5f99fd957c97ca28a052494bd4",
+  "commands": [
+    {
+      "mode": "reverse",
+      "seed": 7,
+      "plugin": "def pytest_collection_modifyitems(items):\n    items.reverse()\n",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "m28_order"
+      ],
+      "exit_code": 0,
+      "stdout": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 31%]\n........................................................................ [ 41%]\n........................................................................ [ 52%]\n........................................................................ [ 62%]\n........................................................................ [ 72%]\n........................................................................ [ 83%]\n........................................................................ [ 93%]\n............................................                             [100%]\n============================== warnings summary ===============================\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_transient_failure_retries_then_succeeds\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_xmatch_retry_limit_raises_or_falls_back_by_mode\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_xmatch_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_cone_without_matches_is_not_a_service_failure\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_valid_bulk_without_matches_stops_auto_fallback\ntests/test_gaia_crossmatcher.py::GaiaCrossmatchTests::test_partial_esa_supplement_merges_without_losing_xmatch_rows\n  C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m28\\src\\tools\\gaia_crossmatcher.py:1210: Pandas4Warning: The inplace keyword in DataFrame.drop is deprecated and will be removed in a future version (PDEP-8).\n  See https://pandas.pydata.org/docs/dev/whatsnew/v3.1.0.html#deprecation-inplace for more details.\n    df_merged.drop(columns=[\"objid\"], inplace=True, errors=\"ignore\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n692 passed, 62 deselected, 7 warnings in 22.53s\n",
+      "stderr": ""
+    },
+    {
+      "mode": "shuffle",
+      "seed": 3,
+      "plugin": "import random\ndef pytest_collection_modifyitems(items):\n    random.Random(3).shuffle(items)\n",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "m28_order",
+        "tests/test_dimred_visualizer.py",
+        "tests/test_visualizer_review_contracts.py",
+        "-W",
+        "error"
+      ],
+      "exit_code": 0,
+      "stdout": "............................................................             [100%]\n60 passed in 8.15s\n",
+      "stderr": ""
+    },
+    {
+      "mode": "shuffle",
+      "seed": 11,
+      "plugin": "import random\ndef pytest_collection_modifyitems(items):\n    random.Random(11).shuffle(items)\n",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "m28_order",
+        "tests/test_dimred_visualizer.py",
+        "tests/test_visualizer_review_contracts.py",
+        "-W",
+        "error"
+      ],
+      "exit_code": 0,
+      "stdout": "............................................................             [100%]\n60 passed in 7.88s\n",
+      "stderr": ""
+    },
+    {
+      "mode": "shuffle",
+      "seed": 29,
+      "plugin": "import random\ndef pytest_collection_modifyitems(items):\n    random.Random(29).shuffle(items)\n",
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "-p",
+        "m28_order",
+        "tests/test_dimred_visualizer.py",
+        "tests/test_visualizer_review_contracts.py",
+        "-W",
+        "error"
+      ],
+      "exit_code": 0,
+      "stdout": "............................................................             [100%]\n60 passed in 8.06s\n",
+      "stderr": ""
+    }
+  ],
+  "hashes": {
+    "tests/test_dimred_visualizer.py": "7577ca33e86c753bcb2ae5d2a62008e45bca346853e3753b4a9576b3ae411854",
+    "tests/conftest.py": "a7d34a7227d4c62201975c4165c6b181e27290f6ac42924269bc5d0a98f9c8d6",
+    "tests/test_visualizer_review_contracts.py": "13dfd99e98fb4304c79fa57627e7466e29135f558c3b4a0b11cd5651b5c47be3",
+    "tests/visualizer_review_contracts.py": "d5f32c448429d5b5cc3ee61147de276cf4482bf91fea9331ca8d000f45c6f28d"
+  }
+}

@@ -15,10 +15,81 @@ import pytest
 
 
 @pytest.fixture
+def visualizer_case(monkeypatch):
+    """Execute real visualizer/bridge modules with isolated Matplotlib state.
+
+    The optional package facade is bypassed (#21); local imports still resolve
+    to actual module bytes. No backend estimator or plotting method is mocked.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    root = Path(__file__).resolve().parents[1]
+    package = types.ModuleType("dimred")
+    package.__path__ = [str(root / "src/dimred")]
+    previous_figures = set(plt.get_fignums())
+    with matplotlib.rc_context():
+        monkeypatch.setitem(sys.modules, "dimred", package)
+        modules = {}
+        for name in ["dimred_visualizer", "xgboost_bridge"]:
+            spec = importlib.util.spec_from_file_location(
+                f"dimred.{name}", root / f"src/dimred/{name}.py"
+            )
+            module = importlib.util.module_from_spec(spec)
+            monkeypatch.setitem(sys.modules, f"dimred.{name}", module)
+            spec.loader.exec_module(module)
+            modules[name] = module
+        Z = np.array(
+            [
+                [11.0, 2.0],
+                [3.0, 17.0],
+                [23.0, 5.0],
+                [7.0, 31.0],
+                [41.0, 13.0],
+                [19.0, 43.0],
+            ]
+        )
+        y = np.array(["STAR", "QSO", "STAR", "GALAXY", "STAR", "QSO"])
+        meta = pd.DataFrame(
+            {
+                "obsid": [91, 7, 300, 18, 2, 700],
+                "teff_gspphot": [3100.0, 7400.0, 5200.0, 6900.0, 4300.0, 8100.0],
+                "logg_gspphot": [4.8, 1.2, 4.1, 2.3, 3.7, 0.6],
+                "mh_gspphot": [-1.7, 0.3, -0.4, -2.2, 0.1, -0.9],
+            },
+            index=[8, 3, 9, 1, 0, 6],
+        )
+        module = modules["dimred_visualizer"]
+        try:
+            yield types.SimpleNamespace(
+                module=module,
+                viz=module.DimRedVisualizer(dpi=50),
+                plt=plt,
+                Z=Z,
+                y=y,
+                meta=meta,
+            )
+        finally:
+            for number in set(plt.get_fignums()) - previous_figures:
+                plt.close(number)
+
+
+@pytest.fixture
 def reporter_module():
     """Load the actual reporter independently of the optional facade (#21)."""
     path = Path(__file__).resolve().parents[1] / "src/dimred/run_reporter.py"
     spec = importlib.util.spec_from_file_location("m27_reporter", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.fixture
+def visualizer_contracts():
+    path = Path(__file__).resolve().parent / "visualizer_review_contracts.py"
+    spec = importlib.util.spec_from_file_location("m28_review_contracts", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
