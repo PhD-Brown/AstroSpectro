@@ -140,6 +140,24 @@ def probe_record(result, prefix):
     return records[0]
 
 
+def assert_torch_contract(result):
+    """Shared desired-behavior oracle for red proofs and admissibility controls."""
+    state = probe_record(result, "M29_PROVENANCE")
+    assert state["executed"], "proof did not execute the checkout facade"
+    if result.returncode:
+        # Classify the unchanged defect before reporting it; never bless this error.
+        # A successful lazy refusal need not attempt an import of the dependency.
+        assert (
+            "torch" in state["blocked_hits"]
+        ), "failed operation did not hit the Torch blocker"
+        error = state["exception"]
+        assert error["type"] == "NameError" and any(
+            Path(frame["file"]).name == "autoencoder.py" and frame["line"] == 87
+            for frame in error["frames"]
+        ), f"Unexpected #21 proof failure cause: {error}"
+    assert_success(result)
+
+
 def make_hijack(startup_dir, facade, expected=None):
     """Create a private .pth finder counterexample, without changing site-packages."""
     startup_dir.mkdir(parents=True, exist_ok=True)

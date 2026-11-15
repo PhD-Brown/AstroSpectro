@@ -19,6 +19,7 @@ from facade_probe import (  # noqa: E402
     EXPORTS,
     TORCH_STATEMENTS,
     assert_success,
+    assert_torch_contract,
     run_probe,
     probe_record,
     make_hijack,
@@ -143,7 +144,10 @@ def review_campaign(scratch, original, result):
             result["review_mutations"].append(row)
         else:
             result["review_alternatives"].append(row)
-            assert_success(probe)
+            if mode == "torch_boundary":
+                assert_torch_contract(probe)  # Same oracle as the explicit red file.
+            else:
+                assert_success(probe)
         return probe
 
     def conditional(work):
