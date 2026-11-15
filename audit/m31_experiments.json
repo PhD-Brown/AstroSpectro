@@ -1,0 +1,1036 @@
+{
+  "base": "b4018074269011e5fbec232df068b8d3326a4e8d",
+  "input_head": "8d320090ce6cab9f965bc53b5a0902c468dbf9f1",
+  "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+  "executable": "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+  "platform": "Windows-10-10.0.26300-SP0",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.1.1",
+    "astropy": "8.0.2",
+    "specutils": "2.4.0",
+    "scipy": "1.17.1",
+    "matplotlib": "3.11.2",
+    "plotly": "7.1.0",
+    "shap": "0.51.0",
+    "scikit-learn": "1.9.1",
+    "pytest": "8.4.2",
+    "black": "24.4.2",
+    "ruff": "0.5.0"
+  },
+  "input_hashes": {
+    "src/tools/visualizer.py": "2774b9b07cbda70603d27044083ba41ce2e5e9d66ef886ec2a3c407c569a0bab",
+    "tests/test_tools_visualizer.py": "21aaddc24d3855d4ef32cf997e8b59a177a3bdfe641b36962eca15a6b52a62fb",
+    "audit/proofs_m31_visualizer.py": "51d87b101142f4a46afda875b99e77510dc4e17ab49bbeb4161e1dd99cb83e92",
+    "tests/m31_visualizer_contracts.py": "b815bb2bde33a30fe84298ed8346ed224c7f00d7cb6869df32f41e132e73c37d",
+    "audit/check_m31_visualizer.py": "51c84f33c848524a7811cd065b48c82d88dac65c60ed5807941cdb22e7fb8998",
+    "src/pipeline/preprocessor.py": "9b9687f763dfc751d0e40ec88f3980baf283e47c5f621bf97a4fd29571ef6a94",
+    "src/pipeline/peak_detector.py": "eca120ef0787b3b71a9174e6a1505b39fed60a40d7dd23a7bd60ad584d6c1e0d",
+    "src/pipeline/feature_engineering.py": "4fe4823301de3f66e24651dea5a463185af9477bf9d7cb9b4ac69cd7edd11c27",
+    "src/pipeline/classifier.py": "0ade76cef459a28b5ca946d96a14b761ad150d0cc556106fc8eba1b4112ad382",
+    "src/tools/dataset_builder.py": "1606946dd65032b0f0ff2a5bc6c60eb60cf332467820fac673999ea8ea508fe4",
+    "src/tools/generate_catalog_from_fits.py": "69fbf719754d8070155bca7537025619b5389acaf075d098d26e0b6b52c7f5ec",
+    "src/utils.py": "ce1991d8964dc9d4ce834e555f12e17e9c5448c3edb455e83146a2788b461745"
+  },
+  "source_blob": "f70aee91b15a4ad242667b2717c0100be494e807",
+  "base_blob": "f70aee91b15a4ad242667b2717c0100be494e807",
+  "inventory": {
+    "imports": [
+      "from __future__ import annotations",
+      "import base64",
+      "import io",
+      "import os",
+      "import gzip",
+      "import glob",
+      "import warnings",
+      "import random",
+      "from typing import Dict, Tuple, Optional",
+      "from datetime import datetime, timezone",
+      "import numpy as np",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "import plotly.graph_objects as go",
+      "from astropy.io import fits",
+      "from astropy.nddata import StdDevUncertainty",
+      "from astropy import units as u",
+      "from specutils import Spectrum, SpectralRegion",
+      "from specutils.analysis import centroid, gaussian_fwhm, equivalent_width",
+      "from IPython.display import display, Markdown, HTML",
+      "from ipywidgets import interact, widgets",
+      "from tqdm.notebook import tqdm",
+      "import shap",
+      "from pipeline.preprocessor import SpectraPreprocessor",
+      "from pipeline.feature_engineering import FeatureEngineer",
+      "from pipeline.classifier import SpectralClassifier",
+      "from pipeline.peak_detector import PeakDetector",
+      "from utils import safe_sigma_from_invvar, latest_file",
+      "import builtins",
+      "from ipywidgets import HBox, VBox, Dropdown, Button, HTML",
+      "from IPython.display import display, Markdown",
+      "import streamlit as st",
+      "import shap",
+      "import shap",
+      "import ipywidgets as widgets",
+      "from IPython.display import display, Markdown",
+      "from datetime import datetime, timezone",
+      "import os",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "from IPython.display import display, Markdown",
+      "import random",
+      "import os",
+      "from textwrap import dedent",
+      "import numpy as np",
+      "import pandas as pd",
+      "import matplotlib.pyplot as plt",
+      "from IPython.display import display, Markdown",
+      "from sklearn.model_selection import train_test_split",
+      "from sklearn.ensemble import RandomForestClassifier",
+      "from sklearn.impute import SimpleImputer",
+      "from sklearn.pipeline import Pipeline",
+      "from sklearn.inspection import permutation_importance",
+      "import os",
+      "import matplotlib.pyplot as plt",
+      "from ipywidgets import Button",
+      "from PIL import Image"
+    ],
+    "methods": [
+      {
+        "name": "__init__",
+        "line": 108,
+        "end_line": 133,
+        "signature": "self, paths: dict",
+        "self_calls": [
+          "_load_labels_catalog",
+          "_scan_for_spectra"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "self._load_labels_catalog"
+        ]
+      },
+      {
+        "name": "_load_labels_catalog",
+        "line": 135,
+        "end_line": 173,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "pd.read_csv"
+        ]
+      },
+      {
+        "name": "_scan_for_spectra",
+        "line": 175,
+        "end_line": 199,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_format_header_line",
+        "line": 205,
+        "end_line": 227,
+        "signature": "self, header, label, key, unit=''",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_display_formatted_header",
+        "line": 229,
+        "end_line": 263,
+        "signature": "self, fits_relative_path",
+        "self_calls": [
+          "_format_header_line"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fits.open",
+          "gzip.open"
+        ]
+      },
+      {
+        "name": "interactive_header_explorer",
+        "line": 265,
+        "end_line": 283,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display"
+        ]
+      },
+      {
+        "name": "_plot_spectrum_analysis",
+        "line": 289,
+        "end_line": 414,
+        "signature": "self, file_path, prominence, window, xlim, ylim",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open",
+          "plt.style.use",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "interactive_spectrum_analyzer",
+        "line": 416,
+        "end_line": 516,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display"
+        ]
+      },
+      {
+        "name": "_plot_peak_detection_notebook",
+        "line": 522,
+        "end_line": 882,
+        "signature": "self, file_path: str, prominence: float, window: int, xlim: tuple[float, float], ylim: tuple[float, float], model_path: str",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "(TypeError, ValueError)"
+        ],
+        "io_and_effect_calls": [
+          "SpectralClassifier.load_model",
+          "b.read",
+          "base64.b64encode(b.read()).decode",
+          "base64.b64encode(buf.read()).decode",
+          "buf.read",
+          "builtins.log_analyses.iterrows",
+          "df_an.style.apply",
+          "df_an.to_csv",
+          "df_an.to_latex",
+          "display",
+          "fits.open",
+          "gzip.open",
+          "plt.savefig",
+          "plt.style.use",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "interactive_peak_tuner",
+        "line": 884,
+        "end_line": 945,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display"
+        ]
+      },
+      {
+        "name": "analyze_feature_zeros",
+        "line": 951,
+        "end_line": 1135,
+        "signature": "self, n_files: int=100, *, prominence: float=0.2, window: int=15, eps: float=1e-12, random_state: int=42, export: bool=True, show_plot: bool=False",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fits.open",
+          "gzip.open",
+          "preprocessor.load_spectrum",
+          "random.seed",
+          "summary.style.apply",
+          "summary.style.apply(_row_style, axis=1).format",
+          "summary.to_csv",
+          "summary.to_latex"
+        ]
+      },
+      {
+        "name": "_generate_position_catalog",
+        "line": 1141,
+        "end_line": 1281,
+        "signature": "self, force_regenerate: bool=False",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "df_plan.to_csv",
+          "fits.open",
+          "gzip.open",
+          "os.makedirs",
+          "pd.read_csv"
+        ]
+      },
+      {
+        "name": "plot_sky_coverage",
+        "line": 1283,
+        "end_line": 1420,
+        "signature": "self, save_path: str | None=None",
+        "self_calls": [
+          "_generate_position_catalog"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "Image.open",
+          "display",
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "_analyze_saved_model",
+        "line": 1426,
+        "end_line": 1542,
+        "signature": "self, model_path: str",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "SpectralClassifier.load_model",
+          "display",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "interactive_model_inspector",
+        "line": 1544,
+        "end_line": 1650,
+        "signature": "self",
+        "self_calls": [
+          "_analyze_saved_model"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "self._analyze_saved_model"
+        ]
+      },
+      {
+        "name": "_plot_spectra_comparison",
+        "line": 1656,
+        "end_line": 1761,
+        "signature": "self, file_paths: list[str], normalize: bool=True, offset: float=0.0, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "fits.open",
+          "gzip.open",
+          "os.makedirs",
+          "plt.style.use",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "interactive_spectra_comparator",
+        "line": 1763,
+        "end_line": 1861,
+        "signature": "self",
+        "self_calls": [
+          "_plot_spectra_comparison"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "display",
+          "os.makedirs"
+        ]
+      },
+      {
+        "name": "_display_formatted_header_for_streamlit",
+        "line": 1867,
+        "end_line": 1897,
+        "signature": "self, st, fits_relative_path",
+        "self_calls": [
+          "_format_header_line"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open"
+        ]
+      },
+      {
+        "name": "_plot_spectrum_analysis_plotly",
+        "line": 1899,
+        "end_line": 2060,
+        "signature": "self, st, file_path_or_buffer, prominence, window",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open",
+          "preprocessor.load_spectrum"
+        ]
+      },
+      {
+        "name": "app",
+        "line": 2062,
+        "end_line": 2110,
+        "signature": "self",
+        "self_calls": [
+          "_display_header_for_streamlit",
+          "_plot_spectrum_analysis_plotly"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": [
+          "self._display_header_for_streamlit",
+          "st.sidebar.file_uploader"
+        ]
+      },
+      {
+        "name": "_display_header_for_streamlit",
+        "line": 2112,
+        "end_line": 2128,
+        "signature": "self, st, header",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_resolve_trained_log_path",
+        "line": 2134,
+        "end_line": 2155,
+        "signature": "self",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "display_dataset_dashboard",
+        "line": 2157,
+        "end_line": 2366,
+        "signature": "self, show_charts: bool=True",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "_read_any_trained",
+          "_style",
+          "df.style.hide",
+          "display",
+          "f.read",
+          "open",
+          "pd.read_csv",
+          "st.set_table_styles"
+        ]
+      },
+      {
+        "name": "refresh_available_spectra",
+        "line": 2376,
+        "end_line": 2379,
+        "signature": "self",
+        "self_calls": [
+          "_scan_for_spectra"
+        ],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_prepare_for_model",
+        "line": 2385,
+        "end_line": 2426,
+        "signature": "self, df: pd.DataFrame, clf_wrapper",
+        "self_calls": [],
+        "handlers": [],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_get_features_sample",
+        "line": 2432,
+        "end_line": 2504,
+        "signature": "self, clf, sample_n: int, source: str='auto'",
+        "self_calls": [
+          "refresh_available_spectra"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fits.open",
+          "gzip.open",
+          "pd.read_csv",
+          "pre.load_spectrum"
+        ]
+      },
+      {
+        "name": "_build_shap_explainer",
+        "line": 2509,
+        "end_line": 2564,
+        "signature": "self, *, pipe, model, X_df, mode: str",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": []
+      },
+      {
+        "name": "_run_shap_analysis",
+        "line": 2570,
+        "end_line": 2670,
+        "signature": "self, model_path: str, sample_n: int=500, *, explainer_mode: str='auto', data_source: str='auto'",
+        "self_calls": [
+          "_get_features_sample",
+          "_prepare_for_model"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "SpectralClassifier.load_model"
+        ]
+      },
+      {
+        "name": "interactive_shap_explainer",
+        "line": 2676,
+        "end_line": 2810,
+        "signature": "self",
+        "self_calls": [
+          "_run_shap_analysis"
+        ],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "os.makedirs",
+          "shap_df.to_csv",
+          "shap_df.to_latex"
+        ]
+      },
+      {
+        "name": "plot_shap_summary_bar",
+        "line": 2816,
+        "end_line": 2869,
+        "signature": "self, top_n: int=20, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "plot_shap_beeswarm",
+        "line": 2871,
+        "end_line": 2932,
+        "signature": "self, max_display: int=15, save_path: str | None=None",
+        "self_calls": [
+          "plot_shap_summary_bar"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "plot_subclass_distribution",
+        "line": 2938,
+        "end_line": 3038,
+        "signature": "self, top_n: int=20, normalize: bool=False, save_path: Optional[str]=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fig.savefig",
+          "os.makedirs",
+          "pd.read_csv",
+          "plt.style.use"
+        ]
+      },
+      {
+        "name": "plot_normalization_comparison",
+        "line": 3044,
+        "end_line": 3198,
+        "signature": "self, sample_paths: list[str] | None=None, *, n_samples: int=2, random_state: int | None=None, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "fits.open",
+          "gzip.open",
+          "os.makedirs",
+          "plt.style.use",
+          "preprocessor.load_spectrum",
+          "random.seed"
+        ]
+      },
+      {
+        "name": "feature_explorer",
+        "line": 3204,
+        "end_line": 3581,
+        "signature": "self, pattern: str | None=None, *, save_dir: str | None=None, max_hists: int=24, corr_top_n: int=30, rf_estimators: int=300, random_state: int=42, do_permutation: bool=True",
+        "self_calls": [
+          "_plot_feature_importances_bar"
+        ],
+        "handlers": [
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception",
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "display",
+          "fig.savefig",
+          "os.makedirs",
+          "pd.read_csv",
+          "perm_df.to_csv",
+          "plt.style.use",
+          "rf_df.to_csv"
+        ]
+      },
+      {
+        "name": "_plot_feature_importances_bar",
+        "line": 3587,
+        "end_line": 3626,
+        "signature": "self, importances_df: pd.DataFrame | None=None, *, top_n: int=25, save_path: str | None=None",
+        "self_calls": [],
+        "handlers": [
+          "Exception"
+        ],
+        "io_and_effect_calls": [
+          "fig.savefig",
+          "os.makedirs",
+          "plt.style.use"
+        ]
+      }
+    ]
+  },
+  "protected_diff": "",
+  "checks": {
+    "targeted": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--disable-warnings",
+        "--junitxml=C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\targeted.xml",
+        "tests/test_tools_visualizer.py"
+      ],
+      "exit_code": 0,
+      "seconds": 11.2,
+      "output": ".................................                                        [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\targeted.xml -\n33 passed, 69 warnings in 8.63s\n",
+      "counts": {
+        "collected": 33,
+        "passed": 33,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failures": []
+    },
+    "importlib": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--disable-warnings",
+        "--junitxml=C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\importlib.xml",
+        "tests/test_tools_visualizer.py",
+        "--import-mode=importlib"
+      ],
+      "exit_code": 0,
+      "seconds": 10.89,
+      "output": ".................................                                        [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\importlib.xml -\n33 passed, 69 warnings in 8.46s\n",
+      "counts": {
+        "collected": 33,
+        "passed": 33,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failures": []
+    },
+    "integration": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--disable-warnings",
+        "--junitxml=C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\integration.xml",
+        "tests",
+        "-m",
+        "integration and not slow and not network"
+      ],
+      "exit_code": 0,
+      "seconds": 34.58,
+      "output": "........................................................................ [ 51%]\n...................................................................      [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\integration.xml -\n139 passed, 709 deselected, 69 warnings in 31.83s\n",
+      "counts": {
+        "collected": 139,
+        "passed": 139,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failures": []
+    },
+    "full": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--disable-warnings",
+        "--junitxml=C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\full.xml",
+        "tests"
+      ],
+      "exit_code": 0,
+      "seconds": 49.36,
+      "output": "........................................................................ [  9%]\n........................................................................ [ 18%]\n........................................................................ [ 27%]\n........................................................................ [ 37%]\n........................................................................ [ 46%]\n........................................................................ [ 55%]\n........................................................................ [ 65%]\n........................................................................ [ 74%]\n........................................................................ [ 83%]\n........................................................................ [ 93%]\n....................................................                     [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\full.xml -\n772 passed, 76 deselected, 76 warnings in 46.43s\n",
+      "counts": {
+        "collected": 772,
+        "passed": 772,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failures": []
+    },
+    "red": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--disable-warnings",
+        "--junitxml=C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\red.xml",
+        "audit/proofs_m31_visualizer.py"
+      ],
+      "exit_code": 1,
+      "seconds": 8.36,
+      "output": "FFFFFFFFFFFFFFFFFFFFFFFFFF                                               [100%]\n================================== FAILURES ===================================\n________ test_nonfinite_prefix_keeps_original_peak_pixels[matplotlib] _________\naudit\\proofs_m31_visualizer.py:48: in test_nonfinite_prefix_keeps_original_peak_pixels\n    contracts.assert_peak_pairs(red, green, wave, flux)\ntests\\m31_visualizer_contracts.py:181: in assert_peak_pairs\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=0, atol=2e-09\nE   Detected peak lost its original pixel identity\nE   Mismatched elements: 2 / 2 (100%)\nE   Mismatch at indices:\nE    [0, 0]: 4860.776147831782 (ACTUAL), 4861.0 (DESIRED)\nE    [0, 1]: 0.5191959424069938 (ACTUAL), 0.5 (DESIRED)\nE   Max absolute difference among violations: 0.22385217\nE   Max relative difference among violations: 0.03839188\nE    ACTUAL: array([[4.860776e+03, 5.191959e-01]])\nE    DESIRED: array([[4.861e+03, 5.000e-01]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_________ test_nonfinite_prefix_keeps_original_peak_pixels[notebook] __________\naudit\\proofs_m31_visualizer.py:48: in test_nonfinite_prefix_keeps_original_peak_pixels\n    contracts.assert_peak_pairs(red, green, wave, flux)\ntests\\m31_visualizer_contracts.py:181: in assert_peak_pairs\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=0, atol=2e-09\nE   Detected peak lost its original pixel identity\nE   Mismatched elements: 2 / 2 (100%)\nE   Mismatch at indices:\nE    [0, 0]: 4860.776147831782 (ACTUAL), 4861.0 (DESIRED)\nE    [0, 1]: 0.5191959424069938 (ACTUAL), 0.5 (DESIRED)\nE   Max absolute difference among violations: 0.22385217\nE   Max relative difference among violations: 0.03839188\nE    ACTUAL: array([[4.860776e+03, 5.191959e-01]])\nE    DESIRED: array([[4.861e+03, 5.000e-01]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n__________ test_nonfinite_prefix_keeps_original_peak_pixels[plotly] ___________\naudit\\proofs_m31_visualizer.py:48: in test_nonfinite_prefix_keeps_original_peak_pixels\n    contracts.assert_peak_pairs(red, green, wave, flux)\ntests\\m31_visualizer_contracts.py:181: in assert_peak_pairs\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=0, atol=2e-09\nE   Detected peak lost its original pixel identity\nE   Mismatched elements: 2 / 2 (100%)\nE   Mismatch at indices:\nE    [0, 0]: 4860.776147831782 (ACTUAL), 4861.0 (DESIRED)\nE    [0, 1]: 0.5191959424069938 (ACTUAL), 0.5 (DESIRED)\nE   Max absolute difference among violations: 0.22385217\nE   Max relative difference among violations: 0.03839188\nE    ACTUAL: array([[4.860776e+03, 5.191959e-01]])\nE    DESIRED: array([[4.861e+03, 5.000e-01]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n___________ test_ra_wrap_centroid_stays_near_neighboring_directions ___________\naudit\\proofs_m31_visualizer.py:60: in test_ra_wrap_centroid_stays_near_neighboring_directions\n    assert (\nE   AssertionError: RA centroid is 180.0 deg, opposite the two observations\nE   assert 180.0 < 1e-10\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n  > Scanning FITS files to generate position catalogue...\n  > Position catalogue created with 1 unique plan(s).\n___________ test_sky_ra_tick_labels_match_actual_transformed_points ___________\naudit\\proofs_m31_visualizer.py:85: in test_sky_ra_tick_labels_match_actual_transformed_points\n    assert hour % 24 == ra / 15, f\"RA={ra} deg drawn at tick {label}\"\nE   AssertionError: RA=0 deg drawn at tick 12h\nE   assert (12.0 % 24) == (0 / 15)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_________ test_truncated_percentages_disclose_conditional_population __________\naudit\\proofs_m31_visualizer.py:101: in test_truncated_percentages_disclose_conditional_population\n    assert (\nE   AssertionError: Conditional percentages hide that 3/15 examples are outside the displayed top N\nE   assert (('top' in 'spectral sub-class distribution frequency (%)' or 'display' in 'spectral sub-class distribution frequency (%)' or 'condition' in 'spectral sub-class distribution frequency (%)'))\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n__________ test_failed_normalization_has_truthful_curve_units[flux0] __________\naudit\\proofs_m31_visualizer.py:121: in test_failed_normalization_has_truthful_curve_units\n    assert (\nE   AssertionError: Raw flux is labelled as normalized after normalization refusal\nE   assert ('normalis' not in 'flux (normalised units)'\nE     \nE     'normalis' is contained here:\nE       flux (normalised units)\nE     ?       ++++++++)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n__________ test_failed_normalization_has_truthful_curve_units[flux1] __________\naudit\\proofs_m31_visualizer.py:121: in test_failed_normalization_has_truthful_curve_units\n    assert (\nE   AssertionError: Raw flux is labelled as normalized after normalization refusal\nE   assert ('normalis' not in 'flux (normalised units)'\nE     \nE     'normalis' is contained here:\nE       flux (normalised units)\nE     ?       ++++++++)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_____________ test_normalized_flux_uncertainties_scale_with_flux ______________\naudit\\proofs_m31_visualizer.py:142: in test_normalized_flux_uncertainties_scale_with_flux\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1e-12, atol=0\nE   Normalized flux retains raw uncertainty units\nE   Mismatched elements: 401 / 401 (100%)\nE   First 5 mismatches are at indices:\nE    [0]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\nE    [1]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\nE    [2]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\nE    [3]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\nE    [4]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\nE   Max absolute difference among violations: 0.41666667\nE   Max relative difference among violations: 5.\nE    ACTUAL: array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,\nE          0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,\nE          0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,...\nE    DESIRED: array([0.083333, 0.083333, 0.083333, 0.083333, 0.083333, 0.083333,\nE          0.083333, 0.083333, 0.083333, 0.083333, 0.083333, 0.083333,\nE          0.083333, 0.083333, 0.083333, 0.083333, 0.083333, 0.083333,...\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_________ test_absorption_fwhm_export_measures_the_line_not_continuum _________\naudit\\proofs_m31_visualizer.py:162: in test_absorption_fwhm_export_measures_the_line_not_continuum\n    assert (\nE   AssertionError: Gaussian FWHM expected 1.8838560360247596, exported 11.23 A\nE   assert np.float64(9.34614396397524) <= 0.23\nE    +  where np.float64(9.34614396397524) = abs((11.23 - np.float64(1.8838560360247596)))\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_________ test_selected_feature_names_derive_from_support_not_prefix __________\naudit\\proofs_m31_visualizer.py:186: in test_selected_feature_names_derive_from_support_not_prefix\n    assert names == [\"calcium\", \"hydrogen\"], f\"Selected values mislabelled: {names}\"\nE   AssertionError: Selected values mislabelled: ['constant', 'calcium']\nE   assert ['constant', 'calcium'] == ['calcium', 'hydrogen']\nE     \nE     At index 0 diff: 'constant' != 'calcium'\nE     Use -v to get more diff\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n___________ test_actual_classifier_prep_step_is_applied_before_shap ___________\naudit\\proofs_m31_visualizer.py:202: in test_actual_classifier_prep_step_is_applied_before_shap\n    assert_allclose(\nE   AssertionError: \nE   Not equal to tolerance rtol=1e-07, atol=1e-14\nE   Visualizer bypassed classifier prep transformation\nE   nan location mismatch:\nE    ACTUAL: array([[ 5., 30.],\nE          [ 1., nan]])\nE    DESIRED: array([[ 1.224745,  1.224745],\nE          [-1.224745,  0.      ]])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n____________ test_multiclass_shap_reduces_samples_and_classes_only ____________\naudit\\proofs_m31_visualizer.py:223: in test_multiclass_shap_reduces_samples_and_classes_only\n    assert set(result.feature) == {\nE   AssertionError: One feature is lost after reducing the feature axis\nE   assert {'alpha', 'beta'} == {'alpha', 'beta', 'gamma'}\nE     \nE     Extra items in the right set:\nE     'gamma'\nE     Use -v to get more diff\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n✓ TreeExplainer created for DummyClassifier\n___________________ test_shap_explanation_is_computed_once ____________________\naudit\\proofs_m31_visualizer.py:240: in test_shap_explanation_is_computed_once\n    assert len(calls) == 1, f\"Same explanation evaluated {len(calls)} times\"\nE   AssertionError: Same explanation evaluated 2 times\nE   assert 2 == 1\nE    +  where 2 = len([array([[ 1.,  7., 20.],\\n       [ 2.,  9., 30.],\\n       [ 3., 11., 40.],\\n       [ 4., 13., 50.]]), array([[ 1.,  7., 20.],\\n       [ 2.,  9., 30.],\\n       [ 3., 11., 40.],\\n       [ 4., 13., 50.]])])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n✓ TreeExplainer created for DummyClassifier\n_______________ test_peak_plot_restores_global_matplotlib_style _______________\naudit\\proofs_m31_visualizer.py:254: in test_peak_plot_restores_global_matplotlib_style\n    assert not changed, f\"AstroVisualizer changed caller style keys: {changed}\"\nE   AssertionError: AstroVisualizer changed caller style keys: ['axes.edgecolor', 'axes.facecolor', 'axes.labelcolor', 'axes.prop_cycle', 'boxplot.boxprops.color', 'boxplot.capprops.color', 'boxplot.flierprops.color', 'boxplot.flierprops.markeredgecolor', 'boxplot.whiskerprops.color', 'figure.edgecolor', 'figure.facecolor', 'grid.color', 'lines.color', 'patch.edgecolor', 'text.color', 'xtick.color', 'ytick.color']\nE   assert not ['axes.edgecolor', 'axes.facecolor', 'axes.labelcolor', 'axes.prop_cycle', 'boxplot.boxprops.color', 'boxplot.capprops.color', ...]\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_____________ test_sampling_preserves_global_random_state[zeros] ______________\naudit\\proofs_m31_visualizer.py:269: in test_sampling_preserves_global_random_state\n    assert random.getstate() == before, \"Visualizer reseeded caller's global RNG\"\nE   AssertionError: Visualizer reseeded caller's global RNG\nE   assert (3, (21474836...8, ...), None) == (3, (21474836...7, ...), None)\nE     \nE     At index 1 diff: (2147483648, 3564348608, 1266698288, 4212342371, 3595291661, 3180588708, 3037210256, 946923017, 2565409715, 2900535780, 924383152, 4180157270, 4230508198, 2039675917, 3755350407, 2362848650, 2818100609, 2097423432, 524478045, 540883378, 281170210, 1485176884, 1493190386, 1773214509, 380915208, 3667698522, 2648371337, 2961234806, 3857480267, 1582950522, 246289694, 3322185604, 1944574775, 302623699, 169865066, 1143540808, 3733177770, 513116636, 1411153081, 3205493053, 768926902, 549624109, 1470655403, 59539609, 3678480009, 3087139671, 1176835859, 20784915...\nE     \nE     ...Full output truncated (2 lines hidden), use '-vv' to show\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n_________ test_sampling_preserves_global_random_state[normalization] __________\naudit\\proofs_m31_visualizer.py:269: in test_sampling_preserves_global_random_state\n    assert random.getstate() == before, \"Visualizer reseeded caller's global RNG\"\nE   AssertionError: Visualizer reseeded caller's global RNG\nE   assert (3, (24685705...6, ...), None) == (3, (21474836...7, ...), None)\nE     \nE     At index 1 diff: (2468570525, 44967195, 2667364560, 2449893699, 1652692239, 766678126, 273175325, 1513475390, 2407048223, 2326550691, 3055735416, 2487780036, 476975371, 81632736, 1598452444, 3338301038, 3898475993, 1749546629, 4084786842, 949316744, 2086501466, 4175211502, 3792229788, 1718685282, 2499662139, 4222931543, 3063257123, 910424605, 1400804300, 830603822, 3216023045, 2756927633, 3684278863, 3724968901, 332416530, 52016619, 2751489098, 1877715228, 1932382287, 3281876149, 3597828351, 330629843, 142483984, 1379430288, 83784318, 2266112133, 1736800492, 3746267091,...\nE     \nE     ...Full output truncated (2 lines hidden), use '-vv' to show\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n____________ test_added_backdated_fits_invalidates_position_cache _____________\naudit\\proofs_m31_visualizer.py:284: in test_added_backdated_fits_invalidates_position_cache\n    assert (\nE   AssertionError: Cache ignored a newly added FITS with preserved timestamp\nE   assert np.int64(1) == 2\nE    +  where np.int64(1) = sum()\nE    +    where sum = 0    1\\nName: spectra_count, dtype: int64.sum\nE    +      where 0    1\\nName: spectra_count, dtype: int64 =   plan_id    ra   dec  spectra_count\\n0       p  30.0  20.0              1.spectra_count\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n  > Scanning FITS files to generate position catalogue...\n  > Position catalogue created with 1 unique plan(s).\n  > Existing position catalogue loaded.\n_________ test_duplicate_basename_legend_preserves_spectrum_identity __________\naudit\\proofs_m31_visualizer.py:295: in test_duplicate_basename_legend_preserves_spectrum_identity\n    assert (\nE   AssertionError: Distinct observations share indistinguishable labels: ['same.fits.gz', 'same.fits.gz']\nE   assert 1 == 2\nE    +  where 1 = len({'same.fits.gz'})\nE    +    where {'same.fits.gz'} = set(['same.fits.gz', 'same.fits.gz'])\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n___ test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten ____\naudit\\proofs_m31_visualizer.py:308: in test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten\n    assert \"A/same\" not in labels or any(\nE   AssertionError: Conflicting catalogue rows silently overwrite an object's class\nE   assert ('A/same' not in {'A/same': 'G2'} or False)\nE    +  where False = any(<generator object test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten.<locals>.<genexpr> at 0x000001F5BE0D5A80>)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n___ test_features_csv_missing_measurement_remains_missing_until_imputation ____\naudit\\proofs_m31_visualizer.py:321: in test_features_csv_missing_measurement_remains_missing_until_imputation\n    assert (\nE   AssertionError: An absent measurement becomes a physical zero before trained imputation\nE   assert np.False_\nE    +  where np.False_ = all()\nE    +    where all = 0    False\\n1    False\\nName: missing, dtype: bool.all\nE    +      where 0    False\\n1    False\\nName: missing, dtype: bool = isna()\nE    +        where isna = 0    0.0\\n1    0.0\\nName: missing, dtype: float64.isna\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n____ test_model_inspector_missing_selection_metadata_does_not_guess_prefix ____\naudit\\proofs_m31_visualizer.py:338: in test_model_inspector_missing_selection_metadata_does_not_guess_prefix\n    assert not any(\nE   AssertionError: Model importances are assigned to a guessed prefix without selection provenance\nE   assert not True\nE    +  where True = any(<generator object test_model_inspector_missing_selection_metadata_does_not_guess_prefix.<locals>.<genexpr> at 0x000001F5BA8D8380>)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n________________ test_explainer_mode_is_respected_by_analysis _________________\naudit\\proofs_m31_visualizer.py:352: in test_explainer_mode_is_respected_by_analysis\n    assert (\nE   AssertionError: Analysis ignores explainer_mode and unconditionally computes TreeExplainer\nE   assert (  feature  mean_abs_shap\\n0   alpha            1.0\\n1    beta            1.0\\n2   gamma            1.0 is None)\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n✓ TreeExplainer created for DummyClassifier\n____________ test_basename_export_is_written_in_current_directory _____________\nC:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\audit\\proofs_m31_visualizer.py:364: in test_basename_export_is_written_in_current_directory\n    assert (\nE   AssertionError: Valid basename export fails at makedirs('')\nE   assert False\nE    +  where False = is_file()\nE    +    where is_file = (WindowsPath('C:/Users/alexb/AppData/Local/Temp/pytest-of-alexb/pytest-1711/test_basename_export_is_writte0') / 'summary.png').is_file\nE    +      where WindowsPath('C:/Users/alexb/AppData/Local/Temp/pytest-of-alexb/pytest-1711/test_basename_export_is_writte0') = namespace(module=<module 'm31_visualizer' from 'C:\\\\Users\\\\alexb\\\\Documents\\\\Projets\\\\AstroSpectro-m31\\\\src\\\\tools\\\\vi...190>, tmp=WindowsPath('C:/Users/alexb/AppData/Local/Temp/pytest-of-alexb/pytest-1711/test_basename_export_is_writte0')).tmp\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n---------------------------- Captured stdout call -----------------------------\n[!] Impossible de sauvegarder la figure (summary.png) : [WinError 3] Le chemin d’accès spécifié est introuvable: ''\n____ test_feature_explorer_nonfinite_histogram_has_explicit_partial_result ____\naudit\\proofs_m31_visualizer.py:376: in test_feature_explorer_nonfinite_histogram_has_explicit_partial_result\n    result = c.viz.feature_explorer(str(path), corr_top_n=0)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nsrc\\tools\\visualizer.py:3356: in feature_explorer\n    ax.hist(num_df[c].dropna(), bins=30)\n..\\AstroSpectro\\.venv\\Lib\\site-packages\\matplotlib\\axes\\_axes.py:7515: in hist\n    m, bins = np.histogram(x[i], bins, weights=w[i], **hist_kwargs)\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_histograms_impl.py:792: in histogram\n    bin_edges, uniform_bins = _get_bin_edges(a, bins, range, weights)\n                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_histograms_impl.py:425: in _get_bin_edges\n    first_edge, last_edge = _get_outer_edges(a, range)\n                            ^^^^^^^^^^^^^^^^^^^^^^^^^^\n..\\AstroSpectro\\.venv\\Lib\\site-packages\\numpy\\lib\\_histograms_impl.py:309: in _get_outer_edges\n    raise ValueError(\nE   ValueError: supplied range of [1.0, inf] is not finite\n\nDuring handling of the above exception, another exception occurred:\naudit\\proofs_m31_visualizer.py:379: in test_feature_explorer_nonfinite_histogram_has_explicit_partial_result\n    assert \"alpha\" in str(error) and (\nE   AssertionError: Histogram failed without identifying its invalid input feature: supplied range of [1.0, inf] is not finite\nE   assert ('alpha' in 'supplied range of [1.0, inf] is not finite')\nE    +  where 'supplied range of [1.0, inf] is not finite' = str(ValueError('supplied range of [1.0, inf] is not finite'))\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n___ test_feature_explorer_does_not_split_repeat_observations_across_holdout ___\naudit\\proofs_m31_visualizer.py:417: in test_feature_explorer_does_not_split_repeat_observations_across_holdout\n    assert (\nE   AssertionError: Repeated object observations contaminate the holdout: [1, 7, 9, 11]\nE   assert not {1, 7, 9, 11}\n---------------------------- Captured stdout setup ----------------------------\nAstroVisualizer initialised.  Models will be loaded on demand.\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\red.xml -\n=========================== short test summary info ===========================\nFAILED audit/proofs_m31_visualizer.py::test_nonfinite_prefix_keeps_original_peak_pixels[matplotlib]\nFAILED audit/proofs_m31_visualizer.py::test_nonfinite_prefix_keeps_original_peak_pixels[notebook]\nFAILED audit/proofs_m31_visualizer.py::test_nonfinite_prefix_keeps_original_peak_pixels[plotly]\nFAILED audit/proofs_m31_visualizer.py::test_ra_wrap_centroid_stays_near_neighboring_directions\nFAILED audit/proofs_m31_visualizer.py::test_sky_ra_tick_labels_match_actual_transformed_points\nFAILED audit/proofs_m31_visualizer.py::test_truncated_percentages_disclose_conditional_population\nFAILED audit/proofs_m31_visualizer.py::test_failed_normalization_has_truthful_curve_units[flux0]\nFAILED audit/proofs_m31_visualizer.py::test_failed_normalization_has_truthful_curve_units[flux1]\nFAILED audit/proofs_m31_visualizer.py::test_normalized_flux_uncertainties_scale_with_flux\nFAILED audit/proofs_m31_visualizer.py::test_absorption_fwhm_export_measures_the_line_not_continuum\nFAILED audit/proofs_m31_visualizer.py::test_selected_feature_names_derive_from_support_not_prefix\nFAILED audit/proofs_m31_visualizer.py::test_actual_classifier_prep_step_is_applied_before_shap\nFAILED audit/proofs_m31_visualizer.py::test_multiclass_shap_reduces_samples_and_classes_only\nFAILED audit/proofs_m31_visualizer.py::test_shap_explanation_is_computed_once\nFAILED audit/proofs_m31_visualizer.py::test_peak_plot_restores_global_matplotlib_style\nFAILED audit/proofs_m31_visualizer.py::test_sampling_preserves_global_random_state[zeros]\nFAILED audit/proofs_m31_visualizer.py::test_sampling_preserves_global_random_state[normalization]\nFAILED audit/proofs_m31_visualizer.py::test_added_backdated_fits_invalidates_position_cache\nFAILED audit/proofs_m31_visualizer.py::test_duplicate_basename_legend_preserves_spectrum_identity\nFAILED audit/proofs_m31_visualizer.py::test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten\nFAILED audit/proofs_m31_visualizer.py::test_features_csv_missing_measurement_remains_missing_until_imputation\nFAILED audit/proofs_m31_visualizer.py::test_model_inspector_missing_selection_metadata_does_not_guess_prefix\nFAILED audit/proofs_m31_visualizer.py::test_explainer_mode_is_respected_by_analysis\nFAILED audit/proofs_m31_visualizer.py::test_basename_export_is_written_in_current_directory\nFAILED audit/proofs_m31_visualizer.py::test_feature_explorer_nonfinite_histogram_has_explicit_partial_result\nFAILED audit/proofs_m31_visualizer.py::test_feature_explorer_does_not_split_repeat_observations_across_holdout\n26 failed, 85 warnings in 6.96s\n",
+      "counts": {
+        "collected": 26,
+        "passed": 0,
+        "failed": 26,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failures": [
+        {
+          "name": "test_nonfinite_prefix_keeps_original_peak_pixels[matplotlib]",
+          "type": "AssertionError",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=2e-09\nDetected peak lost its original pixel identity\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 4860.776147831782 (ACTUAL), 4861.0 (DESIRED)\n [0, 1]: 0.5191959424069938 (ACTUAL), 0.5 (DESIRED)\nMax absolute difference among violations: 0.22385217\nMax relative difference among violations: 0.03839188\n ACTUAL: array([[4.860776e+03, 5.191959e-01]])\n DESIRED: array([[4.861e+03, 5.000e-01]])"
+        },
+        {
+          "name": "test_nonfinite_prefix_keeps_original_peak_pixels[notebook]",
+          "type": "AssertionError",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=2e-09\nDetected peak lost its original pixel identity\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 4860.776147831782 (ACTUAL), 4861.0 (DESIRED)\n [0, 1]: 0.5191959424069938 (ACTUAL), 0.5 (DESIRED)\nMax absolute difference among violations: 0.22385217\nMax relative difference among violations: 0.03839188\n ACTUAL: array([[4.860776e+03, 5.191959e-01]])\n DESIRED: array([[4.861e+03, 5.000e-01]])"
+        },
+        {
+          "name": "test_nonfinite_prefix_keeps_original_peak_pixels[plotly]",
+          "type": "AssertionError",
+          "message": "AssertionError: \nNot equal to tolerance rtol=0, atol=2e-09\nDetected peak lost its original pixel identity\nMismatched elements: 2 / 2 (100%)\nMismatch at indices:\n [0, 0]: 4860.776147831782 (ACTUAL), 4861.0 (DESIRED)\n [0, 1]: 0.5191959424069938 (ACTUAL), 0.5 (DESIRED)\nMax absolute difference among violations: 0.22385217\nMax relative difference among violations: 0.03839188\n ACTUAL: array([[4.860776e+03, 5.191959e-01]])\n DESIRED: array([[4.861e+03, 5.000e-01]])"
+        },
+        {
+          "name": "test_ra_wrap_centroid_stays_near_neighboring_directions",
+          "type": "AssertionError",
+          "message": "AssertionError: RA centroid is 180.0 deg, opposite the two observations\nassert 180.0 < 1e-10"
+        },
+        {
+          "name": "test_sky_ra_tick_labels_match_actual_transformed_points",
+          "type": "AssertionError",
+          "message": "AssertionError: RA=0 deg drawn at tick 12h\nassert (12.0 % 24) == (0 / 15)"
+        },
+        {
+          "name": "test_truncated_percentages_disclose_conditional_population",
+          "type": "AssertionError",
+          "message": "AssertionError: Conditional percentages hide that 3/15 examples are outside the displayed top N\nassert (('top' in 'spectral sub-class distribution frequency (%)' or 'display' in 'spectral sub-class distribution frequency (%)' or 'condition' in 'spectral sub-class distribution frequency (%)'))"
+        },
+        {
+          "name": "test_failed_normalization_has_truthful_curve_units[flux0]",
+          "type": "AssertionError",
+          "message": "AssertionError: Raw flux is labelled as normalized after normalization refusal\nassert ('normalis' not in 'flux (normalised units)'\n  \n  'normalis' is contained here:\n    flux (normalised units)\n  ?       ++++++++)"
+        },
+        {
+          "name": "test_failed_normalization_has_truthful_curve_units[flux1]",
+          "type": "AssertionError",
+          "message": "AssertionError: Raw flux is labelled as normalized after normalization refusal\nassert ('normalis' not in 'flux (normalised units)'\n  \n  'normalis' is contained here:\n    flux (normalised units)\n  ?       ++++++++)"
+        },
+        {
+          "name": "test_normalized_flux_uncertainties_scale_with_flux",
+          "type": "AssertionError",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-12, atol=0\nNormalized flux retains raw uncertainty units\nMismatched elements: 401 / 401 (100%)\nFirst 5 mismatches are at indices:\n [0]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\n [1]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\n [2]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\n [3]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\n [4]: 0.5 (ACTUAL), 0.08333333333333333 (DESIRED)\nMax absolute difference among violations: 0.41666667\nMax relative difference among violations: 5.\n ACTUAL: array([0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,\n       0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,\n       0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5,...\n DESIRED: array([0.083333, 0.083333, 0.083333, 0.083333, 0.083333, 0.083333,\n       0.083333, 0.083333, 0.083333, 0.083333, 0.083333, 0.083333,\n       0.083333, 0.083333, 0.083333, 0.083333, 0.083333, 0.083333,..."
+        },
+        {
+          "name": "test_absorption_fwhm_export_measures_the_line_not_continuum",
+          "type": "AssertionError",
+          "message": "AssertionError: Gaussian FWHM expected 1.8838560360247596, exported 11.23 A\nassert np.float64(9.34614396397524) <= 0.23\n +  where np.float64(9.34614396397524) = abs((11.23 - np.float64(1.8838560360247596)))"
+        },
+        {
+          "name": "test_selected_feature_names_derive_from_support_not_prefix",
+          "type": "AssertionError",
+          "message": "AssertionError: Selected values mislabelled: ['constant', 'calcium']\nassert ['constant', 'calcium'] == ['calcium', 'hydrogen']\n  \n  At index 0 diff: 'constant' != 'calcium'\n  Use -v to get more diff"
+        },
+        {
+          "name": "test_actual_classifier_prep_step_is_applied_before_shap",
+          "type": "AssertionError",
+          "message": "AssertionError: \nNot equal to tolerance rtol=1e-07, atol=1e-14\nVisualizer bypassed classifier prep transformation\nnan location mismatch:\n ACTUAL: array([[ 5., 30.],\n       [ 1., nan]])\n DESIRED: array([[ 1.224745,  1.224745],\n       [-1.224745,  0.      ]])"
+        },
+        {
+          "name": "test_multiclass_shap_reduces_samples_and_classes_only",
+          "type": "AssertionError",
+          "message": "AssertionError: One feature is lost after reducing the feature axis\nassert {'alpha', 'beta'} == {'alpha', 'beta', 'gamma'}\n  \n  Extra items in the right set:\n  'gamma'\n  Use -v to get more diff"
+        },
+        {
+          "name": "test_shap_explanation_is_computed_once",
+          "type": "AssertionError",
+          "message": "AssertionError: Same explanation evaluated 2 times\nassert 2 == 1\n +  where 2 = len([array([[ 1.,  7., 20.],\\n       [ 2.,  9., 30.],\\n       [ 3., 11., 40.],\\n       [ 4., 13., 50.]]), array([[ 1.,  7., 20.],\\n       [ 2.,  9., 30.],\\n       [ 3., 11., 40.],\\n       [ 4., 13., 50.]])])"
+        },
+        {
+          "name": "test_peak_plot_restores_global_matplotlib_style",
+          "type": "AssertionError",
+          "message": "AssertionError: AstroVisualizer changed caller style keys: ['axes.edgecolor', 'axes.facecolor', 'axes.labelcolor', 'axes.prop_cycle', 'boxplot.boxprops.color', 'boxplot.capprops.color', 'boxplot.flierprops.color', 'boxplot.flierprops.markeredgecolor', 'boxplot.whiskerprops.color', 'figure.edgecolor', 'figure.facecolor', 'grid.color', 'lines.color', 'patch.edgecolor', 'text.color', 'xtick.color', 'ytick.color']\nassert not ['axes.edgecolor', 'axes.facecolor', 'axes.labelcolor', 'axes.prop_cycle', 'boxplot.boxprops.color', 'boxplot.capprops.color', ...]"
+        },
+        {
+          "name": "test_sampling_preserves_global_random_state[zeros]",
+          "type": "AssertionError",
+          "message": "AssertionError: Visualizer reseeded caller's global RNG\nassert (3, (21474836...8, ...), None) == (3, (21474836...7, ...), None)\n  \n  At index 1 diff: (2147483648, 3564348608, 1266698288, 4212342371, 3595291661, 3180588708, 3037210256, 946923017, 2565409715, 2900535780, 924383152, 4180157270, 4230508198, 2039675917, 3755350407, 2362848650, 2818100609, 2097423432, 524478045, 540883378, 281170210, 1485176884, 1493190386, 1773214509, 380915208, 3667698522, 2648371337, 2961234806, 3857480267, 1582950522, 246289694, 3322185604, 1944574775, 302623699, 169865066, 1143540808, 3733177770, 513116636, 1411153081, 3205493053, 768926902, 549624109, 1470655403, 59539609, 3678480009, 3087139671, 1176835859, 20784915...\n  \n  ...Full output truncated (2 lines hidden), use '-vv' to show"
+        },
+        {
+          "name": "test_sampling_preserves_global_random_state[normalization]",
+          "type": "AssertionError",
+          "message": "AssertionError: Visualizer reseeded caller's global RNG\nassert (3, (24685705...6, ...), None) == (3, (21474836...7, ...), None)\n  \n  At index 1 diff: (2468570525, 44967195, 2667364560, 2449893699, 1652692239, 766678126, 273175325, 1513475390, 2407048223, 2326550691, 3055735416, 2487780036, 476975371, 81632736, 1598452444, 3338301038, 3898475993, 1749546629, 4084786842, 949316744, 2086501466, 4175211502, 3792229788, 1718685282, 2499662139, 4222931543, 3063257123, 910424605, 1400804300, 830603822, 3216023045, 2756927633, 3684278863, 3724968901, 332416530, 52016619, 2751489098, 1877715228, 1932382287, 3281876149, 3597828351, 330629843, 142483984, 1379430288, 83784318, 2266112133, 1736800492, 3746267091,...\n  \n  ...Full output truncated (2 lines hidden), use '-vv' to show"
+        },
+        {
+          "name": "test_added_backdated_fits_invalidates_position_cache",
+          "type": "AssertionError",
+          "message": "AssertionError: Cache ignored a newly added FITS with preserved timestamp\nassert np.int64(1) == 2\n +  where np.int64(1) = sum()\n +    where sum = 0    1\\nName: spectra_count, dtype: int64.sum\n +      where 0    1\\nName: spectra_count, dtype: int64 =   plan_id    ra   dec  spectra_count\\n0       p  30.0  20.0              1.spectra_count"
+        },
+        {
+          "name": "test_duplicate_basename_legend_preserves_spectrum_identity",
+          "type": "AssertionError",
+          "message": "AssertionError: Distinct observations share indistinguishable labels: ['same.fits.gz', 'same.fits.gz']\nassert 1 == 2\n +  where 1 = len({'same.fits.gz'})\n +    where {'same.fits.gz'} = set(['same.fits.gz', 'same.fits.gz'])"
+        },
+        {
+          "name": "test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten",
+          "type": "AssertionError",
+          "message": "AssertionError: Conflicting catalogue rows silently overwrite an object's class\nassert ('A/same' not in {'A/same': 'G2'} or False)\n +  where False = any(<generator object test_duplicate_conflicting_catalog_labels_are_not_silently_overwritten.<locals>.<genexpr> at 0x000001F5BE0D5A80>)"
+        },
+        {
+          "name": "test_features_csv_missing_measurement_remains_missing_until_imputation",
+          "type": "AssertionError",
+          "message": "AssertionError: An absent measurement becomes a physical zero before trained imputation\nassert np.False_\n +  where np.False_ = all()\n +    where all = 0    False\\n1    False\\nName: missing, dtype: bool.all\n +      where 0    False\\n1    False\\nName: missing, dtype: bool = isna()\n +        where isna = 0    0.0\\n1    0.0\\nName: missing, dtype: float64.isna"
+        },
+        {
+          "name": "test_model_inspector_missing_selection_metadata_does_not_guess_prefix",
+          "type": "AssertionError",
+          "message": "AssertionError: Model importances are assigned to a guessed prefix without selection provenance\nassert not True\n +  where True = any(<generator object test_model_inspector_missing_selection_metadata_does_not_guess_prefix.<locals>.<genexpr> at 0x000001F5BA8D8380>)"
+        },
+        {
+          "name": "test_explainer_mode_is_respected_by_analysis",
+          "type": "AssertionError",
+          "message": "AssertionError: Analysis ignores explainer_mode and unconditionally computes TreeExplainer\nassert (  feature  mean_abs_shap\\n0   alpha            1.0\\n1    beta            1.0\\n2   gamma            1.0 is None)"
+        },
+        {
+          "name": "test_basename_export_is_written_in_current_directory",
+          "type": "AssertionError",
+          "message": "AssertionError: Valid basename export fails at makedirs('')\nassert False\n +  where False = is_file()\n +    where is_file = (WindowsPath('C:/Users/alexb/AppData/Local/Temp/pytest-of-alexb/pytest-1711/test_basename_export_is_writte0') / 'summary.png').is_file\n +      where WindowsPath('C:/Users/alexb/AppData/Local/Temp/pytest-of-alexb/pytest-1711/test_basename_export_is_writte0') = namespace(module=<module 'm31_visualizer' from 'C:\\\\Users\\\\alexb\\\\Documents\\\\Projets\\\\AstroSpectro-m31\\\\src\\\\tools\\\\vi...190>, tmp=WindowsPath('C:/Users/alexb/AppData/Local/Temp/pytest-of-alexb/pytest-1711/test_basename_export_is_writte0')).tmp"
+        },
+        {
+          "name": "test_feature_explorer_nonfinite_histogram_has_explicit_partial_result",
+          "type": "AssertionError",
+          "message": "AssertionError: Histogram failed without identifying its invalid input feature: supplied range of [1.0, inf] is not finite\nassert ('alpha' in 'supplied range of [1.0, inf] is not finite')\n +  where 'supplied range of [1.0, inf] is not finite' = str(ValueError('supplied range of [1.0, inf] is not finite'))"
+        },
+        {
+          "name": "test_feature_explorer_does_not_split_repeat_observations_across_holdout",
+          "type": "AssertionError",
+          "message": "AssertionError: Repeated object observations contaminate the holdout: [1, 7, 9, 11]\nassert not {1, 7, 9, 11}"
+        }
+      ]
+    },
+    "reverse": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "--disable-warnings",
+        "--junitxml=C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\reverse.xml",
+        "tests/test_tools_visualizer.py::test_small_class_split_may_refuse_explicitly_without_false_importances",
+        "tests/test_tools_visualizer.py::test_feature_importance_bar_preserves_arbitrary_named_values",
+        "tests/test_tools_visualizer.py::test_real_raw_feature_sample_contains_analytic_absorption_ew",
+        "tests/test_tools_visualizer.py::test_explainer_factory_real_small_models[auto]",
+        "tests/test_tools_visualizer.py::test_explainer_factory_real_small_models[kernel]",
+        "tests/test_tools_visualizer.py::test_explainer_factory_real_small_models[linear]",
+        "tests/test_tools_visualizer.py::test_explainer_factory_real_small_models[tree]",
+        "tests/test_tools_visualizer.py::test_beeswarm_real_explanation_and_explicit_fallback",
+        "tests/test_tools_visualizer.py::test_feature_explorer_no_labels_and_missing_files",
+        "tests/test_tools_visualizer.py::test_feature_explorer_eda_real_rf_and_exports",
+        "tests/test_tools_visualizer.py::test_model_inspector_selected_names_preserve_importance_associations",
+        "tests/test_tools_visualizer.py::test_binary_shap_mean_absolute_values_and_bar_names",
+        "tests/test_tools_visualizer.py::test_features_csv_sampling_is_reproducible_and_aligned",
+        "tests/test_tools_visualizer.py::test_prepare_flat_pipeline_alignment_imputation_scaling_selection",
+        "tests/test_tools_visualizer.py::test_zero_statistics_use_processed_rows_and_keep_nan_separate",
+        "tests/test_tools_visualizer.py::test_dashboard_single_column_producer_ledger_and_class_identity",
+        "tests/test_tools_visualizer.py::test_subclass_raw_counts_and_full_population_percentages",
+        "tests/test_tools_visualizer.py::test_sky_artists_encode_counts_and_declinations",
+        "tests/test_tools_visualizer.py::test_empty_positions_and_missing_catalogs_are_absent",
+        "tests/test_tools_visualizer.py::test_position_catalog_validity_counts_cache_and_force",
+        "tests/test_tools_visualizer.py::test_normalization_comparator_uses_each_grid_and_both_panels",
+        "tests/test_tools_visualizer.py::test_comparison_scale_invariance_offsets_and_skip_rank",
+        "tests/test_tools_visualizer.py::test_invalid_fits_dimensions_and_corruption_report_failure[data1]",
+        "tests/test_tools_visualizer.py::test_invalid_fits_dimensions_and_corruption_report_failure[data0]",
+        "tests/test_tools_visualizer.py::test_no_peaks_and_all_invalid_plotly_are_explicit[True]",
+        "tests/test_tools_visualizer.py::test_no_peaks_and_all_invalid_plotly_are_explicit[False]",
+        "tests/test_tools_visualizer.py::test_finite_gaussian_peak_identity_all_renderers[plotly]",
+        "tests/test_tools_visualizer.py::test_finite_gaussian_peak_identity_all_renderers[notebook]",
+        "tests/test_tools_visualizer.py::test_finite_gaussian_peak_identity_all_renderers[matplotlib]",
+        "tests/test_tools_visualizer.py::test_header_units_identity_and_explicit_error",
+        "tests/test_tools_visualizer.py::test_labels_invalid_schema_has_no_invented_class[table1]",
+        "tests/test_tools_visualizer.py::test_labels_invalid_schema_has_no_invented_class[table0]",
+        "tests/test_tools_visualizer.py::test_scan_refresh_and_labels_preserve_nested_identity"
+      ],
+      "exit_code": 0,
+      "seconds": 18.12,
+      "output": ".................................                                        [100%]\n- generated xml file: C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro-m31\\test-results\\m31\\reverse.xml -\n33 passed, 69 warnings in 15.75s\n",
+      "counts": {
+        "collected": 33,
+        "passed": 33,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failures": []
+    },
+    "black": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "black",
+        "--check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m31_visualizer.py",
+        "audit/proofs_m31_visualizer.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.36,
+      "output": "All done! ✨ 🍰 ✨\n49 files would be left unchanged.\n"
+    },
+    "ruff": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "ruff",
+        "check",
+        "src",
+        "tests",
+        "scripts",
+        "app.py",
+        "audit/check_m31_visualizer.py",
+        "audit/proofs_m31_visualizer.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.08,
+      "output": "All checks passed!\n"
+    },
+    "pip_check": {
+      "command": [
+        "C:\\Users\\alexb\\Documents\\Projets\\AstroSpectro\\.venv\\Scripts\\python.exe",
+        "-m",
+        "pip",
+        "check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.66,
+      "output": "No broken requirements found.\n"
+    },
+    "diff_check": {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.03,
+      "output": ""
+    }
+  },
+  "hashes_after": {
+    "src/tools/visualizer.py": "2774b9b07cbda70603d27044083ba41ce2e5e9d66ef886ec2a3c407c569a0bab",
+    "tests/test_tools_visualizer.py": "21aaddc24d3855d4ef32cf997e8b59a177a3bdfe641b36962eca15a6b52a62fb",
+    "audit/proofs_m31_visualizer.py": "51d87b101142f4a46afda875b99e77510dc4e17ab49bbeb4161e1dd99cb83e92",
+    "tests/m31_visualizer_contracts.py": "b815bb2bde33a30fe84298ed8346ed224c7f00d7cb6869df32f41e132e73c37d",
+    "audit/check_m31_visualizer.py": "51c84f33c848524a7811cd065b48c82d88dac65c60ed5807941cdb22e7fb8998",
+    "src/pipeline/preprocessor.py": "9b9687f763dfc751d0e40ec88f3980baf283e47c5f621bf97a4fd29571ef6a94",
+    "src/pipeline/peak_detector.py": "eca120ef0787b3b71a9174e6a1505b39fed60a40d7dd23a7bd60ad584d6c1e0d",
+    "src/pipeline/feature_engineering.py": "4fe4823301de3f66e24651dea5a463185af9477bf9d7cb9b4ac69cd7edd11c27",
+    "src/pipeline/classifier.py": "0ade76cef459a28b5ca946d96a14b761ad150d0cc556106fc8eba1b4112ad382",
+    "src/tools/dataset_builder.py": "1606946dd65032b0f0ff2a5bc6c60eb60cf332467820fac673999ea8ea508fe4",
+    "src/tools/generate_catalog_from_fits.py": "69fbf719754d8070155bca7537025619b5389acaf075d098d26e0b6b52c7f5ec",
+    "src/utils.py": "ce1991d8964dc9d4ce834e555f12e17e9c5448c3edb455e83146a2788b461745"
+  },
+  "inputs_unchanged": true
+}
