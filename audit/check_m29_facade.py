@@ -37,7 +37,10 @@ def hashes():
 
 def record(result):
     return dict(
-        returncode=result.returncode, stdout=result.stdout, stderr=result.stderr
+        argv=result.args,
+        returncode=result.returncode,
+        stdout=result.stdout,
+        stderr=result.stderr,
     )
 
 

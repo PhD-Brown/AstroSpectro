@@ -86,6 +86,7 @@ def test_independent_sources_load_without_extensions(tmp_path, source):
         ("umap", "umap", "umap-learn"),
         ("hdbscan", "hdbscan", "hdbscan"),
         ("hdbscan_presentation", "hdbscan", "hdbscan"),
+        ("hdbscan_sensitivity", "hdbscan", "hdbscan"),
         ("plotly_umap", "plotly", "plotly"),
         ("plotly_tsne", "plotly", "plotly"),
     ],
@@ -98,6 +99,25 @@ def test_missing_extension_has_attributable_diagnostic(
     assert "ImportError:" in result.stderr
     assert f"pip install {install}" in result.stderr
     assert "M29 blocked " + dependency in result.stderr
+    assert "NameError" not in result.stderr
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "dependency,statement",
+    [
+        ("numpy", "from dimred import PCAAnalyzer"),
+        ("pandas", "from dimred import DimRedDataLoader"),
+        ("scipy", "from dimred import PCAAnalyzer"),
+        ("sklearn", "from dimred import PCAAnalyzer"),
+        ("matplotlib", "from dimred import DimRedVisualizer"),
+    ],
+)
+def test_missing_required_dependency_is_attributable(tmp_path, dependency, statement):
+    result = run_probe(tmp_path, "entry", blocked=(dependency,), operation=statement)
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "M29 blocked " + dependency in result.stderr
+    assert "ImportError" in result.stderr or "ModuleNotFoundError" in result.stderr
     assert "NameError" not in result.stderr
 
 
@@ -194,6 +214,7 @@ def test_real_facade_identity_star_repeat_and_unrelated_absences(
         ("umap", "umap", "umap-learn"),
         ("hdbscan", "hdbscan", "hdbscan"),
         ("hdbscan_presentation", "hdbscan", "hdbscan"),
+        ("hdbscan_sensitivity", "hdbscan", "hdbscan"),
         ("plotly_umap", "plotly", "plotly"),
         ("plotly_tsne", "plotly", "plotly"),
     ],

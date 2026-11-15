@@ -174,6 +174,8 @@ def optional_operation(module, operation):
         module.HDBSCANAnalyzer(min_cluster_size=2).fit(X[:, :2])
     elif operation == "hdbscan_presentation":
         module.HDBSCANAnalyzer().fit_presentation(X[:, :2], min_cluster_size=2)
+    elif operation == "hdbscan_sensitivity":
+        module.compute_sensitivity(X[:, :2], min_samples=2, min_sizes=[2])
     elif operation == "plotly_umap":
         module.EmbeddingEngine().compute_umap3d(
             X,
