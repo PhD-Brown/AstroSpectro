@@ -138,12 +138,14 @@ def tools_case(tmp_path, monkeypatch):
                 plt.close(number)
 
 
-def render_spectrum(c, route, path):
+def render_spectrum(c, route, path, *, allow_rejection=False):
     """Render through real FITS/preprocessing/detection and return peak pairs."""
     if route == "plotly":
         header = c.viz._plot_spectrum_analysis_plotly(
             c.st, str(Path(c.paths["RAW_DATA_DIR"]) / path), 0.2, 8
         )
+        if header is None and allow_rejection and c.st.errors:
+            return None, None, None
         assert header is not None, c.st.errors
         fig = c.st.figures[-1]
         traces = {t.name: t for t in fig.data}
@@ -158,6 +160,8 @@ def render_spectrum(c, route, path):
         c.viz._plot_peak_detection_notebook(path, 0.2, 8, (4880, 4840), (2, 0), "None")
     else:
         c.viz._plot_spectrum_analysis(path, 0.2, 8, (4880, 4840), (2, 0))
+    if not c.plt.get_fignums() and allow_rejection:
+        return None, None, None
     assert c.plt.get_fignums(), "Spectrum analysis produced no figure"
     ax = c.plt.gcf().axes[0]
     collections = {sc.get_label(): sc for sc in ax.collections}

@@ -179,7 +179,11 @@ def pytest_run(selection, xml, *, candidate=None):
                 "name": c.get("name"),
                 # Pytest's xunit2 writer omits the XML type attribute.
                 "type": c.find("failure").get("type")
-                or c.find("failure").get("message", "").split(":", 1)[0],
+                or (
+                    "AssertionError"
+                    if c.find("failure").get("message", "").startswith("assert ")
+                    else c.find("failure").get("message", "").split(":", 1)[0]
+                ),
                 "message": c.find("failure").get("message"),
             }
             for c in cases
@@ -239,8 +243,8 @@ def adversarial(report):
         (
             "M05_column_alignment",
             "prepare_flat",
-            "X = X.reindex(columns=used_cols)",
-            "X = X.reindex(columns=used_cols[::-1])",
+            "Xt = imp.transform(X)",
+            "Xt = imp.transform(X)[:, ::-1]",
         ),
         (
             "M06_feature_labels",

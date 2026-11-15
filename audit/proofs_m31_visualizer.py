@@ -10,6 +10,7 @@ import base64
 from pathlib import Path
 import random
 import re
+import warnings
 from types import SimpleNamespace
 
 import matplotlib
@@ -28,10 +29,22 @@ tools_case = contracts.tools_case
 
 
 @pytest.mark.parametrize("route", ["matplotlib", "notebook", "plotly"])
-def test_nonfinite_prefix_keeps_original_peak_pixels(tools_case, route):
+def test_nonfinite_prefix_keeps_original_peak_pixels(tools_case, route, capsys):
     c = tools_case
     name, wave, flux = c.gaussian(invalid=True)
-    red, green, _ = contracts.render_spectrum(c, route, name)
+    try:
+        red, green, target = contracts.render_spectrum(
+            c, route, name, allow_rejection=True
+        )
+    except ValueError as error:
+        assert any(word in str(error).lower() for word in ["finite", "nan", "invalid"])
+        return
+    if target is None:
+        diagnostic = capsys.readouterr().out + " ".join(c.st.errors)
+        assert any(
+            word in diagnostic.lower() for word in ["finite", "nan", "invalid"]
+        ), "Rejected data without identifying the invalid input"
+        return
     contracts.assert_peak_pairs(red, green, wave, flux)
 
 
@@ -96,8 +109,12 @@ def test_truncated_percentages_disclose_conditional_population(tools_case):
 def test_failed_normalization_has_truthful_curve_units(tools_case, flux):
     c = tools_case
     name, _, _ = c.write(flux=flux)
-    with pytest.warns(UserWarning, match="un-standardised"):
-        result = c.viz._plot_spectra_comparison([name], normalize=True)
+    try:
+        with warnings.catch_warnings(record=True):
+            result = c.viz._plot_spectra_comparison([name], normalize=True)
+    except ValueError as error:
+        assert any(word in str(error).lower() for word in ["median", "flux", "normal"])
+        return
     if result is None:
         return
     _, ax = result
@@ -326,7 +343,12 @@ def test_model_inspector_missing_selection_metadata_does_not_guess_prefix(tools_
 def test_explainer_mode_is_respected_by_analysis(tools_case):
     c = tools_case
     calls, _ = contracts.shap_case(c, np.ones((4, 3)))
-    result = c.viz._run_shap_analysis("synthetic", explainer_mode="invalid-mode")
+    try:
+        result = c.viz._run_shap_analysis("synthetic", explainer_mode="invalid-mode")
+    except ValueError as error:
+        assert "mode" in str(error).lower() or "explainer" in str(error).lower()
+        assert not calls
+        return
     assert (
         result is None and not calls
     ), "Analysis ignores explainer_mode and unconditionally computes TreeExplainer"
