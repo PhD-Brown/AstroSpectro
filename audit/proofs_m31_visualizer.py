@@ -493,7 +493,14 @@ def test_feature_consumers_keep_original_detected_wavelength(tools_case, route):
     original = c.module.FeatureEngineer.extract_features
 
     def extract(instance, matched, *args, **kwargs):
-        observed.append(matched)
+        # FeatureEngineer also initializes its schema using a dummy spectrum.
+        # Observe the audited FITS by wavelength provenance, not call ordinal.
+        if (
+            args
+            and np.asarray(args[0]).shape == wave.shape
+            and np.allclose(args[0], wave, rtol=1e-13, atol=0)
+        ):
+            observed.append(matched)
         return original(instance, matched, *args, **kwargs)
 
     c.monkeypatch.setattr(c.module.FeatureEngineer, "extract_features", extract)
@@ -501,14 +508,16 @@ def test_feature_consumers_keep_original_detected_wavelength(tools_case, route):
         c.viz._get_features_sample(SimpleNamespace(), 1, "raw_fits")
     else:
         c.viz.analyze_feature_zeros(n_files=1, prominence=0.85, window=28, export=False)
-    assert observed and observed[0]["Hβ"] is not None
-    assert_allclose(
-        observed[0]["Hβ"][0],
-        4861.0,
-        atol=2e-9,
-        rtol=0,
-        err_msg="Feature consumer used a compacted index as an original pixel",
-    )
+    assert observed, "The audited FITS never reached feature extraction"
+    for matched in observed:
+        assert matched["Hβ"] is not None
+        assert_allclose(
+            matched["Hβ"][0],
+            4861.0,
+            atol=2e-9,
+            rtol=0,
+            err_msg="Feature consumer used a compacted index as an original pixel",
+        )
 
 
 @pytest.mark.parametrize("route", ["matplotlib", "notebook", "plotly"])

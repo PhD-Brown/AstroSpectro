@@ -186,7 +186,7 @@ def candidates(source, historical, local_style):
                 s,
                 "plot_subclass_distribution",
                 'ax.set_title("Spectral Sub-class Distribution")',
-                'ax.set_title(f"Frequency of total catalogue; total={len(df)}; displayed={int(counts.sum())}; excluded={len(df)-int(counts.sum())}; denominator=total")',
+                'ax.set_title(f"Frequency of total catalogue; total={len(df)}; displayed={int(counts.sum())}; excluded={len(df)-int(counts.sum())}; denominator=total" if normalize else "Spectral Sub-class Distribution")',
             )
         if key == "A02":
             s = edit(
@@ -210,7 +210,7 @@ def candidates(source, historical, local_style):
         source,
         "plot_subclass_distribution",
         'ax.set_title("Spectral Sub-class Distribution")',
-        'ax.set_title(f"Conditional frequency; displayed={int(counts.sum())}; total={len(df)}; excluded={len(df)-int(counts.sum())}; denominator=displayed")',
+        'ax.set_title(f"Conditional frequency; displayed={int(counts.sum())}; total={len(df)}; excluded={len(df)-int(counts.sum())}; denominator=displayed" if normalize else "Spectral Sub-class Distribution")',
     )
     add(
         "A04_dynamic_conditional",
@@ -491,7 +491,7 @@ def candidates(source, historical, local_style):
         "absorption_fwhm_export",
         reference=moment,
     )
-    title = 'ax.set_title(f"Conditional frequency; displayed={int(counts.sum())}; total={len(df)}; excluded={len(df)-int(counts.sum())}; denominator=displayed")'
+    title = 'ax.set_title(f"Conditional frequency; displayed={int(counts.sum())}; total={len(df)}; excluded={len(df)-int(counts.sum())}; denominator=displayed" if normalize else "Spectral Sub-class Distribution")'
     add(
         "CM4_year_disguised_denominator",
         "mutant_red",
