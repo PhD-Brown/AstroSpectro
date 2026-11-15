@@ -270,6 +270,13 @@ def main():
                     dict(name=name, mode=mode, **record(probe))
                 )
                 assert_success(probe)
+            probe = run_probe(work / "failure", "wiring_failure", root=work)
+            assert probe.returncode == 1 and (
+                "ImportError: M29 producer ABI failure PCA" in probe.stderr
+            ), (probe.stdout + probe.stderr)
+            result["alternatives"].append(
+                dict(name=name, mode="deferred core error", **record(probe))
+            )
         # Candidate remedies are controls of proof admissibility, not proposed fixes.
         work = scratch / "A05_conditional_torch_bases"
         copy_source(work)
