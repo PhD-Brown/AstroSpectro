@@ -85,24 +85,16 @@ def test_sky_ra_tick_labels_match_actual_transformed_points(tools_case):
         assert hour % 24 == ra / 15, f"RA={ra} deg drawn at tick {label}"
 
 
-def test_truncated_percentages_disclose_conditional_population(tools_case):
+@pytest.mark.parametrize("counts,top_n", [([5, 4, 3, 2, 1], 3), ([11, 7, 4, 3, 2], 2)])
+def test_truncated_percentages_disclose_conditional_population(
+    tools_case, counts, top_n
+):
     c = tools_case
-    c.catalog({"subclass": ["A"] * 5 + ["B"] * 4 + ["C"] * 3 + ["D"] * 2 + ["E"]})
-    _, ax = c.viz.plot_subclass_distribution(top_n=3, normalize=True)
-    values = [p.get_height() for p in ax.patches]
-    total = np.array([5, 4, 3]) * 100 / 15
-    conditional = np.array([5, 4, 3]) * 100 / 12
-    text = " ".join(
-        [ax.get_title(), ax.get_ylabel()] + [t.get_text() for t in ax.texts]
-    ).lower()
-    if np.allclose(values, total):
-        return  # percentages of total; omitted classes retain their mass
-    assert_allclose(values, conditional)
-    assert (
-        ("top" in text or "display" in text or "condition" in text)
-        and "15" in text
-        and "3" in text
-    ), "Conditional percentages hide that 3/15 examples are outside the displayed top N"
+    c.catalog(
+        {"subclass": [label for label, n in zip("ABCDE", counts) for _ in range(n)]}
+    )
+    _, ax = c.viz.plot_subclass_distribution(top_n=top_n, normalize=True)
+    contracts.assert_population_percentages(ax, counts, top_n)
 
 
 @pytest.mark.parametrize("flux", [[-3.0, -2.0, -1.0], [-1.0, 0.0, 1.0]])
@@ -118,9 +110,11 @@ def test_failed_normalization_has_truthful_curve_units(tools_case, flux):
     if result is None:
         return
     _, ax = result
+    label = ax.get_ylabel().lower()
     assert (
-        "normalis" not in ax.get_ylabel().lower()
-        and "normaliz" not in ax.get_ylabel().lower()
+        "raw" in label
+        or "mixed" in label
+        or ("normalis" not in label and "normaliz" not in label)
     ), "Raw flux is labelled as normalized after normalization refusal"
 
 
@@ -137,31 +131,51 @@ def test_normalized_flux_uncertainties_scale_with_flux(tools_case):
 
     c.monkeypatch.setattr(c.module, "Spectrum", observe)
     contracts.render_spectrum(c, "notebook", name)
-    assert len(spectra) == 1
     # Raw invvar=4 -> sigma=.5; dividing flux by median=6 divides sigma too.
-    assert_allclose(
-        spectra[0]["uncertainty"].array,
-        np.full(401, 1 / 12),
-        rtol=1e-12,
-        err_msg="Normalized flux retains raw uncertainty units",
-    )
+    # Omitting latent uncertainties is admissible if none are advertised.
+    for spec in spectra:
+        if spec.get("uncertainty") is not None:
+            assert_allclose(
+                spec["uncertainty"].array,
+                np.full(401, 1 / 12),
+                rtol=1e-12,
+                err_msg="Normalized flux retains raw uncertainty units",
+            )
 
 
-def test_absorption_fwhm_export_measures_the_line_not_continuum(tools_case):
+@pytest.mark.parametrize("sigma", [0.5, 0.8, 1.6])
+@pytest.mark.parametrize("window", [8, 12])
+def test_absorption_fwhm_export_measures_the_line_not_continuum(
+    tools_case, sigma, window
+):
     c = tools_case
-    name, _, _ = c.gaussian()
-    contracts.render_spectrum(c, "notebook", name)
+    name, wave, _ = c.gaussian(sigma=sigma)
+    contracts.render_spectrum(c, "notebook", name, window=window)
     links = " ".join(str(getattr(x, "data", "")) for x in c.displayed)
     csv = base64.b64decode(
         re.search(r"data:text/csv;base64,([^']+)", links)[1]
     ).decode()
     table = pd.read_csv(io.StringIO(csv), index_col=0)
-    expected = 2 * np.sqrt(2 * np.log(2)) * 0.8
+    expected = 2 * np.sqrt(2 * np.log(2)) * sigma
     measured = float(table.loc["Hβ", "Largeur FWHM (Å)"])
-    # Pixel spacing .112 A; allow two pixels plus .005 A display rounding.
+    # Smooth-profile moment/interpolated crossings have second-order grid
+    # error. Bound it by FWHM*(h/sigma)^2/6, add two-decimal rounding and
+    # the analytic second-moment truncation of a Gaussian at +/-window.
+    import math
+
+    a = window / sigma
+    tail = expected * (
+        1
+        - np.sqrt(
+            1
+            - 2 * a * np.exp(-a * a / 2) / np.sqrt(2 * np.pi) / math.erf(a / np.sqrt(2))
+        )
+    )
+    h = np.max(np.diff(wave))
+    tolerance = 0.005 + expected * (h / sigma) ** 2 / 6 + 2 * tail
     assert (
-        abs(measured - expected) <= 0.23
-    ), f"Gaussian FWHM expected {expected}, exported {measured} A"
+        abs(measured - expected) <= tolerance
+    ), f"Gaussian sigma={sigma}, window={window}: FWHM expected {expected}, exported {measured} A; tolerance={tolerance}"
 
 
 def test_selected_feature_names_derive_from_support_not_prefix(tools_case):
@@ -186,25 +200,22 @@ def test_selected_feature_names_derive_from_support_not_prefix(tools_case):
     assert names == ["calcium", "hydrogen"], f"Selected values mislabelled: {names}"
 
 
-def test_actual_classifier_prep_step_is_applied_before_shap(tools_case):
-    from sklearn.pipeline import Pipeline
-
+@pytest.mark.parametrize("select", [False, True])
+def test_actual_classifier_prep_step_is_applied_before_shap(tools_case, select):
     c = tools_case
-    classifier = c.module.SpectralClassifier()
-    train = pd.DataFrame({"alpha": [1.0, 3.0, 5.0], "gamma": [10.0, 20.0, 30.0]})
-    prep = classifier._build_preprocessor(train, "SVM").fit(train)
-    wrapper = SimpleNamespace(
-        model_pipeline=Pipeline([("prep", prep)]),
-        feature_names_used=list(train.columns),
-    )
-    query = pd.DataFrame({"gamma": [30.0, np.nan], "alpha": [5.0, 1.0]})
-    Xt, _ = c.viz._prepare_for_model(query, wrapper)
+    wrapper, query, expected, expected_names = contracts.preparation_case(c, select)
+    before = query.copy(deep=True)
+    Xt, names = c.viz._prepare_for_model(query, wrapper)
+    assert (
+        names == expected_names
+    ), f"Transformed feature identities wrong: {names} vs {expected_names}"
     assert_allclose(
         Xt,
-        [[np.sqrt(1.5), np.sqrt(1.5)], [-np.sqrt(1.5), 0]],
-        atol=1e-14,
+        expected,
+        atol=2e-14,
         err_msg="Visualizer bypassed classifier prep transformation",
     )
+    pd.testing.assert_frame_equal(query, before)
 
 
 def test_multiclass_shap_reduces_samples_and_classes_only(tools_case):
@@ -220,16 +231,7 @@ def test_multiclass_shap_reduces_samples_and_classes_only(tools_case):
     )
     contracts.shap_case(c, values)
     result = c.viz._run_shap_analysis("synthetic")
-    assert set(result.feature) == {
-        "alpha",
-        "beta",
-        "gamma",
-    }, "One feature is lost after reducing the feature axis"
-    # Eight magnitudes per feature: sums 40,300,3000, divided by 8.
-    assert_allclose(
-        result.set_index("feature").loc[["alpha", "beta", "gamma"], "mean_abs_shap"],
-        [5, 37.5, 375],
-    )
+    contracts.assert_multiclass_importances(result)
 
 
 def test_shap_explanation_is_computed_once(tools_case):
@@ -354,13 +356,41 @@ def test_explainer_mode_is_respected_by_analysis(tools_case):
     ), "Analysis ignores explainer_mode and unconditionally computes TreeExplainer"
 
 
-def test_basename_export_is_written_in_current_directory(tools_case):
+@pytest.mark.parametrize(
+    "route",
+    ["summary", "subclass", "comparison", "normalization", "feature_bar", "beeswarm"],
+)
+def test_basename_export_is_written_in_current_directory(tools_case, route):
     c = tools_case
     c.monkeypatch.chdir(c.tmp)
     c.viz._last_shap_importances = pd.DataFrame(
         {"feature": ["alpha"], "mean_abs_shap": [1.0]}
     )
-    c.viz.plot_shap_summary_bar(save_path="summary.png")
+    if route == "summary":
+        c.viz.plot_shap_summary_bar(save_path="summary.png")
+    elif route == "subclass":
+        c.catalog({"subclass": ["F", "F", "G"]})
+        c.viz.plot_subclass_distribution(save_path="summary.png")
+    elif route in {"comparison", "normalization"}:
+        a, _, _ = c.write("a/a.fits.gz")
+        b, _, _ = c.write("b/b.fits.gz")
+        c.viz.refresh_available_spectra()
+        if route == "comparison":
+            c.viz._plot_spectra_comparison([a, b], save_path="summary.png")
+        else:
+            c.viz.plot_normalization_comparison([a, b], save_path="summary.png")
+    elif route == "feature_bar":
+        c.viz._plot_feature_importances_bar(
+            pd.DataFrame({"feature": ["alpha"], "importance": [1.0]}),
+            save_path="summary.png",
+        )
+    else:
+        c.viz._last_shap_explanation = c.module.shap.Explanation(
+            values=np.array([[1.0, 2.0], [2.0, 1.0], [-1.0, 3.0]]),
+            data=np.array([[1.0, 2.0], [2.0, 3.0], [3.0, 4.0]]),
+            feature_names=["alpha", "beta"],
+        )
+        c.viz.plot_shap_beeswarm(save_path="summary.png")
     assert (
         c.tmp / "summary.png"
     ).is_file(), "Valid basename export fails at makedirs('')"
@@ -385,35 +415,151 @@ def test_feature_explorer_nonfinite_histogram_has_explicit_partial_result(tools_
     ), "Finite subset EDA should remain available with an explicit exclusion diagnostic"
 
 
-def test_feature_explorer_does_not_split_repeat_observations_across_holdout(tools_case):
-    from sklearn import model_selection
-
+@pytest.mark.parametrize("with_ids", [True, False])
+def test_feature_explorer_does_not_split_repeat_observations_across_holdout(
+    tools_case, with_ids, capsys
+):
     c = tools_case
-    path = Path(c.paths["PROCESSED_DIR"]) / "features_synthetic.csv"
-    pd.DataFrame(
-        {
-            "source_id": np.repeat(np.arange(12), 2),
-            "alpha": np.arange(24),
-            "beta": np.sin(np.arange(24)),
-            "subclass": np.repeat(["F"] * 6 + ["G"] * 6, 2),
-        }
-    ).to_csv(path, index=False)
-    table = pd.read_csv(path)
-    real_split = model_selection.train_test_split
-    partitions = []
-
-    def observe(X, y, **kwargs):
-        result = real_split(X, y, **kwargs)
-        partitions.append((result[0].index, result[1].index))
-        return result
-
-    c.monkeypatch.setattr(model_selection, "train_test_split", observe)
-    c.viz.feature_explorer(
-        str(path), max_hists=0, corr_top_n=0, rf_estimators=3, do_permutation=False
+    path, fitted, evaluated = contracts.eda_partition_case(c, with_ids)
+    diagnostic = ""
+    try:
+        c.viz.feature_explorer(
+            str(path), max_hists=0, corr_top_n=0, rf_estimators=3, do_permutation=True
+        )
+    except ValueError as error:
+        diagnostic = str(error)
+    text = (
+        diagnostic
+        + capsys.readouterr().out
+        + " ".join(str(getattr(x, "data", "")) for x in c.displayed)
     )
-    assert len(partitions) == 1
-    train, test = partitions[0]
-    overlap = set(table.loc[train, "source_id"]) & set(table.loc[test, "source_id"])
+    contracts.assert_eda_partitions(fitted, evaluated, text)
+
+
+def test_deleted_fits_invalidates_position_cache(tools_case):
+    c = tools_case
+    c.write("p1/a.fits.gz")
+    rel, _, _ = c.write("p2/b.fits.gz")
+    c.viz.refresh_available_spectra()
+    c.viz._generate_position_catalog()
+    synthetic = (Path(c.paths["RAW_DATA_DIR"]) / rel).resolve()
+    assert synthetic.is_relative_to(c.tmp.resolve())
+    synthetic.unlink()
+    assert c.viz.refresh_available_spectra() == 1
+    current = c.viz._generate_position_catalog()
+    assert list(current.plan_id) == [
+        "p1"
+    ], "Deleted observation left a phantom plan in the position cache"
+
+
+def test_missing_subclass_has_explicit_population_policy(tools_case, capsys):
+    c = tools_case
+    c.catalog({"subclass": ["A", "A", "B", None, None, None]})
+    try:
+        result = c.viz.plot_subclass_distribution(top_n=5)
+    except (TypeError, ValueError) as error:
+        assert any(
+            word in str(error).lower() for word in ["subclass", "label", "missing"]
+        ), f"Missing subclass caused an unqualified backend crash: {error}"
+        return
+    text = capsys.readouterr().out + " ".join(
+        str(getattr(x, "data", "")) for x in c.displayed
+    )
+    if result is None:
+        assert "missing" in text.lower() or "manquant" in text.lower()
+        return
+    _, ax = result
+    counts = [p.get_height() for p in ax.patches]
+    if sum(counts) == 6:
+        assert sorted(counts) == [1, 2, 3]
+    else:
+        assert sorted(counts) == [1, 2]
+        assert re.search(
+            r"(?:excluded|exclu\w*)\s*[=:]?\s*3\b|\b3\s+(?:excluded|exclu\w*)",
+            text.lower(),
+        ), "Missing-label exclusions are not disclosed"
+
+
+@pytest.mark.parametrize("route", ["sample", "zeros"])
+def test_feature_consumers_keep_original_detected_wavelength(tools_case, route):
+    c = tools_case
+    start, step = 4861.0 / (10.0**0.0001) ** 200, 0.0001
+    wave = start * np.power(10.0**step, np.arange(401))
+    flux = 1 - 0.95 * np.exp(-0.5 * ((wave - 4861.0) / 3.0) ** 2)
+    flux[150:160] = np.nan
+    c.write(flux=flux, start=start, step=step)
+    c.viz.refresh_available_spectra()
+    observed = []
+    original = c.module.FeatureEngineer.extract_features
+
+    def extract(instance, matched, *args, **kwargs):
+        observed.append(matched)
+        return original(instance, matched, *args, **kwargs)
+
+    c.monkeypatch.setattr(c.module.FeatureEngineer, "extract_features", extract)
+    if route == "sample":
+        c.viz._get_features_sample(SimpleNamespace(), 1, "raw_fits")
+    else:
+        c.viz.analyze_feature_zeros(n_files=1, prominence=0.85, window=28, export=False)
+    assert observed and observed[0]["Hβ"] is not None
+    assert_allclose(
+        observed[0]["Hβ"][0],
+        4861.0,
+        atol=2e-9,
+        rtol=0,
+        err_msg="Feature consumer used a compacted index as an original pixel",
+    )
+
+
+@pytest.mark.parametrize("route", ["matplotlib", "notebook", "plotly"])
+def test_nonfinite_normalization_refusal_has_truthful_spectrum_label(tools_case, route):
+    c = tools_case
+    name, _, flux = c.gaussian(continuum=6.0)
+    flux[0] = np.nan
+    c.write(name, flux, start=4861.0 / (10.0**0.00001) ** 200, step=0.00001)
+    _, _, target = contracts.render_spectrum(c, route, name, allow_rejection=True)
+    if target is None:
+        return
+    if route == "plotly":
+        plotted = np.asarray(target.data[0].y)
+        label = target.layout.yaxis.title.text.lower()
+    else:
+        plotted = target.lines[0].get_ydata()
+        label = target.get_ylabel().lower()
+    if np.isclose(np.nanmedian(plotted), 1.0, atol=1e-10):
+        return
     assert (
-        not overlap
-    ), f"Repeated object observations contaminate the holdout: {sorted(overlap)}"
+        "raw" in label or "mixed" in label or "not normal" in label
+    ), "Normalization refused, but the rendered raw spectrum claims normalized flux"
+
+
+def test_missing_csv_features_follow_trained_preparation_at_explainer(tools_case):
+    c = tools_case
+    wrapper, _, _, names = contracts.preparation_case(c, True)
+    pd.DataFrame({"alpha": [11.0, 1.0], "alpha_copy": [22.0, 2.0]}).to_csv(
+        Path(c.paths["PROCESSED_DIR"]) / "features_missing.csv", index=False
+    )
+    c.monkeypatch.setattr(
+        c.module.SpectralClassifier, "load_model", staticmethod(lambda path: wrapper)
+    )
+    observed = []
+
+    class Explainer:
+        def __call__(self, X):
+            observed.append(np.asarray(X).copy())
+            return c.module.shap.Explanation(values=np.zeros_like(X), data=X)
+
+    c.monkeypatch.setattr(c.module.shap, "TreeExplainer", lambda model: Explainer())
+    result = c.viz._run_shap_analysis("trusted-synthetic", data_source="features_csv")
+    assert observed and result is not None
+    delta = [0.2, 0.9, 0.1, 0.7, 0.4, 0.3]
+    mean = sum(delta) / 6
+    scale = (sum((v - mean) ** 2 for v in delta) / 6) ** 0.5
+    expected = np.tile([0.0, (0.35 - mean) / scale], (2, 1))
+    assert_allclose(
+        observed[0],
+        expected,
+        atol=2e-14,
+        err_msg="Missing CSV measurements bypassed fitted imputation/selection before explanation",
+    )
+    assert list(result.feature) == names

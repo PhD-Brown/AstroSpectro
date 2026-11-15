@@ -63,9 +63,11 @@ def test_header_units_identity_and_explicit_error(tools_case):
 
 
 @pytest.mark.parametrize("route", ["matplotlib", "notebook", "plotly"])
-def test_finite_gaussian_peak_identity_all_renderers(tools_case, route):
+@pytest.mark.parametrize("continuum", [1.0, 6.0])
+def test_finite_gaussian_peak_identity_all_renderers(tools_case, route, continuum):
     c = tools_case
-    name, wave, flux = c.gaussian()
+    name, wave, raw = c.gaussian(continuum=continuum)
+    flux = raw / continuum
     red, green, target = contracts.render_spectrum(c, route, name)
     contracts.assert_peak_pairs(red, green, wave, flux)
     if route == "plotly":
@@ -157,7 +159,7 @@ def test_comparison_scale_invariance_offsets_and_skip_rank(tools_case, capsys):
     # Current documented i*offset convention: deduplicated selection index;
     # skipped files leave a gap. This is a display convention, not physics.
     assert_allclose(ax.lines[1].get_ydata(), [4 / 3, 5 / 3, 2, 7 / 3, 8 / 3])
-    assert [line.get_label() for line in ax.lines] == ["a.fits.gz", "b.fits.gz"]
+    contracts.assert_curve_identities(ax, [a, b])
     assert "Skipped" in capsys.readouterr().out
     from PIL import Image
 
@@ -408,6 +410,7 @@ def test_feature_explorer_eda_real_rf_and_exports(tools_case):
             "alpha": np.arange(24),
             "beta": np.arange(24) * -2.0,
             "constant": 7,
+            "source_id": [f"object-{n}" for n in range(24)],
             "subclass": ["F"] * 12 + ["G"] * 12,
         }
     )
@@ -548,7 +551,120 @@ def test_small_class_split_may_refuse_explicitly_without_false_importances(tools
             str(path), max_hists=0, corr_top_n=0, rf_estimators=3, do_permutation=False
         )
     except ValueError as error:
-        assert "test_size" in str(error) and "classes" in str(error)
+        assert ("test_size" in str(error) and "classes" in str(error)) or (
+            "independent holdout" in str(error).lower()
+            and "identit" in str(error).lower()
+        )
         assert getattr(c.viz, "_last_rf_importances", None) is None
     else:
         assert result is not None
+
+
+def test_identical_catalog_duplicates_keep_unrelated_labels(tools_case):
+    c = tools_case
+    c.catalog(
+        {
+            "fits_name": ["A/same.fits.gz", "A/same.fits.gz", "B/other.fits.gz"],
+            "subclass": ["F5", "F5", "G2"],
+        }
+    )
+    assert c.viz._load_labels_catalog() == {"A/same": "F5", "B/other": "G2"}
+
+
+@pytest.mark.parametrize("select", [False, True])
+def test_real_pipeline_reference_matches_analytic_values_and_inference(
+    tools_case, select
+):
+    c = tools_case
+    wrapper, query, expected, names = contracts.preparation_case(c, select)
+    actual = wrapper.model_pipeline[:-1].transform(query)
+    assert_allclose(actual, expected, rtol=0, atol=2e-14)
+    assert len(names) == actual.shape[1]
+
+
+@pytest.mark.parametrize(
+    "text,admitted",
+    [
+        (
+            "Conditional frequency; displayed=12; total=15; excluded=3; denominator=displayed",
+            True,
+        ),
+        ("Conditional frequency: 12 of 15 examples; 3 excluded", True),
+        ("Top 3 sub-classes, LAMOST DR5 (2015)", False),
+        ("Conditional frequency; displayed=15; total=12; excluded=3", False),
+        ("Frequency of total catalogue; total=15; denominator=total", True),
+    ],
+)
+def test_percentage_oracle_requires_semantic_denominator(tools_case, text, admitted):
+    c = tools_case
+    _, ax = c.plt.subplots()
+    total_mode = text.startswith("Frequency of total")
+    ax.bar(["A", "B", "C"], np.array([5, 4, 3]) * 100 / (15 if total_mode else 12))
+    ax.set_title(text)
+    if admitted:
+        contracts.assert_population_percentages(ax, [5, 4, 3, 2, 1], 3)
+    else:
+        with pytest.raises(AssertionError):
+            contracts.assert_population_percentages(ax, [5, 4, 3, 2, 1], 3)
+
+
+@pytest.mark.parametrize("mode", ["mean", "sum", "per_class"])
+def test_multiclass_oracle_accepts_declared_alternatives(mode):
+    if mode == "per_class":
+        table = pd.DataFrame(
+            {
+                "feature": ["alpha", "beta", "gamma"] * 2,
+                "class": ["F"] * 3 + ["G"] * 3,
+                "mean_abs_shap": [4.0, 25.0, 250.0, 6.0, 50.0, 500.0],
+            }
+        )
+    else:
+        table = pd.DataFrame(
+            {
+                "feature": ["alpha", "beta", "gamma"],
+                "mean_abs_shap": np.array([5.0, 37.5, 375.0])
+                * (2 if mode == "sum" else 1),
+            }
+        )
+        table.attrs["class_reduction"] = mode
+    contracts.assert_multiclass_importances(table)
+
+
+def test_partition_oracle_accepts_groups_and_explicit_descriptive_limit():
+    contracts.assert_eda_partitions([{"A", "B"}], [{"C"}], "")
+    contracts.assert_eda_partitions(
+        [], [], "No independent holdout: object identities insufficient"
+    )
+    contracts.assert_eda_partitions(
+        [{"A"}],
+        [{"A"}],
+        "Descriptive only: not an independent holdout because observations repeat",
+    )
+    with pytest.raises(AssertionError, match="contaminate"):
+        contracts.assert_eda_partitions([{"A"}], [{"A"}], "Validation importance")
+
+
+def test_pipeline_peak_analysis_uses_cleaned_coordinates(tools_case):
+    c = tools_case
+    _, wave, flux = c.gaussian(invalid=True)
+    match = c.module.PeakDetector(prominence=0.2, window=8).analyze_spectrum(wave, flux)
+    assert_allclose(match["Hβ"][0], 4861.0, atol=2e-9, rtol=0)
+
+
+def test_notebook_point_metric_csv_is_independent_of_latent_sigma(tools_case):
+    c = tools_case
+    name, _, _ = c.gaussian(continuum=6.0)
+    original = c.module.safe_sigma_from_invvar
+    exported = []
+    for factor in [1 / 6, 100.0]:
+        c.monkeypatch.setattr(
+            c.module, "safe_sigma_from_invvar", lambda inv, f=factor: original(inv) * f
+        )
+        c.displayed.clear()
+        contracts.render_spectrum(c, "notebook", name)
+        links = " ".join(str(getattr(obj, "data", "")) for obj in c.displayed)
+        exported.append(
+            base64.b64decode(re.search(r"data:text/csv;base64,([^']+)", links)[1])
+        )
+        c.plt.close("all")
+    assert exported[0] == exported[1]

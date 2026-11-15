@@ -8,6 +8,7 @@ import argparse
 import ast
 import hashlib
 import importlib.metadata
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "b4018074269011e5fbec232df068b8d3326a4e8d"
@@ -38,6 +40,7 @@ def hashes():
         ROOT / RED,
         ROOT / "tests/m31_visualizer_contracts.py",
         Path(__file__),
+        ROOT / "audit/m31_review_candidates.py",
     ]
     paths += [
         ROOT / p
@@ -137,7 +140,7 @@ def run(command, *, env=None):
     }
 
 
-def pytest_run(selection, xml, *, candidate=None):
+def pytest_run(selection, xml, *, candidate=None, trace_dir=None):
     env = os.environ.copy()
     env.update(
         PYTHONPATH=str(ROOT / "src"),
@@ -146,8 +149,11 @@ def pytest_run(selection, xml, *, candidate=None):
         PYTHONIOENCODING="utf-8",
     )
     env.pop("M31_VISUALIZER_SOURCE", None)
+    env.pop("M31_TRACE_DIR", None)
     if candidate:
         env["M31_VISUALIZER_SOURCE"] = str(candidate)
+    if trace_dir:
+        env["M31_TRACE_DIR"] = str(trace_dir)
     result = run(
         [
             sys.executable,
@@ -189,11 +195,38 @@ def pytest_run(selection, xml, *, candidate=None):
             for c in cases
             if c.find("failure") is not None
         ]
+        result["outcomes"] = {
+            c.get("name"): {
+                "status": (
+                    "ERROR"
+                    if c.find("error") is not None
+                    else (
+                        "FAIL"
+                        if c.find("failure") is not None
+                        else "SKIP" if c.find("skipped") is not None else "PASS"
+                    )
+                ),
+                "message": (
+                    c.find("failure").get("message", "")
+                    if c.find("failure") is not None
+                    else ""
+                )[:700],
+            }
+            for c in cases
+        }
+    if trace_dir:
+        traces = [
+            json.loads(p.read_text(encoding="utf-8")) for p in trace_dir.glob("*.json")
+        ]
+        result["reached_lines"] = sorted({n for t in traces for n in t["lines"]})
+        result["trace_nodes"] = [t["node"] for t in traces]
     return result
 
 
-def replace(source, old, new):
-    assert old in source, f"Candidate site absent: {old[:60]}"
+def replace(source, old, new, *, expected_count=1):
+    assert (
+        source.count(old) == expected_count
+    ), f"Candidate occurrence mismatch: {old[:60]}"
     return source.replace(old, new)
 
 
@@ -211,236 +244,169 @@ def local_style(source):
     return "".join(lines)
 
 
-def adversarial(report):
+def adversarial(report, only=None):
+    """Cross every remedy with all green and red contracts; trace mutants."""
+    spec = importlib.util.spec_from_file_location(
+        "m31_candidates", ROOT / "audit/m31_review_candidates.py"
+    )
+    builders = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(builders)
     source = SOURCE.read_text(encoding="utf-8")
-    # Each mutant is paired with its passing original selection; failures
-    # must be assertion failures, without setup/import/runtime errors.
-    mutants = [
-        (
-            "M01_wavelength_pair",
-            "finite_gaussian",
-            "peak_wl = wavelength[peak_idx]",
-            "peak_wl = wavelength[peak_idx] + 1.0",
-        ),
-        (
-            "M02_normalization",
-            "comparison_scale_invariance",
-            "y = flux + (i * offset if offset else 0.0)",
-            "y = flux * 2 + (i * offset if offset else 0.0)",
-        ),
-        (
-            "M03_population_counts",
-            "subclass_raw_counts",
-            "values = counts\n",
-            "values = counts * 2\n",
-        ),
-        (
-            "M04_shap_signed_mean",
-            "binary_shap_mean",
-            "vals = np.abs(vals)",
-            "vals = vals",
-        ),
-        (
-            "M05_column_alignment",
-            "prepare_flat",
-            "Xt = imp.transform(X)",
-            "Xt = imp.transform(X)[:, ::-1]",
-        ),
-        (
-            "M06_feature_labels",
-            "model_inspector_selected",
-            "names_sorted = np.array(feature_names_for_plot)[order]",
-            "names_sorted = np.array(feature_names_for_plot)[order[::-1]]",
-        ),
-        (
-            "M07_zero_denominator",
-            "zero_statistics",
-            "zero_count / len(df)",
-            "zero_count / (len(df) + 1)",
-        ),
-        (
-            "M08_declination",
-            "sky_artists",
-            "y = np.radians(dec_deg)",
-            "y = np.radians(-dec_deg)",
-        ),
-    ]
-    remedies = [
-        (
-            "A01_circular_RA",
-            "ra_wrap_centroid",
-            'ra=("ra", "mean")',
-            'ra=("ra", lambda s: np.degrees(np.arctan2(np.sin(np.radians(s)).mean(), np.cos(np.radians(s)).mean())) % 360)',
-        ),
-        (
-            "A02_tick_labels",
-            "sky_ra_tick",
-            "((L % 360) / 15)",
-            "(((180 - L) % 360) / 15)",
-        ),
-        (
-            "A03_total_population",
-            "truncated_percentages",
-            "total = counts.sum()",
-            "total = len(df)",
-        ),
-        (
-            "A04_disclosed_conditional",
-            "truncated_percentages",
-            'ax.set_title("Spectral Sub-class Distribution")',
-            'ax.set_title("Top 3 classes: 12 of 15 examples; 3 excluded; conditional frequency")',
-        ),
-        (
-            "A05_shap_axes",
-            "multiclass_shap",
-            "vals = np.mean(np.abs(vals), axis=1)",
-            "vals = np.mean(np.abs(vals), axis=2)",
-        ),
-        (
-            "A06_selector_support",
-            "selected_feature_names_derive",
-            "or used_cols[: Xt.shape[1]]",
-            "or list(np.asarray(used_cols)[sel.get_support()])",
-        ),
-        (
-            "A07_uncertainty_scale",
-            "normalized_flux_uncertainties",
-            "sigma = safe_sigma_from_invvar(invvar)  # helper utils.py",
-            "sigma = safe_sigma_from_invvar(invvar) / np.median(flux)  # normalized sigma",
-        ),
-        (
-            "A08_actual_prep",
-            "actual_classifier_prep",
-            "Xt = X.values",
-            'Xt = pipe.named_steps["prep"].transform(X) if "prep" in pipe.named_steps else X.values',
-        ),
-        (
-            "A09_no_duplicate_SHAP",
-            "computed_once",
-            '        # 4) SHAP values (uniform API: direct call)\n        with warnings.catch_warnings():\n            warnings.filterwarnings("ignore", category=RuntimeWarning)\n            sv = explainer(Xt)\n',
-            "",
-        ),
-        (
-            "A10_missing_stays_nan",
-            "missing_measurement",
-            "df[c] = 0.0",
-            "df[c] = np.nan",
-        ),
-        (
-            "A12_absorption_profile",
-            "absorption_fwhm_export",
-            "gaussian_fwhm(spec_full, regions=region)",
-            "gaussian_fwhm(Spectrum(spectral_axis=wavelength*u.AA, flux=(1-flux_norm)*u.adu), regions=region)",
-        ),
-        (
-            "A13_fresh_cache",
-            "added_backdated_fits",
-            "if os.path.exists(catalog_path) and not force_regenerate:",
-            "if os.path.exists(catalog_path) and not force_regenerate and False:",
-        ),
-        (
-            "A14_relative_identity",
-            "duplicate_basename_legend",
-            "label=os.path.basename(rel_path)",
-            "label=rel_path",
-        ),
-        (
-            "A15_explicit_catalog_conflict",
-            "duplicate_conflicting_catalog",
-            'labels = pd.Series(df_cat["subclass"].values, index=key_series).to_dict()',
-            'if key_series.duplicated().any():\n                print("Conflicting catalogue identities")\n                return {}\n            labels = pd.Series(df_cat["subclass"].values, index=key_series).to_dict()',
-        ),
-    ]
-    results = []
-    with tempfile.TemporaryDirectory(prefix="m31-candidates-") as temp:
+    historical = json.loads(
+        (ROOT / "audit/m31_adversarial.json").read_text(encoding="utf-8")
+    )
+    items = builders.candidates(source, historical, local_style)
+    if only:
+        wanted = set(only.split(","))
+        items = [item for item in items if item["id"] in wanted]
+        assert {item["id"] for item in items} == wanted
+    report["candidate_selection"] = only or "all"
+
+    def compact(result):
+        result["output"] = "\n".join(result["output"].splitlines()[-6:])
+        return result
+
+    with tempfile.TemporaryDirectory(prefix="m31-review-") as temp:
         folder = Path(temp)
-        for name, expression, old, new in mutants:
-            reference = pytest_run(
-                [GREEN, "-k", expression], folder / f"{name}-base.xml"
-            )
-            candidate = folder / f"{name}.py"
-            candidate.write_text(replace(source, old, new), encoding="utf-8")
-            compile(candidate.read_text(encoding="utf-8"), str(candidate), "exec")
-            outcome = pytest_run(
-                [GREEN, "-k", expression], folder / f"{name}.xml", candidate=candidate
-            )
-            counts = outcome.get("counts", {})
-            killed = (
-                reference["exit_code"] == 0
-                and reference["counts"]["passed"] > 0
-                and counts.get("failed", 0) > 0
-                and counts.get("errors") == 0
-                and all(
+        baseline_green = pytest_run([GREEN], folder / "baseline-green.xml")
+        baseline_red = pytest_run([RED], folder / "baseline-red.xml")
+        assert baseline_green["exit_code"] == 0
+        report["baseline_green"] = compact(baseline_green)
+        report["baseline_red"] = compact(baseline_red)
+
+        def evaluate(item):
+            case_dir = folder / item["id"]
+            case_dir.mkdir()
+            path = case_dir / "visualizer.py"
+            path.write_text(item["source"], encoding="utf-8")
+            record = {k: v for k, v in item.items() if k not in {"source", "reference"}}
+            record["candidate_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            record["changed_methods"] = [
+                method["name"]
+                for method in inventory(item["source"])["methods"]
+                if any(
+                    method["line"] <= line <= method["end_line"]
+                    for line in item["changed_lines"]
+                )
+            ]
+            if item["kind"].startswith("mutant"):
+                selection = GREEN if item["kind"] == "mutant_green" else RED
+                reference = None
+                if item["reference"] is not None:
+                    reference = case_dir / "reference.py"
+                    reference.write_text(item["reference"], encoding="utf-8")
+                record["reference_sha256"] = hashlib.sha256(
+                    reference.read_bytes() if reference else SOURCE.read_bytes()
+                ).hexdigest()
+                record["reference_kind"] = (
+                    "admissible physical/statistical reference copy"
+                    if reference
+                    else "unchanged production"
+                )
+                baseline = pytest_run(
+                    [selection, "-k", item["target"]],
+                    case_dir / "reference.xml",
+                    candidate=reference,
+                )
+                outcome = pytest_run(
+                    [selection, "-k", item["target"]],
+                    case_dir / "mutation.xml",
+                    candidate=path,
+                    trace_dir=case_dir / "trace",
+                )
+                reached = set(outcome.get("reached_lines", []))
+                # Mutants only alter executable expressions, not formatting.
+                hit = bool(item["changed_lines"]) and set(
+                    item["changed_lines"]
+                ).issubset(reached)
+                assertion = outcome.get("counts", {}).get("failed", 0) > 0 and all(
                     f["type"] == "AssertionError" for f in outcome.get("failures", [])
                 )
-            )
-            results.append(
-                {
-                    "id": name,
-                    "status": "KILLED" if killed else "INCONCLUSIVE",
-                    "site": old,
-                    "replacement": new,
-                    "baseline": reference,
-                    "result": outcome,
-                }
-            )
-            print(name, results[-1]["status"], flush=True)
-        for name, expression, old, new in remedies:
-            candidate = folder / f"{name}.py"
-            candidate.write_text(replace(source, old, new), encoding="utf-8")
-            outcome = pytest_run(
-                [RED, "-k", expression], folder / f"{name}.xml", candidate=candidate
-            )
-            admitted = outcome["exit_code"] == 0 and outcome["counts"]["passed"] > 0
-            results.append(
-                {
-                    "id": name,
-                    "status": "ADMITTED" if admitted else "INCONCLUSIVE",
-                    "site": old,
-                    "replacement": new,
-                    "result": outcome,
-                }
-            )
-            print(name, results[-1]["status"], flush=True)
-        candidate = folder / "A11_local_style.py"
-        candidate.write_text(local_style(source), encoding="utf-8")
-        outcome = pytest_run(
-            [RED, "-k", "restores_global_matplotlib"],
-            folder / "style.xml",
-            candidate=candidate,
-        )
-        results.append(
-            {
-                "id": "A11_local_style",
-                "status": "ADMITTED" if outcome["exit_code"] == 0 else "INCONCLUSIVE",
-                "result": outcome,
-            }
-        )
-        print(results[-1]["id"], results[-1]["status"], flush=True)
-        candidate = folder / "A16_pixel_mapping.py"
-        pixel = replace(
-            source,
-            "peak_wl = wavelength[peak_idx]",
-            "peak_idx = np.flatnonzero(np.isfinite(wavelength) & np.isfinite(flux_norm))[peak_idx]\n            peak_wl = wavelength[peak_idx]",
-        )
-        pixel = replace(
-            pixel,
-            "peak_wavelengths = wavelength[peak_indices]",
-            "peak_indices = np.flatnonzero(np.isfinite(wavelength) & np.isfinite(flux_norm))[peak_indices]\n            peak_wavelengths = wavelength[peak_indices]",
-        )
-        candidate.write_text(pixel, encoding="utf-8")
-        outcome = pytest_run(
-            [RED, "-k", "nonfinite_prefix"], folder / "pixels.xml", candidate=candidate
-        )
-        results.append(
-            {
-                "id": "A16_pixel_mapping",
-                "status": "ADMITTED" if outcome["exit_code"] == 0 else "INCONCLUSIVE",
-                "result": outcome,
-            }
-        )
-        print(results[-1]["id"], results[-1]["status"], flush=True)
-    report["adversarial"] = results
+                same = baseline.get("counts", {}).get("collected") == outcome.get(
+                    "counts", {}
+                ).get("collected")
+                killed = (
+                    baseline["exit_code"] == 0
+                    and baseline["counts"]["passed"] > 0
+                    and assertion
+                    and same
+                    and hit
+                    and outcome["counts"]["errors"] == 0
+                )
+                record.update(
+                    status=(
+                        "KILLED"
+                        if killed
+                        else (
+                            "SURVIVED"
+                            if outcome["exit_code"] == 0 and hit
+                            else "INCONCLUSIVE"
+                        )
+                    ),
+                    baseline=compact(baseline),
+                    result=compact(outcome),
+                    mutation_reached=hit,
+                    reached_changed_lines=sorted(reached & set(item["changed_lines"])),
+                )
+            else:
+                green = pytest_run([GREEN], case_dir / "green.xml", candidate=path)
+                red = pytest_run([RED], case_dir / "red.xml", candidate=path)
+                # Ask pytest to resolve -k semantics; never infer a targeted
+                # PASS from an empty or mismatched selection.
+                target = pytest_run(
+                    [RED, "-k", item["target"]], case_dir / "target.xml", candidate=path
+                )
+                target_ok = (
+                    target["exit_code"] == 0
+                    and target.get("counts", {}).get("passed", 0) > 0
+                )
+                green_ok = green["exit_code"] == 0
+                previous = baseline_red.get("outcomes", {})
+                regressions = [
+                    name
+                    for name, state in red.get("outcomes", {}).items()
+                    if previous.get(name, {}).get("status") == "PASS"
+                    and state["status"] != "PASS"
+                ]
+                incidental = red.get("counts", {}).get("errors", 0) > 0 or any(
+                    f["type"] != "AssertionError" for f in red.get("failures", [])
+                )
+                status = (
+                    "ADMITTED_BOUNDED"
+                    if target_ok and green_ok and not regressions and not incidental
+                    else (
+                        "REGRESSION"
+                        if target_ok and (not green_ok or regressions)
+                        else (
+                            "INCONCLUSIVE"
+                            if incidental or target.get("counts", {}).get("errors", 0)
+                            else "TARGET_REJECTED"
+                        )
+                    )
+                )
+                record.update(
+                    status=status,
+                    target=compact(target),
+                    green=compact(green),
+                    red=compact(red),
+                    other_regressions=regressions,
+                    red_passed=[
+                        name
+                        for name, state in red.get("outcomes", {}).items()
+                        if state["status"] == "PASS"
+                    ],
+                )
+            print(record["id"], record["status"], flush=True)
+            return record
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            pending = [pool.submit(evaluate, item) for item in items]
+            results = [future.result() for future in as_completed(pending)]
+        report["adversarial"] = sorted(results, key=lambda item: item["id"])
+        report["summary"] = {
+            status: sum(item["status"] == status for item in results)
+            for status in sorted({item["status"] for item in results})
+        }
 
 
 def validation(report):
@@ -478,6 +444,7 @@ def validation(report):
                 "scripts",
                 "app.py",
                 "audit/check_m31_visualizer.py",
+                "audit/m31_review_candidates.py",
                 RED,
             ],
         ),
@@ -492,6 +459,7 @@ def validation(report):
                 "scripts",
                 "app.py",
                 "audit/check_m31_visualizer.py",
+                "audit/m31_review_candidates.py",
                 RED,
             ],
         ),
@@ -506,9 +474,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--validation", action="store_true")
     parser.add_argument(
-        "--output", type=Path, default=ROOT / "test-results/m31-replay.json"
+        "--only", help="Comma-separated candidate IDs for an explicit partial replay"
+    )
+    parser.add_argument(
+        "--output", type=Path, default=ROOT / "test-results/m31-review-replay.json"
     )
     args = parser.parse_args()
+    if args.output.resolve() in {
+        (ROOT / "audit/m31_experiments.json").resolve(),
+        (ROOT / "audit/m31_adversarial.json").resolve(),
+    }:
+        parser.error("Historical manifests are immutable; choose a review output path")
     before = hashes()
     report = {
         "base": BASE,
@@ -553,7 +529,7 @@ def main():
     if args.validation:
         validation(report)
     else:
-        adversarial(report)
+        adversarial(report, args.only)
     report["hashes_after"] = hashes()
     report["inputs_unchanged"] = before == report["hashes_after"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
